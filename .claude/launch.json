@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lowbeam",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/devserver.mjs",
+        "8040"
+      ],
+      "port": 8040
+    }
+  ]
+}

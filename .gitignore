@@ -1,0 +1,10 @@
+# No build step and no dist/. Almost nothing should be ignored.
+node_modules/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.env
+
+# Canvas captures written by tools/devserver.mjs. Evidence for a session, not history.
+tools/shots/
