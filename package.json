@@ -1,6 +1,6 @@
 {
   "name": "lowbeam",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "A PS1-style night driving game: three cars, one valley, three gas stations and a gravel rally stage.",
   "type": "module",

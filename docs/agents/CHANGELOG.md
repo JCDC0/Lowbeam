@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2 (2026-10-02)
+
+Title screen and garage.
+
+- `index.html`, `style.css` and `src/main.js`: the first playable page. Boot, a
+  title, garage state machine and `window.__lowbeam` for browser checks.
+- `src/ui/garage.js`: showroom with a turntable, spot and rim lights and neon strips.
+  The card shows maker, name, class, blurb, the three bars as ten-segment meters,
+  layout, engine, gearbox, weight and four paint swatches. Keyboard, gamepad and mouse.
+- `src/core/input.js` (keyboard and gamepad menu actions), `src/core/store.js`
+  (localStorage), `src/ui/menus.js` (title, loading, toast).
+- Michroma (SIL OFL) vendored in `assets/fonts/` with its license. The CSS stack
+  prefers an installed Microgramma or Eurostile Extended.
+- `stage.shot()` re-renders the last drawn scene instead of the default one.
+
 ## 0.1.1 (2026-10-02)
 
 Car models.

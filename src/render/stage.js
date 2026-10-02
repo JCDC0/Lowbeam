@@ -110,8 +110,12 @@ export function createStage(canvas) {
     resize();
   }
 
+  /** @type {[THREE.Scene, THREE.Camera]} */
+  let last = [scene, camera];
+
   /** @param {THREE.Scene} [sc] @param {THREE.Camera} [cam] */
   function render(sc = scene, cam = camera) {
+    last = [sc, cam];
     renderer.setRenderTarget(target);
     renderer.render(sc, cam);
     renderer.setRenderTarget(null);
@@ -119,11 +123,12 @@ export function createStage(canvas) {
   }
 
   /**
-   * Renders one frame and posts it to the dev server, which writes tools/shots/<name>.png.
+   * Renders the last drawn scene again and posts it to the dev server, which writes
+   * tools/shots/<name>.png.
    * @param {string} name
    */
   async function shot(name = 'shot') {
-    render();
+    render(...last);
     const data = canvas.toDataURL('image/png');
     const res = await fetch('/__shot', {
       method: 'POST',

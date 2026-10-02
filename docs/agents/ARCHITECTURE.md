@@ -53,6 +53,13 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | File | Role |
 |---|---|
 | `docs/DESIGN.md` | The plan: pillars, cars, map, driving model, rally, HUD, build order |
+| `index.html`, `style.css` | Page shell with the import map; all UI styles and the display font |
+| `src/main.js` | Boot, state machine (title, garage), frame loop, `window.__lowbeam` |
+| `src/core/input.js` | Keyboard and standard-mapping gamepad; one-shot menu actions |
+| `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings |
+| `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
+| `src/ui/menus.js` | Title, loading and toast DOM screens |
+| `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
 | `src/world/layout.js` | Authored data: roads, stations, rally config, economy |
 | `src/world/heightfield.js` | Natural terrain (`baseHeight`), blur, the carved grid and triangle sampling |
 | `src/world/spline.js` | Arc-length Catmull-Rom `Path`: sample, nearest, signed offset |
@@ -69,7 +76,7 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 
-## Current state (0.1.1)
+## Current state (0.1.2)
 
 Done and tested:
 
@@ -100,34 +107,41 @@ Done and tested:
   mesh (rotated PI for right-side wheels). `CarModel.pose(state, dt)` places the car
   from a physics state and adds body roll and pitch. Material keys: paint, accent,
   glass, trim, under, chrome, lamp, tail, plate, tire, rim.
+- Title screen and garage (`index.html`, `src/main.js`, `src/ui/garage.js`). Enter on
+  the title opens the garage. Left and right change the car, up and down the paint,
+  Esc goes back. The choice persists in localStorage. The camera centers the car in
+  the space the card leaves free. Enter in the garage only shows a toast until the
+  world exists.
+- Display font: CSS family `Lowbeam Display` tries `local()` Microgramma D Extended
+  and Eurostile Extended, then the vendored Michroma.
 - Tests: 11 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps). `npm run check` is clean.
 
-Not started: there is **no `index.html` and no playable page yet**. The garage and
-everything after it in the build order in `docs/DESIGN.md` remain.
+Not started: the world meshes and everything after them in the build order in
+`docs/DESIGN.md`.
 
 ## Next steps (in order)
 
-1. **Garage turntable** and title screen (`index.html`, `style.css`, `src/main.js`).
-2. **World meshes**: terrain (same diagonal as `Heightfield.at`), road ribbons with
+1. **World meshes**: terrain (same diagonal as `Heightfield.at`), road ribbons with
    skirts (`SKIRT`, `SINK` in roads.js), town, street lamps, trees (instanced), the
    three gas stations, sky, and the light baker that writes the `bake` attribute.
-3. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
+2. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
    throttle ramp for keyboards, minimap, fuel and refuel.
-4. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
+3. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
    Arcade-style round tach plus FUEL, WATER, BOOST or INTAKE, EXH sub-gauges, bottom
    right, canvas-drawn. Add `src/vehicles/gauges.js` (pure) for the simulated values.
-   Vendor Michroma (OFL) into `assets/fonts/` with `OFL.txt`; font stack
-   `local("Microgramma D Extended"), local("Eurostile Extended"), Michroma`.
-5. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+   The font is already vendored (see Current state).
+4. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-6. Audio, settings, pause menu. Then look at every part in the browser and tune.
+5. Audio, settings, pause menu. Then look at every part in the browser and tune.
 
 ## Verification
 
 The game is verified by looking at it. Start the dev server, open the page in a
-browser, and use `window.__lowbeam` (to be added in `main.js`) to force a state and
-call `stage.shot(name)`, which writes `tools/shots/<name>.png`. The first session ran
+browser, and use `window.__lowbeam` (set in `main.js`) to force a state
+(`setState('garage')`) and call `shot(name)`, which re-renders the last drawn scene
+and writes `tools/shots/<name>.png`. `tools/models.html` does the same for the bare
+car models. The first session ran
 on a Linux laptop with weak graphics; continue on the gaming desktop for real frame
 rates.
 
