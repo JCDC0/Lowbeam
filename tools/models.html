@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam model viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #info { position: fixed; left: 8px; top: 6px; color: #9ab; font: 12px monospace; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">1 2 3 car, P paint, V view, F psx filter, drag to orbit</div>
+<script type="module">
+// Dev tool: looks at the car models without the game around them.
+// window.__lowbeam.view('side') and .shot('name') write tools/shots/name.png.
+import * as THREE from 'three';
+import { createStage } from '/src/render/stage.js';
+import { CARS } from '/src/vehicles/specs.js';
+import { CarModel } from '/src/vehicles/models.js';
+
+const stage = createStage(document.getElementById('c'));
+stage.configure({ lines: 480 });
+const { scene, camera } = stage;
+scene.background = new THREE.Color(0x202630);
+scene.add(new THREE.HemisphereLight(0xb0c0d8, 0x202020, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(4, 6, 5);
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshLambertMaterial({ color: 0x3a3d42 }));
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+const models = CARS.map((spec, i) => {
+  const m = new CarModel(spec, 0);
+  m.group.position.x = (1 - i) * 2.6;
+  scene.add(m.group);
+  return m;
+});
+let solo = -1;
+let yaw = 0.7, pitch = 0.25, dist = 9;
+const VIEWS = {
+  front3: [0.7, 0.25, 9], side: [Math.PI / 2, 0.08, 9], front: [0, 0.1, 9], rear: [Math.PI, 0.12, 9],
+  rear3: [2.4, 0.3, 9], top: [Math.PI / 2, 1.4, 9], low: [0.9, 0.02, 7],
+};
+const viewNames = Object.keys(VIEWS);
+let vi = 0;
+
+function frame() {
+  const target = solo >= 0 ? models[solo].group.position : new THREE.Vector3();
+  const d = solo >= 0 ? dist * 0.6 : dist;
+  camera.position.set(target.x + Math.sin(yaw) * Math.cos(pitch) * d, 0.6 + Math.sin(pitch) * d, target.z + Math.cos(yaw) * Math.cos(pitch) * d);
+  camera.lookAt(target.x, 0.6, target.z);
+  stage.render();
+}
+function loop() { frame(); requestAnimationFrame(loop); }
+loop();
+
+function view(name, d) { [yaw, pitch, dist] = VIEWS[name]; if (d) dist = d; frame(); }
+function show(i) {
+  solo = i;
+  models.forEach((m, k) => {
+    m.group.visible = i < 0 || k === i;
+    m.group.position.x = i < 0 ? (1 - k) * 2.6 : 0;
+  });
+  frame();
+}
+let drag = null;
+addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY]));
+addEventListener('pointerup', () => (drag = null));
+addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01;
+  pitch = Math.max(-0.1, Math.min(1.5, pitch + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('wheel', (e) => (dist = Math.max(3, Math.min(30, dist + e.deltaY * 0.01))));
+addEventListener('keydown', (e) => {
+  if (e.key >= '1' && e.key <= '3') show(solo === +e.key - 1 ? -1 : +e.key - 1);
+  if (e.key === 'p') models.forEach((m) => m.setPaint((m.paintIndex + 1) % m.spec.paints.length));
+  if (e.key === 'v') view(viewNames[(vi = (vi + 1) % viewNames.length)]);
+  if (e.key === 'f') stage.configure({ psx: !stage.settings.psx });
+});
+window.__lowbeam = { stage, models, view, show, shot: (name) => { frame(); return stage.shot(name); } };
+</script>
+</body>
+</html>

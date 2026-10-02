@@ -58,6 +58,15 @@ export function psxLambert(params = {}) {
 }
 
 /**
+ * Phong material with the PSX patch, for car paint, glass and chrome.
+ * @param {THREE.MeshPhongMaterialParameters & { baked?: boolean }} params
+ */
+export function psxPhong(params = {}) {
+  const { baked, ...rest } = params;
+  return patchPsx(new THREE.MeshPhongMaterial(rest), { baked });
+}
+
+/**
  * Unlit material with the PSX patch, for signs, lamps and anything that glows.
  * @param {THREE.MeshBasicMaterialParameters} params
  */

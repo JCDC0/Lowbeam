@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.1 (2026-10-02)
+
+Car models.
+
+- `src/vehicles/models.js`: loft modeler that builds each body from cross sections,
+  cuts wheel arches with extra stations at each axle and flares the fenders. Part
+  helpers place lamps, grilles, plates, scoops, wings, stripes, louvers and intakes on
+  the body surface. `CarModel` adds wheels (steer and spin), a blob shadow, paint
+  swaps, brake lights and body lean.
+- Hayate RS-4: boxy sedan, hood scoop, big wing, mudflaps, gold six-spoke rims.
+  Rampart 440: long hood, fastback, hood scoop, twin stripes, ducktail, chrome
+  bumpers. Vespera GT: wedge nose, cab-forward glass, engine louvers, side intakes,
+  carbon sills, wing, quad exhausts.
+- `src/render/textures.js`: canvas-drawn glass, rim, plate and shadow textures.
+  `psxPhong` in `src/render/psx.js` for paint, glass and chrome.
+- `tools/models.html`: dev viewer for the models.
+
 ## 0.1.0 (2026-10-02)
 
 First commit. Plan, scaffold and the pure core.

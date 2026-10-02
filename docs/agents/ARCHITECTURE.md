@@ -64,9 +64,12 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
 | `src/render/builder.js` | `MeshBuilder`: flat-shaded quads, boxes, cylinders into grouped geometry |
+| `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
+| `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
+| `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 
-## Current state (0.1.0)
+## Current state (0.1.1)
 
 Done and tested:
 
@@ -83,45 +86,42 @@ Done and tested:
   | Rampart 440 | 4.80 s | 12.48 s | 245 km/h | 42.8 m | 0.93 g / 0.61 g |
   | Vespera GT | 4.92 s | 12.65 s | 293 km/h | 34.7 m | 1.10 g / 0.59 g |
 
-- Render plumbing written but not yet seen running: `stage.js`, `psx.js`, `builder.js`.
+- Render plumbing runs in the browser: `stage.js`, `psx.js`, `builder.js`.
+- Car models (`src/vehicles/models.js`), seen in `tools/models.html`. Each body is
+  lofted from 9 to 11 cross sections plus 7 arch stations per axle. A station is
+  `[z, y0, w0, y1, w1, y2, w2, y3, w3]`: rocker bottom, shoulder, belt line, roof edge
+  (half widths). The ring runs right side bottom to roof, then left side roof to bottom
+  (local +X is the car's LEFT). Bands: lower side, upper side, greenhouse side (glass by
+  z range), roof (glass for windshield and rear window by z range), underside. Arch
+  stations raise y0 on a circle of radius `wheelRadius + 0.08` and flare the fender.
+  `Kit` has helpers that put parts on the surface: `face` (end faces), `top` (follows the
+  roof band), `side`, `stripes`, `ducktail`. Bodies come out at 520 to 630 triangles
+  plus 40 per wheel. Wheels: pivot (steer about Y) > spin (rotation.x = wheelAngle) >
+  mesh (rotated PI for right-side wheels). `CarModel.pose(state, dt)` places the car
+  from a physics state and adds body roll and pitch. Material keys: paint, accent,
+  glass, trim, under, chrome, lamp, tail, plate, tire, rim.
 - Tests: 11 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps). `npm run check` is clean.
 
-Not started: there is **no `index.html` and no playable page yet**. Everything from
-step 4 of the build order in `docs/DESIGN.md` remains.
+Not started: there is **no `index.html` and no playable page yet**. The garage and
+everything after it in the build order in `docs/DESIGN.md` remain.
 
 ## Next steps (in order)
 
-1. **Car models** (`src/vehicles/models.js`). Loft each body from cross sections. Each
-   station is `[z, y0, w0, y1, w1, y2, w2, y3, w3]`: rocker bottom, shoulder, belt line,
-   roof edge (half widths). The ring has 8 points: right side bottom to roof, then left
-   side roof to bottom (local +X is the car's LEFT). Bands between rings: lower side,
-   upper side, greenhouse side (glass or paint by z range), roof (glass for windshield
-   and rear window by z range), underside. Insert extra stations at each axle to cut
-   wheel arches by raising y0 (axle +-0.46, +-0.36, +-0.2, 0). Caps: front fan winds
-   (center, k+1, k), rear fan (center, k, k+1). Origin is the center of gravity on the
-   ground, +Z forward, front axle at `cgToFront`, rear at `-(wheelbase - cgToFront)`.
-   Wheels: pivot (steer about Y) > spin (rotation.x = wheelAngle) > mesh (rotated PI
-   for right-side wheels). Parts: lamps (emissive), tail lights (brighten on brake),
-   grille, mirrors, plates, exhausts; Hayate hood scoop, wing, mudflaps, gold rims;
-   Rampart hood scoop, twin accent stripes lofted over the roofline, ducktail;
-   Vespera wedge nose, cab-forward glass, black engine louvers, side intakes, wing.
-   Material keys: paint, accent, glass, trim, under, chrome, lamp, tail, plate, tire, rim.
-   Paint uses Phong with a little specular; glass gets a diagonal highlight texture.
-2. **Garage turntable** and title screen (`index.html`, `style.css`, `src/main.js`).
-3. **World meshes**: terrain (same diagonal as `Heightfield.at`), road ribbons with
+1. **Garage turntable** and title screen (`index.html`, `style.css`, `src/main.js`).
+2. **World meshes**: terrain (same diagonal as `Heightfield.at`), road ribbons with
    skirts (`SKIRT`, `SINK` in roads.js), town, street lamps, trees (instanced), the
    three gas stations, sky, and the light baker that writes the `bake` attribute.
-4. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
+3. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
    throttle ramp for keyboards, minimap, fuel and refuel.
-5. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
+4. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
    Arcade-style round tach plus FUEL, WATER, BOOST or INTAKE, EXH sub-gauges, bottom
    right, canvas-drawn. Add `src/vehicles/gauges.js` (pure) for the simulated values.
    Vendor Michroma (OFL) into `assets/fonts/` with `OFL.txt`; font stack
    `local("Microgramma D Extended"), local("Eurostile Extended"), Michroma`.
-6. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+5. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-7. Audio, settings, pause menu. Then look at every part in the browser and tune.
+6. Audio, settings, pause menu. Then look at every part in the browser and tune.
 
 ## Verification
 
