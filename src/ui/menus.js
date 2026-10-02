@@ -64,3 +64,60 @@ export function toaster(ui) {
     timer = window.setTimeout(() => (el.style.opacity = '0'), seconds * 1000);
   };
 }
+
+const PAUSE_OPTIONS = /** @type {const} */ ([
+  ['resume', 'RESUME'],
+  ['garage', 'GARAGE'],
+  ['title', 'QUIT TO TITLE'],
+]);
+
+/**
+ * Pause menu. Up and down move, confirm picks, Esc resumes.
+ * @param {HTMLElement} ui
+ */
+export function pauseScreen(ui) {
+  const s = screen(
+    ui,
+    'pause',
+    `<div class="box"><h3>PAUSED</h3>${PAUSE_OPTIONS.map(([id, label]) => `<div class="opt click" data-id="${id}">${label}</div>`).join('')}
+     <div class="keys">W S throttle and brake, A D steer, Space handbrake<br>C camera, R back on the road, E refuel at a pump</div></div>`
+  );
+  const opts = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.opt')]);
+  let sel = 0;
+  /** @type {string | null} */
+  let clicked = null;
+  const mark = () => opts.forEach((o, i) => o.classList.toggle('sel', i === sel));
+  s.el.addEventListener('click', (e) => {
+    const t = /** @type {HTMLElement} */ (e.target).closest('.opt');
+    if (t) clicked = /** @type {HTMLElement} */ (t).dataset.id;
+  });
+  mark();
+  return {
+    ...s,
+    /** @param {boolean} on */
+    show(on) {
+      if (on) {
+        sel = 0;
+        mark();
+      }
+      s.show(on);
+    },
+    /**
+     * @param {import('../core/input.js').Input} input
+     * @returns {'resume' | 'garage' | 'title' | null}
+     */
+    update(input) {
+      if (clicked) {
+        const c = clicked;
+        clicked = null;
+        return /** @type {any} */ (c);
+      }
+      if (input.pressed('pause')) return 'resume';
+      if (input.pressed('up')) sel = (sel + opts.length - 1) % opts.length;
+      if (input.pressed('down')) sel = (sel + 1) % opts.length;
+      mark();
+      if (input.pressed('confirm')) return PAUSE_OPTIONS[sel][0];
+      return null;
+    },
+  };
+}

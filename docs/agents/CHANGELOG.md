@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.4 (2026-10-02)
+
+Driving.
+
+- `src/drive.js`: free roam in the valley with a fixed 120 Hz step and interpolated
+  drawing, refueling at the pumps, tows when the tank runs dry, R back onto the nearest
+  road, a lake guard, area names and money that persists.
+- `src/world/collision.js` (pure): circles and oriented boxes in a grid, the car as
+  three circles, contact impulses that turn the car on a glancing hit. Tests.
+- `src/vehicles/car.js`: physics state, model, two spot headlights, cockpit, pose.
+- `src/render/cameras.js`: chase, hood, bumper and cockpit cameras.
+- `buildCockpit` in models.js: dash, binnacle, gauge face, turning steering wheel,
+  pillars, header, liner, door panels, mirror, console and passenger seat.
+- `src/core/input.js`: driving axes with keyboard ramps, gamepad triggers and stick,
+  camera, reset, refuel and pause actions.
+- `src/ui/hud.js`, `src/ui/minimap.js`, pause menu in `src/ui/menus.js`.
+
 ## 0.1.3 (2026-10-02)
 
 World meshes.

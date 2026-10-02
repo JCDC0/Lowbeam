@@ -1,8 +1,10 @@
 /**
  * Keyboard and gamepad input. Menus read one-shot actions (`pressed`), driving reads
- * held keys and analog axes. Call `poll()` once at the start of every frame and
- * `endFrame()` at the end.
+ * `drive(dt)`: ramped keyboard axes or the gamepad triggers and stick. Call `poll()`
+ * once at the start of every frame and `endFrame()` at the end.
  */
+
+import { approach } from './mathx.js';
 
 /** Keyboard codes for each action. */
 const KEYS = {
@@ -12,6 +14,10 @@ const KEYS = {
   down: ['ArrowDown', 'KeyS'],
   confirm: ['Enter', 'NumpadEnter', 'Space'],
   back: ['Escape', 'Backspace'],
+  pause: ['Escape'],
+  camera: ['KeyC'],
+  reset: ['KeyR'],
+  interact: ['KeyE'],
 };
 
 /** Standard gamepad buttons for each action. */
@@ -22,7 +28,18 @@ const PAD = {
   down: [13],
   confirm: [0, 9],
   back: [1, 8],
+  pause: [9],
+  camera: [3],
+  reset: [8],
+  interact: [1],
 };
+
+/**
+ * Keyboard ramps per second. The throttle takes about a third of a second to reach full,
+ * so a tap does not light up the rear tires of the RWD cars on gravel.
+ */
+const RAMP = { throttleUp: 3.2, throttleDown: 9, brakeUp: 7, brakeDown: 12, steerIn: 3.4, steerOut: 6 };
+const DEAD = 0.12;
 
 export class Input {
   constructor() {
@@ -36,6 +53,8 @@ export class Input {
     this.pad = null;
     /** @type {Set<string>} */
     this.padHit = new Set();
+    /** @type {import('../vehicles/physics.js').DriveInput} */
+    this.driveState = { throttle: 0, brake: 0, steer: 0, handbrake: 0 };
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.down.add(e.code);
@@ -82,6 +101,44 @@ export class Input {
   pressed(action) {
     if (this.padHit.has(action)) return true;
     return KEYS[action].some((k) => this.hit.has(k));
+  }
+
+  /** True while the action's key or button is held. @param {keyof typeof KEYS} action */
+  held(action) {
+    if (KEYS[action].some((k) => this.down.has(k))) return true;
+    const b = this.pad && this.pad.buttons;
+    return !!b && PAD[action].some((i) => b[i] && b[i].pressed);
+  }
+
+  /**
+   * Driving axes for this frame. Throttle and brake are 0 to 1, steer is -1 (left) to 1
+   * (right), handbrake 0 or 1.
+   * @param {number} dt
+   */
+  drive(dt) {
+    const k = (...codes) => codes.some((c) => this.down.has(c));
+    const d = this.driveState;
+    const thr = k('KeyW', 'ArrowUp') ? 1 : 0;
+    const brk = k('KeyS', 'ArrowDown') ? 1 : 0;
+    const st = (k('KeyD', 'ArrowRight') ? 1 : 0) - (k('KeyA', 'ArrowLeft') ? 1 : 0);
+    d.throttle = approach(d.throttle, thr, (thr > d.throttle ? RAMP.throttleUp : RAMP.throttleDown) * dt);
+    d.brake = approach(d.brake, brk, (brk > d.brake ? RAMP.brakeUp : RAMP.brakeDown) * dt);
+    const back = st === 0 || Math.sign(st) !== Math.sign(d.steer);
+    d.steer = approach(d.steer, st, (back ? RAMP.steerOut : RAMP.steerIn) * dt);
+    d.handbrake = k('Space') ? 1 : 0;
+    let { throttle, brake, steer, handbrake } = d;
+    if (this.pad) {
+      const b = this.pad.buttons;
+      const v = (i) => (b[i] ? b[i].value : 0);
+      throttle = Math.max(throttle, v(7));
+      brake = Math.max(brake, v(6));
+      const ax = this.pad.axes[0] || 0;
+      const a = Math.abs(ax) < DEAD ? 0 : (Math.sign(ax) * (Math.abs(ax) - DEAD)) / (1 - DEAD);
+      const curved = Math.sign(a) * a * a * 0.6 + a * 0.4;
+      if (Math.abs(curved) > Math.abs(steer)) steer = curved;
+      if (v(0) > 0.5 || v(2) > 0.5) handbrake = 1;
+    }
+    return { throttle, brake, steer, handbrake };
   }
 
   /** True on the frame this key code went down. @param {string} code */

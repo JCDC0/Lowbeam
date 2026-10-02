@@ -307,3 +307,106 @@ html, body {
   #garage .blurb { display: none; }
   #garage .arrow.r { right: 1.5vw; }
 }
+
+/* Driving HUD */
+
+#hud .area {
+  position: absolute;
+  left: 3vw;
+  top: 4vh;
+  font-size: clamp(14px, 1.6vw, 22px);
+  letter-spacing: 0.3em;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+}
+#hud .area.fade { animation: areafade 4.5s ease-out forwards; }
+@keyframes areafade {
+  0% { opacity: 0; transform: translateX(-12px); }
+  8% { opacity: 1; transform: none; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+#hud .money {
+  position: absolute;
+  right: 3vw;
+  top: 4vh;
+  font-size: clamp(13px, 1.3vw, 18px);
+  letter-spacing: 0.15em;
+  color: var(--amber);
+  text-shadow: 0 2px 0 #000;
+}
+#hud .prompt {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: 26vh;
+  transform: translateX(-50%);
+  padding: 9px 20px;
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  white-space: nowrap;
+  background: var(--panel);
+  border-left: 3px solid var(--amber);
+}
+#hud .mapslot {
+  position: absolute;
+  left: 2.5vw;
+  bottom: 3.5vh;
+}
+#hud .minimap {
+  display: block;
+  width: 168px;
+  height: 168px;
+}
+#hud .cluster {
+  position: absolute;
+  right: 1.5vw;
+  bottom: 2vh;
+}
+#hud .readout {
+  position: absolute;
+  right: 3vw;
+  bottom: 4vh;
+  text-align: right;
+  text-shadow: 0 2px 0 #000;
+}
+#hud .readout .spd { font-size: 44px; letter-spacing: 0.04em; }
+#hud .readout .unit { margin-left: 8px; font-size: 11px; color: var(--ink-dim); }
+#hud .readout .gear { margin-left: 16px; font-size: 30px; color: var(--amber); }
+#hud .readout .fuel { display: block; margin-top: 4px; font-size: 11px; color: var(--ink-dim); letter-spacing: 0.15em; }
+
+/* Pause */
+
+#pause { background: rgba(0, 0, 0, 0.55); }
+#pause .box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 320px;
+  padding: 26px 30px;
+  background: var(--panel);
+  border-left: 3px solid var(--amber);
+}
+#pause h3 {
+  margin: 0 0 18px;
+  font-family: var(--display);
+  font-weight: normal;
+  font-size: 20px;
+  letter-spacing: 0.4em;
+}
+#pause .opt {
+  padding: 7px 0;
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 0.25em;
+  color: var(--ink-dim);
+}
+#pause .opt.sel { color: var(--ink); }
+#pause .opt.sel::before { content: '> '; color: var(--amber); }
+#pause .keys {
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}

@@ -553,3 +553,92 @@ export class CarModel {
     /** @type {THREE.Material} */ (this.shadow.material).dispose();
   }
 }
+
+/** Steering wheel turns per radian of front wheel angle. */
+export const STEER_RATIO = 4.5;
+
+/**
+ * The interior for the cockpit camera, in body space so it leans with the body: dash,
+ * binnacle with the gauge face, steering wheel, A-pillars, roof header and liner, door
+ * panels, mirror, console and the passenger seat. Interior quads are wound to face the
+ * driver's eye. `gauge` is the plane the dash gauges are drawn on.
+ * @param {CarModel} model
+ */
+export function buildCockpit(model) {
+  const k = model.kit;
+  const def = model.def;
+  const cowlZ = def.glass.front[1];
+  const roofZ = def.glass.front[0];
+  const sc = k.at(cowlZ);
+  const sr = k.at(roofZ);
+  const beltY = sc[5];
+  const halfIn = sc[6] - 0.07;
+  const roofY = sr[7];
+  const dx = def.driver * Math.min(0.4, halfIn * 0.45);
+  const eye = new THREE.Vector3(dx, roofY - 0.24, roofZ - 0.5);
+  const dashBack = eye.z + 0.66;
+  const b = new MeshBuilder();
+  const E = [eye.x, eye.y, eye.z];
+  /** Quad wound toward the eye. */
+  const q = (key, a, c, d, e) => {
+    const ux = c[0] - a[0], uy = c[1] - a[1], uz = c[2] - a[2];
+    const vx = d[0] - a[0], vy = d[1] - a[1], vz = d[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const toward = (E[0] - a[0]) * nx + (E[1] - a[1]) * ny + (E[2] - a[2]) * nz;
+    if (toward >= 0) b.quad(key, a, c, d, e);
+    else b.quad(key, a, e, d, c);
+  };
+
+  b.box('dash', 0, beltY - 0.28, (dashBack + cowlZ) / 2, halfIn * 2, 0.4, cowlZ - dashBack);
+  b.box('dash', dx, beltY - 0.04, dashBack + 0.1, 0.48, 0.1, 0.26);
+  b.box('dash', 0, beltY - 0.42, dashBack - 0.35, 0.3, 0.3, 0.8);
+  q('gauge', [dx + 0.2, beltY - 0.24, dashBack - 0.005], [dx - 0.2, beltY - 0.24, dashBack - 0.005], [dx - 0.2, beltY - 0.09, dashBack + 0.02], [dx + 0.2, beltY - 0.09, dashBack + 0.02]);
+
+  const w3c = sc[8];
+  const y3c = sc[7];
+  const w3r = sr[8];
+  for (const s of [1, -1]) {
+    q('pillar', [s * w3c, y3c, cowlZ], [s * (w3c - 0.11), y3c - 0.01, cowlZ - 0.04], [s * (w3r - 0.11), roofY - 0.03, roofZ - 0.04], [s * w3r, roofY, roofZ]);
+    q('panel', [s * halfIn, sc[3], cowlZ - 0.1], [s * halfIn, sc[3], eye.z - 0.9], [s * halfIn, beltY, eye.z - 0.9], [s * halfIn, beltY, cowlZ - 0.1]);
+    q('dash', [s * halfIn, beltY, cowlZ - 0.1], [s * halfIn, beltY, eye.z - 0.9], [s * (halfIn + 0.06), beltY + 0.01, eye.z - 0.9], [s * (halfIn + 0.06), beltY + 0.01, cowlZ - 0.1]);
+  }
+  q('pillar', [-w3r, roofY, roofZ], [w3r, roofY, roofZ], [w3r - 0.02, roofY - 0.09, roofZ - 0.03], [-w3r + 0.02, roofY - 0.09, roofZ - 0.03]);
+  q('liner', [-w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ - 1.6], [-w3r, roofY - 0.02, roofZ - 1.6]);
+  b.box('dash', 0, roofY - 0.13, roofZ + 0.05, 0.24, 0.07, 0.03);
+  q('mirror', [-0.11, roofY - 0.16, roofZ + 0.03], [0.11, roofY - 0.16, roofZ + 0.03], [0.11, roofY - 0.1, roofZ + 0.03], [-0.11, roofY - 0.1, roofZ + 0.03]);
+  b.box('seat', -dx, beltY - 0.45, eye.z + 0.05, 0.5, 0.18, 0.5);
+  b.box('seat', -dx, beltY - 0.05, eye.z - 0.22, 0.5, 0.75, 0.12);
+
+  const o = { local: true };
+  const mats = {
+    dash: psxLambert({ color: 0x2c2d31, ...o }),
+    pillar: psxLambert({ color: 0x38393e, side: THREE.DoubleSide, ...o }),
+    panel: psxLambert({ color: 0x4a423c, ...o }),
+    liner: psxLambert({ color: 0x5c5a55, ...o }),
+    mirror: psxBasic({ color: 0x101622 }),
+    seat: psxLambert({ color: 0x2a2624, ...o }),
+    gauge: psxBasic({ color: 0x0a0b0d }),
+  };
+  const shell = b.mesh(mats);
+
+  const wheel = new THREE.Group();
+  wheel.position.set(dx, eye.y - 0.36, eye.z + 0.42);
+  wheel.rotation.x = -0.38;
+  const spin = new THREE.Group();
+  wheel.add(spin);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 4, 12), mats.dash);
+  const wb = new MeshBuilder();
+  wb.box('s', 0, -0.09, 0, 0.04, 0.18, 0.025);
+  wb.box('s', -0.09, 0, 0, 0.18, 0.035, 0.025);
+  wb.box('s', 0.09, 0, 0, 0.18, 0.035, 0.025);
+  wb.box('s', 0, 0, -0.01, 0.09, 0.07, 0.04);
+  const spokes = wb.mesh({ s: mats.dash });
+  spin.add(rim, spokes);
+
+  const group = new THREE.Group();
+  group.name = 'cockpit';
+  group.add(shell, wheel);
+  group.visible = false;
+  model.bodyRoot.add(group);
+  return { group, wheel: spin, eye, gaugeMat: mats.gauge, dispose: () => [shell.geometry, rim.geometry, spokes.geometry, ...Object.values(mats)].forEach((x) => x.dispose()) };
+}

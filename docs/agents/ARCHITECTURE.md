@@ -55,11 +55,17 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 |---|---|
 | `docs/DESIGN.md` | The plan: pillars, cars, map, driving model, rally, HUD, build order |
 | `index.html`, `style.css` | Page shell with the import map; all UI styles and the display font |
-| `src/main.js` | Boot, state machine (title, garage), frame loop, `window.__lowbeam` |
-| `src/core/input.js` | Keyboard and standard-mapping gamepad; one-shot menu actions |
+| `src/main.js` | Boot, state machine (title, garage, loading, drive, pause, free), `window.__lowbeam` |
+| `src/drive.js` | Free roam: fixed-step loop, collisions, cameras, refuel, tow, reset, area names |
+| `src/core/input.js` | Keyboard and standard-mapping gamepad; menu actions; `drive(dt)` with keyboard ramps |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings |
 | `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
-| `src/ui/menus.js` | Title, loading and toast DOM screens |
+| `src/ui/menus.js` | Title, loading, pause and toast DOM screens |
+| `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
+| `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
+| `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
+| `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
+| `src/render/cameras.js` | `CameraRig`: chase, hood, bumper, cockpit |
 | `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
 | `src/world/layout.js` | Authored data: roads, stations, rally config, economy |
 | `src/world/heightfield.js` | Natural terrain (`baseHeight`), blur, the carved grid and triangle sampling |
@@ -81,11 +87,11 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
 | `src/render/builder.js` | `MeshBuilder`: flat-shaded quads, boxes, cylinders into grouped geometry |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
-| `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel` |
+| `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 
-## Current state (0.1.3)
+## Current state (0.1.4)
 
 Done and tested:
 
@@ -139,26 +145,49 @@ Done and tested:
   player car and sets `psxUniforms.uLocalColor` and `uLocalDir`; materials made with
   `local: true` add it. Light colors above 1 are deliberate: the bake multiplies
   albedo, and night albedos are dark.
-- Enter in the garage builds the world and parks the chosen car at G1 with a free
-  camera (WASD move, arrows look, Q and E height, Shift fast, Esc back). Driving
-  replaces this in the next step.
-- Tests: 14 passing (splines, ground and pads, stage grades, bars vs sim, braking,
-  reverse, jumps, lamp, tree, building and pump placement). `npm run check` is clean.
+- Driving (`src/drive.js`). Enter in the garage builds the world once (about 0.75 s)
+  and puts the chosen car beside a pump at G1. Physics steps at 120 Hz in a fixed-step
+  loop; the car is drawn interpolated between steps. Controls: W S or arrows for
+  throttle and brake (hold brake at rest for reverse), A D steer, Space handbrake, C
+  camera, R back onto the nearest road (or a tow for 5,000 yen when the tank is dry),
+  E held at a pump to refuel (3 L/s, 168 yen/L), Esc pause (resume, garage, title).
+  Gamepad: RT and LT, left stick, A or X handbrake, Y camera, B refuel, Back reset,
+  Start pause. Keyboard throttle ramps to full in about 0.3 s and steering in about
+  0.3 s; triggers and stick are read directly.
+- Collisions (`src/world/collision.js`): the car is three circles of half its width;
+  trees, lamp poles, canopy pillars, sign poles and tent legs are circles; buildings,
+  kiosks and pump islands are oriented boxes; the valley edge is a wall. Contacts push
+  the car out and apply an impulse at the contact point (restitution 0.22, friction
+  0.35), so glancing hits turn the car. Driving into the lake resets onto the road.
+- Cameras (`CameraRig`): chase (damped, leans toward the direction of travel in a
+  slide, FOV 62 to 78 with speed), hood, bumper and cockpit. The cockpit is a lofted
+  interior (`buildCockpit`): dash, binnacle, gauge face (dark until the cluster
+  lands), steering wheel turning at 4.5 times the road wheel angle, A-pillars, header,
+  liner, door panels, mirror, console and passenger seat. It rides in the leaning body.
+- Headlights: two spot lights per car (320 cd, decay 1.35, 95 m). Physical units:
+  weaker values vanish on the dark ground.
+- HUD: area name (fades), money, prompts, the minimap (rotates with the car, zooms
+  out with speed, north marker, station and rally start icons) and a plain digital
+  speed, gear and fuel readout that the gauge cluster replaces next.
+- `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
+  in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
+- Tests: 18 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+  reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
+  push-out, valley edge). `npm run check` is clean. CPU time for one drive update and
+  render is about 2 ms in the browser pane.
 
-Not started: driving in the world and everything after it in the build order in
+Not started: the gauge cluster and everything after it in the build order in
 `docs/DESIGN.md`.
 
 ## Next steps (in order)
 
-1. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
-   throttle ramp for keyboards, minimap, fuel and refuel.
-2. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
+1. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
    Arcade-style round tach plus FUEL, WATER, BOOST or INTAKE, EXH sub-gauges, bottom
    right, canvas-drawn. Add `src/vehicles/gauges.js` (pure) for the simulated values.
    The font is already vendored (see Current state).
-3. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+2. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-4. Audio, settings, pause menu. Then look at every part in the browser and tune.
+3. Audio, settings (the pause menu exists; add settings to it). Then look at every part in the browser and tune.
 
 ## Verification
 
@@ -173,8 +202,8 @@ rates.
 ## Open work and known issues
 
 - RWD cars spin on gravel at full throttle and full lock (Rampart and Vespera reach
-  90 degrees of slide in the bench). Intended character, but keyboard players will
-  need the throttle ramp from step 4. Re-check after the first real drive.
+  90 degrees of slide in the bench). Intended character; the keyboard throttle ramp
+  exists now (`RAMP` in input.js). Needs a real drive with hands on the keys to judge.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
 - Lamp pools on Route 7 in town overlap into an even wash at 34 m spacing. Check from
   the driver's seat; shorter range or wider spacing gives distinct pools.

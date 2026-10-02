@@ -1,16 +1,17 @@
 /**
- * Boot and the state machine: title, garage, loading and the world.
- * `window.__lowbeam` exposes the pieces so a browser session can force a state and
- * call `shot(name)`, which writes tools/shots/<name>.png through the dev server.
+ * Boot and the state machine: title, garage, loading, drive and pause, plus a free
+ * camera for development. `window.__lowbeam` exposes the pieces so a browser session
+ * can force a state and call `shot(name)`, which writes tools/shots/<name>.png.
  */
 
 import * as THREE from 'three';
 import { createStage } from './render/stage.js';
 import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
-import { loadingScreen, titleScreen, toaster } from './ui/menus.js';
+import { Hud } from './ui/hud.js';
+import { loadingScreen, pauseScreen, titleScreen, toaster } from './ui/menus.js';
 import { World } from './world/world.js';
-import { CarModel } from './vehicles/models.js';
+import { Drive } from './drive.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
 const ui = /** @type {HTMLElement} */ (document.getElementById('ui'));
@@ -23,18 +24,20 @@ await document.fonts.load('16px "Lowbeam Display"').catch(() => {});
 
 const stage = createStage(canvas);
 const input = new Input();
-const toast = toaster(ui);
 const title = titleScreen(ui, version);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
+const hud = new Hud(ui);
+const pause = pauseScreen(ui);
+const toast = toaster(ui);
 
 /** @type {World | null} */
 let world = null;
-/** @type {CarModel | null} */
-let car = null;
+/** @type {Drive | null} */
+let drive = null;
 const fly = { x: 0, y: 30, z: 0, yaw: 0, pitch: -0.2 };
 
-/** @typedef {'title' | 'garage' | 'loading' | 'free'} State */
+/** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} State */
 /** @type {State} */
 let state = 'title';
 
@@ -44,6 +47,8 @@ function setState(next) {
   title.show(state === 'title');
   garage.show(state === 'garage');
   loading.show(state === 'loading');
+  hud.show(state === 'drive' || state === 'pause');
+  pause.show(state === 'pause');
 }
 setState('title');
 
@@ -58,22 +63,13 @@ async function enterWorld() {
       await paint();
     });
     console.log(`world built in ${world.buildMs.toFixed(0)} ms`);
+    drive = new Drive({ world, stage, input, hud, toast });
   }
-  if (car) {
-    world.root.remove(car.group);
-    car.dispose();
-  }
-  car = new CarModel(garage.spec, garage.model.paintIndex);
-  const pad = world.ground.pads[0];
-  const yaw = Math.atan2(pad.ux, pad.uz);
-  car.group.position.set(pad.cx, pad.h, pad.cz);
-  car.group.rotation.y = yaw;
-  world.add(car.group);
-  Object.assign(fly, { x: pad.cx - Math.sin(yaw) * 9, y: pad.h + 3, z: pad.cz - Math.cos(yaw) * 9, yaw, pitch: -0.12 });
-  setState('free');
+  drive.start(garage.spec, garage.model.paintIndex);
+  setState('drive');
 }
 
-/** Free camera: WASD to move, arrows to look, Q and E for height, Shift for speed. */
+/** Free camera for development: WASD to move, arrows to look, Q and E for height, Shift for speed. */
 function updateFly(dt) {
   const k = (c) => input.key(c);
   const look = 1.6 * dt;
@@ -92,11 +88,13 @@ function updateFly(dt) {
   fly.y = Math.max(fly.y, world.ground.at(fly.x, fly.z).h + 0.5);
 }
 
-function placeCamera() {
+function placeFly() {
   const cam = stage.camera;
   cam.position.set(fly.x, fly.y, fly.z);
   const cp = Math.cos(fly.pitch);
+  cam.up.set(0, 1, 0);
   cam.lookAt(fly.x + Math.sin(fly.yaw) * cp, fly.y + Math.sin(fly.pitch), fly.z + Math.cos(fly.yaw) * cp);
+  cam.updateMatrixWorld();
 }
 
 let last = performance.now();
@@ -114,11 +112,20 @@ function frame(now) {
     if (ev === 'back') setState('title');
     else if (ev === 'drive') enterWorld();
     garage.render(stage);
+  } else if (state === 'drive') {
+    if (drive.update(dt) === 'pause') setState('pause');
+    drive.render();
+  } else if (state === 'pause') {
+    const pick = pause.update(input);
+    if (pick === 'resume') setState('drive');
+    else if (pick === 'garage') setState('garage');
+    else if (pick === 'title') setState('title');
+    drive.render();
   } else if (state === 'free' && world) {
     updateFly(dt);
-    if (input.pressed('back')) setState('garage');
-    placeCamera();
-    world.update(stage.camera, car.group.position);
+    if (input.pressed('back')) setState('drive');
+    placeFly();
+    world.update(stage.camera, drive.car.group.position);
     stage.render(world.scene, stage.camera);
   }
   input.endFrame();
@@ -134,8 +141,8 @@ window.__lowbeam = {
   get world() {
     return world;
   },
-  get car() {
-    return car;
+  get drive() {
+    return drive;
   },
   get state() {
     return state;
@@ -145,10 +152,26 @@ window.__lowbeam = {
   /** Puts the free camera somewhere and draws one frame. */
   fly(x, y, z, yaw = fly.yaw, pitch = fly.pitch) {
     Object.assign(fly, { x, y, z, yaw, pitch });
-    placeCamera();
-    stage.camera.updateMatrixWorld();
-    world.update(stage.camera, car.group.position);
+    placeFly();
+    world.update(stage.camera, drive.car.group.position);
     stage.render(world.scene, stage.camera);
+  },
+  /**
+   * Runs the drive loop for `seconds` of game time with fixed inputs, without waiting
+   * for frames, then renders once. For checks in a hidden browser tab.
+   * @param {number} seconds @param {Partial<import('./vehicles/physics.js').DriveInput>} [hold]
+   */
+  simulate(seconds, hold = {}) {
+    const step = 1 / 60;
+    const saved = input.drive;
+    input.drive = () => ({ throttle: 0, brake: 0, steer: 0, handbrake: 0, ...hold });
+    for (let t = 0; t < seconds; t += step) {
+      input.poll();
+      drive.update(step);
+      input.endFrame();
+    }
+    input.drive = saved;
+    drive.render();
   },
   /** @param {string} name */
   shot: (name) => stage.shot(name),
