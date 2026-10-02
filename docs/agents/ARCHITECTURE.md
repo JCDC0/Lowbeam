@@ -77,7 +77,9 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
 | `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
 | `src/world/build-roads.js` | Road ribbons with skirts, forecourt pads with curbs |
-| `src/world/props.js` | Street lamps, instanced tree chunks, town buildings with windows, konbini, neon |
+| `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
+| `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
+| `src/world/props.js` | Street lamps, town buildings with windows, konbini, neon |
 | `src/world/gas-station.js` | Canopy, pumps, kiosk, brand sign; service park tents, floods, rival cars |
 | `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
 | `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
@@ -92,8 +94,9 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
+| `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
 
-## Current state (0.1.5)
+## Current state (0.1.6)
 
 Done and tested:
 
@@ -135,10 +138,24 @@ Done and tested:
   colors per surface and a detail texture, road ribbons (7 columns: skirt, edge, three
   across, edge, skirt; higher priority roads sit 12 mm per priority higher so junctions
   never z-fight), concrete pads with curbs, 56 sodium street lamps, about 100 town
-  buildings (two konbini, vertical neon signs), about 25k instanced trees in 250 m
-  chunks hidden past the fog, three gas stations, the service park with tents,
-  floodlights and two rival cars, the lake, sky and moon. A town street view draws
-  about 70 calls and 165k triangles.
+  buildings (two konbini, vertical neon signs), about 48k instanced trees in 250 m
+  chunks hidden past the fog (see Forest), three gas stations, the service park with
+  tents, floodlights and two rival cars, the lake, sky and moon. A town street view
+  draws about 70 calls and 165k triangles; a view into the edge belt about 50 calls and
+  275k.
+- Forest (`forest.js`, `build-trees.js`): nine species, `TREE` in forest.js: spruce,
+  broadleaf, sugi (tall cedar), birch, maple (red, orange or gold per instance),
+  black pine, bamboo clump, shrub (no collider) and dead snag, 30 to 144 triangles
+  each. Habitats weight the species: valley floor (mixed broadleaf, birch, maple),
+  lake edge (bamboo, shrubs, birch), slopes (spruce, sugi) and the high ridge (spruce,
+  snags). A noise field makes stands, so a hillside is mostly one species. 18 groves
+  of 34 to 68 m sit on the valley floor, each with its own species mix. The edge belt
+  is Chebyshev distance 900 to 990 from the center: a dense forest of spruce and sugi
+  plus the thicket, two staggered rows (rings 927 and 939) of big trees 3 m apart, each
+  with a 1.3 m collider, so no gap is wider than 0.4 m. The wall at 988 stays as the
+  backstop. tests/forest.test.mjs floods a car-sized circle through the belt and
+  requires that it never gets past the first row. The mountain slopes are also too
+  steep for the cars to climb far, so the belt mostly sits behind the terrain itself.
 - Light: moonlight (directional) and a sky fill (hemisphere) are the only real lights.
   `scatter.js` lists about 170 baked lights (lamps, canopies, kiosks, konbini, neon,
   floods). `bakeGeometry` writes them into the `bake` attribute of static meshes; parked
@@ -185,9 +202,10 @@ Done and tested:
   same readings onto the binnacle texture (256 by 96), updated every frame.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 22 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 27 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
-  push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light).
+  push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
+  species mix, the edge-belt flood fill).
   `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
   the browser pane.
 

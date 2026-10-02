@@ -4,9 +4,10 @@
  * the light baker and the collision grid all read the same lists.
  */
 
-import { TOWN, WATER_LEVEL, WORLD_HALF, SEED } from './layout.js';
+import { TOWN, SEED } from './layout.js';
 import { padDistance } from './ground.js';
-import { makeRng, fbm } from '../core/rng.js';
+import { makeRng } from '../core/rng.js';
+import { placeForest } from './forest.js';
 import { SKIRT } from './roads.js';
 
 /** @typedef {import('./ground.js').Ground} Ground */
@@ -17,7 +18,7 @@ import { SKIRT } from './roads.js';
  * @typedef {{ x: number, y: number, z: number, c: number[], range: number }} BakeLight
  */
 /** @typedef {{ x: number, z: number, y: number, yaw: number, hx: number, hy: number, hz: number }} Lamp */
-/** @typedef {{ x: number, y: number, z: number, s: number, kind: number, tint: number }} Tree */
+/** @typedef {import('./forest.js').Tree} Tree */
 /**
  * A box building. (x, z) is the footprint center, yaw turns its local +Z toward the
  * street, w runs along the street and d away from it.
@@ -94,7 +95,7 @@ export function scatterWorld(ground) {
   const lamps = placeLamps(ground, lights, circles);
   const stations = ground.pads.map((pad) => placeStation(ground, pad, lights, circles, boxes));
   const buildings = placeBuildings(ground, lights, boxes);
-  const trees = placeTrees(ground, buildings, circles);
+  const trees = placeForest(ground, buildings, circles, clearOfRoads);
   return { lamps, stations, buildings, trees, lights, circles, boxes };
 }
 
@@ -273,33 +274,3 @@ export const SIGN_COLORS = [
   [1.0, 0.95, 0.5],
   [0.3, 0.55, 1.0],
 ];
-
-/** @param {Ground} ground @param {Building[]} buildings @param {Circle[]} circles */
-function placeTrees(ground, buildings, circles) {
-  const rng = makeRng(SEED ^ 0x7ee5);
-  /** @type {Tree[]} */
-  const out = [];
-  const step = 9;
-  const lim = WORLD_HALF - 15;
-  for (let gz = -lim; gz < lim; gz += step) {
-    for (let gx = -lim; gx < lim; gx += step) {
-      const x = gx + rng.range(-3.5, 3.5);
-      const z = gz + rng.range(-3.5, 3.5);
-      const dens = 0.5 + 0.5 * fbm(x * 0.006, z * 0.006, 77, 3);
-      const r = Math.hypot(x, z);
-      const want = Math.min(1, dens * (r > 520 ? 1.25 : 0.55));
-      if (rng.next() > want) continue;
-      if (x > TOWN.x0 - 15 && x < TOWN.x1 + 15 && z > TOWN.z0 - 15 && z < TOWN.z1 + 15) continue;
-      const g = ground.at(x, z);
-      if (g.road || g.pad) continue;
-      if (g.h < WATER_LEVEL + 0.8) continue;
-      if (g.surface === 'rock' && rng.chance(0.7)) continue;
-      if (!clearOfRoads(ground, x, z, 3.5)) continue;
-      if (buildings.some((b) => Math.hypot(b.x - x, b.z - z) < Math.max(b.w, b.d))) continue;
-      const kind = r > 480 || rng.chance(0.35) ? 0 : 1;
-      out.push({ x, y: g.h, z, s: rng.range(0.75, 1.35), kind, tint: rng.range(0.75, 1.15) });
-      circles.push({ x, z, r: 0.45 });
-    }
-  }
-  return out;
-}

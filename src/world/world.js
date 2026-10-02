@@ -11,7 +11,8 @@ import { LightGrid, sampleLight } from '../render/bake.js';
 import { psxUniforms } from '../render/psx.js';
 import { buildTerrain, buildWater } from './build-terrain.js';
 import { buildRoads } from './build-roads.js';
-import { buildLamps, buildTown, buildTrees } from './props.js';
+import { buildLamps, buildTown } from './props.js';
+import { buildTrees } from './build-trees.js';
 import { buildStations } from './gas-station.js';
 import { buildSky, MOON_DIR } from '../render/sky.js';
 

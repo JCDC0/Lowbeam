@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.6 (2026-10-02)
+
+Trees and the edge forest.
+
+- `src/world/forest.js` (pure): nine species in habitats with noise stands, 18 groves on
+  the valley floor, a dense belt forest along the map edge and a thicket of two
+  staggered rows of big trees with overlapping colliders that no car fits between.
+- `src/world/build-trees.js`: spruce, broadleaf, sugi, birch, maple, black pine,
+  bamboo, shrub and snag geometries; maple tints red, orange or gold per instance.
+  Tree code moved out of `props.js`.
+- About 48k trees (was 25k) in 250 m chunks; world build time is unchanged at about
+  0.75 s.
+- `tools/trees.html` species viewer. Tests for the species mix, trees off roads, and a
+  flood fill that proves the belt cannot be crossed.
+
 ## 0.1.5 (2026-10-02)
 
 Arcade gauge cluster.

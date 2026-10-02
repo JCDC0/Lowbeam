@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam tree viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #info { position: fixed; left: 8px; top: 6px; color: #9ab; font: 12px monospace; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">rows: spruce broadleaf sugi / birch maple pine / bamboo shrub snag. drag to orbit, wheel to zoom</div>
+<script type="module">
+// Dev tool: looks at the tree species in a row. window.__lowbeam.shot('name') saves a capture.
+import * as THREE from 'three';
+import { createStage } from '/src/render/stage.js';
+import { psxLambert } from '/src/render/psx.js';
+import { treeGeometries, treeTint } from '/src/world/build-trees.js';
+import { TREE_COUNT } from '/src/world/forest.js';
+
+const stage = createStage(document.getElementById('c'));
+stage.configure({ lines: 540 });
+const { scene, camera } = stage;
+scene.background = new THREE.Color(0x0a0f22);
+scene.add(new THREE.HemisphereLight(0x6a7aa2, 0x202226, 1.6));
+const moon = new THREE.DirectionalLight(0xa4b6e0, 1.2);
+moon.position.set(-30, 40, -50);
+scene.add(moon);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 60), new THREE.MeshLambertMaterial({ color: 0x2a3a22 }));
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+const geos = treeGeometries();
+const mat = psxLambert({ vertexColors: true });
+const col = new THREE.Color();
+const tris = [];
+for (let k = 0; k < TREE_COUNT; k++) {
+  tris.push(geos[k].attributes.position.count / 3);
+  const hues = k === 4 ? [0.1, 0.55, 0.9] : [0.5];
+  hues.forEach((hue, i) => {
+    const mesh = new THREE.InstancedMesh(geos[k], mat, 1);
+    mesh.setMatrixAt(0, new THREE.Matrix4().makeTranslation(((k % 3) - 1) * 10 + i * 3.2, 0, (Math.floor(k / 3) - 1) * 10));
+    mesh.setColorAt(0, treeTint(k, 1, hue, col));
+    scene.add(mesh);
+  });
+}
+let yaw = 0.0, pitch = 0.5, dist = 46;
+function frame() {
+  camera.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, 3 + Math.sin(pitch) * dist, Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(0, 3, 0);
+  stage.render();
+}
+(function loop() { frame(); requestAnimationFrame(loop); })();
+let drag = null;
+addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY]));
+addEventListener('pointerup', () => (drag = null));
+addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01;
+  pitch = Math.max(-0.05, Math.min(1.4, pitch + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('wheel', (e) => (dist = Math.max(8, Math.min(120, dist + e.deltaY * 0.03))));
+window.__lowbeam = { stage, tris, view(y, p, d) { yaw = y; pitch = p; dist = d; frame(); }, shot: (name) => { frame(); return stage.shot(name); } };
+</script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 /**
- * Street lamps, trees and the town. Lamps and buildings are merged into one mesh each
- * (a draw call per material); trees are instanced in square chunks that the world hides
- * past the fog.
+ * Street lamps and the town. Lamps and buildings are merged into one mesh each (a draw
+ * call per material). Trees live in build-trees.js.
  */
 
 import * as THREE from 'three';
@@ -13,12 +12,9 @@ import { makeRng } from '../core/rng.js';
 import { LAMP_HEIGHT, LAMP_REACH, SIGN_COLORS } from './scatter.js';
 
 /** @typedef {import('./scatter.js').Lamp} Lamp */
-/** @typedef {import('./scatter.js').Tree} Tree */
 /** @typedef {import('./scatter.js').Building} Building */
 /** @typedef {[number, number, number]} V3 */
 
-/** Side of a square tree chunk, meters. */
-export const TREE_CHUNK = 250;
 /** Meters per facade texture tile (8 bays of 3 m). */
 const FACADE = 24;
 
@@ -42,93 +38,6 @@ export function buildLamps(lamps, grid) {
   bakeGeometry(mesh.geometry, grid);
   mesh.name = 'lamps';
   return mesh;
-}
-
-/** A cone as a fan of `sides` triangles plus a downward base. */
-function cone(b, y, r, h, sides) {
-  for (let i = 0; i < sides; i++) {
-    const a0 = (i / sides) * Math.PI * 2;
-    const a1 = ((i + 1) / sides) * Math.PI * 2;
-    /** @type {V3} */
-    const p0 = [Math.cos(a0) * r, y, Math.sin(a0) * r];
-    /** @type {V3} */
-    const p1 = [Math.cos(a1) * r, y, Math.sin(a1) * r];
-    b.tri('t', p1, p0, [0, y + h, 0]);
-    b.tri('t', p0, p1, [0, y, 0]);
-  }
-}
-
-function coniferGeometry() {
-  const b = new MeshBuilder();
-  b.setColor(0x3d2b1d);
-  b.cylinder('t', 0, 0.8, 0, 0.17, 1.6, 5, 'y', { caps: false });
-  b.setColor(0x1d3620);
-  cone(b, 1.2, 2.3, 3.8, 7);
-  b.setColor(0x21402a);
-  cone(b, 3.0, 1.8, 3.4, 6);
-  b.setColor(0x284a30);
-  cone(b, 4.9, 1.2, 3.1, 5);
-  return b.geometry().geometry;
-}
-
-function broadleafGeometry() {
-  const b = new MeshBuilder();
-  b.setColor(0x47331f);
-  b.cylinder('t', 0, 1.1, 0, 0.2, 2.2, 5, 'y', { caps: false });
-  const ico = new THREE.IcosahedronGeometry(2.2, 0);
-  ico.scale(1, 0.85, 1);
-  ico.translate(0, 3.6, 0);
-  const p = ico.attributes.position;
-  const rng = makeRng(5);
-  for (let i = 0; i < p.count; i += 3) {
-    b.setColor(rng.pick([0x2c4420, 0x32502a, 0x27401e]));
-    b.tri('t', [p.getX(i), p.getY(i), p.getZ(i)], [p.getX(i + 1), p.getY(i + 1), p.getZ(i + 1)], [p.getX(i + 2), p.getY(i + 2), p.getZ(i + 2)]);
-  }
-  ico.dispose();
-  return b.geometry().geometry;
-}
-
-/**
- * Trees as instanced meshes, one per chunk and kind.
- * @param {Tree[]} trees
- * @returns {{ group: THREE.Group, chunks: { mesh: THREE.InstancedMesh, x: number, z: number }[] }}
- */
-export function buildTrees(trees) {
-  const geos = [coniferGeometry(), broadleafGeometry()];
-  const mat = psxLambert({ vertexColors: true });
-  /** @type {Map<string, Tree[]>} */
-  const buckets = new Map();
-  for (const t of trees) {
-    const key = `${Math.floor(t.x / TREE_CHUNK)},${Math.floor(t.z / TREE_CHUNK)},${t.kind}`;
-    let list = buckets.get(key);
-    if (!list) buckets.set(key, (list = []));
-    list.push(t);
-  }
-  const group = new THREE.Group();
-  group.name = 'trees';
-  const chunks = [];
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const up = new THREE.Vector3(0, 1, 0);
-  const pos = new THREE.Vector3();
-  const scl = new THREE.Vector3();
-  const col = new THREE.Color();
-  const rng = makeRng(9);
-  for (const [key, list] of buckets) {
-    const [cx, cz, kind] = key.split(',').map(Number);
-    const mesh = new THREE.InstancedMesh(geos[kind], mat, list.length);
-    list.forEach((t, i) => {
-      q.setFromAxisAngle(up, rng.range(0, Math.PI * 2));
-      pos.set(t.x, t.y - 0.1, t.z);
-      scl.set(t.s, t.s * rng.range(0.9, 1.15), t.s);
-      mesh.setMatrixAt(i, m.compose(pos, q, scl));
-      mesh.setColorAt(i, col.setRGB(t.tint, t.tint, t.tint * 0.95));
-    });
-    mesh.computeBoundingSphere();
-    group.add(mesh);
-    chunks.push({ mesh, x: (cx + 0.5) * TREE_CHUNK, z: (cz + 0.5) * TREE_CHUNK });
-  }
-  return { group, chunks };
 }
 
 const WALL_TINTS = [0xd8d2c4, 0xc9cdd2, 0xbfb4a2, 0xd6cbb8, 0xa9b0b6, 0xe2ddd2, 0xb8a990];
