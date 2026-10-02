@@ -25,7 +25,9 @@ stations and one gravel rally stage (SS1 Kirigaoka Ridge).
 No build step and no bundler. The browser loads `src/` directly through the import map
 in `index.html`. Three.js r185 is vendored in `vendor/` (copied from
 `node_modules/three/build/`). `tools/devserver.mjs` serves with no-store caching and
-accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored).
+accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored) and
+`POST /__file` (`{ name, ext, data }`, base64, ext one of wav, json, txt, png) for other
+captures such as rendered audio.
 
 ## Conventions
 
@@ -36,7 +38,7 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 - Pure modules never import `three` or touch the DOM: `src/core/mathx.js`,
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
-  `src/vehicles/{specs,surfaces,physics,gauges}.js`.
+  `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env}.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -95,8 +97,14 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 | `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
+| `src/audio/audio.js` | The `audio` singleton: graph, channels and settings, engine voice, tires, wind, ambience, impacts, pump, menu chirps |
+| `src/audio/engine-dsp.js` | Pure: per-sample engine synthesis (`EngineVoice`, `VOICES`) |
+| `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
+| `src/audio/env.js` | Pure: forest, town and lake amounts around a point, for the ambience |
+| `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
+| `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.1.6)
+## Current state (0.1.7)
 
 Done and tested:
 
@@ -156,6 +164,38 @@ Done and tested:
   backstop. tests/forest.test.mjs floods a car-sized circle through the belt and
   requires that it never gets past the first row. The mountain slopes are also too
   steep for the cars to climb far, so the belt mostly sits behind the terrain itself.
+- Audio (`src/audio/`, all synthesized, nothing loaded from a file). The page calls
+  `audio.unlock()` on the first key or click, `setMode(state)` on every screen change,
+  `setCar(spec)` when the car changes (the garage plays its idle with a blip) and
+  `update(frame)` once per drive frame. Every call that depends on time takes an optional
+  `at`, so the same code runs live and in an `OfflineAudioContext`.
+  - Settings contract, for any menu: `audio.settings` is `{ master, engine, effects,
+    ambience, music }`, each `{ volume: 0 to 1, on: boolean }`. `setVolume(channel, v)`,
+    `setOn(channel, on)`, `toggle(channel)`, `onChange(fn)` (returns an unsubscribe) and
+    `audio.ui('move' | 'select' | 'back' | 'error')` for menu chirps. Settings save
+    themselves to localStorage under `audio`. `audio.level()` is the output RMS.
+  - Engine: an AudioWorklet synthesizes each cylinder firing as an exhaust pulse at its
+    place in the 720 degree cycle, through a throttle-controlled low pass and two exhaust
+    resonances, plus intake noise. Flat-four (Hayate): unequal pairs, the burble, plus a
+    turbo whistle that follows boost and a blow-off hiss on lift. V8 (Rampart): uneven
+    banks, heavy low end, loud pops. V12 (Vespera): even and high, with gear whine. All
+    three crackle off throttle, cut on the limiter and dip on shifts.
+  - Effects: tire squeal on tarmac (two narrow resonances that rise with speed and slip),
+    gravel crunch and scrub on loose surfaces, road rumble, wind, impacts (thump, noise
+    and a metallic ring scaled by closing speed), landing thumps, pump hum and clicks.
+    A low-pass per camera (cockpit 1.7 kHz, hood 3.6 kHz, chase 9 kHz, bumper 12 kHz)
+    muffles the vehicle sounds; the cockpit is also quieter.
+  - Ambience: crickets (four gated tones), wind in the trees that follows forest density,
+    lake lapping, town hum with a neon buzz, a 120 Hz fluorescent hum on a forecourt.
+    All fade in a car going fast. `EnvMap` (pure) supplies forest, town and water.
+  - Screens: title, loading mute the world; the garage plays the engine idle; pause mutes
+    the world, keeps a faint ambience and ducks the music.
+  - Verified by numbers, not by ear: `tests/engine.test.mjs` checks the spectrum sits on
+    the firing harmonics for every voice, the V12 is even and the others are lumpy, load
+    makes it louder and brighter, the limiter chops it and the whistle appears under
+    boost. `tools/audio-lab.html` renders the real graph offline and compares band
+    energies (squeal, gravel, cockpit muffling, ambience). Listen with
+    `node tools/render-engines.mjs`.
 - Light: moonlight (directional) and a sky fill (hemisphere) are the only real lights.
   `scatter.js` lists about 170 baked lights (lamps, canopies, kiosks, konbini, neon,
   floods). `bakeGeometry` writes them into the `bake` attribute of static meshes; parked
@@ -216,7 +256,9 @@ Not started: the rally event and everything after it in the build order in
 
 1. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-2. Audio, settings (the pause menu exists; add settings to it). Then look at every part in the browser and tune.
+2. Music (0.1.8), then the settings screen and main menu (Antigravity, using the `audio`
+   contract above). Then look at every part in the browser and tune; engine and mix
+   levels have only been checked with an analyzer, so they need a listening pass.
 
 ## Verification
 

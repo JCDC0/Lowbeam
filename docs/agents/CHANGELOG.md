@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.7 (2026-10-02)
+
+Vehicle sound and ambience.
+
+- `src/audio/engine-dsp.js` (pure) and `engine-worklet.js`: a per-sample engine
+  synthesizer in an AudioWorklet. Three voices from the three cars: the Hayate's flat-four
+  burble with turbo whistle and blow-off, the Rampart's lumpy V8 with pops, the
+  Vespera's even V12 with gear whine. Rev limiter, shift dips and decel crackle.
+- `src/audio/audio.js`: the `audio` singleton with five channels (master, engine,
+  effects, ambience, music), each with a volume and an on switch saved to localStorage,
+  and a small API for a settings menu. Tire squeal, gravel, road, wind, impacts, pump,
+  per-camera muffling, menu chirps, countdown beeps.
+- Ambience from the new `src/audio/env.js`: crickets, wind in the trees by forest
+  density, lake, town hum, forecourt hum.
+- Hooks in `main.js` (unlock on first input, mode per screen, the garage idles the chosen
+  engine) and `drive.js` (car, impacts, pump, per-frame update).
+- `tools/render-engines.mjs`, `tools/audio-lab.html`, and `POST /__file` on the dev
+  server. Tests for the engine spectrum and the environment map.
+
 ## 0.1.6 (2026-10-02)
 
 Trees and the edge forest.

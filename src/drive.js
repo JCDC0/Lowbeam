@@ -16,6 +16,8 @@ import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
 import { Cluster, drawDash } from './ui/cluster.js';
 import { canvasTexture, makeCanvas } from './render/textures.js';
+import { audio } from './audio/audio.js';
+import { EnvMap } from './audio/env.js';
 
 /** Liters per second while holding the pump. */
 const REFUEL_RATE = 3;
@@ -53,6 +55,7 @@ export class Drive {
     this.dashCtx = /** @type {CanvasRenderingContext2D} */ (this.dashCanvas.getContext('2d'));
     this.dashTex = canvasTexture(this.dashCanvas);
     this.time = 0;
+    this.env = new EnvMap(world.scatter.trees);
   }
 
   /**
@@ -67,6 +70,7 @@ export class Drive {
     this.car = new Car(spec, paint);
     this.world.add(this.car.group);
     this.gauges = createGauges(spec);
+    audio.setCar(spec);
     if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec);
     else this.cluster.setSpec(spec);
     this.car.cockpit.gaugeMat.map = this.dashTex;
@@ -156,6 +160,7 @@ export class Drive {
 
     let drive = input.drive(dt);
     let prompt = '';
+    let refueling = false;
     const pump = s.speed < 0.6 ? this.nearPump() : null;
     if (pump && s.fuel < spec.fuel.tank - 0.05) {
       if (input.held('interact') && this.money >= 1) {
@@ -166,6 +171,7 @@ export class Drive {
         if (s.fuel > 0) s.engineOn = true;
         // Zero input, not the brake: holding the brake at rest selects reverse.
         drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0 };
+        refueling = true;
         prompt = `REFUELING  ${this.fueled.toFixed(1)} L  ¥${Math.round(this.fueled * ECONOMY.fuelPrice).toLocaleString('en-US')}`;
       } else {
         prompt = this.money >= 1 ? `HOLD E TO REFUEL  ¥${ECONOMY.fuelPrice} / L` : 'NO MONEY FOR FUEL';
@@ -188,7 +194,10 @@ export class Drive {
     let steps = 0;
     while (this.acc >= DT && steps < MAX_STEPS) {
       const impact = car.step(drive, this.ground, this.colliders);
-      if (impact > 2.5) this.rig.bump(impact);
+      if (impact > 2.5) {
+        this.rig.bump(impact);
+        audio.impact(impact);
+      }
       this.acc -= DT;
       steps++;
     }
@@ -217,6 +226,9 @@ export class Drive {
     }
     this.hud.money(this.money);
     this.hud.prompt(prompt);
+    audio.pump(refueling);
+    const around = this.env.at(s.x, s.z);
+    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete' });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }

@@ -4,6 +4,8 @@
 // of coming from the browser's module cache. It also accepts POST /__shot: the page
 // sends a base64 PNG of the canvas and the server writes tools/shots/<name>.png. The game
 // is verified by looking at it, and a file on disk is something an agent can open.
+// POST /__file does the same for other captures (rendered audio, JSON): the body is
+// { name, ext, data } with base64 data, written to tools/shots/<name>.<ext>.
 //
 //   node tools/devserver.mjs [port]
 import http from 'node:http';
@@ -51,10 +53,35 @@ function shot(req, res) {
   });
 }
 
+const FILE_EXT = new Set(['wav', 'json', 'txt', 'png']);
+
+function capture(req, res) {
+  let body = '';
+  req.on('data', (c) => (body += c));
+  req.on('end', () => {
+    let out;
+    try {
+      const payload = JSON.parse(body);
+      const name = path.basename(String(payload.name || 'file'));
+      const ext = String(payload.ext || 'txt');
+      if (!FILE_EXT.has(ext)) throw new Error(`extension ${ext} is not allowed`);
+      fs.mkdirSync(SHOTS, { recursive: true });
+      const target = path.join(SHOTS, `${name}.${ext}`);
+      fs.writeFileSync(target, Buffer.from(String(payload.data || ''), 'base64'));
+      out = { ok: true, path: target };
+    } catch (err) {
+      out = { ok: false, error: String(err) };
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json', ...NO_STORE });
+    res.end(JSON.stringify(out));
+  });
+}
+
 http
   .createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (req.method === 'POST' && url.pathname === '/__shot') return shot(req, res);
+    if (req.method === 'POST' && url.pathname === '/__file') return capture(req, res);
     let file = path.join(ROOT, decodeURIComponent(url.pathname));
     if (!file.startsWith(ROOT)) {
       res.writeHead(403).end();

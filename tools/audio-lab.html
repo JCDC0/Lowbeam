@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lowbeam audio lab</title>
+<style>body { background: #0b0e14; color: #9ab; font: 13px monospace; padding: 14px; } pre { white-space: pre-wrap; }</style>
+</head>
+<body>
+<pre id="out">Dev tool. Open the console: window.__lab.driveRun(0) renders a scripted drive in car 0 through the real
+audio graph in an OfflineAudioContext, analyzes it and saves tools/shots/audio/drive-hayate.wav
+(needs the dev server). window.__lab.analyze(buffer) and window.__lab.save(name, buffer) are free functions.</pre>
+<script type="module">
+import { AudioSystem } from '/src/audio/audio.js';
+import { CARS } from '/src/vehicles/specs.js';
+import { createVehicleState, placeVehicle, stepVehicle } from '/src/vehicles/physics.js';
+import { createGauges, stepGauges } from '/src/vehicles/gauges.js';
+
+const SR = 48000;
+
+/** Mono mix of an AudioBuffer. @param {AudioBuffer} buf */
+function mono(buf) {
+  const a = buf.getChannelData(0);
+  if (buf.numberOfChannels < 2) return a;
+  const b = buf.getChannelData(1);
+  const out = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = (a[i] + b[i]) / 2;
+  return out;
+}
+
+/** RMS per second, peak and clipping of a buffer. @param {AudioBuffer} buf */
+function analyze(buf) {
+  const a = mono(buf);
+  const perSecond = [];
+  let peak = 0;
+  let clipped = 0;
+  for (let s = 0; s * SR < a.length; s++) {
+    let sum = 0;
+    const lo = s * SR;
+    const hi = Math.min(a.length, lo + SR);
+    for (let i = lo; i < hi; i++) {
+      sum += a[i] * a[i];
+      const v = Math.abs(a[i]);
+      if (v > peak) peak = v;
+      if (v >= 0.999) clipped++;
+    }
+    perSecond.push(+Math.sqrt(sum / (hi - lo)).toFixed(3));
+  }
+  return { seconds: a.length / SR, perSecond, peak: +peak.toFixed(3), clipped, finite: a.every(Number.isFinite) };
+}
+
+/** Energy of a buffer at one frequency over [t0, t1] seconds. */
+function tone(buf, f, t0, t1) {
+  const a = mono(buf).subarray(Math.round(t0 * SR), Math.round(t1 * SR));
+  const w = (2 * Math.PI * f) / SR;
+  const c = 2 * Math.cos(w);
+  let s1 = 0;
+  let s2 = 0;
+  for (const x of a) {
+    const s0 = x + c * s1 - s2;
+    s2 = s1;
+    s1 = s0;
+  }
+  return (Math.sqrt(s1 * s1 + s2 * s2 - c * s1 * s2) / a.length) * 2;
+}
+
+/** Summed tone energy over a band, a rough measure of how much sound sits there. */
+function band(buf, f0, f1, t0, t1, step = 40) {
+  let e = 0;
+  for (let f = f0; f <= f1; f += step) e += tone(buf, f, t0, t1);
+  return +e.toFixed(4);
+}
+
+/** Saves a buffer as a 16 bit mono WAV through the dev server. @param {string} name @param {AudioBuffer} buf */
+async function save(name, buf) {
+  const a = mono(buf);
+  const bytes = new Uint8Array(44 + a.length * 2);
+  const v = new DataView(bytes.buffer);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, 'RIFF'); v.setUint32(4, 36 + a.length * 2, true); str(8, 'WAVEfmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, SR, true); v.setUint32(28, SR * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, a.length * 2, true);
+  for (let i = 0; i < a.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, a[i])) * 32000, true);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const res = await fetch('/__file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, ext: 'wav', data: btoa(bin) }) });
+  return res.json();
+}
+
+/**
+ * A scripted drive through the real physics and the real audio graph: full throttle from
+ * a standstill through the gears, lift, brake hard, then a slide on gravel.
+ * @param {number} carIndex
+ */
+async function driveRun(carIndex) {
+  const spec = CARS[carIndex];
+  const seconds = 24;
+  const ctx = new OfflineAudioContext(2, SR * seconds, SR);
+  const audio = new AudioSystem();
+  await audio.unlock(ctx);
+  audio.setMode('drive', 0);
+  audio.setCar(spec);
+  let surface = 'asphalt';
+  const ground = () => ({ h: 0, surface });
+  const s = createVehicleState(spec);
+  placeVehicle(s, spec, 0, 0, 0, ground);
+  const gauges = createGauges(spec);
+  const dt = 1 / 120;
+  const env = { forest: 0.3, town: 0, water: 0 };
+  let t = 0;
+  let next = 0;
+  while (t < seconds) {
+    surface = t < 14 ? 'asphalt' : 'gravel';
+    const input = t < 7 ? { throttle: 1, brake: 0, steer: 0, handbrake: 0 }
+      : t < 9 ? { throttle: 0, brake: 0, steer: 0, handbrake: 0 }
+      : t < 12 ? { throttle: 0, brake: 1, steer: 0, handbrake: 0 }
+      : t < 14 ? { throttle: 0.4, brake: 0, steer: 0, handbrake: 0 }
+      : { throttle: 1, brake: 0, steer: t < 19 ? 0.9 : 0, handbrake: 0 };
+    if (t >= 12 && t < 14 && s.speed < 5) s.vz = 14;
+    stepVehicle(s, spec, input, ground, dt);
+    stepGauges(gauges, spec, s, dt);
+    if (t >= next) {
+      audio.update({ dt: 1 / 60, state: s, spec, boost: gauges.boost, view: t > 20 ? 'cockpit' : 'chase', env, pad: false }, t);
+      next += 1 / 60;
+    }
+    t += dt;
+  }
+  const buf = await ctx.startRendering();
+  window.__lab.last = buf;
+  const stats = analyze(buf);
+  const saved = await save('drive-' + spec.id, buf);
+  return { car: spec.id, ...stats, file: saved.path };
+}
+
+window.__lab = { driveRun, analyze, save, tone, band, mono, SR, AudioSystem, CARS, last: null };
+document.title = 'Lowbeam audio lab (ready)';
+</script>
+</body>
+</html>

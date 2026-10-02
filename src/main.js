@@ -12,6 +12,7 @@ import { Hud } from './ui/hud.js';
 import { loadingScreen, pauseScreen, titleScreen, toaster } from './ui/menus.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
+import { audio } from './audio/audio.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
 const ui = /** @type {HTMLElement} */ (document.getElementById('ui'));
@@ -24,6 +25,12 @@ await document.fonts.load('16px "Lowbeam Display"').catch(() => {});
 
 const stage = createStage(canvas);
 const input = new Input();
+// Browsers keep audio suspended until a key or click; the first one starts it.
+for (const type of ['keydown', 'pointerdown']) {
+  window.addEventListener(type, async function start() {
+    if (await audio.unlock()) window.removeEventListener(type, start);
+  });
+}
 const title = titleScreen(ui, version);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
@@ -49,6 +56,17 @@ function setState(next) {
   loading.show(state === 'loading');
   hud.show(state === 'drive' || state === 'pause');
   pause.show(state === 'pause');
+  audio.setMode(state);
+  if (state === 'garage') garageSound();
+}
+
+let soundCar = -1;
+/** Gives the garage the chosen car's idle, with a blip when the choice changes. */
+function garageSound() {
+  if (soundCar === garage.index) return;
+  soundCar = garage.index;
+  audio.setCar(garage.spec);
+  audio.garageBlip();
 }
 setState('title');
 
@@ -109,6 +127,7 @@ function frame(now) {
     garage.render(stage);
   } else if (state === 'garage') {
     const ev = garage.update(dt, input);
+    garageSound();
     if (ev === 'back') setState('title');
     else if (ev === 'drive') enterWorld();
     garage.render(stage);
@@ -135,6 +154,7 @@ requestAnimationFrame(frame);
 
 window.__lowbeam = {
   THREE,
+  audio,
   stage,
   input,
   garage,
