@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
 import { glassTexture, plateTexture, rimTexture, shadowTexture } from '../render/textures.js';
+import { bakeGeometry } from '../render/bake.js';
 import { clamp, damp } from '../core/mathx.js';
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
@@ -409,20 +410,22 @@ export class Kit {
 
 /**
  * @param {CarSpec} spec @param {{ color: number, accent: number }} paint @param {BodyDef} def
+ * @param {'local' | 'baked'} light
  */
-function makeMaterials(spec, paint, def) {
+function makeMaterials(spec, paint, def, light) {
+  const o = light === 'baked' ? { baked: true } : { local: true };
   return {
-    paint: psxPhong({ color: paint.color, specular: 0x3a3a3a, shininess: 36 }),
-    accent: psxPhong({ color: paint.accent, specular: 0x2a2a2a, shininess: 30 }),
-    glass: psxPhong({ map: glassTexture(), specular: 0x383838, shininess: 60 }),
-    trim: psxLambert({ color: 0x1e1f22 }),
-    under: psxLambert({ color: 0x060606 }),
-    chrome: psxPhong({ color: 0xb4b8be, specular: 0xffffff, shininess: 90 }),
+    paint: psxPhong({ color: paint.color, specular: 0x3a3a3a, shininess: 36, ...o }),
+    accent: psxPhong({ color: paint.accent, specular: 0x2a2a2a, shininess: 30, ...o }),
+    glass: psxPhong({ map: glassTexture(), specular: 0x383838, shininess: 60, ...o }),
+    trim: psxLambert({ color: 0x1e1f22, ...o }),
+    under: psxLambert({ color: 0x060606, ...o }),
+    chrome: psxPhong({ color: 0xb4b8be, specular: 0xffffff, shininess: 90, ...o }),
     lamp: psxBasic({ color: 0xfff1d0 }),
     tail: psxBasic({ color: TAIL_DIM.clone() }),
-    plate: psxLambert({ map: plateTexture(def.plate, def.widePlate) }),
-    tire: psxLambert({ color: 0x151515 }),
-    rim: psxPhong({ map: rimTexture(def.rim), color: def.rimColor === 'accent' ? paint.accent : def.rimColor, specular: 0x777777, shininess: 60 }),
+    plate: psxLambert({ map: plateTexture(def.plate, def.widePlate), ...o }),
+    tire: psxLambert({ color: 0x151515, ...o }),
+    rim: psxPhong({ map: rimTexture(def.rim), color: def.rimColor === 'accent' ? paint.accent : def.rimColor, specular: 0x777777, shininess: 60, ...o }),
   };
 }
 
@@ -431,12 +434,16 @@ function makeMaterials(spec, paint, def) {
  * `lean` adds body roll and pitch on top of it.
  */
 export class CarModel {
-  /** @param {CarSpec} spec @param {number} [paintIndex] */
-  constructor(spec, paintIndex = 0) {
+  /**
+   * `light` picks how world lamps reach the car: 'local' (the default) follows the
+   * player's sampled light each frame; 'baked' is for parked cars, see `bake`.
+   * @param {CarSpec} spec @param {number} [paintIndex] @param {{ light?: 'local' | 'baked' }} [opts]
+   */
+  constructor(spec, paintIndex = 0, { light = 'local' } = {}) {
     this.spec = spec;
     this.def = BODIES[spec.id];
     this.paintIndex = paintIndex;
-    this.mats = makeMaterials(spec, spec.paints[paintIndex], this.def);
+    this.mats = makeMaterials(spec, spec.paints[paintIndex], this.def, light);
 
     this.group = new THREE.Group();
     this.group.rotation.order = 'YXZ';
@@ -488,6 +495,17 @@ export class CarModel {
     this.leanRoll = 0;
     this.leanPitch = 0;
     this.brake = 0;
+  }
+
+  /**
+   * Bakes world lights into a parked car. Call after placing `group` in the world.
+   * @param {import('../render/bake.js').LightGrid} grid
+   */
+  bake(grid) {
+    this.group.updateMatrixWorld(true);
+    bakeGeometry(this.body.geometry, grid, { matrix: this.body.matrixWorld, wrap: 0.5 });
+    const wheel = /** @type {THREE.Mesh} */ (this.wheels[0].spin.children[0]);
+    bakeGeometry(this.wheelGeo, grid, { matrix: wheel.matrixWorld, wrap: 0.5 });
   }
 
   /** @param {number} i */

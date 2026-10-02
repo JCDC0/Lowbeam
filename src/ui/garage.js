@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { CARS } from '../vehicles/specs.js';
 import { CarModel } from '../vehicles/models.js';
 import { MeshBuilder } from '../render/builder.js';
-import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
+import { psxBasic, psxLambert, psxPhong, psxUniforms } from '../render/psx.js';
 import { store } from '../core/store.js';
 import { damp } from '../core/mathx.js';
 
@@ -213,6 +213,7 @@ export class Garage {
     const card = w > 720 ? Math.min(400, 0.38 * w) / w : 0;
     const side = card * d * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)) * cam.aspect * f;
     cam.lookAt(Math.cos(a) * side, 1.9 - 1.4 * f, -Math.sin(a) * side);
+    psxUniforms.uLocalColor.value.setRGB(0, 0, 0);
     stage.render(this.scene, cam);
   }
 }

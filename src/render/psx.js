@@ -1,7 +1,9 @@
 /**
  * PS1-style materials. Every lit material in the game comes from here so they all share:
  *  - vertex snapping to the low-res pixel grid (the wobble),
- *  - optional per-vertex baked light (`bake` attribute) added on top of real lights.
+ *  - optional per-vertex baked light (`bake` attribute) added on top of real lights,
+ *  - optional local light: one color and direction for things that move (the player's
+ *    car), sampled each frame from the same baked lights the world uses.
  */
 
 import * as THREE from 'three';
@@ -10,6 +12,10 @@ import * as THREE from 'three';
 export const psxUniforms = {
   uSnap: { value: new THREE.Vector2(320, 240) },
   uSnapOn: { value: 1 },
+  /** Baked light around the player, linear rgb. */
+  uLocalColor: { value: new THREE.Color(0, 0, 0) },
+  /** Direction toward that light in view space. */
+  uLocalDir: { value: new THREE.Vector3(0, 1, 0) },
 };
 
 const SNAP_VERTEX = /* glsl */ `
@@ -24,46 +30,52 @@ if (uSnapOn > 0.5 && gl_Position.w > 0.0) {
 
 /**
  * @param {THREE.Material} mat
- * @param {{ baked?: boolean }} opts
+ * @param {{ baked?: boolean, local?: boolean }} opts
  */
-export function patchPsx(mat, { baked = false } = {}) {
+export function patchPsx(mat, { baked = false, local = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapOn = psxUniforms.uSnapOn;
     let vs = 'uniform vec2 uSnap;\nuniform float uSnapOn;\n' + shader.vertexShader;
     vs = vs.replace('#include <project_vertex>', SNAP_VERTEX);
+    let fs = shader.fragmentShader;
+    let extra = '';
     if (baked) {
       vs = 'attribute vec3 bake;\nvarying vec3 vBake;\n' + vs;
       vs = vs.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBake = bake;');
-      let fs = 'varying vec3 vBake;\n' + shader.fragmentShader;
-      fs = fs.replace(
-        '#include <emissivemap_fragment>',
-        '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vBake * diffuseColor.rgb;'
-      );
-      shader.fragmentShader = fs;
+      fs = 'varying vec3 vBake;\n' + fs;
+      extra += '\ntotalEmissiveRadiance += vBake * diffuseColor.rgb;';
     }
+    if (local) {
+      shader.uniforms.uLocalColor = psxUniforms.uLocalColor;
+      shader.uniforms.uLocalDir = psxUniforms.uLocalDir;
+      fs = 'uniform vec3 uLocalColor;\nuniform vec3 uLocalDir;\n' + fs;
+      extra += '\ntotalEmissiveRadiance += uLocalColor * diffuseColor.rgb * (0.3 + 0.7 * max(dot(normal, uLocalDir), 0.0));';
+    }
+    fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>' + extra);
     shader.vertexShader = vs;
+    shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => (baked ? 'psx-baked' : 'psx');
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}`;
   return mat;
 }
 
 /**
  * Lambert material with the PSX patch.
- * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean }} params
+ * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean }} params
  */
 export function psxLambert(params = {}) {
-  const { baked, ...rest } = params;
-  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked });
+  const { baked, local, ...rest } = params;
+  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local });
 }
 
 /**
  * Phong material with the PSX patch, for car paint, glass and chrome.
- * @param {THREE.MeshPhongMaterialParameters & { baked?: boolean }} params
+ * @param {THREE.MeshPhongMaterialParameters & { baked?: boolean, local?: boolean }} params
  */
 export function psxPhong(params = {}) {
-  const { baked, ...rest } = params;
-  return patchPsx(new THREE.MeshPhongMaterial(rest), { baked });
+  const { baked, local, ...rest } = params;
+  return patchPsx(new THREE.MeshPhongMaterial(rest), { baked, local });
 }
 
 /**

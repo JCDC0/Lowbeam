@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.3 (2026-10-02)
+
+World meshes.
+
+- `src/world/scatter.js` (pure): street lamps from the road `lamps` runs, about 25k
+  trees on a jittered grid, town buildings along the streets (two konbini, neon signs),
+  gas station furniture, about 170 baked light sources and the collider lists.
+- Builders: chunked terrain with per-surface vertex colors and the same diagonal as
+  `Heightfield.at`; road ribbons with skirts and painted lines; forecourt pads with
+  curbs; lamps; instanced tree chunks; town with lit windows; three gas stations with
+  canopies, pumps, kiosks and brand signs; the service park with tents, floodlights and
+  two parked rival cars; the lake; a sky dome with stars and the moon.
+- `src/render/bake.js`: light grid, per-vertex bake and a light sampler for moving
+  objects. `psx.js` materials take `local: true` for the sampled light; cars use it.
+- Garage Enter now builds the world (about 0.75 s) and opens a free camera at G1.
+- Tests for lamp, tree, building and pump placement (14 tests).
+
 ## 0.1.2 (2026-10-02)
 
 Title screen and garage.

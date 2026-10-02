@@ -35,7 +35,8 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 - Version lives in `package.json` and in `docs/agents/CHANGELOG.md`. Bump both.
 - Pure modules never import `three` or touch the DOM: `src/core/mathx.js`,
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
-  `gas-station`, `rally-dressing`, `world`, and `src/vehicles/{specs,surfaces,physics,gauges}.js`.
+  `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
+  `src/vehicles/{specs,surfaces,physics,gauges}.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -65,6 +66,14 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/world/spline.js` | Arc-length Catmull-Rom `Path`: sample, nearest, signed offset |
 | `src/world/roads.js` | Road profiles (smoothing, grade clamp, bumps, junction blending), grid queries |
 | `src/world/ground.js` | `Ground.at(x, z)`: height and surface from roads, then pads, then terrain; carving |
+| `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
+| `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
+| `src/world/build-roads.js` | Road ribbons with skirts, forecourt pads with curbs |
+| `src/world/props.js` | Street lamps, instanced tree chunks, town buildings with windows, konbini, neon |
+| `src/world/gas-station.js` | Canopy, pumps, kiosk, brand sign; service park tents, floods, rival cars |
+| `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
+| `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
+| `src/render/sky.js` | Gradient dome, stars, moon; `MOON_DIR` |
 | `src/vehicles/specs.js` | The three cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
 | `src/vehicles/physics.js` | 120 Hz bicycle model, gearbox, traction control, jumps, fuel |
@@ -76,7 +85,7 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 
-## Current state (0.1.2)
+## Current state (0.1.3)
 
 Done and tested:
 
@@ -114,26 +123,42 @@ Done and tested:
   world exists.
 - Display font: CSS family `Lowbeam Display` tries `local()` Microgramma D Extended
   and Eurostile Extended, then the vendored Michroma.
-- Tests: 11 passing (splines, ground and pads, stage grades, bars vs sim, braking,
-  reverse, jumps). `npm run check` is clean.
+- World meshes (`World.create`, about 0.75 s): 10 by 10 terrain chunks with vertex
+  colors per surface and a detail texture, road ribbons (7 columns: skirt, edge, three
+  across, edge, skirt; higher priority roads sit 12 mm per priority higher so junctions
+  never z-fight), concrete pads with curbs, 56 sodium street lamps, about 100 town
+  buildings (two konbini, vertical neon signs), about 25k instanced trees in 250 m
+  chunks hidden past the fog, three gas stations, the service park with tents,
+  floodlights and two rival cars, the lake, sky and moon. A town street view draws
+  about 70 calls and 165k triangles.
+- Light: moonlight (directional) and a sky fill (hemisphere) are the only real lights.
+  `scatter.js` lists about 170 baked lights (lamps, canopies, kiosks, konbini, neon,
+  floods). `bakeGeometry` writes them into the `bake` attribute of static meshes; parked
+  cars bake too (`CarModel(spec, paint, { light: 'baked' })`). Moving things use the
+  local light instead: `World.update(camera, focus)` samples the same lights at the
+  player car and sets `psxUniforms.uLocalColor` and `uLocalDir`; materials made with
+  `local: true` add it. Light colors above 1 are deliberate: the bake multiplies
+  albedo, and night albedos are dark.
+- Enter in the garage builds the world and parks the chosen car at G1 with a free
+  camera (WASD move, arrows look, Q and E height, Shift fast, Esc back). Driving
+  replaces this in the next step.
+- Tests: 14 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+  reverse, jumps, lamp, tree, building and pump placement). `npm run check` is clean.
 
-Not started: the world meshes and everything after them in the build order in
+Not started: driving in the world and everything after it in the build order in
 `docs/DESIGN.md`.
 
 ## Next steps (in order)
 
-1. **World meshes**: terrain (same diagonal as `Heightfield.at`), road ribbons with
-   skirts (`SKIRT`, `SINK` in roads.js), town, street lamps, trees (instanced), the
-   three gas stations, sky, and the light baker that writes the `bake` attribute.
-2. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
+1. **Driving**: cameras (chase, hood, bumper, cockpit), collisions, input with a
    throttle ramp for keyboards, minimap, fuel and refuel.
-3. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
+2. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
    Arcade-style round tach plus FUEL, WATER, BOOST or INTAKE, EXH sub-gauges, bottom
    right, canvas-drawn. Add `src/vehicles/gauges.js` (pure) for the simulated values.
    The font is already vendored (see Current state).
-4. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+3. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-5. Audio, settings, pause menu. Then look at every part in the browser and tune.
+4. Audio, settings, pause menu. Then look at every part in the browser and tune.
 
 ## Verification
 
@@ -151,6 +176,10 @@ rates.
   90 degrees of slide in the bench). Intended character, but keyboard players will
   need the throttle ramp from step 4. Re-check after the first real drive.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
+- Lamp pools on Route 7 in town overlap into an even wash at 34 m spacing. Check from
+  the driver's seat; shorter range or wider spacing gives distinct pools.
 - The valley floor inside Route 7 is empty. Candidates: rice fields, a rail line, a
   second town block. Not needed for this milestone.
 - `Ground.at` scans every pad on each call. Fine with 3 pads; add a grid if pads grow.
+- Neon signs draw Japanese text with the system font (Yu Gothic, Meiryo, MS Gothic or
+  Noto Sans CJK). A machine without any of them shows boxes.
