@@ -13,7 +13,8 @@
  *   yawInertia: number, wheelRadius: number, length: number, width: number,
  *   engine: { idle: number, redline: number, peakTorque: number, curve: number[][],
  *             shiftUp: number, shiftDown: number, launch: number, braking: number,
- *             cylinders: number, voice: string },
+ *             cylinders: number, voice: string,
+ *             turbo?: { boost: number, spoolRpm: number, lag: number } },
  *   gears: number[], reverse: number, finalDrive: number, efficiency: number,
  *   drive: 'AWD' | 'RWD' | 'FWD', frontShare: number,
  *   tire: { mu: number, rearMu: number, looseGrip: number, tc: number },
@@ -55,6 +56,8 @@ export const CARS = [
       braking: 900,
       cylinders: 4,
       voice: 'boxer',
+      // Gauges only: peak boost in bar, the rpm where it builds, spool time in seconds.
+      turbo: { boost: 1.2, spoolRpm: 3200, lag: 0.55 },
     },
     gears: [3.45, 2.2, 1.6, 1.24, 1.0],
     reverse: 3.3,

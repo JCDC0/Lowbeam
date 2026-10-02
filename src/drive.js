@@ -13,6 +13,9 @@ import { store } from './core/store.js';
 import { ECONOMY, LAKE, TOWN, WATER_LEVEL } from './world/layout.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
+import { createGauges, stepGauges } from './vehicles/gauges.js';
+import { Cluster, drawDash } from './ui/cluster.js';
+import { canvasTexture, makeCanvas } from './render/textures.js';
 
 /** Liters per second while holding the pump. */
 const REFUEL_RATE = 3;
@@ -42,6 +45,14 @@ export class Drive {
     this.fueled = 0;
     this.areaTimer = 0;
     this.hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
+    /** @type {Cluster | null} */
+    this.cluster = null;
+    /** @type {ReturnType<typeof createGauges> | null} */
+    this.gauges = null;
+    this.dashCanvas = makeCanvas(256, 96);
+    this.dashCtx = /** @type {CanvasRenderingContext2D} */ (this.dashCanvas.getContext('2d'));
+    this.dashTex = canvasTexture(this.dashCanvas);
+    this.time = 0;
   }
 
   /**
@@ -55,6 +66,12 @@ export class Drive {
     }
     this.car = new Car(spec, paint);
     this.world.add(this.car.group);
+    this.gauges = createGauges(spec);
+    if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec);
+    else this.cluster.setSpec(spec);
+    this.car.cockpit.gaugeMat.map = this.dashTex;
+    this.car.cockpit.gaugeMat.color.set(0xffffff);
+    this.car.cockpit.gaugeMat.needsUpdate = true;
     this.toPump(this.world.scatter.stations[0]);
     this.acc = 0;
     this.hud.area('');
@@ -184,6 +201,14 @@ export class Drive {
 
     car.pose(this.acc / DT, dt);
     this.rig.update(car, this.ground, dt);
+    this.time += dt;
+    stepGauges(this.gauges, spec, s, dt);
+    const cockpit = this.rig.view === 'cockpit';
+    this.cluster.show(!cockpit);
+    if (cockpit) {
+      drawDash(this.dashCtx, this.dashCanvas.width, this.dashCanvas.height, this.gauges, spec, this.time);
+      this.dashTex.needsUpdate = true;
+    } else this.cluster.draw(this.gauges, dt);
 
     this.areaTimer -= dt;
     if (this.areaTimer <= 0) {
@@ -192,8 +217,6 @@ export class Drive {
     }
     this.hud.money(this.money);
     this.hud.prompt(prompt);
-    const gear = s.gear < 0 ? 'R' : String(s.gear);
-    this.hud.digital(Math.abs(s.vLong) * 3.6, gear, s.fuel, spec.fuel.tank);
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }

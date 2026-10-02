@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.5 (2026-10-02)
+
+Arcade gauge cluster.
+
+- `src/vehicles/gauges.js` (pure): coolant temperature, turbo boost with spool lag and
+  blow-off on shifts (Hayate), manifold vacuum (Rampart, Vespera), exhaust gas
+  temperature, shift light. `engine.turbo` in the Hayate spec. Tests.
+- `src/ui/cluster.js`: canvas cluster in the bottom right with a round tach, red zone,
+  shift lights, digital speed and gear, and FUEL, WATER, BOOST or VAC, EXH dials, set
+  in Michroma. `drawDash` paints the same readings onto the cockpit binnacle.
+- The cockpit binnacle sits higher, in the upper opening of the steering wheel. The
+  interim digital readout is gone.
+
 ## 0.1.4 (2026-10-02)
 
 Driving.

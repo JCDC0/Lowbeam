@@ -1,6 +1,6 @@
 /**
- * Driving HUD: area name, money, the interaction prompt, the minimap and a corner slot
- * for the gauge cluster. DOM text only changes when its value does.
+ * Driving HUD: area name, money, the interaction prompt, the minimap and the slot the
+ * gauge cluster draws into. DOM text only changes when its value does.
  */
 
 export class Hud {
@@ -14,8 +14,7 @@ export class Hud {
       <div class="money display"></div>
       <div class="prompt display"></div>
       <div class="mapslot"></div>
-      <div class="cluster"></div>
-      <div class="readout display"><span class="spd">0</span><span class="unit">KM/H</span><span class="gear">N</span><span class="fuel"></span></div>`;
+      <div class="cluster"></div>`;
     ui.appendChild(this.el);
     const q = (s) => /** @type {HTMLElement} */ (this.el.querySelector(s));
     this.areaEl = q('.area');
@@ -23,10 +22,8 @@ export class Hud {
     this.promptEl = q('.prompt');
     this.mapSlot = q('.mapslot');
     this.clusterSlot = q('.cluster');
-    this.readout = { root: q('.readout'), spd: q('.spd'), gear: q('.gear'), fuel: q('.fuel') };
     /** @type {Record<string, string>} */
     this.last = {};
-    this.areaTimer = 0;
   }
 
   /** @param {boolean} on */
@@ -59,15 +56,5 @@ export class Hud {
   prompt(text) {
     this.text(this.promptEl, 'prompt', text);
     this.promptEl.style.display = text ? 'block' : 'none';
-  }
-
-  /**
-   * Plain digital readout, used until a gauge cluster is attached.
-   * @param {number} kmh @param {string} gear @param {number} fuel @param {number} tank
-   */
-  digital(kmh, gear, fuel, tank) {
-    this.text(this.readout.spd, 'spd', String(Math.round(kmh)));
-    this.text(this.readout.gear, 'gear', gear);
-    this.text(this.readout.fuel, 'fuel', `FUEL ${fuel.toFixed(1)} / ${tank} L`);
   }
 }

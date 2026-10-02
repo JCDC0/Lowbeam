@@ -590,9 +590,9 @@ export function buildCockpit(model) {
   };
 
   b.box('dash', 0, beltY - 0.28, (dashBack + cowlZ) / 2, halfIn * 2, 0.4, cowlZ - dashBack);
-  b.box('dash', dx, beltY - 0.04, dashBack + 0.1, 0.48, 0.1, 0.26);
+  b.box('dash', dx, beltY + 0.02, dashBack + 0.1, 0.52, 0.06, 0.26);
   b.box('dash', 0, beltY - 0.42, dashBack - 0.35, 0.3, 0.3, 0.8);
-  q('gauge', [dx + 0.2, beltY - 0.24, dashBack - 0.005], [dx - 0.2, beltY - 0.24, dashBack - 0.005], [dx - 0.2, beltY - 0.09, dashBack + 0.02], [dx + 0.2, beltY - 0.09, dashBack + 0.02]);
+  q('gauge', [dx + 0.23, beltY - 0.15, dashBack - 0.035], [dx - 0.23, beltY - 0.15, dashBack - 0.035], [dx - 0.23, beltY - 0.005, dashBack - 0.01], [dx + 0.23, beltY - 0.005, dashBack - 0.01]);
 
   const w3c = sc[8];
   const y3c = sc[7];
@@ -611,10 +611,10 @@ export function buildCockpit(model) {
 
   const o = { local: true };
   const mats = {
-    dash: psxLambert({ color: 0x2c2d31, ...o }),
-    pillar: psxLambert({ color: 0x38393e, side: THREE.DoubleSide, ...o }),
-    panel: psxLambert({ color: 0x4a423c, ...o }),
-    liner: psxLambert({ color: 0x5c5a55, ...o }),
+    dash: psxLambert({ color: 0x232428, ...o }),
+    pillar: psxLambert({ color: 0x2e2f34, side: THREE.DoubleSide, ...o }),
+    panel: psxLambert({ color: 0x3c3631, ...o }),
+    liner: psxLambert({ color: 0x4a4844, ...o }),
     mirror: psxBasic({ color: 0x101622 }),
     seat: psxLambert({ color: 0x2a2624, ...o }),
     gauge: psxBasic({ color: 0x0a0b0d }),
@@ -622,7 +622,7 @@ export function buildCockpit(model) {
   const shell = b.mesh(mats);
 
   const wheel = new THREE.Group();
-  wheel.position.set(dx, eye.y - 0.36, eye.z + 0.42);
+  wheel.position.set(dx, eye.y - 0.4, eye.z + 0.42);
   wheel.rotation.x = -0.38;
   const spin = new THREE.Group();
   wheel.add(spin);

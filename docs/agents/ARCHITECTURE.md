@@ -62,6 +62,8 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
 | `src/ui/menus.js` | Title, loading, pause and toast DOM screens |
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
+| `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and the cockpit binnacle layout (`drawDash`) |
+| `src/vehicles/gauges.js` | Pure: water, boost or manifold vacuum, exhaust temperature, shift light |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
@@ -91,7 +93,7 @@ accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored)
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 
-## Current state (0.1.4)
+## Current state (0.1.5)
 
 Done and tested:
 
@@ -167,27 +169,36 @@ Done and tested:
 - Headlights: two spot lights per car (320 cd, decay 1.35, 95 m). Physical units:
   weaker values vanish on the dark ground.
 - HUD: area name (fades), money, prompts, the minimap (rotates with the car, zooms
-  out with speed, north marker, station and rally start icons) and a plain digital
-  speed, gear and fuel readout that the gauge cluster replaces next.
+  out with speed, north marker, station and rally start icons) and the gauge cluster.
+- Gauge cluster (`src/ui/cluster.js`, bottom right, canvas, Michroma): a round tach
+  sweeping 240 degrees with a red zone from the redline, a lit arc behind the needle,
+  five shift lights that fill toward the upshift point and flash at it, a flashing
+  red zone on the limiter, digital speed and a gear box in the open bottom of the
+  dial, and four small dials around it: FUEL (liters, red under 15 %), WATER (80 to
+  120 C, red over 110), BOOST on the Hayate (-0.7 to +1.2 bar) or VAC on the other
+  two (-0.8 to 0 bar), EXH (300 to 900 C, red over 820). The values come from
+  `src/vehicles/gauges.js` (pure), stepped once per frame from the physics state:
+  water heats with load and cools with airflow over tens of seconds, boost spools
+  above `engine.turbo.spoolRpm` with `engine.turbo.lag` and dumps on shifts, vacuum
+  follows the throttle, exhaust follows load and rpm. Only the Hayate spec has a
+  `turbo` block. In the cockpit view the HUD cluster hides and `drawDash` paints the
+  same readings onto the binnacle texture (256 by 96), updated every frame.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 18 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 22 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
-  push-out, valley edge). `npm run check` is clean. CPU time for one drive update and
-  render is about 2 ms in the browser pane.
+  push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light).
+  `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
+  the browser pane.
 
-Not started: the gauge cluster and everything after it in the build order in
+Not started: the rally event and everything after it in the build order in
 `docs/DESIGN.md`.
 
 ## Next steps (in order)
 
-1. **Gauge cluster** (requested by Jc): see the HUD section of `docs/DESIGN.md`.
-   Arcade-style round tach plus FUEL, WATER, BOOST or INTAKE, EXH sub-gauges, bottom
-   right, canvas-drawn. Add `src/vehicles/gauges.js` (pure) for the simulated values.
-   The font is already vendored (see Current state).
-2. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+1. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-3. Audio, settings (the pause menu exists; add settings to it). Then look at every part in the browser and tune.
+2. Audio, settings (the pause menu exists; add settings to it). Then look at every part in the browser and tune.
 
 ## Verification
 
@@ -205,6 +216,11 @@ rates.
   90 degrees of slide in the bench). Intended character; the keyboard throttle ramp
   exists now (`RAMP` in input.js). Needs a real drive with hands on the keys to judge.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
+- Engine rpm can read a few hundred over the redline under wheelspin (physics adds up
+  to 1500 rpm of spin to `s.rpm`). The tach needle then sits in the red zone. Decide
+  whether that is honest feedback or should clamp.
+- Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
+  desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
 - Lamp pools on Route 7 in town overlap into an even wash at 34 m spacing. Check from
   the driver's seat; shorter range or wider spacing gives distinct pools.
 - The valley floor inside Route 7 is empty. Candidates: rice fields, a rail line, a

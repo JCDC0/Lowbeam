@@ -363,17 +363,11 @@ html, body {
   right: 1.5vw;
   bottom: 2vh;
 }
-#hud .readout {
-  position: absolute;
-  right: 3vw;
-  bottom: 4vh;
-  text-align: right;
-  text-shadow: 0 2px 0 #000;
+#hud .gauges {
+  display: block;
+  width: clamp(270px, 30vw, 400px);
+  height: auto;
 }
-#hud .readout .spd { font-size: 44px; letter-spacing: 0.04em; }
-#hud .readout .unit { margin-left: 8px; font-size: 11px; color: var(--ink-dim); }
-#hud .readout .gear { margin-left: 16px; font-size: 30px; color: var(--amber); }
-#hud .readout .fuel { display: block; margin-top: 4px; font-size: 11px; color: var(--ink-dim); letter-spacing: 0.15em; }
 
 /* Pause */
 
