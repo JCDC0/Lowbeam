@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.8 (2026-10-02)
+
+Music.
+
+- `src/audio/songs.js` (pure): four tracks composed from chord progressions, with pad,
+  bass, arpeggio, lead and drum patterns. Deterministic, in key, melodies that move by
+  step and end on a chord tone. Tests.
+- `src/audio/music.js`: the synthesizer and player. Look-ahead scheduling, kick-driven
+  ducking, echo and reverb, layers that build with speed, a menu track for the title and
+  garage, seamless rotation of the two driving tracks, and `hold` for the rally track.
+- `audio.js` hooks the player into the mode and per-frame update. `tools/audio-lab.html`
+  renders tracks offline with a speed ramp for measuring and listening.
+
 ## 0.1.7 (2026-10-02)
 
 Vehicle sound and ambience.

@@ -38,7 +38,7 @@ captures such as rendered audio.
 - Pure modules never import `three` or touch the DOM: `src/core/mathx.js`,
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
-  `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env}.js`.
+  `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -101,10 +101,12 @@ captures such as rendered audio.
 | `src/audio/engine-dsp.js` | Pure: per-sample engine synthesis (`EngineVoice`, `VOICES`) |
 | `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
 | `src/audio/env.js` | Pure: forest, town and lake amounts around a point, for the ambience |
+| `src/audio/songs.js` | Pure: the four tracks composed as note events (`composeTrack`, `TRACKS`) |
+| `src/audio/music.js` | `MusicPlayer`: the synthesizer, look-ahead scheduling, speed-driven layer mix, track rotation |
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.1.7)
+## Current state (0.1.8)
 
 Done and tested:
 
@@ -190,6 +192,20 @@ Done and tested:
     All fade in a car going fast. `EnvMap` (pure) supplies forest, town and water.
   - Screens: title, loading mute the world; the garage plays the engine idle; pause mutes
     the world, keeps a faint ambience and ducks the music.
+  - Music (`songs.js`, `music.js`): four tracks composed in code from a chord progression
+    over a minor scale: NIGHT BRIEFING (menu, 76 bpm, F sharp minor), KIRIGAOKA NIGHTS
+    (92 bpm, A minor), LOW BEAM (118 bpm, D minor) and RIDGE RUN (138 bpm, E minor, for
+    the rally). Each has pad chords, a bass line (rolling, offbeat, gallop or pedal), an
+    arpeggio, a lead melody built from rhythm shapes and nearest-chord-tone voice
+    leading, and 16-step drums. The player synthesizes it with Web Audio nodes: detuned
+    saw pads, filter-enveloped bass, plucked arpeggio, a lead with delayed vibrato, drum
+    voices, a dotted-eighth echo and a generated reverb, with the pads and arpeggio
+    ducking on every kick. Layers follow speed (`speedMix`): parked is pads and bass,
+    the arpeggio comes in from about 5 km/h, hats and drums from 20 to 60, the lead from
+    75 to 115. The menu track ignores speed. Title, garage and loading play the menu
+    track; driving rotates Kirigaoka and Low Beam, two loops each, seamlessly. Notes are
+    scheduled 1.4 s ahead so a throttled tab does not stutter, and late notes are
+    skipped. `audio.music.hold('ridge')` and `release()` are for the rally stage.
   - Verified by numbers, not by ear: `tests/engine.test.mjs` checks the spectrum sits on
     the firing harmonics for every voice, the V12 is even and the others are lumpy, load
     makes it louder and brighter, the limiter chops it and the whistle appears under
@@ -242,10 +258,11 @@ Done and tested:
   same readings onto the binnacle texture (256 by 96), updated every frame.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 27 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 45 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
   push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
-  species mix, the edge-belt flood fill).
+  species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,
+  track composition and the speed mix).
   `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
   the browser pane.
 
@@ -256,9 +273,10 @@ Not started: the rally event and everything after it in the build order in
 
 1. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-2. Music (0.1.8), then the settings screen and main menu (Antigravity, using the `audio`
-   contract above). Then look at every part in the browser and tune; engine and mix
-   levels have only been checked with an analyzer, so they need a listening pass.
+2. The settings screen and main menu (Antigravity, using the `audio` contract above).
+   Then look at every part in the browser and tune; engine, music and mix levels have
+   only been checked with analyzers, so they need a listening pass. The rally should call
+   `audio.music.hold('ridge')`, `audio.beep('count')` and `audio.beep('go')`.
 
 ## Verification
 

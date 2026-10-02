@@ -20,6 +20,7 @@
 
 import { store } from '../core/store.js';
 import { clamp } from '../core/mathx.js';
+import { MusicPlayer } from './music.js';
 
 /** @typedef {'master' | 'engine' | 'effects' | 'ambience' | 'music'} Channel */
 /** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} Mode */
@@ -362,7 +363,8 @@ export class AudioSystem {
     this.applyChannels(0);
     this.setMode(this.mode, 0);
     if (this.spec) this.setCar(this.spec);
-    this.music?.attach?.(this);
+    this.music = new MusicPlayer(this);
+    this.music.setMode(this.mode, 0);
   }
 
   /** @param {Mode} mode @param {number} [at] */
@@ -376,7 +378,7 @@ export class AudioSystem {
     glide(this.bus.modeAmb.gain, m.amb, t, 0.4);
     glide(this.bus.musicMode.gain, m.music, t, 0.5);
     if (mode === 'title' || mode === 'loading') this.pump(false, t);
-    this.music?.setMode?.(mode, t);
+    this.music?.setMode(mode, t);
   }
 
   /** @param {'chase' | 'hood' | 'bumper' | 'cockpit'} view @param {number} [at] */
@@ -450,6 +452,7 @@ export class AudioSystem {
     const s = f.state;
     const spec = f.spec;
     this.setView(/** @type {any} */ (f.view), t);
+    this.music?.setSpeed(f.state.speed * 3.6, t);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;

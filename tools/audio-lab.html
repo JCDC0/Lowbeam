@@ -132,7 +132,28 @@ async function driveRun(carIndex) {
   return { car: spec.id, ...stats, file: saved.path };
 }
 
-window.__lab = { driveRun, analyze, save, tone, band, mono, SR, AudioSystem, CARS, last: null };
+/**
+ * Renders one track through the real audio graph at the default volumes, with the car
+ * speeding up as `speedAt(t)` says, and saves a WAV.
+ * @param {string} id track id @param {number} seconds @param {(t: number) => number} [speedAt] km/h
+ * @param {'title' | 'drive'} [mode]
+ */
+async function musicRun(id, seconds, speedAt = () => 0, mode = 'drive') {
+  const ctx = new OfflineAudioContext(2, SR * seconds, SR);
+  const audio = new AudioSystem();
+  audio.mode = mode;
+  await audio.unlock(ctx);
+  audio.music.play(id, 0, { loops: Infinity, fade: 0.2 });
+  for (let t = 0; t < seconds; t += 0.25) audio.music.setSpeed(speedAt(t), t);
+  audio.music.renderAhead(seconds);
+  const buf = await ctx.startRendering();
+  window.__lab.last = buf;
+  const stats = analyze(buf);
+  const saved = await save('music-' + id, buf);
+  return { id, ...stats, file: saved.path };
+}
+
+window.__lab = { driveRun, musicRun, analyze, save, tone, band, mono, SR, AudioSystem, CARS, last: null };
 document.title = 'Lowbeam audio lab (ready)';
 </script>
 </body>
