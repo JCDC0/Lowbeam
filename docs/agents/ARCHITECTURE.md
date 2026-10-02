@@ -57,14 +57,14 @@ captures such as rendered audio.
 |---|---|
 | `docs/DESIGN.md` | The plan: pillars, cars, map, driving model, rally, HUD, build order |
 | `index.html`, `style.css` | Page shell with the import map; all UI styles and the display font |
-| `src/main.js` | Boot, state machine (title, garage, loading, drive, pause, free), `window.__lowbeam` |
+| `src/main.js` | Boot, state machine (title, menu, garage, settings, controls, loading, drive, pause, free), `window.__lowbeam` |
 | `src/drive.js` | Free roam: fixed-step loop, collisions, cameras, refuel, tow, reset, area names |
 | `src/core/input.js` | Keyboard and standard-mapping gamepad; menu actions; `drive(dt)` with keyboard ramps |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings |
 | `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
-| `src/ui/menus.js` | Title, loading, pause and toast DOM screens |
+| `src/ui/menus.js` | Title, main menu, settings, controls, loading, pause and toast DOM screens |
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
-| `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and the cockpit binnacle layout (`drawDash`) |
+| `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/vehicles/gauges.js` | Pure: water, boost or manifold vacuum, exhaust temperature, shift light |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
@@ -106,7 +106,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.1.8)
+## Current state (0.1.9)
 
 Done and tested:
 
@@ -254,15 +254,28 @@ Done and tested:
   water heats with load and cools with airflow over tens of seconds, boost spools
   above `engine.turbo.spoolRpm` with `engine.turbo.lag` and dumps on shifts, vacuum
   follows the throttle, exhaust follows load and rpm. Only the Hayate spec has a
-  `turbo` block. In the cockpit view the HUD cluster hides and `drawDash` paints the
-  same readings onto the binnacle texture (256 by 96), updated every frame.
+  `turbo` block. In the cockpit view the HUD cluster hides and the same `drawCluster`
+  function paints the identical readings onto the binnacle texture (420 by 300),
+  updated every frame.
+- Cockpit interior fixes: exterior materials and cabin panels use `DoubleSide` so
+  the hood and pillars are solid from the driver's POV. Dash gap to the windshield
+  is closed, and cabin firewall and floor pan prevent light leaks. The hooded binnacle
+  sits clean on top of the dash with full visibility of the round dials, needle,
+  shift LEDs, speed, and gear box.
+- Sequential manual transmission: sequential shifting with `shiftUp` and `shiftDown`.
+  The limiter holds at redline without auto upshifting. Over-rev downshifts are blocked.
+- Ace Combat and Japanese arcade styled menus:
+  `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
+  `settingsScreen` (Auto vs Manual transmission toggle, Master, Engine, Effects,
+  Ambience, Music channels with volume steps and mutes saved to localStorage),
+  `controlsScreen` briefing, and updated `pauseScreen`.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 45 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 47 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
   push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
   species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,
-  track composition and the speed mix).
+  track composition and the speed mix, manual transmission limiter hold and over-rev rejection).
   `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
   the browser pane.
 
@@ -272,11 +285,9 @@ Not started: the rally event and everything after it in the build order in
 ## Next steps (in order)
 
 1. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
-   ghost. Config is `RALLY` in layout.js (start at s = 130 m).
-2. The settings screen and main menu (Antigravity, using the `audio` contract above).
-   Then look at every part in the browser and tune; engine, music and mix levels have
-   only been checked with analyzers, so they need a listening pass. The rally should call
+   ghost. Config is `RALLY` in layout.js (start at s = 130 m). The rally should call
    `audio.music.hold('ridge')`, `audio.beep('count')` and `audio.beep('go')`.
+2. Tune engine, music and mix levels from listening in a real drive session.
 
 ## Verification
 

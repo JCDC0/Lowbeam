@@ -19,7 +19,7 @@ export const DT = 1 / 120;
 const RPM = 60 / (2 * Math.PI);
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
-/** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number }} DriveInput */
+/** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number, shiftUp?: boolean, shiftDown?: boolean, manual?: boolean }} DriveInput */
 /** @typedef {(x: number, z: number) => { h: number, surface: string }} GroundFn */
 
 /** @param {CarSpec} spec */
@@ -162,21 +162,45 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   }
 
   // ── Gear selection ────────────────────────────────────────────────────────
-  if (s.gear > 0) {
-    if (input.brake > 0.5 && input.throttle < 0.1 && vF < 0.6) {
-      s.revTimer += dt;
-      if (s.revTimer > 0.3) {
+  const manual = !!input.manual;
+  const nG = spec.gears.length;
+
+  if (manual) {
+    s.shiftTimer = Math.max(0, s.shiftTimer - dt);
+    if (input.shiftUp && s.shiftTimer <= 0) {
+      if (s.gear === -1) s.gear = 1;
+      else if (s.gear < nG) s.gear++;
+      s.shiftTimer = 0.18;
+    } else if (input.shiftDown && s.shiftTimer <= 0) {
+      if (s.gear > 1) {
+        // Prevent downshift if it would over-rev the engine past redline
+        const lowerRpm = (Math.abs(vF) / r) * spec.gears[s.gear - 2] * spec.finalDrive * RPM;
+        if (lowerRpm <= eng.redline + 200) {
+          s.gear--;
+          s.shiftTimer = 0.18;
+        }
+      } else if (s.gear === 1 && Math.abs(vF) < 3) {
         s.gear = -1;
+        s.shiftTimer = 0.18;
+      }
+    }
+  } else {
+    if (s.gear > 0) {
+      if (input.brake > 0.5 && input.throttle < 0.1 && vF < 0.6) {
+        s.revTimer += dt;
+        if (s.revTimer > 0.3) {
+          s.gear = -1;
+          s.revTimer = 0;
+        }
+      } else s.revTimer = 0;
+    } else if (input.throttle > 0.5 && input.brake < 0.1 && vF > -0.6) {
+      s.revTimer += dt;
+      if (s.revTimer > 0.12) {
+        s.gear = 1;
         s.revTimer = 0;
       }
     } else s.revTimer = 0;
-  } else if (input.throttle > 0.5 && input.brake < 0.1 && vF > -0.6) {
-    s.revTimer += dt;
-    if (s.revTimer > 0.12) {
-      s.gear = 1;
-      s.revTimer = 0;
-    }
-  } else s.revTimer = 0;
+  }
 
   const accel = s.gear > 0 ? input.throttle : input.brake;
   const brakeIn = s.gear > 0 ? input.brake : input.throttle;
@@ -184,21 +208,22 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   s.braking = brakeIn > 0.05 && Math.abs(vF) > 0.3;
   s.handbrake = input.handbrake > 0.5;
 
-  const nG = spec.gears.length;
   const ratio = s.gear > 0 ? spec.gears[s.gear - 1] : spec.reverse;
   const total = ratio * spec.finalDrive;
   const wheelRpm = (Math.abs(vF) / r) * total * RPM;
 
-  s.shiftTimer = Math.max(0, s.shiftTimer - dt);
-  if (s.gear > 0 && s.shiftTimer <= 0 && s.contact) {
-    if (wheelRpm > eng.shiftUp && s.gear < nG) {
-      s.gear++;
-      s.shiftTimer = 0.22;
-    } else if (s.gear > 1) {
-      const lower = (Math.abs(vF) / r) * spec.gears[s.gear - 2] * spec.finalDrive * RPM;
-      if (wheelRpm < eng.shiftDown && lower < eng.shiftUp * 0.9) {
-        s.gear--;
-        s.shiftTimer = 0.15;
+  if (!manual) {
+    s.shiftTimer = Math.max(0, s.shiftTimer - dt);
+    if (s.gear > 0 && s.shiftTimer <= 0 && s.contact) {
+      if (wheelRpm > eng.shiftUp && s.gear < nG) {
+        s.gear++;
+        s.shiftTimer = 0.22;
+      } else if (s.gear > 1) {
+        const lower = (Math.abs(vF) / r) * spec.gears[s.gear - 2] * spec.finalDrive * RPM;
+        if (wheelRpm < eng.shiftDown && lower < eng.shiftUp * 0.9) {
+          s.gear--;
+          s.shiftTimer = 0.15;
+        }
       }
     }
   }

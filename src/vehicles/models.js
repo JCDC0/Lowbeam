@@ -414,13 +414,14 @@ export class Kit {
  */
 function makeMaterials(spec, paint, def, light) {
   const o = light === 'baked' ? { baked: true } : { local: true };
+  const dbl = { side: THREE.DoubleSide };
   return {
-    paint: psxPhong({ color: paint.color, specular: 0x3a3a3a, shininess: 36, ...o }),
-    accent: psxPhong({ color: paint.accent, specular: 0x2a2a2a, shininess: 30, ...o }),
+    paint: psxPhong({ color: paint.color, specular: 0x3a3a3a, shininess: 36, ...dbl, ...o }),
+    accent: psxPhong({ color: paint.accent, specular: 0x2a2a2a, shininess: 30, ...dbl, ...o }),
     glass: psxPhong({ map: glassTexture(), specular: 0x383838, shininess: 60, ...o }),
-    trim: psxLambert({ color: 0x1e1f22, ...o }),
-    under: psxLambert({ color: 0x060606, ...o }),
-    chrome: psxPhong({ color: 0xb4b8be, specular: 0xffffff, shininess: 90, ...o }),
+    trim: psxLambert({ color: 0x1e1f22, ...dbl, ...o }),
+    under: psxLambert({ color: 0x060606, ...dbl, ...o }),
+    chrome: psxPhong({ color: 0xb4b8be, specular: 0xffffff, shininess: 90, ...dbl, ...o }),
     lamp: psxBasic({ color: 0xfff1d0 }),
     tail: psxBasic({ color: TAIL_DIM.clone() }),
     plate: psxLambert({ map: plateTexture(def.plate, def.widePlate), ...o }),
@@ -574,55 +575,171 @@ export function buildCockpit(model) {
   const beltY = sc[5];
   const halfIn = sc[6] - 0.07;
   const roofY = sr[7];
+  const cowlY = sc[7];
+  const floorY = sc[1] + 0.02;
   const dx = def.driver * Math.min(0.4, halfIn * 0.45);
-  const eye = new THREE.Vector3(dx, roofY - 0.24, roofZ - 0.5);
-  const dashBack = eye.z + 0.66;
+  const eye = new THREE.Vector3(dx, roofY - 0.23, roofZ - 0.48);
+  const dashBack = eye.z + 0.64;
   const b = new MeshBuilder();
   const E = [eye.x, eye.y, eye.z];
   /** Quad wound toward the eye. */
-  const q = (key, a, c, d, e) => {
+  const q = (key, a, c, d, e, uv) => {
     const ux = c[0] - a[0], uy = c[1] - a[1], uz = c[2] - a[2];
     const vx = d[0] - a[0], vy = d[1] - a[1], vz = d[2] - a[2];
     const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
     const toward = (E[0] - a[0]) * nx + (E[1] - a[1]) * ny + (E[2] - a[2]) * nz;
-    if (toward >= 0) b.quad(key, a, c, d, e);
-    else b.quad(key, a, e, d, c);
+    if (toward >= 0) b.quad(key, a, c, d, e, uv);
+    else b.quad(key, a, e, d, c, uv);
   };
 
-  b.box('dash', 0, beltY - 0.28, (dashBack + cowlZ) / 2, halfIn * 2, 0.4, cowlZ - dashBack);
-  b.box('dash', dx, beltY + 0.02, dashBack + 0.1, 0.52, 0.06, 0.26);
-  b.box('dash', 0, beltY - 0.42, dashBack - 0.35, 0.3, 0.3, 0.8);
-  q('gauge', [dx + 0.23, beltY - 0.15, dashBack - 0.035], [dx - 0.23, beltY - 0.15, dashBack - 0.035], [dx - 0.23, beltY - 0.005, dashBack - 0.01], [dx + 0.23, beltY - 0.005, dashBack - 0.01]);
+  // Main dashboard top: seamlessly reaches forward to the cowl/windshield base
+  q('dash',
+    [-halfIn, beltY, dashBack],
+    [halfIn, beltY, dashBack],
+    [halfIn, cowlY, cowlZ + 0.02],
+    [-halfIn, cowlY, cowlZ + 0.02]
+  );
+  // Dashboard vertical front face
+  q('dash',
+    [halfIn, beltY - 0.38, dashBack],
+    [-halfIn, beltY - 0.38, dashBack],
+    [-halfIn, beltY, dashBack],
+    [halfIn, beltY, dashBack]
+  );
+  // Dashboard firewall/bulkhead: drops to floor so light cannot leak from under
+  q('floor',
+    [halfIn, floorY, cowlZ + 0.02],
+    [-halfIn, floorY, cowlZ + 0.02],
+    [-halfIn, cowlY, cowlZ + 0.02],
+    [halfIn, cowlY, cowlZ + 0.02]
+  );
+  // Cabin floor pan: from firewall back to behind seats
+  q('floor',
+    [-halfIn, floorY, cowlZ + 0.02],
+    [halfIn, floorY, cowlZ + 0.02],
+    [halfIn, floorY, eye.z - 0.95],
+    [-halfIn, floorY, eye.z - 0.95]
+  );
+
+  // Center console
+  b.box('dash', 0, beltY - 0.32, dashBack - 0.28, 0.28, 0.22, 0.65);
+
+  // Recessed binnacle hood over driver instrument cluster (420:300 cluster aspect)
+  const gw = 0.175;
+  const gh0 = beltY + 0.01;
+  const gh1 = beltY + 0.26;
+  const gz0 = dashBack + 0.02;
+  const gz1 = dashBack + 0.045;
+
+  const bw = 0.195;
+  const bTopY = beltY + 0.28;
+  const bBotY = beltY;
+  const bFrontZ = dashBack - 0.08;
+  const bRearZ = dashBack + 0.14;
+
+  // Binnacle top cowl
+  q('dash',
+    [dx - bw, bTopY, bFrontZ],
+    [dx + bw, bTopY, bFrontZ],
+    [dx + bw, bTopY - 0.02, bRearZ],
+    [dx - bw, bTopY - 0.02, bRearZ]
+  );
+  // Binnacle left side cheek
+  q('dash',
+    [dx + bw, bBotY, bFrontZ],
+    [dx + bw, bBotY, bRearZ],
+    [dx + bw, bTopY - 0.02, bRearZ],
+    [dx + bw, bTopY, bFrontZ]
+  );
+  // Binnacle right side cheek
+  q('dash',
+    [dx - bw, bBotY, bRearZ],
+    [dx - bw, bBotY, bFrontZ],
+    [dx - bw, bTopY, bFrontZ],
+    [dx - bw, bTopY - 0.02, bRearZ]
+  );
+
+  // Gauge cluster face recessed inside the hooded binnacle (identical to HUD 400x300)
+  const vBL = [dx - gw, gh0, gz0];
+  const vBR = [dx + gw, gh0, gz0];
+  const vTR = [dx + gw, gh1, gz1];
+  const vTL = [dx - gw, gh1, gz1];
+  b.tri('gauge', vBL, vBR, vTR, [0, 0], [1, 0], [1, 1]);
+  b.tri('gauge', vBL, vTR, vTL, [0, 0], [1, 1], [0, 1]);
 
   const w3c = sc[8];
   const y3c = sc[7];
   const w3r = sr[8];
   for (const s of [1, -1]) {
-    q('pillar', [s * w3c, y3c, cowlZ], [s * (w3c - 0.11), y3c - 0.01, cowlZ - 0.04], [s * (w3r - 0.11), roofY - 0.03, roofZ - 0.04], [s * w3r, roofY, roofZ]);
-    q('panel', [s * halfIn, sc[3], cowlZ - 0.1], [s * halfIn, sc[3], eye.z - 0.9], [s * halfIn, beltY, eye.z - 0.9], [s * halfIn, beltY, cowlZ - 0.1]);
-    q('dash', [s * halfIn, beltY, cowlZ - 0.1], [s * halfIn, beltY, eye.z - 0.9], [s * (halfIn + 0.06), beltY + 0.01, eye.z - 0.9], [s * (halfIn + 0.06), beltY + 0.01, cowlZ - 0.1]);
+    // A-pillars
+    q('pillar',
+      [s * w3c, y3c, cowlZ],
+      [s * (w3c - 0.11), y3c - 0.01, cowlZ - 0.04],
+      [s * (w3r - 0.11), roofY - 0.03, roofZ - 0.04],
+      [s * w3r, roofY, roofZ]
+    );
+    // Seal pillar base to cowl and beltline
+    b.tri('pillar',
+      [s * w3c, y3c, cowlZ],
+      [s * halfIn, beltY, cowlZ - 0.06],
+      [s * (w3c - 0.11), y3c - 0.01, cowlZ - 0.04]
+    );
+    // Door panels
+    q('panel',
+      [s * halfIn, floorY, cowlZ - 0.04],
+      [s * halfIn, floorY, eye.z - 0.95],
+      [s * halfIn, beltY, eye.z - 0.95],
+      [s * halfIn, beltY, cowlZ - 0.04]
+    );
+    // Door sill / shoulder cap
+    q('dash',
+      [s * halfIn, beltY, cowlZ - 0.04],
+      [s * halfIn, beltY, eye.z - 0.95],
+      [s * (halfIn + 0.07), beltY + 0.01, eye.z - 0.95],
+      [s * (halfIn + 0.07), beltY + 0.01, cowlZ - 0.04]
+    );
   }
-  q('pillar', [-w3r, roofY, roofZ], [w3r, roofY, roofZ], [w3r - 0.02, roofY - 0.09, roofZ - 0.03], [-w3r + 0.02, roofY - 0.09, roofZ - 0.03]);
-  q('liner', [-w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ - 1.6], [-w3r, roofY - 0.02, roofZ - 1.6]);
+  // Windshield top header and roof liner
+  q('pillar',
+    [-w3r, roofY, roofZ],
+    [w3r, roofY, roofZ],
+    [w3r - 0.02, roofY - 0.09, roofZ - 0.03],
+    [-w3r + 0.02, roofY - 0.09, roofZ - 0.03]
+  );
+  q('liner',
+    [-w3r, roofY - 0.02, roofZ],
+    [w3r, roofY - 0.02, roofZ],
+    [w3r, roofY - 0.02, roofZ - 1.6],
+    [-w3r, roofY - 0.02, roofZ - 1.6]
+  );
+  // Rearview mirror
   b.box('dash', 0, roofY - 0.13, roofZ + 0.05, 0.24, 0.07, 0.03);
-  q('mirror', [-0.11, roofY - 0.16, roofZ + 0.03], [0.11, roofY - 0.16, roofZ + 0.03], [0.11, roofY - 0.1, roofZ + 0.03], [-0.11, roofY - 0.1, roofZ + 0.03]);
-  b.box('seat', -dx, beltY - 0.45, eye.z + 0.05, 0.5, 0.18, 0.5);
-  b.box('seat', -dx, beltY - 0.05, eye.z - 0.22, 0.5, 0.75, 0.12);
+  q('mirror',
+    [-0.11, roofY - 0.16, roofZ + 0.03],
+    [0.11, roofY - 0.16, roofZ + 0.03],
+    [0.11, roofY - 0.1, roofZ + 0.03],
+    [-0.11, roofY - 0.1, roofZ + 0.03]
+  );
+  // Passenger seat
+  b.box('seat', -dx, floorY + 0.14, eye.z + 0.05, 0.48, 0.22, 0.48);
+  b.box('seat', -dx, floorY + 0.52, eye.z - 0.22, 0.48, 0.65, 0.12);
 
   const o = { local: true };
+  const dbl = { side: THREE.DoubleSide };
   const mats = {
-    dash: psxLambert({ color: 0x232428, ...o }),
-    pillar: psxLambert({ color: 0x2e2f34, side: THREE.DoubleSide, ...o }),
-    panel: psxLambert({ color: 0x3c3631, ...o }),
-    liner: psxLambert({ color: 0x4a4844, ...o }),
-    mirror: psxBasic({ color: 0x101622 }),
-    seat: psxLambert({ color: 0x2a2624, ...o }),
-    gauge: psxBasic({ color: 0x0a0b0d }),
+    dash: psxLambert({ color: 0x222328, ...dbl, ...o }),
+    pillar: psxLambert({ color: 0x2a2b30, ...dbl, ...o }),
+    panel: psxLambert({ color: 0x302e2b, ...dbl, ...o }),
+    liner: psxLambert({ color: 0x3e3c38, ...dbl, ...o }),
+    floor: psxLambert({ color: 0x141518, ...dbl, ...o }),
+    mirror: psxBasic({ color: 0x101622, ...dbl }),
+    seat: psxLambert({ color: 0x24201e, ...dbl, ...o }),
+    gauge: psxBasic({ color: 0x0a0b0d, ...dbl }),
   };
   const shell = b.mesh(mats);
 
   const wheel = new THREE.Group();
-  wheel.position.set(dx, eye.y - 0.4, eye.z + 0.42);
+  wheel.position.set(dx, eye.y - 0.38, eye.z + 0.42);
   wheel.rotation.x = -0.38;
   const spin = new THREE.Group();
   wheel.add(spin);

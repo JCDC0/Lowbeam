@@ -108,3 +108,44 @@ test('a sharp crest at speed launches the car and it lands again', () => {
   assert.ok(flew, 'never left the ground');
   assert.equal(s.air, false);
 });
+
+test('manual transmission: no automatic upshift and limiter holds at redline', () => {
+  const spec = CARS[0];
+  const g = flat('asphalt');
+  const s = createVehicleState(spec);
+  placeVehicle(s, spec, 0, 0, 0, g);
+  
+  // Accelerate in 1st gear with manual mode
+  for (let i = 0; i < 120 * 4; i++) {
+    stepVehicle(s, spec, { throttle: 1, brake: 0, steer: 0, handbrake: 0, manual: true }, g, DT);
+  }
+  
+  // Must still be in 1st gear (no auto upshift)
+  assert.equal(s.gear, 1, 'manual mode auto-upshifted');
+  // RPM must be held near redline by limiter
+  assert.ok(s.rpm >= spec.engine.redline - 100, `RPM ${s.rpm} should be near redline ${spec.engine.redline}`);
+  assert.ok(s.limiter > 0 || s.rpm <= spec.engine.redline + 50, 'limiter did not engage');
+});
+
+test('manual transmission: over-rev downshift is refused', () => {
+  const spec = CARS[0];
+  const g = flat('asphalt');
+  const s = createVehicleState(spec);
+  placeVehicle(s, spec, 0, 0, 0, g);
+  
+  // Put car in gear 3 at high speed (40 m/s = 144 km/h)
+  s.gear = 3;
+  s.vz = 40;
+  s.speed = 40;
+  
+  // Attempt to downshift to gear 2 at 144 km/h (would exceed 8000 rpm)
+  stepVehicle(s, spec, { throttle: 0, brake: 0, steer: 0, handbrake: 0, manual: true, shiftDown: true }, g, DT);
+  assert.equal(s.gear, 3, 'over-rev downshift was not refused');
+  
+  // Slow down to a safe speed (15 m/s) and try downshifting
+  s.vz = 15;
+  s.speed = 15;
+  s.shiftTimer = 0;
+  stepVehicle(s, spec, { throttle: 0, brake: 0, steer: 0, handbrake: 0, manual: true, shiftDown: true }, g, DT);
+  assert.equal(s.gear, 2, 'safe downshift was refused');
+});

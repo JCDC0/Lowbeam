@@ -96,6 +96,153 @@ const SUBS = [180, 148, 116, 84].map((deg) => {
   return { x: TACH.x + Math.cos(t) * d, y: TACH.y - Math.sin(t) * d, r: 33 };
 });
 
+/**
+ * Renders the arcade gauge cluster onto any canvas context: one large round tachometer
+ * with an illuminated rpm arc, red zone, shift lights, sweeping needle, digital speed
+ * and gear in the lower gap, and four round sub-dials around it (FUEL, WATER, BOOST or VAC, EXH).
+ * Identically used for the 3rd person HUD and the cockpit binnacle texture.
+ * @param {CanvasRenderingContext2D} g
+ * @param {Gauges} gs
+ * @param {CarSpec} spec
+ * @param {number} t seconds, for blinking
+ * @param {number} [w]
+ * @param {number} [h]
+ */
+export function drawCluster(g, gs, spec, t, w = W, h = H) {
+  g.save();
+  if (w !== W || h !== H) {
+    g.scale(w / W, h / H);
+  }
+  const max = maxRpmOf(spec);
+  const red = spec.engine.redline;
+  const { x: cx, y: cy, r: R } = TACH;
+  const rpmA = (rpm) => T0 + TSWEEP * clamp(rpm / max, 0, 1);
+  const flash = Math.floor(t * 12) % 2 === 0;
+  g.clearRect(0, 0, W, H);
+
+  const fuelFrac = gs.fuel / gs.tank;
+  subDial(g, SUBS[0].x, SUBS[0].y, SUBS[0].r, fuelFrac, 'FUEL', `${gs.fuel.toFixed(0)}L`, fuelFrac < 0.15 && flash, 0.15, false);
+  const wf = (gs.water - WATER_MIN) / (WATER_MAX - WATER_MIN);
+  subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, wf, 'WATER', `${gs.water.toFixed(0)}°C`, gs.water > 110, 0.75);
+  if (gs.turbo) {
+    const top = spec.engine.turbo.boost;
+    const bf = (gs.boost - BOOST_MIN) / (top - BOOST_MIN);
+    const sign = gs.boost >= 0 ? '+' : '';
+    subDial(g, SUBS[2].x, SUBS[2].y, SUBS[2].r, bf, 'BOOST', `${sign}${gs.boost.toFixed(1)}`, gs.boost > top * 0.9, (top * 0.9 - BOOST_MIN) / (top - BOOST_MIN));
+  } else {
+    const vf = (gs.intake - INTAKE_MIN) / -INTAKE_MIN;
+    subDial(g, SUBS[2].x, SUBS[2].y, SUBS[2].r, vf, 'VAC', gs.intake.toFixed(2), false, 1.01);
+  }
+  const ef = (gs.exh - EXH_MIN) / (EXH_MAX - EXH_MIN);
+  subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(gs.exh)}°C`, gs.exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN));
+
+  const bg = g.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
+  bg.addColorStop(0, 'rgba(14, 18, 28, 0.9)');
+  bg.addColorStop(1, 'rgba(4, 6, 10, 0.92)');
+  g.fillStyle = bg;
+  g.beginPath();
+  g.arc(cx, cy, R, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = 'rgba(255, 180, 60, 0.55)';
+  g.lineWidth = 2;
+  g.stroke();
+  g.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+  g.lineWidth = 1;
+  g.beginPath();
+  g.arc(cx, cy, R - 5, 0, Math.PI * 2);
+  g.stroke();
+
+  g.lineWidth = 9;
+  g.strokeStyle = gs.limiter && flash ? '#ff8070' : 'rgba(255, 59, 47, 0.85)';
+  g.beginPath();
+  g.arc(cx, cy, R - 13, rpmA(red), T0 + TSWEEP);
+  g.stroke();
+  g.lineWidth = 3;
+  g.strokeStyle = 'rgba(255, 180, 60, 0.85)';
+  g.beginPath();
+  g.arc(cx, cy, R - 10, T0, rpmA(Math.min(gs.rpm, max)));
+  g.stroke();
+
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (let rpm = 0; rpm <= max; rpm += 250) {
+    const a = rpmA(rpm);
+    const major = rpm % 1000 === 0;
+    const half = rpm % 500 === 0;
+    const len = major ? 15 : half ? 9 : 5;
+    g.strokeStyle = rpm >= red ? RED : INK;
+    g.lineWidth = major ? 3 : half ? 2 : 1;
+    g.beginPath();
+    g.moveTo(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6));
+    g.lineTo(cx + Math.cos(a) * (R - 6 - len), cy + Math.sin(a) * (R - 6 - len));
+    g.stroke();
+    if (major) {
+      g.fillStyle = rpm >= red ? RED : INK;
+      g.font = `15px ${FONT}`;
+      g.fillText(String(rpm / 1000), cx + Math.cos(a) * (R - 34), cy + Math.sin(a) * (R - 34));
+    }
+  }
+  g.fillStyle = DIM;
+  g.font = `7px ${FONT}`;
+  g.fillText('x1000 r/min', cx, cy - R * 0.2);
+
+  const leds = 5;
+  const from = spec.engine.shiftUp * 0.8;
+  for (let i = 0; i < leds; i++) {
+    const on = gs.engineOn && (gs.shift ? flash : gs.rpm > from + ((spec.engine.shiftUp - from) * i) / leds);
+    const color = i < 2 ? '#3dff6a' : i < 4 ? AMBER : RED;
+    const x = cx + (i - (leds - 1) / 2) * 13;
+    const y = cy - R * 0.42;
+    g.fillStyle = on ? (gs.shift ? RED : color) : 'rgba(255, 255, 255, 0.08)';
+    g.shadowColor = g.fillStyle;
+    g.shadowBlur = on ? 8 : 0;
+    g.beginPath();
+    g.arc(x, y, 4, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.shadowBlur = 0;
+
+  const kmh = String(Math.round(gs.kmh));
+  g.fillStyle = INK;
+  g.font = `30px ${FONT}`;
+  g.fillText(kmh, cx, cy + R * 0.62);
+  g.fillStyle = DIM;
+  g.font = `8px ${FONT}`;
+  g.fillText('KM/H', cx, cy + R * 0.87);
+  g.strokeStyle = 'rgba(255, 180, 60, 0.6)';
+  g.lineWidth = 1.5;
+  g.strokeRect(cx + R * 0.18, cy + R * 0.02, 30, 32);
+  g.fillStyle = gs.gear === 'R' ? RED : AMBER;
+  g.font = `22px ${FONT}`;
+  g.fillText(gs.gear, cx + R * 0.18 + 15, cy + R * 0.02 + 17);
+
+  const a = rpmA(gs.rpm);
+  g.strokeStyle = '#fff4e0';
+  g.shadowColor = AMBER;
+  g.shadowBlur = 10;
+  g.lineWidth = 3.5;
+  g.beginPath();
+  g.moveTo(cx - Math.cos(a) * 14, cy - Math.sin(a) * 14);
+  g.lineTo(cx + Math.cos(a) * (R - 12), cy + Math.sin(a) * (R - 12));
+  g.stroke();
+  g.shadowBlur = 0;
+  g.fillStyle = '#20242c';
+  g.beginPath();
+  g.arc(cx, cy, 8, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = AMBER;
+  g.lineWidth = 1.5;
+  g.stroke();
+
+  if (!gs.engineOn) {
+    g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.4)';
+    g.font = `10px ${FONT}`;
+    g.fillText('ENGINE OFF', cx, cy - R * 0.62);
+  }
+
+  g.restore();
+}
+
 export class Cluster {
   /** @param {HTMLElement} parent @param {CarSpec} spec */
   constructor(parent, spec) {
@@ -125,208 +272,6 @@ export class Cluster {
   /** @param {Gauges} gs @param {number} dt */
   draw(gs, dt) {
     this.t += dt;
-    const g = this.g;
-    const spec = this.spec;
-    const { x: cx, y: cy, r: R } = TACH;
-    const max = this.maxRpm;
-    const red = spec.engine.redline;
-    const rpmA = (rpm) => T0 + TSWEEP * clamp(rpm / max, 0, 1);
-    const flash = Math.floor(this.t * 12) % 2 === 0;
-    g.clearRect(0, 0, W, H);
-
-    const fuelFrac = gs.fuel / gs.tank;
-    subDial(g, SUBS[0].x, SUBS[0].y, SUBS[0].r, fuelFrac, 'FUEL', `${gs.fuel.toFixed(0)}L`, fuelFrac < 0.15 && flash, 0.15, false);
-    const wf = (gs.water - WATER_MIN) / (WATER_MAX - WATER_MIN);
-    subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, wf, 'WATER', `${gs.water.toFixed(0)}°C`, gs.water > 110, 0.75);
-    if (gs.turbo) {
-      const top = spec.engine.turbo.boost;
-      const bf = (gs.boost - BOOST_MIN) / (top - BOOST_MIN);
-      const sign = gs.boost >= 0 ? '+' : '';
-      subDial(g, SUBS[2].x, SUBS[2].y, SUBS[2].r, bf, 'BOOST', `${sign}${gs.boost.toFixed(1)}`, gs.boost > top * 0.9, (top * 0.9 - BOOST_MIN) / (top - BOOST_MIN));
-    } else {
-      const vf = (gs.intake - INTAKE_MIN) / -INTAKE_MIN;
-      subDial(g, SUBS[2].x, SUBS[2].y, SUBS[2].r, vf, 'VAC', gs.intake.toFixed(2), false, 1.01);
-    }
-    const ef = (gs.exh - EXH_MIN) / (EXH_MAX - EXH_MIN);
-    subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(gs.exh)}°C`, gs.exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN));
-
-    const bg = g.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
-    bg.addColorStop(0, 'rgba(14, 18, 28, 0.9)');
-    bg.addColorStop(1, 'rgba(4, 6, 10, 0.92)');
-    g.fillStyle = bg;
-    g.beginPath();
-    g.arc(cx, cy, R, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = 'rgba(255, 180, 60, 0.55)';
-    g.lineWidth = 2;
-    g.stroke();
-    g.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-    g.lineWidth = 1;
-    g.beginPath();
-    g.arc(cx, cy, R - 5, 0, Math.PI * 2);
-    g.stroke();
-
-    g.lineWidth = 9;
-    g.strokeStyle = gs.limiter && flash ? '#ff8070' : 'rgba(255, 59, 47, 0.85)';
-    g.beginPath();
-    g.arc(cx, cy, R - 13, rpmA(red), T0 + TSWEEP);
-    g.stroke();
-    g.lineWidth = 3;
-    g.strokeStyle = 'rgba(255, 180, 60, 0.85)';
-    g.beginPath();
-    g.arc(cx, cy, R - 10, T0, rpmA(Math.min(gs.rpm, max)));
-    g.stroke();
-
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    for (let rpm = 0; rpm <= max; rpm += 250) {
-      const a = rpmA(rpm);
-      const major = rpm % 1000 === 0;
-      const half = rpm % 500 === 0;
-      const len = major ? 15 : half ? 9 : 5;
-      g.strokeStyle = rpm >= red ? RED : INK;
-      g.lineWidth = major ? 3 : half ? 2 : 1;
-      g.beginPath();
-      g.moveTo(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6));
-      g.lineTo(cx + Math.cos(a) * (R - 6 - len), cy + Math.sin(a) * (R - 6 - len));
-      g.stroke();
-      if (major) {
-        g.fillStyle = rpm >= red ? RED : INK;
-        g.font = `15px ${FONT}`;
-        g.fillText(String(rpm / 1000), cx + Math.cos(a) * (R - 34), cy + Math.sin(a) * (R - 34));
-      }
-    }
-    g.fillStyle = DIM;
-    g.font = `7px ${FONT}`;
-    g.fillText('x1000 r/min', cx, cy - R * 0.2);
-
-    const leds = 5;
-    const from = spec.engine.shiftUp * 0.8;
-    for (let i = 0; i < leds; i++) {
-      const on = gs.engineOn && (gs.shift ? flash : gs.rpm > from + ((spec.engine.shiftUp - from) * i) / leds);
-      const color = i < 2 ? '#3dff6a' : i < 4 ? AMBER : RED;
-      const x = cx + (i - (leds - 1) / 2) * 13;
-      const y = cy - R * 0.42;
-      g.fillStyle = on ? (gs.shift ? RED : color) : 'rgba(255, 255, 255, 0.08)';
-      g.shadowColor = g.fillStyle;
-      g.shadowBlur = on ? 8 : 0;
-      g.beginPath();
-      g.arc(x, y, 4, 0, Math.PI * 2);
-      g.fill();
-    }
-    g.shadowBlur = 0;
-
-    const kmh = String(Math.round(gs.kmh));
-    g.fillStyle = INK;
-    g.font = `30px ${FONT}`;
-    g.fillText(kmh, cx, cy + R * 0.62);
-    g.fillStyle = DIM;
-    g.font = `8px ${FONT}`;
-    g.fillText('KM/H', cx, cy + R * 0.87);
-    g.strokeStyle = 'rgba(255, 180, 60, 0.6)';
-    g.lineWidth = 1.5;
-    g.strokeRect(cx + R * 0.18, cy + R * 0.02, 30, 32);
-    g.fillStyle = gs.gear === 'R' ? RED : AMBER;
-    g.font = `22px ${FONT}`;
-    g.fillText(gs.gear, cx + R * 0.18 + 15, cy + R * 0.02 + 17);
-
-    const a = rpmA(gs.rpm);
-    g.strokeStyle = '#fff4e0';
-    g.shadowColor = AMBER;
-    g.shadowBlur = 10;
-    g.lineWidth = 3.5;
-    g.beginPath();
-    g.moveTo(cx - Math.cos(a) * 14, cy - Math.sin(a) * 14);
-    g.lineTo(cx + Math.cos(a) * (R - 12), cy + Math.sin(a) * (R - 12));
-    g.stroke();
-    g.shadowBlur = 0;
-    g.fillStyle = '#20242c';
-    g.beginPath();
-    g.arc(cx, cy, 8, 0, Math.PI * 2);
-    g.fill();
-    g.strokeStyle = AMBER;
-    g.lineWidth = 1.5;
-    g.stroke();
-
-    if (!gs.engineOn) {
-      g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.4)';
-      g.font = `10px ${FONT}`;
-      g.fillText('ENGINE OFF', cx, cy - R * 0.62);
-    }
+    drawCluster(this.g, gs, this.spec, this.t, W, H);
   }
-}
-
-/**
- * The cockpit binnacle: tach on the left, speed and gear in the middle, four bar
- * gauges on the right. Same readings as the HUD cluster.
- * @param {CanvasRenderingContext2D} g @param {number} w @param {number} h
- * @param {Gauges} gs @param {CarSpec} spec @param {number} t seconds, for blinking
- */
-export function drawDash(g, w, h, gs, spec, t) {
-  const max = maxRpmOf(spec);
-  const red = spec.engine.redline;
-  g.fillStyle = '#05070b';
-  g.fillRect(0, 0, w, h);
-  const cx = h * 0.55;
-  const cy = h * 0.55;
-  const R = h * 0.46;
-  const rpmA = (rpm) => T0 + TSWEEP * clamp(rpm / max, 0, 1);
-  g.lineWidth = 4;
-  g.strokeStyle = 'rgba(255, 59, 47, 0.9)';
-  g.beginPath();
-  g.arc(cx, cy, R - 4, rpmA(red), T0 + TSWEEP);
-  g.stroke();
-  g.strokeStyle = '#cfd6e0';
-  for (let rpm = 0; rpm <= max; rpm += 1000) {
-    const a = rpmA(rpm);
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(cx + Math.cos(a) * (R - 2), cy + Math.sin(a) * (R - 2));
-    g.lineTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10));
-    g.stroke();
-  }
-  const a = rpmA(gs.rpm);
-  g.strokeStyle = AMBER;
-  g.lineWidth = 3;
-  g.beginPath();
-  g.moveTo(cx, cy);
-  g.lineTo(cx + Math.cos(a) * (R - 6), cy + Math.sin(a) * (R - 6));
-  g.stroke();
-  if (gs.shift && Math.floor(t * 12) % 2 === 0) {
-    g.fillStyle = RED;
-    g.beginPath();
-    g.arc(cx, cy - R * 0.45, 5, 0, Math.PI * 2);
-    g.fill();
-  }
-
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  const mx = w * 0.5;
-  g.fillStyle = INK;
-  g.font = `${Math.round(h * 0.36)}px ${FONT}`;
-  g.fillText(String(Math.round(gs.kmh)), mx, h * 0.42);
-  g.fillStyle = gs.gear === 'R' ? RED : AMBER;
-  g.font = `${Math.round(h * 0.26)}px ${FONT}`;
-  g.fillText(gs.gear, mx, h * 0.8);
-
-  const bars = [
-    ['F', gs.fuel / gs.tank, gs.fuel / gs.tank < 0.15],
-    ['W', (gs.water - WATER_MIN) / (WATER_MAX - WATER_MIN), gs.water > 110],
-    gs.turbo ? ['B', (gs.boost - BOOST_MIN) / (spec.engine.turbo.boost - BOOST_MIN), false] : ['V', (gs.intake - INTAKE_MIN) / -INTAKE_MIN, false],
-    ['E', (gs.exh - EXH_MIN) / (EXH_MAX - EXH_MIN), gs.exh > 820],
-  ];
-  const bx = w * 0.7;
-  const bw = w * 0.26;
-  const bh = h * 0.13;
-  bars.forEach(([label, f, warn], i) => {
-    const y = h * 0.12 + i * h * 0.22;
-    g.fillStyle = DIM;
-    g.font = `${Math.round(h * 0.13)}px ${FONT}`;
-    g.textAlign = 'left';
-    g.fillText(String(label), bx - h * 0.16, y + bh / 2);
-    g.fillStyle = 'rgba(255, 255, 255, 0.1)';
-    g.fillRect(bx, y, bw, bh);
-    g.fillStyle = warn ? RED : AMBER;
-    g.fillRect(bx, y, bw * clamp(Number(f), 0, 1), bh);
-  });
 }

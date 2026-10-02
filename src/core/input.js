@@ -5,6 +5,7 @@
  */
 
 import { approach } from './mathx.js';
+import { store } from './store.js';
 
 /** Keyboard codes for each action. */
 const KEYS = {
@@ -18,6 +19,8 @@ const KEYS = {
   camera: ['KeyC'],
   reset: ['KeyR'],
   interact: ['KeyE'],
+  shiftUp: ['ShiftLeft', 'ShiftRight', 'KeyE'],
+  shiftDown: ['ControlLeft', 'ControlRight', 'KeyQ'],
 };
 
 /** Standard gamepad buttons for each action. */
@@ -32,6 +35,8 @@ const PAD = {
   camera: [3],
   reset: [8],
   interact: [1],
+  shiftUp: [5],
+  shiftDown: [4],
 };
 
 /**
@@ -114,6 +119,7 @@ export class Input {
    * Driving axes for this frame. Throttle and brake are 0 to 1, steer is -1 (left) to 1
    * (right), handbrake 0 or 1.
    * @param {number} dt
+   * @returns {import('../vehicles/physics.js').DriveInput}
    */
   drive(dt) {
     const k = (...codes) => codes.some((c) => this.down.has(c));
@@ -138,7 +144,10 @@ export class Input {
       if (Math.abs(curved) > Math.abs(steer)) steer = curved;
       if (v(0) > 0.5 || v(2) > 0.5) handbrake = 1;
     }
-    return { throttle, brake, steer, handbrake };
+    const manual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
+    const shiftUp = this.pressed('shiftUp');
+    const shiftDown = this.pressed('shiftDown');
+    return { throttle, brake, steer, handbrake, shiftUp, shiftDown, manual };
   }
 
   /** True on the frame this key code went down. @param {string} code */

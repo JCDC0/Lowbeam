@@ -9,7 +9,7 @@ import { createStage } from './render/stage.js';
 import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
-import { loadingScreen, pauseScreen, titleScreen, toaster } from './ui/menus.js';
+import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
@@ -32,11 +32,16 @@ for (const type of ['keydown', 'pointerdown']) {
   });
 }
 const title = titleScreen(ui, version);
+const menu = mainMenuScreen(ui);
+const settings = settingsScreen(ui);
+const controls = controlsScreen(ui);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
 const hud = new Hud(ui);
 const pause = pauseScreen(ui);
 const toast = toaster(ui);
+/** @type {'menu' | 'pause'} */
+let prevSettingsState = 'menu';
 
 /** @type {World | null} */
 let world = null;
@@ -44,7 +49,7 @@ let world = null;
 let drive = null;
 const fly = { x: 0, y: 30, z: 0, yaw: 0, pitch: -0.2 };
 
-/** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} State */
+/** @typedef {'title' | 'menu' | 'garage' | 'loading' | 'drive' | 'pause' | 'settings' | 'controls' | 'free'} State */
 /** @type {State} */
 let state = 'title';
 
@@ -52,11 +57,16 @@ let state = 'title';
 function setState(next) {
   state = next;
   title.show(state === 'title');
+  menu.show(state === 'menu');
   garage.show(state === 'garage');
+  settings.show(state === 'settings');
+  controls.show(state === 'controls');
   loading.show(state === 'loading');
   hud.show(state === 'drive' || state === 'pause');
   pause.show(state === 'pause');
-  audio.setMode(state);
+  if (state === 'menu') menu.refresh(garage.spec);
+  const audioMode = state === 'menu' || state === 'controls' ? 'title' : (state === 'settings' ? (prevSettingsState === 'pause' ? 'pause' : 'title') : state);
+  audio.setMode(/** @type {import('./audio/audio.js').Mode} */ (audioMode));
   if (state === 'garage') garageSound();
 }
 
@@ -123,13 +133,40 @@ function frame(now) {
   input.poll();
   if (state === 'title') {
     garage.update(dt, null);
-    if (input.pressed('confirm')) setState('garage');
+    if (input.pressed('confirm')) {
+      audio.ui('select');
+      setState('menu');
+    }
+    garage.render(stage);
+  } else if (state === 'menu') {
+    garage.update(dt, null);
+    const ev = menu.update(input);
+    if (ev === 'drive') enterWorld();
+    else if (ev === 'garage') setState('garage');
+    else if (ev === 'settings') {
+      prevSettingsState = 'menu';
+      setState('settings');
+    } else if (ev === 'controls') setState('controls');
+    else if (ev === 'title') setState('title');
     garage.render(stage);
   } else if (state === 'garage') {
     const ev = garage.update(dt, input);
     garageSound();
-    if (ev === 'back') setState('title');
+    if (ev === 'back') setState('menu');
     else if (ev === 'drive') enterWorld();
+    garage.render(stage);
+  } else if (state === 'settings') {
+    const ev = settings.update(input);
+    if (ev === 'back') setState(prevSettingsState);
+    if (prevSettingsState === 'pause' && drive) drive.render();
+    else {
+      garage.update(dt, null);
+      garage.render(stage);
+    }
+  } else if (state === 'controls') {
+    const ev = controls.update(input);
+    if (ev === 'back') setState('menu');
+    garage.update(dt, null);
     garage.render(stage);
   } else if (state === 'drive') {
     if (drive.update(dt) === 'pause') setState('pause');
@@ -137,7 +174,12 @@ function frame(now) {
   } else if (state === 'pause') {
     const pick = pause.update(input);
     if (pick === 'resume') setState('drive');
+    else if (pick === 'settings') {
+      prevSettingsState = 'pause';
+      setState('settings');
+    }
     else if (pick === 'garage') setState('garage');
+    else if (pick === 'menu') setState('menu');
     else if (pick === 'title') setState('title');
     drive.render();
   } else if (state === 'free' && world) {
@@ -158,6 +200,9 @@ window.__lowbeam = {
   stage,
   input,
   garage,
+  menu,
+  settings,
+  controls,
   get world() {
     return world;
   },

@@ -14,7 +14,7 @@ import { ECONOMY, LAKE, TOWN, WATER_LEVEL } from './world/layout.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
-import { Cluster, drawDash } from './ui/cluster.js';
+import { Cluster, drawCluster } from './ui/cluster.js';
 import { canvasTexture, makeCanvas } from './render/textures.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
@@ -51,7 +51,7 @@ export class Drive {
     this.cluster = null;
     /** @type {ReturnType<typeof createGauges> | null} */
     this.gauges = null;
-    this.dashCanvas = makeCanvas(256, 96);
+    this.dashCanvas = makeCanvas(420, 300);
     this.dashCtx = /** @type {CanvasRenderingContext2D} */ (this.dashCanvas.getContext('2d'));
     this.dashTex = canvasTexture(this.dashCanvas);
     this.time = 0;
@@ -170,7 +170,7 @@ export class Drive {
         this.fueled += liters;
         if (s.fuel > 0) s.engineOn = true;
         // Zero input, not the brake: holding the brake at rest selects reverse.
-        drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0 };
+        drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false, manual: drive.manual };
         refueling = true;
         prompt = `REFUELING  ${this.fueled.toFixed(1)} L  ¥${Math.round(this.fueled * ECONOMY.fuelPrice).toLocaleString('en-US')}`;
       } else {
@@ -215,7 +215,7 @@ export class Drive {
     const cockpit = this.rig.view === 'cockpit';
     this.cluster.show(!cockpit);
     if (cockpit) {
-      drawDash(this.dashCtx, this.dashCanvas.width, this.dashCanvas.height, this.gauges, spec, this.time);
+      drawCluster(this.dashCtx, this.gauges, spec, this.time, this.dashCanvas.width, this.dashCanvas.height);
       this.dashTex.needsUpdate = true;
     } else this.cluster.draw(this.gauges, dt);
 

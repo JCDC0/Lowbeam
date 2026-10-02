@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.1.9 (2026-10-02)
+
+Cockpit overhaul, manual transmission, arcade main menu and settings.
+
+- Cockpit interior fixes: exterior materials and cabin panels set to DoubleSide
+  so the hood and pillars are solid from the driver's POV rather than backface-culled.
+  Sealed dash-to-windshield gap by extending the dash to the cowl line, and added cabin
+  firewall and floor pan to eliminate ground light leaks.
+- Unified gauge cluster: refactored Cluster.draw in src/ui/cluster.js into shared
+  drawCluster function used by both the 3rd person HUD and the cockpit binnacle texture
+  (420 by 300), deleting the separate drawDash. The hooded binnacle is raised on top
+  of the dashboard with full visibility of the round tachometer, sweeping needle,
+  shift indicator LEDs, speedometer, gear readout box, and satellite dials.
+- Sequential manual transmission: added manual gearbox mode with sequential shifting
+  (shiftUp, shiftDown). Supports keyboard (Shift/Ctrl and E/Q) and gamepad bumpers (RB/LB).
+  Engine rev limiter cuts ignition and bounces at redline without automatic upshifting.
+  Over-rev downshifts that exceed engine redline are electronically refused.
+- Ace Combat and Japanese arcade styled menus:
+  - mainMenuScreen with tactical wireframe framing, telemetry readout card, and sound chirps.
+  - settingsScreen with transmission toggle (Auto vs Manual) and audio controls for all
+    five channels (Master, Engine, Effects, Ambience, Music) with volume steps and mutes,
+    bound to the audio DSP API and persisted to localStorage.
+  - controlsScreen briefing with keyboard and gamepad bindings.
+  - Updated pauseScreen with access to settings and main menu.
+- Tests: 47 passing (including manual shift hold at redline and over-rev rejection).
+
 ## 0.1.8 (2026-10-02)
 
 Music.
