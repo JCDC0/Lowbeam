@@ -355,7 +355,7 @@ export class Drive {
       this.rig.bump(crash);
       audio.impact(crash);
     }
-    this.trafficView.update(this.traffic.agents);
+    this.trafficView.update(this.traffic.agents, this.car.state);
     const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
     if (gate) {
       const paid = Math.min(this.money, gate.fee);

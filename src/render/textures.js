@@ -141,6 +141,24 @@ export function plateTexture(text, wide = false, bg = '#e8e6d8', ink = '#1d3a24'
   });
 }
 
+/** A lamp flare: a hot core and a soft halo, in the red channel (psxFlare tints it). */
+export function flareTexture() {
+  return cached('flare', () => {
+    const c = makeCanvas(32, 32);
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    grad.addColorStop(0, 'rgb(255,0,0)');
+    grad.addColorStop(0.22, 'rgb(240,0,0)');
+    grad.addColorStop(0.45, 'rgb(80,0,0)');
+    grad.addColorStop(1, 'rgb(0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 32, 32);
+    const t = canvasTexture(c);
+    t.magFilter = THREE.LinearFilter;
+    return t;
+  });
+}
+
 /** Soft dark ellipse for the blob shadow under a car. */
 export function shadowTexture() {
   return cached('shadow', () => {

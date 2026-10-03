@@ -144,7 +144,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.5.1)
+## Current state (0.5.2)
 
 Done and tested:
 
@@ -476,7 +476,12 @@ Done and tested:
   pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
   friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
-  Agents are drawn by `TrafficRenderer`, one InstancedMesh per kind. Since 0.4.7 every kind
+  Agents are drawn by `TrafficRenderer`, one InstancedMesh per kind. Since 0.5.2 their lamps
+  light up: every car within 420 m of the player gets four additive flares (`psxFlare` in psx.js,
+  one draw call for all), white at the head lamps and red at the tail lamps, brighter and bigger
+  when braking, placed from the body's own `lamp` vertices and shrinking to a dot when seen from
+  the side; the 16 nearest cars throw a headlight beam (42 m, a cone of about 30 degrees aimed a
+  little down) onto the world through the pool shader (`uBeamPos`, `uBeamDir`). Since 0.4.7 every kind
   is a lofted body (`vehicles/bodies/civilians.js`), 1,500 to 3,300 triangles: the trucks,
   tanker and semi are a lofted cab with a cargo box or tank and extra axles (`axles`), the
   cargo in a fixed color (`accent`) so only the cab takes the paint.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.2 (2026-10-04)
+
+Traffic drives with its lights on.
+
+- `src/traffic/render.js`: every car within 420 m of the player gets four flares, white at the
+  head lamps and red at the tail lamps (brighter and bigger when braking), found from the body's
+  `lamp` vertices (`lampSpots`), one instanced draw call for all of them. The 16 cars nearest the
+  player throw a headlight beam onto the road, walls and buildings. `update(agents, focus)` takes
+  the player; `drive.js` passes it.
+- `src/render/psx.js`: `psxFlare`, an additive camera-facing quad that flares toward where the
+  lamp faces and fades with the fog; the pool shader adds the beams (`BEAMS` 16, `uBeamPos`,
+  `uBeamDir`), banded like the lamp pools.
+- `src/render/textures.js`: `flareTexture`.
+
 ## 0.5.1 (2026-10-04)
 
 Street lamps throw real pools of light, and every lamp has two arms.
