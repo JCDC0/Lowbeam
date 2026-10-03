@@ -292,24 +292,29 @@ Done and tested:
 - HUD: area name (fades), money, prompts, the minimap (rotates with the car, zooms
   out with speed, north marker, station and rally start icons) and the gauge cluster.
 - Gauge cluster (`src/ui/cluster.js`, bottom right, canvas, Michroma): a round tach
-  sweeping 240 degrees with a red zone from the redline, a lit arc behind the needle,
-  five shift lights that fill toward the upshift point and flash at it, a flashing
-  red zone on the limiter, digital speed and a gear box in the open bottom of the
-  dial, and four small dials around it: FUEL (liters, red under 15 %), WATER (80 to
-  120 C, red over 110), BOOST on the Hayate (-0.7 to +1.2 bar) or VAC on the other
-  two (-0.8 to 0 bar), EXH (300 to 900 C, red over 820). The values come from
-  `src/vehicles/gauges.js` (pure), stepped once per frame from the physics state:
+  sweeping 240 degrees with scale running to 11 (11,000 rpm) for every car, a normal red
+  band from the car's redline, a darker danger band from redline+1000 to 11, a lit arc behind
+  the needle, five shift lights that fill toward the upshift point and flash at it, a flashing
+  red zone on the limiter, digital speed and a gear box (handling R, N, and gears 1..7) in the open
+  bottom of the dial, and four small dials around it: FUEL (liters, red under 15 %), TEMP (80 to
+  120 C, red over 110, HOT lamp from 115 C), BOOST on the Hayate (-0.7 to +1.2 bar) or VAC on the other
+  two (-0.8 to 0 bar), EXH (300 to 900 C, red over 820). Warning lamps include CHECK ENGINE (flashing
+  when blown), DMG (steady when damage > 0.3), OVERREV (flashing when overrev > 0), and ENGINE OFF.
+  The values come from `src/vehicles/gauges.js` (pure), stepped once per frame from the physics state:
   temperature and exhaust come from the physics (`thermal.js`), boost spools
   above `engine.turbo.spoolRpm` with `engine.turbo.lag` and dumps on shifts, vacuum
   follows the throttle, exhaust follows load and rpm. Only the Hayate spec has a
-  `turbo` block. In the cockpit view the HUD cluster hides and the same `drawCluster`
-  function paints the identical readings onto the binnacle texture (420 by 300),
-  updated every frame.
+  `turbo` block. `drawCluster` applies uniform aspect ratio scaling (`Math.min(w/W, h/H)`).
+  In the cockpit view the HUD cluster hides and the same `drawCluster` function paints a bold
+  cockpit layout onto the binnacle texture (400 by 300, 4:3), updated every frame with fat needle
+  (lineWidth: 7), bold glyphs (>= 22px), ticks only every 1000 rpm, bold speed (50px), and enlarged gear box (34px).
 - Cockpit interior fixes: exterior materials and cabin panels use `DoubleSide` so
   the hood and pillars are solid from the driver's POV. Dash gap to the windshield
   is closed, and cabin firewall and floor pan prevent light leaks. The hooded binnacle
-  sits clean on top of the dash with full visibility of the round dials, needle,
-  shift LEDs, speed, and gear box.
+  rises at most 4 cm above the dash top (`bTopY = beltY + 0.04`), opening the forward sightline.
+  The gauge face sits low (`gh0 = beltY - 0.19`) and tilted toward the eye, clearly framed
+  through the steering wheel. Gauge quad u coordinates are non-mirrored (u=0 driver's left,
+  u=1 driver's right). Rearview mirror is compact (14 by 3.5 cm) tucked high against the roof header.
 - Ace Combat and Japanese arcade styled menus:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
   `settingsScreen` (Auto vs Manual transmission toggle, Master, Engine, Effects,

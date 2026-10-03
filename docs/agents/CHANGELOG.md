@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.4 (2026-10-03)
+
+Dashboard repair, bold 240p cockpit cluster, and gauge contract implementation.
+
+- Mirrored gauge fix: corrected gauge quad texture mapping in `src/vehicles/models.js` so
+  driver's left (+X) maps to u=0 and driver's right (-X) maps to u=1. Verified with a test
+  canvas showing un-mirrored text with red on driver's left and blue on driver's right.
+- Sightline clearing: lowered binnacle hood to rise at most 4 cm above dash top (`beltY + 0.04`),
+  recessed face low (`beltY - 0.19`) and tilted toward eye, framed cleanly through the steering wheel.
+- Compact rearview mirror (14 by 3.5 cm) tucked high against roof header out of forward sightline.
+- Cabin sealing: sealed binnacle side cheeks, dash front face, firewall, and floor pan with DoubleSide
+  materials and zero see-through gaps.
+- 240p bold cockpit layout: `drawCluster` in `src/ui/cluster.js` supports high-contrast interior layout
+  with fat needle (`lineWidth: 7`), bold numerals (>= 22px), tick marks only every 1000 rpm, bold
+  speed digits (50px), and enlarged gear box (34px). Fixed aspect ratio scaling to uniformly preserve
+  circle geometry (`Math.min(w/W, h/H)`).
+- Gauge contract: WATER dial renamed to TEMP (red over 110 C, HOT lamp from 115 C). Tachometer scale runs
+  to 11,000 rpm for all cars with normal red band and darker danger band. Added warning lamps: CHECK ENGINE
+  (flashing when blown), DMG (steady when damage > 0.3), OVERREV (flashing when overrev > 0). Gear box displays
+  R, N, and forward gears 1..7.
+- Tests: added pure unit tests in `tests/cluster.test.mjs` verifying gauge contract, tach scale, and HUD/cockpit layouts.
+
 ## 0.2.3 (2026-10-03)
 
 Aero grip and the car camera.

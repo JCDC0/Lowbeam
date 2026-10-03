@@ -592,20 +592,92 @@ export function buildCockpit(model) {
     else b.quad(key, a, e, d, c, uv);
   };
 
-  // Main dashboard top: seamlessly reaches forward to the cowl/windshield base
+  // Recessed binnacle hood over driver instrument cluster (4:3 aspect ratio, 30x22.5 cm)
+  const gw = 0.15;
+  const bTopY = beltY + 0.04;
+  const gh1 = beltY + 0.035;
+  const gh0 = beltY - 0.19;
+  const gz0 = dashBack + 0.06;
+  const gz1 = dashBack + 0.01;
+  const bRearZ = dashBack - 0.04;
+  const bFwdZ = dashBack + 0.14;
+
+  const x0 = dx - gw;
+  const x1 = dx + gw;
+
+  // Dashboard top (with cutout for driver binnacle):
+  // 1. From -halfIn to x0
   q('dash',
     [-halfIn, beltY, dashBack],
-    [halfIn, beltY, dashBack],
-    [halfIn, cowlY, cowlZ + 0.02],
+    [x0, beltY, dashBack],
+    [x0, cowlY, cowlZ + 0.02],
     [-halfIn, cowlY, cowlZ + 0.02]
   );
-  // Dashboard vertical front face
+  // 2. From x1 to +halfIn
   q('dash',
-    [halfIn, beltY - 0.38, dashBack],
+    [x1, beltY, dashBack],
+    [halfIn, beltY, dashBack],
+    [halfIn, cowlY, cowlZ + 0.02],
+    [x1, cowlY, cowlZ + 0.02]
+  );
+  // 3. Between x0 and x1, forward of binnacle to the cowl
+  q('dash',
+    [x0, beltY, bFwdZ],
+    [x1, beltY, bFwdZ],
+    [x1, cowlY, cowlZ + 0.02],
+    [x0, cowlY, cowlZ + 0.02]
+  );
+
+  // Binnacle hood: rises at most 4 cm above dash top
+  q('dash',
+    [x0, bTopY, bRearZ],
+    [x1, bTopY, bRearZ],
+    [x1, bTopY, bFwdZ],
+    [x0, bTopY, bFwdZ]
+  );
+  // Binnacle hood front slope sealing down to dash top at bFwdZ
+  q('dash',
+    [x0, bTopY, bFwdZ],
+    [x1, bTopY, bFwdZ],
+    [x1, beltY, bFwdZ],
+    [x0, beltY, bFwdZ]
+  );
+  // Binnacle side cheeks (sealing hood down to dash top and gauge face)
+  q('dash',
+    [x1, gh0, gz0],
+    [x1, beltY, bFwdZ],
+    [x1, bTopY, bFwdZ],
+    [x1, bTopY, bRearZ]
+  );
+  q('dash',
+    [x0, beltY, bFwdZ],
+    [x0, gh0, gz0],
+    [x0, bTopY, bRearZ],
+    [x0, bTopY, bFwdZ]
+  );
+
+  // Dashboard vertical front face:
+  // Non-driver sections
+  q('dash',
+    [x0, beltY - 0.38, dashBack],
     [-halfIn, beltY - 0.38, dashBack],
     [-halfIn, beltY, dashBack],
+    [x0, beltY, dashBack]
+  );
+  q('dash',
+    [halfIn, beltY - 0.38, dashBack],
+    [x1, beltY - 0.38, dashBack],
+    [x1, beltY, dashBack],
     [halfIn, beltY, dashBack]
   );
+  // Under the gauge cluster: vertical face drops from gh0 down to beltY - 0.38
+  q('dash',
+    [x1, beltY - 0.38, dashBack],
+    [x0, beltY - 0.38, dashBack],
+    [x0, gh0, gz0],
+    [x1, gh0, gz0]
+  );
+
   // Dashboard firewall/bulkhead: drops to floor so light cannot leak from under
   q('floor',
     [halfIn, floorY, cowlZ + 0.02],
@@ -624,46 +696,14 @@ export function buildCockpit(model) {
   // Center console
   b.box('dash', 0, beltY - 0.32, dashBack - 0.28, 0.28, 0.22, 0.65);
 
-  // Recessed binnacle hood over driver instrument cluster (420:300 cluster aspect)
-  const gw = 0.175;
-  const gh0 = beltY + 0.01;
-  const gh1 = beltY + 0.26;
-  const gz0 = dashBack + 0.02;
-  const gz1 = dashBack + 0.045;
-
-  const bw = 0.195;
-  const bTopY = beltY + 0.28;
-  const bBotY = beltY;
-  const bFrontZ = dashBack - 0.08;
-  const bRearZ = dashBack + 0.14;
-
-  // Binnacle top cowl
-  q('dash',
-    [dx - bw, bTopY, bFrontZ],
-    [dx + bw, bTopY, bFrontZ],
-    [dx + bw, bTopY - 0.02, bRearZ],
-    [dx - bw, bTopY - 0.02, bRearZ]
-  );
-  // Binnacle left side cheek
-  q('dash',
-    [dx + bw, bBotY, bFrontZ],
-    [dx + bw, bBotY, bRearZ],
-    [dx + bw, bTopY - 0.02, bRearZ],
-    [dx + bw, bTopY, bFrontZ]
-  );
-  // Binnacle right side cheek
-  q('dash',
-    [dx - bw, bBotY, bRearZ],
-    [dx - bw, bBotY, bFrontZ],
-    [dx - bw, bTopY, bFrontZ],
-    [dx - bw, bTopY - 0.02, bRearZ]
-  );
-
-  // Gauge cluster face recessed inside the hooded binnacle (identical to HUD 400x300)
-  const vBL = [dx - gw, gh0, gz0];
-  const vBR = [dx + gw, gh0, gz0];
-  const vTR = [dx + gw, gh1, gz1];
-  const vTL = [dx - gw, gh1, gz1];
+  // Gauge cluster face recessed inside the hooded binnacle (4:3 aspect, 30x22.5 cm).
+  // Car local +X is car's LEFT.
+  // vBL is driver's left (+X), vBR is driver's right (-X).
+  // u=0 is driver's left, u=1 is driver's right.
+  const vBL = [dx + gw, gh0, gz0];
+  const vBR = [dx - gw, gh0, gz0];
+  const vTR = [dx - gw, gh1, gz1];
+  const vTL = [dx + gw, gh1, gz1];
   b.tri('gauge', vBL, vBR, vTR, [0, 0], [1, 0], [1, 1]);
   b.tri('gauge', vBL, vTR, vTL, [0, 0], [1, 1], [0, 1]);
 
@@ -712,13 +752,13 @@ export function buildCockpit(model) {
     [w3r, roofY - 0.02, roofZ - 1.6],
     [-w3r, roofY - 0.02, roofZ - 1.6]
   );
-  // Rearview mirror
-  b.box('dash', 0, roofY - 0.13, roofZ + 0.05, 0.24, 0.07, 0.03);
+  // Rearview mirror: compact and tucked high against roof header
+  b.box('dash', 0, roofY - 0.04, roofZ + 0.04, 0.14, 0.035, 0.02);
   q('mirror',
-    [-0.11, roofY - 0.16, roofZ + 0.03],
-    [0.11, roofY - 0.16, roofZ + 0.03],
-    [0.11, roofY - 0.1, roofZ + 0.03],
-    [-0.11, roofY - 0.1, roofZ + 0.03]
+    [-0.065, roofY - 0.055, roofZ + 0.025],
+    [0.065, roofY - 0.055, roofZ + 0.025],
+    [0.065, roofY - 0.025, roofZ + 0.025],
+    [-0.065, roofY - 0.025, roofZ + 0.025]
   );
   // Passenger seat
   b.box('seat', -dx, floorY + 0.14, eye.z + 0.05, 0.48, 0.22, 0.48);
