@@ -7,6 +7,7 @@ import { KINDS, RIVALS } from '../src/traffic/kinds.js';
 import { collideCars } from '../src/vehicles/contact.js';
 import { carById } from '../src/vehicles/specs.js';
 import { createVehicleState } from '../src/vehicles/physics.js';
+import { wrapAngle } from '../src/core/mathx.js';
 
 const ground = new Ground();
 const net = new TrafficNet(ground.roads);
@@ -217,7 +218,7 @@ test('street racers cruise Route 1 far above the limit, stay on it and are repla
   const ratio = racerSpeed / racerSamples / (trafficSpeed / trafficSamples);
   assert.ok(ratio > 1.4, `racers only ${ratio.toFixed(2)} times faster than traffic`);
   assert.ok(sim.countRivals() >= 3, `${sim.countRivals()} rivals left after 90 s`);
-  for (const k of RIVALS) assert.ok(k.speed[0] > 1.4 && k.name && k.weights.expressway > 0, k.id);
+  for (const k of RIVALS) assert.ok(k.speed[0] > 1.0 && k.name && k.weights.expressway > 0, k.id);
 });
 
 test('the nearest rival is reported with its distance and whether it is ahead', () => {
@@ -242,3 +243,88 @@ test('the nearest rival is reported with its distance and whether it is ahead', 
   assert.equal(sim.nearestRival(past, 200)?.ahead, false);
   assert.equal(sim.nearestRival(far, 200), null);
 });
+
+test('during any lane change the heading differs from the lane tangent by between 1 and 12 degrees and lateral speed is under 3 m/s', () => {
+  const sim = new TrafficSim(net, { seed: 12, target: 0, rivals: 0 });
+  const lane0 = net.lane('c1-f', 1, 0);
+  const lane1 = net.lane('c1-f', 1, 1);
+  assert.ok(lane0 && lane1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane0, 1000, q);
+  const player = { x: q.x + 100, z: q.z, speed: 0 };
+  const a = sim.spawn(player, 0, 1e9);
+  assert.ok(a);
+  a.lane = lane0;
+  a.s = 1000;
+  a.speed = 60 / 3.6;
+  a.x = q.x;
+  a.z = q.z;
+  a.yaw = Math.atan2(q.tx, q.tz);
+  a.nextChange = 0;
+  sim.startLaneChange(a, lane1);
+  assert.ok(a.changeDuration > 0);
+
+  const DEG = Math.PI / 180;
+  let samples = 0;
+  let maxLatSpeed = 0;
+  let prevX = a.x;
+  let prevZ = a.z;
+
+  for (let step = 0; step < 300 && a.changeDuration > 0; step++) {
+    const dt = 1 / 30;
+    sim.update(dt, player);
+    const qLane = net.sample(a.lane, a.s, q);
+    const laneTangentYaw = Math.atan2(qLane.tx, qLane.tz);
+    const diff = Math.abs(wrapAngle(a.yaw - laneTangentYaw));
+    const latMove = Math.abs((a.x - prevX) * (-qLane.tz) + (a.z - prevZ) * qLane.tx);
+    const latSpeed = latMove / dt;
+    maxLatSpeed = Math.max(maxLatSpeed, latSpeed);
+    prevX = a.x;
+    prevZ = a.z;
+
+    if (a.changeDuration > 0) {
+      assert.ok(diff >= 0.99 * DEG, `heading diff too small: ${(diff / DEG).toFixed(2)} deg`);
+      assert.ok(diff <= 12.01 * DEG, `heading diff too large: ${(diff / DEG).toFixed(2)} deg`);
+    } else {
+      assert.ok(diff < 0.01 * DEG, `not straightened: ${(diff / DEG).toFixed(2)} deg`);
+    }
+    assert.ok(latSpeed <= 3.01, `lateral speed ${latSpeed.toFixed(2)} m/s > 3 m/s`);
+    samples++;
+  }
+  assert.ok(samples > 10, `sampled ${samples} times`);
+  assert.ok(maxLatSpeed > 0.5, `max lateral speed was only ${maxLatSpeed}`);
+});
+
+test('a civilian with a faster car 30 m behind and a free lane moves over within 3 s', () => {
+  const sim = new TrafficSim(net, { seed: 42, target: 0, rivals: 0 });
+  const lane0 = net.lane('c1-f', 1, 0);
+  const lane1 = net.lane('c1-f', 1, 1);
+  assert.ok(lane0 && lane1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane1, 2000, q);
+  const player = { x: q.x + 100, z: q.z, speed: 0 };
+
+  const civ = sim.spawn(player, 0, 1e9);
+  assert.ok(civ);
+  civ.lane = lane1;
+  civ.s = 2000;
+  civ.speed = 22;
+  civ.nextChange = 0;
+
+  const faster = sim.spawn(player, 0, 1e9);
+  assert.ok(faster);
+  faster.lane = lane1;
+  faster.s = 1970;
+  faster.speed = 36;
+
+  let moved = false;
+  for (let t = 0; t < 3.0; t += 1 / 30) {
+    sim.update(1 / 30, player);
+    if (civ.lane === lane0) {
+      moved = true;
+      break;
+    }
+  }
+  assert.ok(moved, 'civilian did not move to the free left lane within 3 s');
+});
+

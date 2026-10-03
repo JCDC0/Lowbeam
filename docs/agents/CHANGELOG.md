@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.8 (2026-10-03)
+
+Diagonal lane changes and civilian yielding.
+
+- `src/traffic/sim.js`: lane changes replace exponential strafe decay with a smoothstep lateral
+  move over duration scaled by road speed (2.5 s at 60 km/h to 4 s at 200 km/h). Yaw follows the
+  actual motion vector (lane tangent plus lateral rate) so the nose steers into the new lane during
+  the crossing and straightens upon completion.
+- `src/traffic/sim.js`: comprehensive gap checks ahead and behind in the target lane prevent cutting
+  off faster traffic; lane changes are blocked within 40 m of traffic lights, planned exits, or a
+  player alongside.
+- `src/traffic/sim.js`: civilians change lanes to pass slower traffic, yield to faster vehicles
+  (racers or the player) closing from behind when the left lane is free, and position for planned exits.
+- Tests: `tests/traffic.test.mjs` verifies lane change heading difference stays between 1 and 12 degrees
+  with lateral speed under 3 m/s, and that a civilian yields to a faster car closing from behind within 3 s.
+
 ## 0.4.7 (2026-10-03)
 
 The traffic is real vehicles too.

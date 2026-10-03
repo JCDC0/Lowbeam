@@ -8,7 +8,7 @@
  */
 
 import { makeRng } from '../core/rng.js';
-import { wrapAngle, clamp } from '../core/mathx.js';
+import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
 import { KINDS, RIVALS } from './kinds.js';
 import { lightState } from './net.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
@@ -21,6 +21,8 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   id: number, kind: Kind, paint: number, lane: Lane, s: number, speed: number, factor: number,
  *   x: number, y: number, z: number, yaw: number, vx: number, vz: number, yawRate: number,
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
+ *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
+ *   changePrevEx: number, changePrevEz: number,
  *   mode: 'drive' | 'wreck', age: number, wreckAge: number, nextChange: number, inertia: number,
  *   brake: number, fade: number
  * }} Agent
@@ -123,6 +125,7 @@ export class TrafficSim {
         id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.8, factor,
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+        changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
         mode: 'drive', age: 0, wreckAge: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
@@ -176,6 +179,7 @@ export class TrafficSim {
         id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.9, factor,
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+        changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
         mode: 'drive', age: 0, wreckAge: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
@@ -349,7 +353,7 @@ export class TrafficSim {
     a.speed = Math.max(0, a.speed + clamp(acc, -9, a.kind.accel) * dt);
     a.s += a.speed * dt;
 
-    this.maybeChange(a, lead);
+    this.maybeChange(a, lead, player);
 
     // Taking the exit or turn that was planned.
     if (a.plan && a.s >= a.plan.at) {
@@ -366,17 +370,61 @@ export class TrafficSim {
     if (a.s >= a.lane.length && !a.lane.closed) a.s = a.lane.length - 0.01;
 
     const q = this.net.sample(a.lane, a.s, this._q);
-    const k = Math.exp(-dt * (1.4 + a.speed * 0.05));
-    a.ex *= k;
-    a.ez *= k;
-    a.x = q.x + a.ex;
-    a.z = q.z + a.ez;
-    a.y = q.y;
-    const want = Math.atan2(q.tx, q.tz);
-    a.yaw += wrapAngle(want - a.yaw) * Math.min(1, dt * 4.5);
-    a.vx = Math.sin(a.yaw) * a.speed;
-    a.vz = Math.cos(a.yaw) * a.speed;
-    a.yawRate = 0;
+    const laneYaw = Math.atan2(q.tx, q.tz);
+
+    if (a.changeDuration > 0) {
+      a.changeTimer += dt;
+      const u = Math.min(1, a.changeTimer / a.changeDuration);
+      const k = 1 - smoothstep(0, 1, u);
+      const curEx = a.changeStartX * k;
+      const curEz = a.changeStartZ * k;
+      a.x = q.x + curEx;
+      a.z = q.z + curEz;
+      a.y = q.y;
+
+      const vxLat = (curEx - a.changePrevEx) / dt;
+      const vzLat = (curEz - a.changePrevEz) / dt;
+      a.changePrevEx = curEx;
+      a.changePrevEz = curEz;
+
+      if (u < 1) {
+        const vFwd = Math.max(1, a.speed);
+        const vx = vFwd * q.tx + vxLat;
+        const vz = vFwd * q.tz + vzLat;
+        const motionYaw = Math.atan2(vx, vz);
+        let diff = wrapAngle(motionYaw - laneYaw);
+
+        const sign = Math.sign(diff) || 1;
+        const maxSteer = 11.5 * (Math.PI / 180);
+        const minSteer = 1.2 * (Math.PI / 180);
+        if (Math.abs(diff) > maxSteer) diff = sign * maxSteer;
+        if (Math.abs(diff) < minSteer) diff = sign * minSteer;
+
+        a.yaw = laneYaw + diff;
+      } else {
+        a.yaw = laneYaw;
+        a.changeDuration = 0;
+        a.changeStartX = 0;
+        a.changeStartZ = 0;
+        a.ex = 0;
+        a.ez = 0;
+      }
+      a.vx = Math.sin(a.yaw) * a.speed;
+      a.vz = Math.cos(a.yaw) * a.speed;
+      a.yawRate = 0;
+    } else {
+      const k = Math.exp(-dt * (1.4 + a.speed * 0.05));
+      a.ex *= k;
+      a.ez *= k;
+      a.x = q.x + a.ex;
+      a.z = q.z + a.ez;
+      a.y = q.y;
+      const want = Math.atan2(q.tx, q.tz);
+      a.yaw += wrapAngle(want - a.yaw) * Math.min(1, dt * 4.5);
+      a.vx = Math.sin(a.yaw) * a.speed;
+      a.vz = Math.cos(a.yaw) * a.speed;
+      a.yawRate = 0;
+    }
   }
 
   /** A slower speed for a tight bend ahead on this lane. @param {Agent} a */
@@ -420,18 +468,47 @@ export class TrafficSim {
     return gap;
   }
 
-  /** Overtaking on roads with more than one lane in the direction of travel. */
-  maybeChange(a, lead) {
-    if (this.time < a.nextChange) return;
+  /**
+   * Starts a lateral lane change toward a target lane.
+   * @param {Agent} a @param {Lane} target
+   */
+  startLaneChange(a, target) {
+    const old = { x: a.x, z: a.z };
+    a.lane = target;
+    const q = this.net.sample(target, a.s, this._q);
+    a.changeStartX = old.x - q.x;
+    a.changeStartZ = old.z - q.z;
+    a.changePrevEx = a.changeStartX;
+    a.changePrevEz = a.changeStartZ;
+    const latDist = Math.hypot(a.changeStartX, a.changeStartZ);
+    const baseDuration = this.isRival(a) ? 1.5 : clamp(1.86 + a.speed * 0.0386, 2.2, 4.2);
+    a.changeDuration = Math.max(latDist * 1.5 / 2.7, baseDuration);
+    a.changeTimer = 0;
+    a.ex = 0;
+    a.ez = 0;
+    if (a.plan && a.plan.lane) a.plan = null;
+    a.end = target.ends.length ? target.ends[0] : null;
+    a.nextChange = this.time + (this.isRival(a) ? 1.2 : 3);
+  }
+
+  /**
+   * Evaluates lane change opportunities: overtaking slower cars, yielding to faster
+   * vehicles closing from behind, and positioning for planned exits or turns.
+   * @param {Agent} a @param {{ gap: number, v: number }} lead
+   * @param {{ x: number, z: number, speed: number }} [player]
+   */
+  maybeChange(a, lead, player) {
+    if (a.changeDuration > 0 || this.time < a.nextChange) return;
     a.nextChange = this.time + CHANGE_EVERY;
     const lane = a.lane;
     const siblings = this.net.byRoad.get(lane.road.id) || [];
     const same = siblings.filter((l) => l.dir === lane.dir);
     if (same.length < 2) return;
+
     let want = -1;
     const wanted = lane.limit * a.factor;
+
     if (this.isRival(a)) {
-      // A racer takes whichever neighbouring lane has the most open road, and never drops back to relax.
       if (lead.gap < 120 && wanted - lead.v > 1) {
         let open = lead.gap * 1.5;
         for (const idx of [lane.index + 1, lane.index - 1]) {
@@ -443,20 +520,100 @@ export class TrafficSim {
           }
         }
       }
-    } else if (lead.gap < 38 && wanted - lead.v > 2) want = lane.index + 1;
-    else if (lane.index > 0 && lead.gap > 70 && a.speed < wanted * 1.02) want = lane.index - 1;
+    } else {
+      if (lane.index > 0) {
+        let closingBehind = false;
+        for (const o of this.byLane.get(lane) || []) {
+          if (o === a) continue;
+          let ds = a.s - o.s;
+          if (lane.closed && ds < 0) ds += lane.length;
+          if (ds > 4 && ds < 45 && (o.speed > a.speed + 3 || (this.isRival(o) && ds < 35))) {
+            closingBehind = true;
+            break;
+          }
+        }
+        if (!closingBehind && player) {
+          const tx = Math.sin(a.yaw);
+          const tz = Math.cos(a.yaw);
+          const pAhead = (player.x - a.x) * tx + (player.z - a.z) * tz;
+          const pSide = (player.x - a.x) * tz - (player.z - a.z) * tx;
+          if (pAhead > -50 && pAhead < -4 && Math.abs(pSide) < 2.0 && player.speed > a.speed + 3) {
+            closingBehind = true;
+          }
+        }
+        if (closingBehind) {
+          want = lane.index - 1;
+        } else if (a.plan && a.plan.lane) {
+          const distToExit = a.plan.at - a.s;
+          if (distToExit > 0 && distToExit < 250) {
+            want = lane.index - 1;
+          }
+        } else if (lead.gap < 38 && wanted - lead.v > 2) {
+          want = lane.index + 1;
+        } else if (lead.gap > 70 && a.speed < wanted * 1.02) {
+          want = lane.index - 1;
+        }
+      } else if (lead.gap < 38 && wanted - lead.v > 2) {
+        want = lane.index + 1;
+      }
+    }
+
     if (want < 0 || want >= same.length) return;
     const target = same.find((l) => l.index === want);
-    if (!target || this.crowded(target, a.s, 15 + a.speed * 0.45)) return;
-    const old = { x: a.x, z: a.z };
-    a.lane = target;
-    const q = this.net.sample(target, a.s, this._q);
-    a.ex = old.x - q.x;
-    a.ez = old.z - q.z;
-    // Keep any planned exit: it belongs to the outer lane, so go back to it first.
-    if (a.plan && a.plan.lane) a.plan = null;
-    a.end = target.ends.length ? target.ends[0] : null;
-    a.nextChange = this.time + 3;
+    if (!target) return;
+
+    for (const stop of a.lane.stops) {
+      const d = stop.s - a.s;
+      if (d >= -2 && d < 40) return;
+    }
+    if (a.plan && a.plan.lane) {
+      const d = a.plan.at - a.s;
+      if (d >= 0 && d < 40) return;
+    }
+
+    if (player) {
+      const px = player.x - a.x;
+      const pz = player.z - a.z;
+      const tx = Math.sin(a.yaw);
+      const tz = Math.cos(a.yaw);
+      const pAhead = px * tx + pz * tz;
+      const pSide = px * tz - pz * tx;
+      if (Math.abs(pAhead) < a.kind.length / 2 + 3.5 && Math.abs(pSide) < 5.5) return;
+      const latOffset = target.offset - a.lane.offset;
+      const targetSide = pSide - latOffset;
+      if (Math.abs(targetSide) < 2.5) {
+        if (pAhead > 0 && pAhead < 15 + a.speed * 0.4) return;
+        if (pAhead < 0) {
+          const distBehind = -pAhead;
+          if (distBehind < 16) return;
+          const closing = player.speed - a.speed;
+          if (closing > 2 && distBehind < 50 && distBehind / closing < 3.5) return;
+        }
+      }
+    }
+
+    const half = a.kind.length / 2;
+    for (const o of this.byLane.get(target) || []) {
+      if (o === a) continue;
+      let ds = o.s - a.s;
+      if (target.closed) {
+        if (ds > target.length / 2) ds -= target.length;
+        else if (ds < -target.length / 2) ds += target.length;
+      }
+      const gap = Math.abs(ds) - half - o.kind.length / 2;
+      if (gap < MIN_GAP + 5) return;
+      if (ds > 0 && ds < 15 + a.speed * 0.4) {
+        if (a.speed > o.speed && ds / (a.speed - o.speed) < 2.5) return;
+      }
+      if (ds < 0) {
+        const distBehind = -ds;
+        if (distBehind < 16) return;
+        const closing = o.speed - a.speed;
+        if (closing > 2 && distBehind < 50 && distBehind / closing < 3.5) return;
+      }
+    }
+
+    this.startLaneChange(a, target);
   }
 
   /** @param {Agent} a @param {number} dt */
@@ -510,6 +667,7 @@ export class TrafficSim {
         a.mode = 'wreck';
         a.wreckAge = 0;
         a.ex = a.ez = 0;
+        a.changeDuration = 0;
       }
     }
     return hardest;

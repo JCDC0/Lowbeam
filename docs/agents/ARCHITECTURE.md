@@ -133,7 +133,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.7)
+## Current state (0.4.8)
 
 Done and tested:
 
@@ -374,8 +374,10 @@ Done and tested:
   keeps about 38 agents alive around the player (spawn 190 to 460 m out, forget beyond
   620 m, heavier on the expressway): each follows its lane with the Intelligent Driver
   Model, brakes for the car ahead (also across a link), the player, red lights and bends,
-  overtakes on multi-lane roads, takes exits and turns by chance, and blends smoothly
-  into a new lane. Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
+  changes lanes diagonally with smoothstep easing and actual motion steering (heading difference between
+  1 and 12 degrees, lateral speed under 3 m/s), checks target lane gaps ahead and behind, yields to
+  faster cars closing from behind, positions for exits and turns, and does not change lanes within 40 m
+  of traffic lights, exits or a player alongside. Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
   pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
   friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
