@@ -328,6 +328,47 @@ test('a civilian with a faster car 30 m behind and a free lane moves over within
   assert.ok(moved, 'civilian did not move to the free left lane within 3 s');
 });
 
+test('fewer than one civilian lane change in ten is reversed within 6 s', () => {
+  const sim = new TrafficSim(net, { seed: 21, target: 38, rivals: 5 });
+  const startLane = net.lane('c1-f', 1, 1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(startLane, 0, q);
+  const player = { x: q.x, z: q.z, speed: 30, yaw: Math.atan2(q.tx, q.tz) };
+  sim.populate(player);
+
+  const orig = TrafficSim.prototype.startLaneChange;
+  /** Per agent: the lane before its last change, the lane it moved into, and when. */
+  const hist = new Map();
+  let changes = 0;
+  let reversed = 0;
+  TrafficSim.prototype.startLaneChange = function (a, target) {
+    if (!this.isRival(a) && a.mode === 'drive') {
+      changes++;
+      const h = hist.get(a);
+      if (h && h.from === target && this.time - h.at <= 6) reversed++;
+      hist.set(a, { from: a.lane, to: target, at: this.time });
+    }
+    return orig.call(this, a, target);
+  };
+
+  const dt = 1 / 30;
+  try {
+    for (let step = 0; step < 180 * 30; step++) {
+      net.sample(startLane, (step * dt * 30) % startLane.length, q);
+      player.x = q.x;
+      player.z = q.z;
+      player.yaw = Math.atan2(q.tx, q.tz);
+      sim.update(dt, player);
+    }
+  } finally {
+    TrafficSim.prototype.startLaneChange = orig;
+  }
+
+  assert.ok(changes > 100, `only ${changes} civilian lane changes to judge`);
+  const share = reversed / changes;
+  assert.ok(share < 0.1, `${reversed} of ${changes} civilian lane changes reversed within 6 s (${(share * 100).toFixed(1)} %)`);
+});
+
 test('over 3 minutes headless with traffic, racers mean speed is above 190 km/h and top above 240', () => {
   const sim = new TrafficSim(net, { seed: 77, target: 38, rivals: 5 });
   const startLane = net.lane('c1-f', 1, 1);

@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.16)
+## Current state (0.4.17)
 
 Done and tested:
 
@@ -395,7 +395,12 @@ Done and tested:
   changes lanes diagonally with smoothstep easing and actual motion steering (heading difference between
   1 and 12 degrees, lateral speed under 3 m/s), checks target lane gaps ahead and behind, yields to
   faster cars closing from behind, positions for exits and turns, and does not change lanes within 40 m
-  of traffic lights, exits or a player alongside. Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
+  of traffic lights, exits or a player alongside. Since 0.4.17 a civilian that finishes a lane change
+  holds it for 8 s (`laneHold`, `LANE_HOLD`) unless a planned exit or turn or something stopped ahead
+  says it must leave, and drifting back to the slow lane needs `slowLaneClear`: 120 m clear ahead in
+  it and nothing faster within 60 m behind. Measured on the brief's seed 21 setup, civilian lane
+  changes reversed within 6 s fell from 51.3 % to 3.3 %. Racers set `laneHold` to 0 and keep weaving.
+  Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
   pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
   friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
@@ -471,7 +476,7 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 124 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
+- Tests: 125 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.
 

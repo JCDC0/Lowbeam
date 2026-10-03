@@ -23,7 +23,7 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number,
- *   mode: 'drive' | 'wreck', age: number, wreckAge: number, nextChange: number, inertia: number,
+ *   mode: 'drive' | 'wreck', age: number, wreckAge: number, laneHold: number, nextChange: number, inertia: number,
  *   brake: number, fade: number
  * }} Agent
  */
@@ -36,6 +36,10 @@ const KEEP = 620;
 const WRECK_TIME = 24;
 /** Seconds between lane-change decisions for one agent. */
 const CHANGE_EVERY = 0.8;
+/** Seconds a civilian keeps the lane it just moved into before it will consider moving again. */
+const LANE_HOLD = 8;
+/** Clear gap a civilian needs ahead in the slow lane before drifting back into it. */
+const SLOW_LANE_GAP = 120;
 
 const CLASS_DENSITY = { expressway: 3, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
 
@@ -154,7 +158,7 @@ export class TrafficSim {
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
         changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
-        mode: 'drive', age: 0, wreckAge: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
       this.choose(a);
@@ -208,7 +212,7 @@ export class TrafficSim {
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
         changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
-        mode: 'drive', age: 0, wreckAge: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
       this.choose(a);
@@ -519,7 +523,27 @@ export class TrafficSim {
     a.ez = 0;
     if (a.plan && a.plan.lane) a.plan = null;
     a.end = target.ends.length ? target.ends[0] : null;
+    // A civilian that just moved settles in for a while. Racers keep weaving; they are
+    // meant to look like they are fighting for the line.
+    a.laneHold = isRiv ? 0 : this.time + LANE_HOLD;
     a.nextChange = this.time + (isRiv ? 0.6 : 3);
+  }
+
+  /**
+   * True when the slow lane beside this one is worth drifting back into: a long clear
+   * stretch ahead in it and nothing faster coming up from behind.
+   * @param {Agent} a @param {Lane} [slow]
+   */
+  slowLaneClear(a, slow) {
+    if (!slow) return false;
+    if (this.openAhead(slow, a.s) < SLOW_LANE_GAP) return false;
+    for (const o of this.byLane.get(slow) || []) {
+      if (o === a) continue;
+      let ds = a.s - o.s;
+      if (slow.closed && ds < 0) ds += slow.length;
+      if (ds > 0 && ds < 60 && o.speed > a.speed) return false;
+    }
+    return true;
   }
 
   /**
@@ -561,6 +585,12 @@ export class TrafficSim {
         }
       }
     } else {
+      // A planned exit or turn and something stopped ahead outrank the hold: those are
+      // reasons to leave a lane no matter how recently the car moved into it.
+      const planned = a.plan && a.plan.lane;
+      const distToExit = planned ? a.plan.at - a.s : 0;
+      const mustLeave = (planned && distToExit > 0 && distToExit < 250) || lead.gap < 38;
+      const held = this.time < a.laneHold;
       if (lane.index > 0) {
         let closingBehind = false;
         for (const o of this.byLane.get(lane) || []) {
@@ -581,21 +611,19 @@ export class TrafficSim {
             closingBehind = true;
           }
         }
-        if (closingBehind) {
+        if (closingBehind && !held) {
           want = lane.index - 1;
-        } else if (a.plan && a.plan.lane) {
-          const distToExit = a.plan.at - a.s;
-          if (distToExit > 0 && distToExit < 250) {
-            want = lane.index - 1;
-          }
+        } else if (planned && distToExit > 0 && distToExit < 250) {
+          want = lane.index - 1;
         } else if (lead.gap < 38 && wanted - lead.v > 2) {
           want = lane.index + 1;
-        } else if (lead.gap > 70 && a.speed < wanted * 1.02) {
+        } else if (lead.gap > 70 && a.speed < wanted * 1.02 && this.slowLaneClear(a, same[lane.index - 1])) {
           want = lane.index - 1;
         }
       } else if (lead.gap < 38 && wanted - lead.v > 2) {
         want = lane.index + 1;
       }
+      if (held && !mustLeave) want = -1;
     }
 
     if (want < 0 || want >= same.length) return;

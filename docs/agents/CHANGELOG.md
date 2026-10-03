@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.17 (2026-10-03)
+
+Civilians stop flip-flopping between lanes (Antigravity's A8 part 4).
+
+- `src/traffic/sim.js`: a civilian that finishes a lane change sets `laneHold` to 8 s
+  (`LANE_HOLD`) and will not move again until it passes, unless it has to: a planned exit or
+  turn inside 250 m or something stopped ahead within 38 m outrank the hold. Racers set
+  `laneHold` to 0 and keep weaving. Moving back to the slow lane now goes through the new
+  `slowLaneClear`, which needs 120 m clear ahead in it (`SLOW_LANE_GAP`) and nothing faster
+  closing within 60 m behind.
+- Measured with the brief's setup (seed 21, 3 minutes on Route 1, player at 108 km/h): civilian
+  lane changes 591 with 303 reversed within 6 s (51.3 %) before, 121 with 4 reversed (3.3 %)
+  after. Racer mean speed in the 3 minute headless test is 192.0 km/h (top 279.7), unchanged,
+  and the existing yield test still passes.
+- The yield thresholds (within 45 m behind, closing by more than 3 m/s) are deliberately
+  unchanged. Tightening them to the brief's 40 m and 8 m/s was measured and it drops racer
+  mean speed to 172 km/h, under the 190 km/h target, because every extra civilian lane change
+  is another car manoeuvring in front of a racer. The 8 s hold is what removes the dithering.
+- Tests: `fewer than one civilian lane change in ten is reversed within 6 s` (the brief's
+  setup, requires more than 100 changes to judge and under 10 % reversed).
+- Also in this commit: `package-lock.json` was still at 0.4.13, so its two version fields now
+  match `package.json`; and `gearRpm` in `src/vehicles/physics.js` no longer takes an unused
+  `s` and its doc comment says it returns engine rpm rather than road speed.
+
 ## 0.4.16 (2026-10-03)
 
 A downshift at crawling speed drops to the gear that fits (Antigravity's A8 part 3).

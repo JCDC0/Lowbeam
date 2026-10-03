@@ -159,11 +159,10 @@ function stepGear(gear, dir, nG) {
 }
 
 /**
- * Road speed at which a given forward gear would turn the engine at `rpm`. Zero for a
- * gear the car is not in or a ratio of zero.
- * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} gear @param {number} v
+ * Engine rpm a given forward gear would turn at road speed `v`. Zero for a ratio of zero.
+ * @param {CarSpec} spec @param {number} gear @param {number} v
  */
-function gearRpm(s, spec, gear, v) {
+function gearRpm(spec, gear, v) {
   const ratio = spec.gears[gear - 1];
   return ratio ? (Math.abs(v) / spec.wheelRadius) * ratio * spec.finalDrive * RPM : 0;
 }
@@ -179,7 +178,7 @@ function gearRpm(s, spec, gear, v) {
 function downGear(s, spec, v) {
   const want = spec.engine.idle * CRAWL_RPM_FACTOR;
   for (let g = s.gear - 1; g >= 1; g--) {
-    if (gearRpm(s, spec, g, v) >= want) return g;
+    if (gearRpm(spec, g, v) >= want) return g;
   }
   return 1;
 }
