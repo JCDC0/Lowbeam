@@ -164,7 +164,6 @@ export class TrafficSim {
     return null;
   }
 
-
   /**
    * The nearest street racer within `range` meters of the player: the agent, its distance
    * and whether it is ahead of the car.
@@ -232,7 +231,7 @@ export class TrafficSim {
 
   /** Fills the roads around the player at the start. @param {{ x: number, z: number }} player */
   populate(player) {
-    for (let i = 0; i < this.target * 3 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
+    for (let i = 0; i < this.target * 8 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
     for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 250, 460);
   }
 

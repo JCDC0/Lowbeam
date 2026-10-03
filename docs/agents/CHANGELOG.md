@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.13 (2026-10-03)
+
+Bayshore Line, a larger city rect with suburbs, and rails on steep drops (Antigravity's A7 part 6,
+committed by Claude from its handoff, `docs/agents/tasks/HANDOFF-A7-part6.md`).
+
+- `src/world/layout.js`: Route 2, the Bayshore Line (`c2-f`, `c2-r`, 4.6 km, 3 lanes each way,
+  100 km/h) along the bay with a 7.4 m lift over Harbor Ave; `toll-bayshore`; `CITY` grows to
+  x -1280 to 1280, z 520 to 2020; 16 suburb streets (`k-sub-*`, 40 km/h).
+- `src/world/highway.js`: median barrier and side rails on both expressways, plazas found by
+  `toll.road`, guard rails on drops and slopes over 1.5 m outside town (not on decks with parapets).
+- `src/world/scatter.js`: lower, wider-spaced blocks in the suburban band, towers only in the core.
+- `src/traffic/sim.js`: `populate` tries `target * 8` spawns to fill the larger network.
+- Tests: four plazas across both carriageways; the Bayshore Line is 4 to 6 km and dual.
+- Known gaps: the Bayshore Line has no ramps and cannot be reached; the suburb streets are stubs
+  and the street grid itself is unchanged.
+
 ## 0.4.12 (2026-10-03)
 
 Road joins and city grid: gore tapers, crossing patches, and corner curbs.

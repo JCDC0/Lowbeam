@@ -299,22 +299,25 @@ function placeBuildings(ground, lights, boxes) {
   for (const road of ground.roads.roads) {
     if (road.surface !== 'asphalt') continue;
     const p = road.path;
-    for (let s = 6; s < p.length - 6; s += rng.range(13, 19)) {
+    for (let s = 6; s < p.length - 6;) {
       const q = p.sample(s);
-      if (!inTown(q.x, q.z)) continue;
-      // Taller and wider toward the middle of downtown, low rise at its edges.
+      if (!inTown(q.x, q.z)) {
+        s += 16;
+        continue;
+      }
       const core = Math.max(0, 1 - Math.hypot(q.x - heart[0], (q.z - heart[1]) * 1.3) / 640);
+      s += core > 0 ? rng.range(12, 17) : rng.range(22, 32);
       for (const side of [1, -1]) {
-        if (rng.chance(0.14)) continue;
+        if (rng.chance(core > 0 ? 0.12 : 0.25)) continue;
         const lx = q.tz * side;
         const lz = -q.tx * side;
-        const tower = rng.chance(0.15 + 0.55 * core);
+        const tower = core > 0 && rng.chance(0.18 + 0.55 * core);
         const w = tower ? rng.range(14, 30) : rng.range(8, 15);
         const d = tower ? rng.range(14, 26) : rng.range(8, 14);
         const setback = road.hw + SKIRT + 3 + d / 2;
         const x = q.x + lx * setback;
         const z = q.z + lz * setback;
-        const isKonbini = konbini < 4 && !tower && rng.chance(0.07);
+        const isKonbini = konbini < 6 && !tower && rng.chance(0.07);
         const b = {
           x,
           z,
@@ -322,10 +325,10 @@ function placeBuildings(ground, lights, boxes) {
           yaw: Math.atan2(-lx, -lz),
           w: isKonbini ? 16 : w,
           d: isKonbini ? 12 : d,
-          h: isKonbini ? 4.2 : tower ? rng.range(26, 40 + 80 * core) : rng.chance(0.3) ? rng.range(12, 22) : rng.range(5, 11),
+          h: isKonbini ? 4.2 : tower ? rng.range(26, 40 + 85 * core) : rng.chance(core > 0 ? 0.3 : 0.15) ? rng.range(10, 18) : rng.range(4.5, 9.5),
           kind: isKonbini ? 'konbini' : 'block',
           seed: rng.int(0, 1e6),
-          sign: rng.chance(0.55) ? rng.int(0, 7) : -1,
+          sign: rng.chance(core > 0 ? 0.55 : 0.2) ? rng.int(0, 7) : -1,
         };
         if (!inTown(x, z) || overlaps(b)) continue;
         if (!corners(b).every(([cx, cz]) => clearOfRoads(ground, cx, cz, 1.5))) continue;

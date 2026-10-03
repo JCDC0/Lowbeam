@@ -138,14 +138,27 @@ test('ramps taper into Route 1 with gores and matching heights', () => {
   }
 });
 
-test('the toll plazas sit on both carriageways of Route 1', () => {
-  assert.equal(TOLLS.length, 3);
+test('the toll plazas sit on both carriageways of their expressways', () => {
+  assert.equal(TOLLS.length, 4);
   for (const t of TOLLS) {
-    for (const id of ['c1-f', 'c1-r']) {
+    const road = t.road || 'c1';
+    for (const id of [`${road}-f`, `${road}-r`]) {
       const hit = byId(id).path.nearest(t.x, t.z);
       assert.ok(Math.abs(hit.d) < 9, `${t.id} is ${Math.abs(hit.d).toFixed(1)} m from ${id}`);
     }
   }
+});
+
+test('Bayshore Line is a second expressway of about 4 to 6 km along the bay', () => {
+  const f = byId('c2-f');
+  const r = byId('c2-r');
+  assert.ok(f && r, 'c2 carriageways exist');
+  assert.ok(f.def.oneway && r.def.oneway);
+  assert.ok(!f.path.closed && !r.path.closed, 'c2 is open');
+  assert.ok(f.path.length >= 4000 && f.path.length <= 6000, `c2 length is ${(f.path.length / 1000).toFixed(2)} km`);
+  assert.equal(f.def.cls, 'expressway');
+  const toll = TOLLS.find((t) => t.road === 'c2');
+  assert.ok(toll, 'c2 has its own toll plaza');
 });
 
 test('the zones answer where things are', () => {

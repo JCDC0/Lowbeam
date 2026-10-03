@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.12)
+## Current state (0.4.13)
 
 Done and tested:
 
@@ -148,8 +148,13 @@ Done and tested:
   heights; avenues taper width to meet the downtown grid with zero lip; city intersections feature
   continuous crossing patches and rounded corner curbs with sidewalks. Kuro Pass: 6.4 km of 2-lane
   asphalt from the forest village along the northern ridge and down the western mountain, climbing
-  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks),
-  four gas stations (Harbor, Route 1 east, Mori, Toge). Total 70 km of road. Terrain: the loop
+  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks)
+  inside a larger `CITY` rect (2.56 by 1.5 km) whose outer band holds lower, sparser suburban blocks
+  and 16 suburb streets (`k-sub-*`, 40 km/h). Route 2, the Bayshore Line (`c2-f`, `c2-r`): a 4.6 km
+  3-lane dual carriageway along the bay at z 2415 to 2450 with its own toll plaza (BAYSHORE TOLL) and
+  a 7.4 m viaduct over the end of Harbor Ave. It has no ramps yet, so it cannot be reached from the
+  rest of the network. Guard rails also line steep drops and slopes outside town (over 1.5 m),
+  except on decks that have parapets. Four gas stations (Harbor, Route 1 east, Mori, Toge). Terrain: the loop
   valley rises gently to the north, a second valley holds the forest and Kami-ike, the
   rest climbs to 300 m and more, the bay is open sea. Ground build about 1 s.
   `node tools/mapcheck.mjs` prints the road numbers; `tools/mapview.html` draws the map.
@@ -493,7 +498,12 @@ rates.
   `TEMP_MIN`, `TEMP_MAX`; remove them once the cluster reads `temp` (task A1).
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
-- Between the city and Route 1 the land is empty: suburbs, farmland, a rail line.
+- Between the city and Route 1 the land is mostly empty: the suburb streets are short stubs off
+  the grid edge, the street grid itself did not grow with `CITY`, and there is no farmland or rail line.
+- The Bayshore Line has no ramps and its ends stop in the open (Claude's merge component, then
+  ramps to Harbor Ave and Route 1).
+- Ramps still read as overlapping strips with square ends rather than a lane that is added and
+  tapers away (Claude's merge component replaces them).
 - Route 1 has no overhead signs yet (task A5 builds the highway sign gantries).
 - `LAKE` and `TOWN` in layout.js are aliases for the first lake and the city rect, kept
   for the map screen until it moves to `world.mapData`; remove them then.

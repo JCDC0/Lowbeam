@@ -7,7 +7,7 @@
 
 import { SKIRT } from './roads.js';
 import { padDistance } from './ground.js';
-import { TOLLS } from './layout.js';
+import { CITY, TOLLS } from './layout.js';
 
 /** Meters of barrier or rail per segment (and per collider box). */
 export const SEGMENT = 6;
@@ -33,12 +33,6 @@ const LANES = 3;
  * @param {import('./scatter.js').BakeLight[]} lights
  */
 export function placeHighway(ground, boxes, circles, lights) {
-  const fwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get('c1-f'));
-  const rev = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get('c1-r'));
-  const hw = fwd.hw;
-  const half = /** @type {number} */ (fwd.def.median) / 2 + hw;
-  const laneWidth = (hw * 2) / LANES;
-  const p = fwd.path;
   const q = { x: 0, z: 0, tx: 0, tz: 1 };
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
   const rampOpen = (roadId, s) => {
@@ -63,20 +57,25 @@ export function placeHighway(ground, boxes, circles, lights) {
 
   /** @type {Plaza[]} */
   const plazas = TOLLS.map((toll) => {
-    const h = fwd.path.nearest(toll.x, toll.z);
-    fwd.path.sample(h.s, q);
-    const x = q.x - q.tz * half;
-    const z = q.z + q.tx * half;
+    const roadId = toll.road ? `${toll.road}-f` : 'c1-f';
+    const targetFwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(roadId));
+    const tHw = targetFwd.hw;
+    const tHalf = /** @type {number} */ (targetFwd.def.median ?? 3.2) / 2 + tHw;
+    const tLaneWidth = (tHw * 2) / LANES;
+    const h = targetFwd.path.nearest(toll.x, toll.z);
+    targetFwd.path.sample(h.s, q);
+    const x = q.x - q.tz * tHalf;
+    const z = q.z + q.tx * tHalf;
     const lanes = [];
     for (const side of [1, -1]) {
       for (let i = 0; i < LANES; i++) {
-        lanes.push({ u: side * half + (i - (LANES - 1) / 2) * laneWidth, cash: i === LANES - 1 });
+        lanes.push({ u: side * tHalf + (i - (LANES - 1) / 2) * tLaneWidth, cash: i === LANES - 1 });
       }
     }
     const dividers = [];
-    for (const side of [1, -1]) for (const k of [-1, 1]) dividers.push(side * half + (k * laneWidth) / 2);
+    for (const side of [1, -1]) for (const k of [-1, 1]) dividers.push(side * tHalf + (k * tLaneWidth) / 2);
     return {
-      toll, x, z, y: fwd.heightAt(h.s), yaw: Math.atan2(q.tx, q.tz), carriageway: half, laneWidth, lanes, dividers,
+      toll, x, z, y: targetFwd.heightAt(h.s), yaw: Math.atan2(q.tx, q.tz), carriageway: tHalf, laneWidth: tLaneWidth, lanes, dividers,
       s: h.s,
     };
   });
@@ -88,32 +87,76 @@ export function placeHighway(ground, boxes, circles, lights) {
   const rails = [];
   const chunkOf = (s) => Math.floor(s / 180);
 
-  for (let s = 0; s < p.length - SEGMENT / 2; s += SEGMENT) {
-    const mid = s + SEGMENT / 2;
-    p.sample(mid, q);
-    const yaw = Math.atan2(q.tx, q.tz);
-    const y = fwd.heightAt(mid);
-    const chunk = chunkOf(mid);
+  for (const exp of ['c1', 'c2']) {
+    const fwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-f`));
+    const rev = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-r`));
+    if (!fwd || !rev) continue;
+    const hw = fwd.hw;
+    const half = /** @type {number} */ (fwd.def.median ?? 3.2) / 2 + hw;
+    const p = fwd.path;
+    const chunkBase = exp === 'c1' ? 0 : 5000;
 
-    const mx = q.x - q.tz * half;
-    const mz = q.z + q.tx * half;
-    if (!inPlaza(mx, mz, PLAZA.reach)) {
-      barrier.push({ x: mx, z: mz, y, yaw, len: SEGMENT, chunk });
-      boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: SEGMENT / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
+    for (let s = 0; s < p.length - SEGMENT / 2; s += SEGMENT) {
+      const mid = s + SEGMENT / 2;
+      p.sample(mid, q);
+      const yaw = Math.atan2(q.tx, q.tz);
+      const y = fwd.heightAt(mid);
+      const chunk = chunkBase + chunkOf(mid);
+
+      const mx = q.x - q.tz * half;
+      const mz = q.z + q.tx * half;
+      if (!inPlaza(mx, mz, PLAZA.reach)) {
+        barrier.push({ x: mx, z: mz, y, yaw, len: SEGMENT, chunk });
+        boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: SEGMENT / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
+      }
+
+      const edge = hw + RAIL.offset;
+      const lx = q.tz;
+      const lz = -q.tx;
+      const rx = q.x + lx * edge;
+      const rz = q.z + lz * edge;
+      railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, inPlaza(rx, rz, PLAZA.openRail) || rampOpen(`${exp}-f`, mid));
+      const rp = rev.path.nearest(mx - q.tz * half, mz + q.tx * half);
+      rev.path.sample(rp.s, q);
+      const rEdge = hw + RAIL.offset;
+      const ox = q.x + q.tz * rEdge;
+      const oz = q.z - q.tx * rEdge;
+      railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, inPlaza(ox, oz, PLAZA.openRail) || rampOpen(`${exp}-r`, rp.s));
     }
+  }
 
+  const inTown = (x, z) => x > CITY.x0 && x < CITY.x1 && z > CITY.z0 && z < CITY.z1;
+  let ruralRoadIndex = 0;
+  for (const road of ground.roads.roads) {
+    if (road.def.cls !== 'mountain' && road.def.cls !== 'forest' && road.def.cls !== 'arterial') continue;
+    const p = road.path;
+    const hw = road.hw;
     const edge = hw + RAIL.offset;
-    const lx = q.tz;
-    const lz = -q.tx;
-    const rx = q.x + lx * edge;
-    const rz = q.z + lz * edge;
-    railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, inPlaza(rx, rz, PLAZA.openRail) || rampOpen('c1-f', mid));
-    const rp = rev.path.nearest(mx - q.tz * half, mz + q.tx * half);
-    rev.path.sample(rp.s, q);
-    const rEdge = hw + RAIL.offset;
-    const ox = q.x + q.tz * rEdge;
-    const oz = q.z - q.tx * rEdge;
-    railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, inPlaza(ox, oz, PLAZA.openRail) || rampOpen('c1-r', rp.s));
+    ruralRoadIndex++;
+    const chunkBase = 20000 + ruralRoadIndex * 200;
+
+    for (let s = 0; s < p.length - SEGMENT / 2; s += SEGMENT) {
+      const mid = s + SEGMENT / 2;
+      p.sample(mid, q);
+      if (road.def.cls === 'arterial' && inTown(q.x, q.z)) continue;
+      if (road.lifted && road.liftAt(mid) > 1.2) continue;
+      const y = road.heightAt(mid);
+      const yaw = Math.atan2(q.tx, q.tz);
+      const chunk = chunkBase + chunkOf(mid);
+
+      for (const side of [1, -1]) {
+        const lx = q.tz * side;
+        const lz = -q.tx * side;
+        const rx = q.x + lx * edge;
+        const rz = q.z + lz * edge;
+        const probeX = q.x + lx * (hw + 14);
+        const probeZ = q.z + lz * (hw + 14);
+        const gh = ground.hf.at(probeX, probeZ);
+        if (Math.abs(y - gh) > 1.5) {
+          railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk + (side > 0 ? 0 : 100), false);
+        }
+      }
+    }
   }
 
   for (const pl of plazas) {
