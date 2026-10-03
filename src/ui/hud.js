@@ -13,6 +13,12 @@ export class Hud {
       <div class="area display"></div>
       <div class="money display"></div>
       <div class="prompt display"></div>
+      <div class="duel">
+        <div class="duelrow"><span class="duelname duelplayer">YOU</span><span class="duelbar duelplayergauge"><i></i></span></div>
+        <div class="duelcount display"></div>
+        <div class="duelrow"><span class="duelname duelrival"></span><span class="duelbar duelrivalgauge"><i></i></span></div>
+        <div class="duelend display"></div>
+      </div>
       <div class="mapslot"></div>
       <div class="cluster"></div>`;
     ui.appendChild(this.el);
@@ -20,6 +26,12 @@ export class Hud {
     this.areaEl = q('.area');
     this.moneyEl = q('.money');
     this.promptEl = q('.prompt');
+    this.duelEl = q('.duel');
+    this.duelRivalNameEl = q('.duelrival');
+    this.duelPlayerBarEl = q('.duelplayergauge i');
+    this.duelRivalBarEl = q('.duelrivalgauge i');
+    this.duelCountEl = q('.duelcount');
+    this.duelEndEl = q('.duelend');
     this.mapSlot = q('.mapslot');
     this.clusterSlot = q('.cluster');
     /** @type {Record<string, string>} */
@@ -65,5 +77,19 @@ export class Hud {
       this.cockpit = !!cockpit;
       this.promptEl.classList.toggle('cockpit', this.cockpit);
     }
+  }
+
+  /**
+   * The duel readout: two gauge bars, the countdown digits and the result line.
+   * @param {{ rival: string, player: number, rivalGauge: number, count: number, end: string } | null} duel
+   */
+  duelPanel(duel) {
+    this.duelEl.style.display = duel ? 'block' : 'none';
+    if (!duel) return;
+    this.text(this.duelRivalNameEl, 'duelrival', duel.rival);
+    this.duelPlayerBarEl.style.width = `${Math.max(0, Math.min(1, duel.player)) * 100}%`;
+    this.duelRivalBarEl.style.width = `${Math.max(0, Math.min(1, duel.rivalGauge)) * 100}%`;
+    this.text(this.duelCountEl, 'duelcount', duel.count > 0 ? String(duel.count) : '');
+    this.text(this.duelEndEl, 'duelend', duel.end);
   }
 }

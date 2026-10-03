@@ -23,6 +23,7 @@ import { repairCost, repairEngine, TEMP_RED } from './vehicles/thermal.js';
 import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
+import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
 
 /** Key shown in prompts for the interact action. */
 const INTERACT_KEY = 'F';
@@ -59,6 +60,12 @@ export class Drive {
     this.hotWarned = false;
     this.areaTimer = 0;
     this.onPass = false;
+    /** @type {Duel | null} the duel in progress, null when none. */
+    this.duel = null;
+    /** The traffic agent being raced, so it can be put back on cruise afterwards. */
+    this.duelAgent = null;
+    this.duelEndTimer = 0;
+    this.duelEnd = '';
     this.rivalDistance = Infinity;
     this.hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
     /** @type {Cluster | null} */
@@ -119,6 +126,71 @@ export class Drive {
     if (Math.abs(wrapAngle(yaw - s.yaw)) > Math.PI / 2) yaw += Math.PI;
     this.car.place(p.x, p.z, yaw, this.ground);
     this.rig.snap();
+  }
+
+  /** Starts a duel with a rival traffic agent. @param {import('./traffic/sim.js').Agent} agent */
+  startDuel(agent) {
+    this.duel = new Duel({ id: agent.kind.id, name: agent.kind.name, speedFactor: agent.kind.speed[1] });
+    this.duelAgent = agent;
+    this.duelEndTimer = 0;
+    this.duelEnd = '';
+    agent.duel = true;
+    this.toast(`DUEL  ${agent.kind.name}`, 2.5);
+  }
+
+  /** Ends the duel, pays the prize if it was won, and puts the rival back on cruise. */
+  endDuel() {
+    const duel = this.duel;
+    if (!duel) return;
+    const out = duel.result();
+    if (this.duelAgent) this.duelAgent.duel = false;
+    this.duel = null;
+    this.duelAgent = null;
+    if (!out) {
+      this.duelEndTimer = 0;
+      return;
+    }
+    if (out.won) {
+      const wins = store.get('duelWins', {});
+      wins[out.rival] = (wins[out.rival] || 0) + 1;
+      store.set('duelWins', wins);
+      this.money += out.prize;
+      store.set('money', this.money);
+      this.duelEnd = `YOU WIN  ¥${out.prize.toLocaleString('en-US')}`;
+    } else {
+      this.duelEnd = 'YOU LOSE';
+    }
+    this.duelEndTimer = 3;
+  }
+
+  /** Advances the duel one step and plays its beeps. @param {number} dt */
+  stepDuel(dt) {
+    const duel = this.duel;
+    const agent = this.duelAgent;
+    if (!duel || !agent) return;
+    const s = this.car.state;
+    if (agent.mode !== 'drive') {
+      duel.abort();
+      this.endDuel();
+      return;
+    }
+    const tx = Math.sin(s.yaw);
+    const tz = Math.cos(s.yaw);
+    const gap = (agent.x - s.x) * tx + (agent.z - s.z) * tz;
+    for (const e of duel.update(dt, { gap })) {
+      if (e.type === 'count') audio.beep('count');
+      else if (e.type === 'go') audio.beep('go');
+      else if (e.type === 'end') this.endDuel();
+    }
+  }
+
+  /** What the duel panel should show this frame, or null when no duel is running. */
+  duelPanel() {
+    if (this.duelEndTimer > 0) return { rival: '', player: 0, rivalGauge: 0, count: 0, end: this.duelEnd };
+    const duel = this.duel;
+    if (!duel) return null;
+    const count = duel.state === 'countdown' ? Math.max(1, Math.ceil(COUNTDOWN - duel.time)) : 0;
+    return { rival: duel.rival.name, player: duel.gauge.player, rivalGauge: duel.gauge.rival, count, end: '' };
   }
 
   /** Tow to the nearest station's pump for a fee. A blown engine is rebuilt on the way, as far as the money goes. */
@@ -232,7 +304,22 @@ export class Drive {
     else if (s.blown && !pump) prompt = `ENGINE BLOWN   LIMP TO A PUMP OR  R  TOW  ¥${(ECONOMY.towCost + repairCost(s)).toLocaleString('en-US')}`;
     if (!prompt) {
       const rival = this.traffic.nearestRival(s, 220);
-      if (rival) prompt = `RIVAL  ${rival.agent.kind.name}   ${rival.ahead ? 'AHEAD' : 'BEHIND'} ${Math.round(rival.distance)} M`;
+      if (rival) {
+        const offer = !this.duel && canChallenge({ distance: rival.distance, ahead: rival.ahead, road: rival.agent.lane.road.id });
+        prompt = offer
+          ? `H  CHALLENGE  ${rival.agent.kind.name}   ${Math.round(rival.distance)} M`
+          : `RIVAL  ${rival.agent.kind.name}   ${rival.ahead ? 'AHEAD' : 'BEHIND'} ${Math.round(rival.distance)} M`;
+      }
+    }
+    // A duel with a street racer: the challenge key starts one, the pure Duel runs the
+    // gauges and the HUD shows them. The rival agent races at its top speed while duelling.
+    if (input.pressed('challenge') && !this.duel) {
+      const near = this.traffic.nearestRival(s, 220);
+      if (near && canChallenge({ distance: near.distance, ahead: near.ahead, road: near.agent.lane.road.id })) {
+        this.startDuel(near.agent);
+      } else {
+        this.toast('NO RACER AHEAD TO CHALLENGE', 2);
+      }
     }
     if (input.pressed('reset')) {
       if (!s.engineOn || s.blown) this.tow();
@@ -306,6 +393,9 @@ export class Drive {
     }
     this.hud.money(this.money);
     this.hud.prompt(prompt, cockpit);
+    this.stepDuel(dt);
+    if (this.duelEndTimer > 0) this.duelEndTimer = Math.max(0, this.duelEndTimer - dt);
+    this.hud.duelPanel(this.duelPanel());
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
     audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance });

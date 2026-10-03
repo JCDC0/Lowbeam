@@ -19,6 +19,41 @@ Music that follows the speed, a sharper default picture, and cameras that look o
 - `src/ui/cluster.js`: the TEMP and EXH readouts showed `Â°C` (a mis-encoded degree sign).
 - Tests: three for the swell in `tests/soundtrack.test.mjs`.
 
+## 0.4.23 (2026-10-03)
+
+Challenging a street racer, the first RaceEvent (A9 part 3).
+
+- New `src/race/`, pure like the rest of the physics: `race/event.js` holds the `RaceEvent`
+  interface every race kind shares (`id`, `kind`, `state`, `time`, `participants`,
+  `update(dt, world) -> events[]`, `result()`, plus `abort()`), and `race/duel.js` holds `Duel`.
+- `src/race/duel.js`: Tokyo Xtreme Racer rules. Both gauges start at 1; whoever is behind loses
+  gauge at a rate that grows with the gap (nothing under `GAUGE_FREE` 10 m, worst at `GAUGE_FAST`
+  150 m, `DRAIN_MAX` 0.22 per second), the leader recovers `RECOVER` 0.02 per second, a wall or
+  traffic hit costs the driver who caused it `HIT_DRAIN` 0.06, first gauge to 0 loses, and a gap
+  past `WIN_GAP` 500 m wins at once for the leader. A 3 s countdown (`COUNTDOWN`) comes first with
+  the gauge held still. The countdown beeps and the go tone are returned as events for the caller
+  to play, not played here. Prize is `duelPrize`: `4000 + 6000 * rival speed factor` rounded to 500,
+  nothing for a loss.
+- `src/traffic/sim.js`: a `duel` flag on the agent. While set, the racer aims for
+  `kind.speed[1]` instead of its cruising `factor`, and `maybeChange` only moves it to get past
+  something or take a clearer line, so it never drifts back to the slow lane mid-duel. No other
+  agent's behavior changes.
+- `src/drive.js`: `startDuel`, `stepDuel`, `endDuel` and `duelPanel`, clearly marked. The
+  challenge is refused unless the rival is ahead, within `CHALLENGE_RANGE` 60 m and on Route 1 or
+  the Bayshore Line (`canChallenge`, `DUEL_ROADS`); the prompt offers it when it is allowed. Wins
+  are counted per rival kind id in the save under `duelWins`.
+- `src/core/input.js`: the `challenge` action on `KeyH`. The brief asked for gamepad RB, but RB
+  and LB are already the manual gears, so it is on R3 (button 11) and the controls screen says so.
+- `src/ui/hud.js` and `style.css`: the duel panel, two gauge bars with the rival's name, the
+  countdown digits and `YOU WIN  ¥8,500` or `YOU LOSE` for 3 s. It sits at the top, so it stays
+  clear of the gauges in the cockpit view like the prompt does.
+- Music is untouched: it already turns intense when a racer is within 150 m.
+- Tests: new `tests/race.test.mjs` (13 cases: the base shape, the countdown blocking the gauge
+  with three counts and one go, the drain growing with the gap, leader recovery, hits costing
+  gauge, first to zero losing, a 500 m lead winning at once either way, abort, the prize rounding
+  to 500, a win paying and a loss paying nothing, and the challenge rules), plus
+  `an agent in a duel aims for its top speed and ignores the slow lane` in `tests/traffic.test.mjs`.
+
 ## 0.4.22 (2026-10-03)
 
 Remove the deprecated gauge aliases (A9 part 2).

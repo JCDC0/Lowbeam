@@ -371,6 +371,31 @@ test('fewer than one civilian lane change in ten is reversed within 6 s', () => 
 
 // One 3-minute run lands anywhere from 170 to 207 km/h depending on the seed, so the mean is
 // taken over six of them.
+test('an agent in a duel aims for its top speed and ignores the slow lane', () => {
+  const sim = new TrafficSim(net, { seed: 9, target: 0, rivals: 0 });
+  const lane = net.lane('c1-f', 1, 1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 1200, q);
+  const player = { x: q.x + 300, z: q.z, speed: 0 };
+  const a = sim.spawnRival({ x: q.x, z: q.z }, 0, 1e9);
+  assert.ok(a);
+  a.lane = lane;
+  a.s = 1200;
+  a.speed = 40;
+  const top = lane.limit * a.kind.speed[1];
+  a.duel = true;
+  for (let i = 0; i < 60 * 20; i++) sim.update(1 / 30, player);
+  assert.ok(a.speed > top * 0.9, `duel agent at ${a.speed.toFixed(1)}, wanted ${top.toFixed(1)}`);
+  assert.ok(a.speed > lane.limit * 1.5, 'a duel racer should run well past the lane limit');
+
+  const calm = sim.spawnRival({ x: q.x, z: q.z }, 0, 1e9);
+  assert.ok(calm);
+  calm.lane = lane;
+  calm.s = 1200;
+  calm.speed = 40;
+  assert.ok(!calm.duel, 'a fresh racer is not in a duel');
+});
+
 test('over 3 minutes headless with traffic, racers average above 180 km/h over six seeds and top above 240', () => {
   let speedSum = 0;
   let speedCount = 0;

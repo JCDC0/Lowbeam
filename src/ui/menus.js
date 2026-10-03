@@ -504,6 +504,7 @@ export function controlsScreen(ui) {
           <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">TAB</span></div>
           <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD F (AT STATION)</span></div>
           <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">R</span></div>
+          <div class="ac-binding-row"><span class="k">CHALLENGE RACER</span><span class="v">H (RACER AHEAD ON ROUTE 1 OR THE BAYSHORE LINE)</span></div>
           <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">ESCAPE</span></div>
         </div>
         <div class="ac-col-box">
@@ -518,6 +519,7 @@ export function controlsScreen(ui) {
           <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">SELECT / BACK / X</span></div>
           <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD B (AT STATION)</span></div>
           <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">BACK BUTTON</span></div>
+          <div class="ac-binding-row"><span class="k">CHALLENGE RACER</span><span class="v">R3 (BOTH BUMPERS ARE THE MANUAL GEARS)</span></div>
           <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">START BUTTON</span></div>
         </div>
       </div>

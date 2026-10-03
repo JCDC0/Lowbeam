@@ -353,6 +353,61 @@ html, body {
   bottom: auto;
   top: 12vh;
 }
+#hud .duel {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 5vh;
+  transform: translateX(-50%);
+  width: min(420px, 46vw);
+  text-align: center;
+}
+#hud .duelrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0;
+}
+#hud .duelname {
+  flex: 0 0 40%;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--amber);
+  text-shadow: 0 2px 0 #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+#hud .duelbar {
+  flex: 1 1 auto;
+  height: 9px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+#hud .duelbar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--amber);
+}
+#hud .duelrivalgauge i {
+  background: #d94a3d;
+}
+#hud .duelcount {
+  font-size: 46px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 3px 0 #000;
+  min-height: 48px;
+}
+#hud .duelend {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-shadow: 0 2px 0 #000;
+  min-height: 24px;
+}
 #hud .mapslot {
   position: absolute;
   left: 2.5vw;

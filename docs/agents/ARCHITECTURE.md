@@ -141,7 +141,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.5.0)
+## Current state (0.4.23)
 
 Done and tested:
 
@@ -482,7 +482,8 @@ Done and tested:
   with traffic, racers average about 188 km/h over six seeds (one run lands anywhere from 170 to
   207) with tops above 270 km/h; the test asks for 180 over the six. `nearestRival(player, range)`
   gives the agent, distance and whether it is ahead; `Drive` shows it as the prompt
-  `RIVAL <name> AHEAD <m> M` when no other prompt is up. Challenging a rival is not built yet.
+  `RIVAL <name> AHEAD <m> M` when no other prompt is up, or `H  CHALLENGE <name> <m> M` when the
+  rival is close enough ahead to race (see Races below).
   Since 0.4.6 the racers are real cars: twelve racer models in `vehicles/bodies/racers.js`
   (Hoshi Kei-S, Mazuma RX-Coupe, Kagero Hot-GT, Lancer-X, RS-Wide and Aristo VIP, Halden
   Drifter, Tsurugi Wedge, Kenro Hardtop and Sakura S, Hoshi Beat open roadster, Vespera
@@ -501,6 +502,18 @@ Done and tested:
   km/h, the fee (700 yen), the lane and whether it is a new best; `Drive` charges what you
   can pay, saves `tollBest` per plaza and shows `KITA TOLL 161 KM/H 700 YEN NEW BEST`. Each gate
   charges once per 8 s. Rivals and traffic will use the same gate later.
+- Races (`src/race/`, pure, since 0.4.23). `race/event.js` is the `RaceEvent` interface every
+  race kind shares: `id`, `kind`, `state` (`countdown`, `running`, `won`, `lost`, `aborted`),
+  `time`, `participants`, `update(dt, world) -> events[]`, `result()` and `abort()`. Later kinds
+  (point to point, the rally, police escapes, a racer joining mid-race) plug into the same shape,
+  so the HUD and the drive loop do not care which one runs. `race/duel.js` is the first kind:
+  `Duel` races the player against one street racer on Tokyo Xtreme Racer rules, with a gauge per
+  driver that drains for whoever is behind, faster the bigger the gap, and a prize of
+  `4000 + 6000 * rival speed factor` yen rounded to 500. The pure module never plays a sound: it
+  returns `count`, `go` and `end` events for the caller. `canChallenge` and `DUEL_ROADS` decide
+  whether a rival can be challenged at all: ahead, within 60 m, on Route 1 or the Bayshore Line.
+  The racer agent gets a `duel` flag and races at its top speed while it lasts. Wins are saved per
+  rival kind id under `duelWins`.
 - Cockpit (`cockpit.js`, since 0.4.9). The interior is lofted from the body (dash top, a
   rounded lip and face, firewall, floor, console, vents, A-pillars, header, liner, door
   panels and sills, mirror, passenger seat) and each car has its own real instruments, not a
@@ -536,7 +549,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 139 passing (`npm test`), including `tests/devserver.test.mjs` for the dev server's range
+- Tests: 153 passing for this milestone (`npm test`), including `tests/race.test.mjs` for the duel
+  rules, `tests/devserver.test.mjs` for the dev server's range
   requests, `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.

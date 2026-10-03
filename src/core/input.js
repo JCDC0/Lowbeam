@@ -19,6 +19,7 @@ const KEYS = {
   camera: ['KeyC'],
   reset: ['KeyR'],
   interact: ['KeyF'],
+  challenge: ['KeyH'],
   map: ['Tab'],
   shiftUp: ['ShiftLeft', 'ShiftRight', 'KeyE'],
   shiftDown: ['ControlLeft', 'ControlRight', 'KeyQ'],
@@ -36,6 +37,8 @@ const PAD = {
   camera: [3],
   reset: [8],
   interact: [1],
+  // Both shoulders are already shiftUp and shiftDown, so the challenge goes on R3.
+  challenge: [11],
   map: [8, 2],
   shiftUp: [5],
   shiftDown: [4],

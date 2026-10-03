@@ -23,7 +23,8 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number,
- *   mode: 'drive' | 'wreck', age: number, wreckAge: number, laneHold: number, nextChange: number, inertia: number,
+ *   mode: 'drive' | 'wreck', age: number, wreckAge: number, laneHold: number, duel: boolean,
+ *   nextChange: number, inertia: number,
  *   brake: number, fade: number
  * }} Agent
  */
@@ -158,7 +159,7 @@ export class TrafficSim {
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
         changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
-        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, duel: false, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
       this.choose(a);
@@ -212,7 +213,7 @@ export class TrafficSim {
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
         changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
-        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, duel: false, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
         brake: 0, fade: 1,
       });
       this.choose(a);
@@ -378,7 +379,9 @@ export class TrafficSim {
     const lane = a.lane;
     const lead = this.leader(a, player);
     const rival = this.isRival(a);
-    let v0 = a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
+    // A racer in a duel stops cruising and goes for its top speed, and it will not drop
+    // back to the slow lane while the duel is on.
+    let v0 = a.duel ? a.lane.limit * a.kind.speed[1] : a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
     if (this.time < a.capUntil) v0 = Math.min(v0, a.cap);
     v0 = Math.min(v0, this.curveSpeed(a));
     const effAccel = rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
@@ -562,10 +565,19 @@ export class TrafficSim {
     if (same.length < 2) return;
 
     let want = -1;
-    const wanted = lane.limit * a.factor;
+    const wanted = a.duel ? lane.limit * a.kind.speed[1] : lane.limit * a.factor;
 
     if (rival) {
-      if (lead.gap < 140 && (wanted - lead.v > 1.5 || a.speed < wanted * 0.96)) {
+      if (a.duel) {
+        // A duelling racer only moves to get past something or to take a clearer line; it
+        // never drifts back to the slow lane while the race is on.
+        if (lead.gap < 140) {
+          for (const idx of [lane.index + 1, lane.index - 1]) {
+            const next = same.find((l) => l.index === idx);
+            if (next && this.openAhead(next, a.s) > lead.gap + 15) want = idx;
+          }
+        }
+      } else if (lead.gap < 140 && (wanted - lead.v > 1.5 || a.speed < wanted * 0.96)) {
         let bestRoom = Math.max(lead.gap + 15, 50);
         let bestIdx = -1;
         for (const idx of [lane.index + 1, lane.index - 1]) {
