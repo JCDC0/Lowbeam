@@ -21,7 +21,10 @@ export const STEER_RATIO = 4.5;
 
 /** @typedef {import('./dash.js').GaugeSpot} GaugeSpot */
 
-/** Draws a gauge face onto a canvas: dark dial, ticks, numerals, red zone, label. */
+/**
+ * Draws a gauge face onto a canvas: dark dial, ticks and the red zone. No numerals: at 240
+ * lines they cannot be read, so the needle against the ticks tells the story.
+ */
 function drawFace(type, spec) {
   const S = 128;
   const c = makeCanvas(S, S);
@@ -59,33 +62,6 @@ function drawFace(type, spec) {
     g.moveTo(x0, y0);
     g.lineTo(x1, y1);
     g.stroke();
-  }
-  g.fillStyle = '#f2ede0';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  if (type === 'fuel' || type === 'temp') {
-    g.font = 'bold 26px "Lowbeam Display", sans-serif';
-    const lo = type === 'fuel' ? 'E' : 'C';
-    const hi = type === 'fuel' ? 'F' : 'H';
-    const [lx, ly] = toXY(needleAngle(sc, sc.min), R - 30);
-    const [hx, hy] = toXY(needleAngle(sc, sc.max), R - 30);
-    g.fillText(lo, lx, ly);
-    g.fillText(hi, hx, hy);
-    g.font = 'bold 17px "Lowbeam Display", sans-serif';
-    g.fillText(sc.label, m, m + 34);
-  } else {
-    const n = Math.floor((sc.max - sc.min) / sc.major + 1e-6);
-    for (let i = 0; i <= n; i++) {
-      const v = sc.min + i * sc.major;
-      const text = type === 'tach' ? String(v / 1000) : type === 'boost' ? (v > 0 ? `+${v}` : String(v)) : String(v);
-      g.font = `bold ${text.length > 2 ? 17 : text.length > 1 ? 21 : 26}px "Lowbeam Display", sans-serif`;
-      const [x, y] = toXY(needleAngle(sc, v), R - (text.length > 2 ? 26 : 23));
-      g.fillStyle = v >= sc.red ? '#ff5040' : '#f2ede0';
-      g.fillText(text, x, y);
-    }
-    g.fillStyle = '#c9a04a';
-    g.font = 'bold 12px "Lowbeam Display", sans-serif';
-    g.fillText(sc.label, m, m + 30);
   }
   return canvasTexture(c);
 }

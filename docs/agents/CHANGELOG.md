@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.11 (2026-10-03)
+
+- Gauge faces lose their numerals and labels: ticks, the red zone and the needle only, since
+  numbers cannot be read at 240 lines. Major ticks every 1,000 rpm and 40 km/h.
+
 ## 0.4.10 (2026-10-03)
 
 Fast street racers and aggressive highway weaving.

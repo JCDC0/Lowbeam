@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.10)
+## Current state (0.4.11)
 
 Done and tested:
 
@@ -429,7 +429,8 @@ Done and tested:
   boost or exhaust gauge. Tsurugi: the four-gauge cluster plus a center stack of boost, oil
   pressure and volts. A pod is a backing plate turned to face the driver's eye, sides buried in
   the dash and an arched hood over the top. A gauge is a depth can, a chrome bezel, a canvas
-  face (ticks, numerals sized for 240 lines, red zone, label) and a needle in its own group;
+  face (ticks every 1,000 rpm or 20 km/h and the red zone, no numerals: at 240 lines they
+  cannot be read, the needle against the ticks is enough) and a needle in its own group;
   `update` turns the needles toward the readings (tach and boost fast, the rest slower), sets
   the gear readout in the tach, the shift lamp over the tach and a warning lamp (blinking when
   blown). The tach ends 1,000 to 2,000 rpm past the redline; the blow rpm is never drawn. The

@@ -68,11 +68,11 @@ export function gaugeScale(type, spec) {
   switch (type) {
     case 'tach': {
       const max = Math.ceil((e.redline + 1000) / 1000) * 1000;
-      return { min: 0, max, major: max > 8000 ? 2000 : 1000, minor: 1000, red: e.redline, label: 'x1000', small: false, div: 1000 };
+      return { min: 0, max, major: 1000, minor: 500, red: e.redline, label: 'x1000', small: false, div: 1000 };
     }
     case 'speed': {
       const max = 160 + spec.bars.topSpeed * 20;
-      return { min: 0, max, major: max > 240 ? 80 : 40, minor: 20, red: Infinity, label: 'km/h', small: false, div: 1 };
+      return { min: 0, max, major: 40, minor: 20, red: Infinity, label: 'km/h', small: false, div: 1 };
     }
     case 'fuel':
       return { min: 0, max: 1, major: 0.5, minor: 0.25, red: Infinity, label: 'FUEL', small: true, div: 1 };
