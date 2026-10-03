@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.9)
+## Current state (0.4.10)
 
 Done and tested:
 
@@ -393,11 +393,15 @@ Done and tested:
   roadster, widebody, hypercar; ids `rv-*`) share the traffic sim but want 1.5 to 2.6
   times the limit (150 to 260 km/h on Route 1), spawn only on the fast lanes of the loop
   and never take an exit or turn. Five are kept alive (`rivals` option); the traffic target
-  does not count them. A racer picks whichever neighbouring lane has the most open road
-  when blocked within 120 m and never drops back to relax; the bench is about 155 km/h on
-  average with a top of 240. `nearestRival(player, range)` gives the agent, distance and
-  whether it is ahead; `Drive` shows it as the prompt `RIVAL <name> AHEAD <m> M` when no
-  other prompt is up. Challenging a rival is not built yet.
+  does not count them. In 0.4.10, racers use a racing lateral grip of 0.9 g (~8.83 m/s^2) for
+  curve speeds, accelerated pull while below wanted speed, shorter IDM time headway (0.6 s) and a
+  tighter 1.0 m minimum gap. When blocked within 140 m, racers weave into any open adjacent lane
+  (including the slow lane) in a swift 1.5 s diagonal move, and return to faster lanes when clear.
+  Rivals spawn on Route 1 fast lanes between 250 and 460 m from the player, balanced half ahead and
+  half behind at full cruising speed (200 to 260 km/h with bursts higher). Over 3 minutes headless
+  with traffic, racers average above 190 km/h with tops above 270 km/h. `nearestRival(player, range)`
+  gives the agent, distance and whether it is ahead; `Drive` shows it as the prompt
+  `RIVAL <name> AHEAD <m> M` when no other prompt is up. Challenging a rival is not built yet.
   Since 0.4.6 the racers are real cars: twelve racer models in `vehicles/bodies/racers.js`
   (Hoshi Kei-S, Mazuma RX-Coupe, Kagero Hot-GT, Lancer-X, RS-Wide and Aristo VIP, Halden
   Drifter, Tsurugi Wedge, Kenro Hardtop and Sakura S, Hoshi Beat open roadster, Vespera

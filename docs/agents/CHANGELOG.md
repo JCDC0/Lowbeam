@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.10 (2026-10-03)
+
+Fast street racers and aggressive highway weaving.
+
+- `src/traffic/sim.js`: street racers use racing lateral grip of 0.9 g (~8.83 m/s^2) for curve speeds,
+  accelerate with double nominal acceleration when far below wanted cruising speed, and use a shorter
+  IDM time headway of 0.6 s with a tighter 1.0 m minimum gap.
+- `src/traffic/sim.js`: when blocked within 140 m, racers weave into any open neighboring lane (including
+  the slow lane) in a 1.5 s diagonal move, with reduced safety margins for tight gaps, and move back to
+  faster lanes once clear ahead.
+- `src/traffic/sim.js`: rivals spawn exclusively on Route 1 fast lanes, 250 to 460 m from the player,
+  balanced half ahead and half behind so vehicles pass the player, initialized at full cruising speed.
+- Tests: `tests/traffic.test.mjs` verifies that over 3 minutes headless with traffic, racers maintain a
+  mean speed above 190 km/h and top speed above 240 km/h.
+
 ## 0.4.9 (2026-10-03)
 
 Real dashboards.

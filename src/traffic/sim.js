@@ -39,13 +39,17 @@ const CHANGE_EVERY = 0.8;
 
 const CLASS_DENSITY = { expressway: 3, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
 
-/** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing */
-function idm(v, v0, accel, gap, closing) {
+/** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] */
+function idm(v, v0, accel, gap, closing, rival = false) {
   const free = 1 - Math.pow(v / Math.max(v0, 0.1), 4);
   if (gap === Infinity) return accel * free;
-  const wanted = MIN_GAP + Math.max(0, v * 1.25 + (v * closing) / (2 * Math.sqrt(accel * 3.2)));
+  const s0 = rival ? 1.0 : MIN_GAP;
+  const T = rival ? 0.6 : 1.25;
+  const b = rival ? 5.0 : 3.2;
+  const wanted = s0 + Math.max(0, v * T + (v * closing) / (2 * Math.sqrt(accel * b)));
   return accel * (free - (wanted / Math.max(gap, 0.2)) ** 2);
 }
+
 
 export class TrafficSim {
   /**
@@ -99,17 +103,41 @@ export class TrafficSim {
 
   /**
    * Adds a street racer on one of the fast lanes of Route 1, out of sight of the player.
-   * @param {{ x: number, z: number }} player @param {number} min @param {number} max
+   * @param {{ x: number, z: number, yaw?: number }} player @param {number} [min] @param {number} [max]
    * @returns {Agent | null}
    */
-  spawnRival(player, min, max) {
+  spawnRival(player, min = 250, max = 460) {
     const lanes = this.net.lanes.filter((l) => l.cls === 'expressway' && l.index > 0);
-    for (let tries = 0; tries < 16; tries++) {
+    let aheadCount = 0;
+    let behindCount = 0;
+    for (const a of this.agents) {
+      if (!this.isRival(a) || a.mode !== 'drive') continue;
+      const dx = a.x - player.x;
+      const dz = a.z - player.z;
+      const dot = player.yaw !== undefined
+        ? dx * Math.sin(player.yaw) + dz * Math.cos(player.yaw)
+        : (a.vx !== 0 || a.vz !== 0 ? dx * a.vx + dz * a.vz : dx * Math.sin(a.yaw) + dz * Math.cos(a.yaw));
+      if (dot >= 0) aheadCount++;
+      else behindCount++;
+    }
+    const wantAhead = aheadCount < behindCount;
+    const wantBehind = behindCount < aheadCount;
+
+    for (let tries = 0; tries < 32; tries++) {
       const lane = this.rng.pick(lanes);
       const s = this.rng.next() * lane.length;
       const q = this.net.sample(lane, s, this._q);
-      const d = Math.hypot(q.x - player.x, q.z - player.z);
+      const dx = q.x - player.x;
+      const dz = q.z - player.z;
+      const d = Math.hypot(dx, dz);
       if (d < min || d > max || this.crowded(lane, s, 40)) continue;
+      const dot = player.yaw !== undefined
+        ? dx * Math.sin(player.yaw) + dz * Math.cos(player.yaw)
+        : dx * q.tx + dz * q.tz;
+      if (tries < 24) {
+        if (wantAhead && dot <= 0) continue;
+        if (wantBehind && dot >= 0) continue;
+      }
       const w = RIVALS.map((k) => k.weights.expressway ?? 1);
       let t = this.rng.next() * w.reduce((a, b) => a + b, 0);
       let kind = RIVALS[0];
@@ -122,7 +150,7 @@ export class TrafficSim {
       }
       const factor = this.rng.range(kind.speed[0], kind.speed[1]);
       const a = /** @type {Agent} */ ({
-        id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.8, factor,
+        id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor, factor,
         x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
         ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
         changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
@@ -135,6 +163,7 @@ export class TrafficSim {
     }
     return null;
   }
+
 
   /**
    * The nearest street racer within `range` meters of the player: the agent, its distance
@@ -204,7 +233,7 @@ export class TrafficSim {
   /** Fills the roads around the player at the start. @param {{ x: number, z: number }} player */
   populate(player) {
     for (let i = 0; i < this.target * 3 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
-    for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 150, SPAWN_MAX);
+    for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 250, 460);
   }
 
   /** Picks this agent's turn off the lane and what happens at its end. @param {Agent} a */
@@ -256,7 +285,7 @@ export class TrafficSim {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       const rivals = this.countRivals();
-      if (rivals < this.rivalTarget) this.spawnRival(player, SPAWN_MIN, SPAWN_MAX);
+      if (rivals < this.rivalTarget) this.spawnRival(player, 250, 460);
       else if (this.agents.length - rivals < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
       this.spawnTimer = 0.25;
     }
@@ -345,12 +374,14 @@ export class TrafficSim {
   stepDrive(a, dt, player) {
     const lane = a.lane;
     const lead = this.leader(a, player);
-    let v0 = a.lane.limit * a.factor;
+    const rival = this.isRival(a);
+    let v0 = a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
     if (this.time < a.capUntil) v0 = Math.min(v0, a.cap);
     v0 = Math.min(v0, this.curveSpeed(a));
-    const acc = idm(a.speed, v0, a.kind.accel, lead.gap, a.speed - lead.v);
+    const effAccel = rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
+    const acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, rival);
     a.brake = acc < -1.2 ? 1 : 0;
-    a.speed = Math.max(0, a.speed + clamp(acc, -9, a.kind.accel) * dt);
+    a.speed = Math.max(0, a.speed + clamp(acc, -9, effAccel) * dt);
     a.s += a.speed * dt;
 
     this.maybeChange(a, lead, player);
@@ -430,13 +461,15 @@ export class TrafficSim {
   /** A slower speed for a tight bend ahead on this lane. @param {Agent} a */
   curveSpeed(a) {
     const lane = a.lane;
-    if (lane.cls === 'expressway') return Infinity;
+    const rival = this.isRival(a);
+    if (lane.cls === 'expressway' && !rival) return Infinity;
+    const grip = rival ? 8.83 : 3.2;
     const q0 = this.net.sample(lane, a.s, this._q);
     const t0x = q0.tx;
     const t0z = q0.tz;
     const q1 = this.net.sample(lane, Math.min(lane.length, a.s + 28), this._r);
     const turn = Math.abs(wrapAngle(Math.atan2(q1.tx, q1.tz) - Math.atan2(t0x, t0z)));
-    return turn < 0.02 ? Infinity : Math.max(6, Math.sqrt(3.2 / (turn / 28)));
+    return turn < 0.02 ? Infinity : Math.max(6, Math.sqrt(grip / (turn / 28)));
   }
 
   /** Moves an agent to another lane, keeping its place on screen and blending into the new one. */
@@ -480,15 +513,14 @@ export class TrafficSim {
     a.changeStartZ = old.z - q.z;
     a.changePrevEx = a.changeStartX;
     a.changePrevEz = a.changeStartZ;
-    const latDist = Math.hypot(a.changeStartX, a.changeStartZ);
-    const baseDuration = this.isRival(a) ? 1.5 : clamp(1.86 + a.speed * 0.0386, 2.2, 4.2);
-    a.changeDuration = Math.max(latDist * 1.5 / 2.7, baseDuration);
+    const isRiv = this.isRival(a);
+    a.changeDuration = isRiv ? 1.5 : Math.max(Math.hypot(a.changeStartX, a.changeStartZ) * 1.5 / 2.7, clamp(1.86 + a.speed * 0.0386, 2.2, 4.2));
     a.changeTimer = 0;
     a.ex = 0;
     a.ez = 0;
     if (a.plan && a.plan.lane) a.plan = null;
     a.end = target.ends.length ? target.ends[0] : null;
-    a.nextChange = this.time + (this.isRival(a) ? 1.2 : 3);
+    a.nextChange = this.time + (isRiv ? 0.6 : 3);
   }
 
   /**
@@ -499,7 +531,8 @@ export class TrafficSim {
    */
   maybeChange(a, lead, player) {
     if (a.changeDuration > 0 || this.time < a.nextChange) return;
-    a.nextChange = this.time + CHANGE_EVERY;
+    const rival = this.isRival(a);
+    a.nextChange = this.time + (rival ? 0.3 : CHANGE_EVERY);
     const lane = a.lane;
     const siblings = this.net.byRoad.get(lane.road.id) || [];
     const same = siblings.filter((l) => l.dir === lane.dir);
@@ -508,16 +541,24 @@ export class TrafficSim {
     let want = -1;
     const wanted = lane.limit * a.factor;
 
-    if (this.isRival(a)) {
-      if (lead.gap < 120 && wanted - lead.v > 1) {
-        let open = lead.gap * 1.5;
+    if (rival) {
+      if (lead.gap < 140 && (wanted - lead.v > 1.5 || a.speed < wanted * 0.96)) {
+        let bestRoom = Math.max(lead.gap + 15, 50);
+        let bestIdx = -1;
         for (const idx of [lane.index + 1, lane.index - 1]) {
           const next = same.find((l) => l.index === idx);
-          const room = next ? this.openAhead(next, a.s) : 0;
-          if (room > open) {
-            open = room;
-            want = idx;
+          if (!next) continue;
+          const room = this.openAhead(next, a.s);
+          if (room > bestRoom) {
+            bestRoom = room;
+            bestIdx = idx;
           }
+        }
+        if (bestIdx >= 0) want = bestIdx;
+      } else if (lane.index < same.length - 1 && lead.gap > 90) {
+        const faster = same.find((l) => l.index === lane.index + 1);
+        if (faster && this.openAhead(faster, a.s) > 90) {
+          want = lane.index + 1;
         }
       }
     } else {
@@ -593,6 +634,7 @@ export class TrafficSim {
     }
 
     const half = a.kind.length / 2;
+    const minSafetyGap = rival ? 1.5 : (MIN_GAP + 5);
     for (const o of this.byLane.get(target) || []) {
       if (o === a) continue;
       let ds = o.s - a.s;
@@ -601,15 +643,16 @@ export class TrafficSim {
         else if (ds < -target.length / 2) ds += target.length;
       }
       const gap = Math.abs(ds) - half - o.kind.length / 2;
-      if (gap < MIN_GAP + 5) return;
-      if (ds > 0 && ds < 15 + a.speed * 0.4) {
-        if (a.speed > o.speed && ds / (a.speed - o.speed) < 2.5) return;
+      if (gap < minSafetyGap) return;
+      if (ds > 0 && ds < (rival ? 10 + a.speed * 0.2 : 15 + a.speed * 0.4)) {
+        const timeToHit = ds / Math.max(0.1, a.speed - o.speed);
+        if (a.speed > o.speed && timeToHit < (rival ? 1.0 : 2.5)) return;
       }
       if (ds < 0) {
         const distBehind = -ds;
-        if (distBehind < 16) return;
+        if (distBehind < (rival ? 6 : 16)) return;
         const closing = o.speed - a.speed;
-        if (closing > 2 && distBehind < 50 && distBehind / closing < 3.5) return;
+        if (closing > 2 && distBehind < 50 && distBehind / closing < (rival ? 2.0 : 3.5)) return;
       }
     }
 

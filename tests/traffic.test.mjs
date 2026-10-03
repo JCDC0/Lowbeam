@@ -328,3 +328,46 @@ test('a civilian with a faster car 30 m behind and a free lane moves over within
   assert.ok(moved, 'civilian did not move to the free left lane within 3 s');
 });
 
+test('over 3 minutes headless with traffic, racers mean speed is above 190 km/h and top above 240', () => {
+  const sim = new TrafficSim(net, { seed: 77, target: 38, rivals: 5 });
+  const startLane = net.lane('c1-f', 1, 1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(startLane, 0, q);
+  const player = { x: q.x, z: q.z, speed: 30, yaw: Math.atan2(q.tx, q.tz) };
+  sim.populate(player);
+
+  let speedSum = 0;
+  let speedCount = 0;
+  let topSpeed = 0;
+  let aheadCount = 0;
+  let behindCount = 0;
+  const dt = 1 / 30;
+  for (let step = 0; step < 180 * 30; step++) {
+    const sPlayer = (step * 30 * dt) % startLane.length;
+    net.sample(startLane, sPlayer, q);
+    player.x = q.x;
+    player.z = q.z;
+    player.yaw = Math.atan2(q.tx, q.tz);
+    sim.update(dt, player);
+    for (const a of sim.agents) {
+      if (sim.isRival(a) && a.mode === 'drive') {
+        const kmh = a.speed * 3.6;
+        speedSum += kmh;
+        speedCount++;
+        if (kmh > topSpeed) topSpeed = kmh;
+        const dx = a.x - player.x;
+        const dz = a.z - player.z;
+        const dot = dx * Math.sin(player.yaw) + dz * Math.cos(player.yaw);
+        if (dot >= 0) aheadCount++;
+        else behindCount++;
+      }
+    }
+  }
+  const meanSpeed = speedSum / speedCount;
+  assert.ok(speedCount > 1000, `sampled ${speedCount} times`);
+  assert.ok(meanSpeed > 190, `mean speed ${meanSpeed.toFixed(1)} km/h <= 190 km/h`);
+  assert.ok(topSpeed > 240, `top speed ${topSpeed.toFixed(1)} km/h <= 240 km/h`);
+  assert.ok(aheadCount > 0 && behindCount > 0, `ahead ${aheadCount}, behind ${behindCount}`);
+});
+
+
