@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.7 (2026-10-03)
+
+The traffic is real vehicles too.
+
+- `vehicles/bodies/civilians.js` (new, pure): sedan, hatchback, kei car, wagon, taxi with its roof
+  sign, SUV, minivan, panel van, pickup with its bed, kei truck, box truck, tanker, city bus and
+  semi, each lofted from a profile; trucks are a cab plus cargo with extra axles.
+- `profile.js`: `bodyModel` builds a model from dimensions, a profile and details.
+- `models.js`: a body can carry extra `axles` and a fixed `accent` color; `loft.js` only cuts
+  arches that fall inside the body.
+
 ## 0.4.6 (2026-10-03)
 
 Street racers drive real cars.

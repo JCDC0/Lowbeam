@@ -74,6 +74,35 @@ export function profileStations(p) {
   });
 }
 
+/**
+ * A complete model: the dimensions plus a body from a profile and its details.
+ * @param {{ id: string, name: string, width: number, wheelbase: number, cgToFront: number, track: number, wheelRadius: number }} car
+ * @param {Profile} profile
+ * @param {{ flare?: number, tireWidth?: number, rim?: 'rally' | 'muscle' | 'exotic', rimColor?: number, plate?: string,
+ *   glass?: { side: number[], front: number[], rear: number[] }, axles?: number[], accent?: number[], parts: (k: any) => void }} look
+ */
+export function bodyModel(car, profile, look) {
+  const stations = profileStations(profile);
+  return {
+    ...car,
+    length: profile.zMax - profile.zMin,
+    height: Math.max(...stations.map((s) => s[7])) + 0.03,
+    body: {
+      stations,
+      glass: look.glass ?? profileGlass(profile),
+      flare: look.flare ?? 0.02,
+      tireWidth: look.tireWidth ?? 0.2,
+      rim: look.rim ?? 'rally',
+      rimColor: look.rimColor ?? 0x8c9096,
+      plate: look.plate ?? 'KG 00-00',
+      driver: -1,
+      axles: look.axles,
+      accent: look.accent,
+      parts: look.parts,
+    },
+  };
+}
+
 /** Glass ranges that match a profile's cabin. @param {Profile} p */
 export function profileGlass(p) {
   if (!p.cabin) return { side: [0, 0], front: [0, 0], rear: [0, 0] };

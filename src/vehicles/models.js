@@ -31,8 +31,10 @@ import { BAND, RING_POINTS, archStation, insetRing, loftZs, ringOf, roofHeight, 
  *   flare: number, tireWidth: number,
  *   rim: 'rally' | 'muscle' | 'exotic', rimColor: number | 'accent',
  *   plate: string, widePlate?: boolean, driver: number,
- *   parts: (k: Kit) => void
+ *   parts: (k: Kit) => void, axles?: number[], accent?: number[]
  * }} BodyDef
+ * `axles` adds wheels at more z positions (trucks, buses); `accent` fixes the accent color of
+ * a baked body (a cargo box) instead of near black.
  */
 
 /** Offsets from each axle where extra stations are inserted to cut the wheel arch. */
@@ -630,7 +632,7 @@ export function vehicleGeometry(spec, def, { wheelSides = 12, accent } = {}) {
   kit.loft();
   def.parts(kit);
   const b = kit.b;
-  for (const axle of [kit.frontAxle, kit.rearAxle]) {
+  for (const axle of [kit.frontAxle, kit.rearAxle, ...(def.axles || [])]) {
     for (const s of [1, -1]) {
       b.push((s * spec.track) / 2, spec.wheelRadius, axle, s < 0 ? Math.PI : 0);
       buildWheel(b, spec.wheelRadius, def.tireWidth, wheelSides);
@@ -646,7 +648,7 @@ export function vehicleGeometry(spec, def, { wheelSides = 12, accent } = {}) {
   for (const g of geometry.groups) {
     const look = BAKED[keys[g.materialIndex ?? 0]] || BAKED.trim;
     const key = keys[g.materialIndex ?? 0];
-    let c = key === 'accent' && accent ? accent : look.color;
+    let c = key === 'accent' && (accent || def.accent) ? accent || def.accent : look.color;
     if (key === 'rim' && typeof def.rimColor === 'number') c = new THREE.Color(def.rimColor).toArray().map((v) => v * 0.85);
     for (let i = g.start; i < g.start + g.count; i++) {
       col.set(c, i * 3);

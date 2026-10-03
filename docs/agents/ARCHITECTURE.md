@@ -94,7 +94,8 @@ captures such as rendered audio.
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
 | `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
-| `src/traffic/bodies.js` | Geometry per kind: a kind with a `model` is the lofted car (`vehicleGeometry`), the rest are boxy stand-ins until their bodies land |
+| `src/traffic/bodies.js` | Geometry per kind: the lofted body (`vehicleGeometry`) from the civilian models by kind id or from the kind's `model`; the old boxy stand-ins are the fallback |
+| `src/vehicles/bodies/civilians.js` | Pure: the fourteen traffic bodies (`CIVILIAN_MODELS`): cars and vans from profiles, trucks, tanker, bus and semi as a lofted cab with cargo, extra axles |
 | `src/vehicles/bodies/profile.js` | Pure: parametric body profiles (stations from a few dimensions) and detail helpers: lamps, grille, plates, mirrors, wing, pipes, scoop, skirts |
 | `src/vehicles/bodies/racers.js` | Pure: the twelve street racer cars (`RACER_MODELS`): dimensions, speed, body profile and details |
 | `src/traffic/render.js` | `TrafficRenderer`: one InstancedMesh per kind, tint per instance, brake lights |
@@ -132,7 +133,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.6)
+## Current state (0.4.7)
 
 Done and tested:
 
@@ -378,7 +379,10 @@ Done and tested:
   pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
   friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
-  Agents are drawn by `TrafficRenderer` as boxy stand-ins until the real bodies arrive.
+  Agents are drawn by `TrafficRenderer`, one InstancedMesh per kind. Since 0.4.7 every kind
+  is a lofted body (`vehicles/bodies/civilians.js`), 1,500 to 3,300 triangles: the trucks,
+  tanker and semi are a lofted cab with a cargo box or tank and extra axles (`axles`), the
+  cargo in a fixed color (`accent`) so only the cab takes the paint.
   The tick is about 0.07 ms; with traffic a downtown view is about 130 draw calls.
 - Street racers (`RIVALS` in `kinds.js`, `TrafficSim.spawnRival`). Ten low, wide kinds
   (kei sports car, rotary coupe, hot hatch, boxer sedan, V8 drifter, wedge GT, hardtop,

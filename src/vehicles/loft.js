@@ -86,13 +86,15 @@ export function archStation(st, off, wheelRadius, flare) {
 }
 
 /**
- * The z of every ring: the authored stations, the arch offsets around each axle (they win
- * over an authored station closer than 3 cm), then extra rings so no gap is wider than
- * `maxGap`.
+ * The z of every ring: the authored stations, the arch offsets around each axle that fall
+ * inside the body (they win over an authored station closer than 3 cm), then extra rings so
+ * no gap is wider than `maxGap`. A truck cab that ends before its rear axle gets no arch there.
  * @param {number[][]} list @param {number[]} axles @param {number[]} arch @param {number} maxGap
  */
 export function loftZs(list, axles, arch, maxGap) {
-  const archZ = axles.flatMap((a) => arch.map((o) => a + o));
+  const lo = list[0][0];
+  const hi = list[list.length - 1][0];
+  const archZ = axles.flatMap((a) => arch.map((o) => a + o)).filter((z) => z > lo + 0.02 && z < hi - 0.02);
   const zs = [...list.map((s) => s[0]).filter((z) => !archZ.some((a) => Math.abs(a - z) < 0.03)), ...archZ].sort((a, b) => a - b);
   const out = [zs[0]];
   for (let i = 1; i < zs.length; i++) {

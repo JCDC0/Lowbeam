@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { BODIES, vehicleGeometry } from '../vehicles/models.js';
 import { RACER_MODEL_BY_ID } from '../vehicles/bodies/racers.js';
+import { CIVILIAN_MODEL_BY_ID } from '../vehicles/bodies/civilians.js';
 import { carById } from '../vehicles/specs.js';
 
 const PAINT = [1, 1, 1];
@@ -129,6 +130,8 @@ function lights(p, W, y, L, size = 0.28) {
  * @param {import('./kinds.js').Kind} k
  */
 export function buildKindGeometry(k) {
+  const civilian = CIVILIAN_MODEL_BY_ID.get(k.id);
+  if (civilian) return vehicleGeometry(civilian, civilian.body, { wheelSides: 10 });
   if (k.model) {
     const racer = RACER_MODEL_BY_ID.get(k.model);
     if (racer) return vehicleGeometry(racer, racer.body, { wheelSides: 10 });
