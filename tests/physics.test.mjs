@@ -146,17 +146,15 @@ test('the manual selector runs N, R, 1 to the top gear for every car, at any spe
     assert.deepEqual(order.slice(0, 5), [1, 2, 3, 4, 5].slice(0, 5), spec.id);
     assert.equal(s.gear, spec.gears.length, `${spec.id} stops at its top gear`);
     s.blown = false;
-    for (let i = 0; i < spec.gears.length; i++) {
+    const down = [];
+    for (let i = 0; i < spec.gears.length + 3; i++) {
       press('shiftDown');
       run(0.15);
+      if (down[down.length - 1] !== s.gear) down.push(s.gear);
     }
-    assert.equal(s.gear, -1, `${spec.id} reaches R`);
-    press('shiftDown');
-    run(0.15);
-    assert.equal(s.gear, 0, `${spec.id} ends in N`);
-    press('shiftUp');
-    run(0.15);
-    assert.equal(s.gear, -1, `${spec.id} leaves N for R`);
+    assert.equal(down[down.length - 1], 0, `${spec.id} ends in N, walked ${JSON.stringify(down)}`);
+    assert.ok(down.includes(-1), `${spec.id} passes through R on the way down`);
+    assert.ok(down.includes(1), `${spec.id} passes through 1st on the way down`);
   }
   assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6, 7]);
 });
@@ -277,6 +275,44 @@ test('the speedometer speed is the speed of travel, not its forward part', () =>
   run(0.05);
   assert.ok(Math.abs(s.vLong) < 14.5, 'moving sideways to the heading');
   assert.ok(s.speed > 13, `speed ${s.speed}`);
+});
+
+test('a downshift at crawling speed drops straight to the gear that fits', () => {
+  const crawl = rig('hayate', 'asphalt', true);
+  crawl.s.gear = 5;
+  crawl.s.vz = 2;
+  crawl.s.speed = 2;
+  crawl.press('shiftDown');
+  assert.equal(crawl.s.gear, 1, `5th at 2 m/s went to gear ${crawl.s.gear}`);
+  crawl.run(1);
+  assert.ok(!crawl.s.blown, 'a crawl downshift blew the engine');
+  assert.equal(crawl.s.damage, 0);
+
+  const rolling = rig('hayate', 'asphalt', true);
+  rolling.s.gear = 5;
+  rolling.s.vz = 28;
+  rolling.s.speed = 28;
+  rolling.press('shiftDown');
+  assert.equal(rolling.s.gear, 4, `5th at 28 m/s went to gear ${rolling.s.gear}`);
+  rolling.run(1);
+  assert.ok(!rolling.s.blown, 'a rolling downshift blew the engine');
+});
+
+test('a crawl downshift picks the gear the engine can actually pull', () => {
+  for (const spec of CARS) {
+    const { s, run, press } = rig(spec.id, 'asphalt', true);
+    s.gear = spec.gears.length;
+    s.vz = 1;
+    s.speed = 1;
+    press('shiftDown');
+    assert.equal(s.gear, 1, `${spec.id} at walking pace went to gear ${s.gear}`);
+    let peak = 0;
+    run(2, { throttle: 1 }, () => {
+      peak = Math.max(peak, s.rpm);
+    });
+    assert.ok(!s.blown, `${spec.id} blew itself crawling`);
+    assert.ok(peak < spec.engine.redline + 150, `${spec.id} revved to ${peak.toFixed(0)} crawling`);
+  }
 });
 
 test('shifting down at speed is allowed, and a money shift blows the engine', () => {

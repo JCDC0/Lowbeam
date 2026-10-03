@@ -33,6 +33,8 @@ const CLUTCH_TIME = 0.1;
 const CLUTCH_SLIP = 0.35;
 /** Slip (m/s) below which the driven wheels count as gripping. */
 const SPIN_EPS = 0.05;
+/** How many times idle the engine must still turn in a gear for a crawl downshift to use it. */
+const CRAWL_RPM_FACTOR = 1.2;
 /** Kilograms of rotating wheel and driveline mass per driven axle, as inertia in kg m^2. */
 const WHEEL_INERTIA = 2.2;
 const DEFAULT_ENGINE_INERTIA = 0.25;
@@ -157,6 +159,32 @@ function stepGear(gear, dir, nG) {
 }
 
 /**
+ * Road speed at which a given forward gear would turn the engine at `rpm`. Zero for a
+ * gear the car is not in or a ratio of zero.
+ * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} gear @param {number} v
+ */
+function gearRpm(s, spec, gear, v) {
+  const ratio = spec.gears[gear - 1];
+  return ratio ? (Math.abs(v) / spec.wheelRadius) * ratio * spec.finalDrive * RPM : 0;
+}
+
+/**
+ * The gear a manual downshift should land in: the highest gear below the current one whose
+ * road speed would still turn the engine at least `CRAWL_RPM_FACTOR` times idle, so a car
+ * crawling after a crash drops straight into a gear it can pull instead of lugging down
+ * through the box one tap at a time. It never picks a gear that would over-rev, so the
+ * money shift above it stays possible.
+ * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} v
+ */
+function downGear(s, spec, v) {
+  const want = spec.engine.idle * CRAWL_RPM_FACTOR;
+  for (let g = s.gear - 1; g >= 1; g--) {
+    if (gearRpm(s, spec, g, v) >= want) return g;
+  }
+  return 1;
+}
+
+/**
  * Engine rpm with the gearbox in neutral or the clutch out: the engine spins freely, so
  * it climbs at a rate set by its inertia and falls back to idle on its own friction.
  * A running limiter cut takes the throttle away here too, so free revving bounces off
@@ -255,7 +283,10 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
         const to = stepGear(s.gear, 1, nG);
         if (to !== s.gear) shiftTo(s, to, CLUTCH_TIME);
       } else if (input.shiftDown) {
-        const to = stepGear(s.gear, -1, nG);
+        // A downshift in a forward gear above 1st drops to the highest gear the engine can
+        // still pull at this road speed, so a car crawling in a tall gear does not have to
+        // tap down through gears that only lug. 1st and the R and N rungs are fixed.
+        const to = s.gear > 1 ? Math.min(stepGear(s.gear, -1, nG), downGear(s, spec, vF)) : stepGear(s.gear, -1, nG);
         if (to !== s.gear) shiftTo(s, to, CLUTCH_TIME);
       }
     }

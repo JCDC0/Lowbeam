@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.15)
+## Current state (0.4.16)
 
 Done and tested:
 
@@ -192,8 +192,11 @@ Done and tested:
   Manual (Settings, store key `transmission`) goes N, R, 1 ... n with 0.1 s of clutch,
   at any speed, W always throttle and S always brake; nothing is refused. Since 0.4.15
   the manual selector runs up from the bottom N, R, 1 (`stepGear` in `physics.js`), so a
-  downshift from 1 goes straight to R and R is the last rung below neutral. Auto is
-  unchanged.
+  downshift from 1 goes straight to R and R is the last rung below neutral. A downshift above
+  1st picks `downGear`, the highest gear below the current one that would still turn the engine
+  at 1.2 times idle (`CRAWL_RPM_FACTOR`) at the current road speed, so a car crawling in a tall
+  gear drops straight to 1st on one tap; it never chooses a gear that over-revs, so the money
+  shift above it still happens. Auto is unchanged.
 - Engine health (`thermal.js`, state in the physics). `s.temp` 80 to 120 C, power falls
   from 108 C to 70 % at 120 C (`thermalDerate`); `s.exh` 300 to 900 C. Rpm past the
   redline (150 rpm dead zone) is `s.overrev` 0 to 1 toward `engine.blowRpm` (11,000 for
@@ -468,7 +471,7 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 121 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
+- Tests: 124 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.
 

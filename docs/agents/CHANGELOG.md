@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.16 (2026-10-03)
+
+A downshift at crawling speed drops to the gear that fits (Antigravity's A8 part 3).
+
+- `src/vehicles/physics.js`: a manual downshift in a forward gear above 1st now goes to `downGear`,
+  the highest gear below the current one that would still turn the engine at least 1.2 times idle
+  (`CRAWL_RPM_FACTOR`) at the current road speed, and to 1st when no gear does. A car sitting in 5th
+  at walking pace after a crash drops straight to 1st on one tap instead of three, and at 100 km/h a
+  tap still gives 4th. It never picks a gear that over-revs, so the money shift above it still blows
+  the engine. 1st, R and N are fixed rungs.
+- Tests: `a downshift at crawling speed drops straight to the gear that fits` (5th at 2 m/s gives 1
+  with no damage, 5th at 28 m/s gives 4) and `a crawl downshift picks the gear the engine can
+  actually pull` (every car from its top gear at walking pace lands in 1 and pulls without blowing
+  or passing the redline). The money shift test is unchanged and still passes.
+
 ## 0.4.15 (2026-10-03)
 
 Manual gear order runs N, R, 1 to the top gear (Antigravity's A8 part 2).
