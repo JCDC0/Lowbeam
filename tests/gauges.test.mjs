@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/vehicles/specs.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from '../src/vehicles/physics.js';
-import { createGauges, stepGauges, WATER_MIN, WATER_MAX, EXH_MIN, EXH_MAX, INTAKE_MIN } from '../src/vehicles/gauges.js';
+import { createGauges, stepGauges, TEMP_MIN, TEMP_MAX, EXH_MIN, EXH_MAX, INTAKE_MIN } from '../src/vehicles/gauges.js';
 
 const flat = (surface = 'asphalt') => () => ({ h: 0, surface });
 
@@ -47,18 +47,18 @@ test('the naturally aspirated cars read manifold vacuum, never boost', () => {
   }
 });
 
-test('water and exhaust temperatures stay in range and follow the load', () => {
+test('temperature and exhaust stay in range and follow the load', () => {
   for (const spec of CARS) {
     // Full throttle held against the brakes at walking pace: heavy load, no airflow.
     const hard = drive(spec, 90, () => ({ throttle: 1, brake: 1, steer: 0, handbrake: 0 }), 'gravel');
     const idle = drive(spec, 90, () => ({ throttle: 0, brake: 0, steer: 0, handbrake: 0 }));
     for (const r of [...hard, ...idle]) {
-      assert.ok(r.water >= WATER_MIN && r.water <= WATER_MAX, `${spec.id} water ${r.water}`);
+      assert.ok(r.temp >= TEMP_MIN && r.temp <= TEMP_MAX, `${spec.id} temp ${r.temp}`);
       assert.ok(r.exh >= EXH_MIN && r.exh <= EXH_MAX, `${spec.id} exh ${r.exh}`);
     }
     const h = hard[hard.length - 1];
     const i = idle[idle.length - 1];
-    assert.ok(h.water > i.water + 3, `${spec.id} water hard ${h.water.toFixed(1)} vs idle ${i.water.toFixed(1)}`);
+    assert.ok(h.temp > i.temp + 3, `${spec.id} temp hard ${h.temp.toFixed(1)} vs idle ${i.temp.toFixed(1)}`);
   }
   const spec = carById('vespera');
   const wot = drive(spec, 6, () => ({ throttle: 1, brake: 0, steer: 0, handbrake: 0 }));

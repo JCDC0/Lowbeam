@@ -14,11 +14,16 @@ import { ECONOMY, LAKE, TOWN, WATER_LEVEL } from './world/layout.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
+import { repairCost, repairEngine, TEMP_RED } from './vehicles/thermal.js';
 import { Cluster, drawCluster } from './ui/cluster.js';
 import { canvasTexture, makeCanvas } from './render/textures.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 
+/** Key shown in prompts for the interact action. */
+const INTERACT_KEY = 'E';
+/** Seconds the interact key is held at a pump to repair the engine. */
+const REPAIR_TIME = 1.5;
 /** Liters per second while holding the pump. */
 const REFUEL_RATE = 3;
 /** How close the car's center must be to a pump to use it. */
@@ -45,6 +50,9 @@ export class Drive {
     this.acc = 0;
     this.money = store.get('money', ECONOMY.startMoney);
     this.fueled = 0;
+    this.repairTimer = 0;
+    this.blowsSeen = 0;
+    this.hotWarned = false;
     this.areaTimer = 0;
     this.hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
     /** @type {Cluster | null} */
@@ -78,6 +86,8 @@ export class Drive {
     this.car.cockpit.gaugeMat.needsUpdate = true;
     this.toPump(this.world.scatter.stations[0]);
     this.acc = 0;
+    this.blowsSeen = 0;
+    this.hotWarned = false;
     this.hud.area('');
     this.areaTimer = 0;
   }
@@ -104,7 +114,7 @@ export class Drive {
     this.rig.snap();
   }
 
-  /** Tow to the nearest station's pump for a fee. */
+  /** Tow to the nearest station's pump for a fee. A blown engine is rebuilt on the way, as far as the money goes. */
   tow() {
     const s = this.car.state;
     let best = this.world.scatter.stations[0];
@@ -116,7 +126,9 @@ export class Drive {
         best = st;
       }
     }
-    this.money = Math.max(0, this.money - ECONOMY.towCost);
+    const fee = ECONOMY.towCost + repairCost(s);
+    this.money = Math.max(0, this.money - fee);
+    repairEngine(s);
     store.set('money', this.money);
     this.toPump(best);
     this.toast(`TOWED TO ${best.pad.name}`, 3);
@@ -162,7 +174,30 @@ export class Drive {
     let prompt = '';
     let refueling = false;
     const pump = s.speed < 0.6 ? this.nearPump() : null;
-    if (pump && s.fuel < spec.fuel.tank - 0.05) {
+    const hurt = s.blown || s.damage > 0.02;
+    const tankFull = s.fuel >= spec.fuel.tank - 0.05;
+    if (pump && hurt && (s.blown || tankFull)) {
+      const cost = repairCost(s);
+      drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false, manual: drive.manual };
+      if (this.money < cost) {
+        prompt = `ENGINE DAMAGED   REPAIR ¥${cost.toLocaleString('en-US')}   NOT ENOUGH MONEY`;
+        this.repairTimer = 0;
+      } else if (input.held('interact')) {
+        this.repairTimer += dt;
+        prompt = `REPAIRING ENGINE  ${Math.min(100, Math.round((this.repairTimer / REPAIR_TIME) * 100))} %`;
+        if (this.repairTimer >= REPAIR_TIME) {
+          this.money -= cost;
+          store.set('money', this.money);
+          repairEngine(s);
+          this.repairTimer = 0;
+          this.toast(`ENGINE REPAIRED  ¥${cost.toLocaleString('en-US')}`, 2.5);
+        }
+      } else {
+        this.repairTimer = 0;
+        prompt = `HOLD ${INTERACT_KEY} TO REPAIR ENGINE  ¥${cost.toLocaleString('en-US')}`;
+      }
+    } else if (pump && s.fuel < spec.fuel.tank - 0.05) {
+      this.repairTimer = 0;
       if (input.held('interact') && this.money >= 1) {
         const liters = Math.min(REFUEL_RATE * dt, spec.fuel.tank - s.fuel, this.money / ECONOMY.fuelPrice);
         s.fuel += liters;
@@ -174,7 +209,7 @@ export class Drive {
         refueling = true;
         prompt = `REFUELING  ${this.fueled.toFixed(1)} L  ¥${Math.round(this.fueled * ECONOMY.fuelPrice).toLocaleString('en-US')}`;
       } else {
-        prompt = this.money >= 1 ? `HOLD E TO REFUEL  ¥${ECONOMY.fuelPrice} / L` : 'NO MONEY FOR FUEL';
+        prompt = this.money >= 1 ? `HOLD ${INTERACT_KEY} TO REFUEL  ¥${ECONOMY.fuelPrice} / L` : 'NO MONEY FOR FUEL';
       }
     } else if (pump && s.fuel >= spec.fuel.tank - 0.05) {
       prompt = 'TANK FULL';
@@ -185,10 +220,20 @@ export class Drive {
       this.fueled = 0;
     }
     if (!s.engineOn && !pump) prompt = `OUT OF FUEL   R  TOW TO A STATION  ¥${ECONOMY.towCost.toLocaleString('en-US')}`;
+    else if (s.blown && !pump) prompt = `ENGINE BLOWN   LIMP TO A PUMP OR  R  TOW  ¥${(ECONOMY.towCost + repairCost(s)).toLocaleString('en-US')}`;
     if (input.pressed('reset')) {
-      if (!s.engineOn) this.tow();
+      if (!s.engineOn || s.blown) this.tow();
       else this.resetToRoad();
     }
+    if (s.blowCount !== this.blowsSeen) {
+      this.blowsSeen = s.blowCount;
+      this.rig.bump(9);
+      this.toast('ENGINE BLOWN   MONEY SHIFT', 3.5);
+    }
+    if (s.temp >= TEMP_RED + 3 && !this.hotWarned && !s.blown) {
+      this.hotWarned = true;
+      this.toast('ENGINE OVERHEATING   EASE OFF', 2.5);
+    } else if (s.temp < TEMP_RED - 6) this.hotWarned = false;
 
     this.acc += dt;
     let steps = 0;

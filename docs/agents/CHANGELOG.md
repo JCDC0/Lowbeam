@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0 (2026-10-03)
+
+Driving model: rpm from the driven wheels, a real gearbox, heat, the money shift, tarmac grip.
+
+- Engine rpm now comes from a driven-wheel speed state (`s.slip`), not from the car's
+  forward speed. A loose or over-powered launch revs to the limiter, the needle no longer
+  sits on a constant number, and a car spinning or sliding sideways keeps its rpm. The
+  speedometer shows the speed of travel. The clutch slips in first and reverse so the
+  launch rpm climbs with speed. Auto shifts on road speed.
+- Gearbox R, N, 1 to n at any speed, nothing refused. Hayate 5, Rampart 5, Vespera 6
+  gears. Manual W is always throttle and S always brake.
+- `thermal.js`: temperature (renamed from water) is real and derates power from 108 C
+  to 70 % at 120 C; exhaust temperature; over-rev damage; money shift above 11,000 rpm
+  blows the engine, pegs temp and exh, leaves a limp mode (quarter torque, 3,500 rpm
+  cap). Repair at a pump (hold interact) or by tow. Toasts for a blown or hot engine.
+- Tarmac grip raised (1.0 to 1.28 on asphalt) and brakes strengthened; gravel unchanged.
+  Bench: Hayate 1.34 g, Rampart 1.20 g, Vespera 1.41 g on tarmac; 100 to 0 in 35, 37
+  and 32 m.
+- Gauges mirror the physics and gain `gears`, `overrev`, `damage`, `blown`. `water` stays
+  as a deprecated alias of `temp`.
+- Tests: 59 passing.
+
 ## 0.1.10 (2026-10-03)
 
 Task briefs for Antigravity, ahead of the 0.2 to 0.5 work.

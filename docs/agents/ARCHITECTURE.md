@@ -65,7 +65,8 @@ captures such as rendered audio.
 | `src/ui/menus.js` | Title, main menu, settings, controls, loading, pause and toast DOM screens |
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
-| `src/vehicles/gauges.js` | Pure: water, boost or manifold vacuum, exhaust temperature, shift light |
+| `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
+| `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
@@ -88,7 +89,7 @@ captures such as rendered audio.
 | `src/render/sky.js` | Gradient dome, stars, moon; `MOON_DIR` |
 | `src/vehicles/specs.js` | The three cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
-| `src/vehicles/physics.js` | 120 Hz bicycle model, gearbox, traction control, jumps, fuel |
+| `src/vehicles/physics.js` | 120 Hz bicycle model, R N 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
 | `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
 | `src/render/builder.js` | `MeshBuilder`: flat-shaded quads, boxes, cylinders into grouped geometry |
@@ -107,7 +108,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.1.9)
+## Current state (0.2.0)
 
 Done and tested:
 
@@ -120,10 +121,36 @@ Done and tested:
 
   | Car | 0-100 | 1/4 mile | Top | 100-0 | Grip tarmac / gravel |
   |---|---|---|---|---|---|
-  | Hayate RS-4 | 4.76 s | 13.20 s | 203 km/h | 40.9 m | 1.04 g / 0.80 g |
-  | Rampart 440 | 4.80 s | 12.48 s | 245 km/h | 42.8 m | 0.93 g / 0.61 g |
-  | Vespera GT | 4.92 s | 12.65 s | 293 km/h | 34.7 m | 1.10 g / 0.59 g |
+  | Hayate RS-4 | 4.64 s | 13.10 s | 203 km/h | 35.1 m | 1.34 g / 0.80 g |
+  | Rampart 440 | 3.74 s | 11.67 s | 245 km/h | 37.4 m | 1.20 g / 0.61 g |
+  | Vespera GT | 4.20 s | 12.13 s | 293 km/h | 31.7 m | 1.41 g / 0.59 g |
 
+  Tarmac grip was raised in 0.2.0 (`SURFACES.asphalt.mu` 1.0 to 1.28, concrete 1.24, brakes
+  stronger). Gravel, dirt, grass, sand are unchanged and a test guards gravel within 3 %.
+- Drivetrain (`physics.js`). `gear` is -1 (R), 0 (N) or 1 to the top gear (Hayate and
+  Rampart 5, Vespera 6). The engine is tied to the driven wheels, which can turn faster
+  than the road passes under them: `s.slip` (m/s) is that extra wheel surface speed.
+  When the engine pushes more than the tires can pass on (`tc` times grip, then a
+  slip-ratio curve per surface in `surfaces.js`: `slipPeak`, `slipEnd`, `slide`), the
+  wheels spin up with the real rotating mass, engine rpm follows them to the limiter, and
+  the sliding tires keep pushing while they spin down. Engine rpm comes from the wheel
+  speed (`s.rpm`), never from the car's heading, so a spinning or sliding car does not
+  swing its tach. The speedometer is `hypot(vx, vz)`. In first and reverse the clutch
+  slips (`CLUTCH_SLIP`) so the needle climbs from the launch rpm instead of sitting on a
+  number. Neutral free-revs with the engine's own inertia (`engine.inertia`).
+  Auto shifts on road speed (not wheel speed) and holds brake at rest for reverse.
+  Manual (Settings, store key `transmission`) goes R, N, 1 ... n with 0.1 s of clutch,
+  at any speed, W always throttle and S always brake; nothing is refused.
+- Engine health (`thermal.js`, state in the physics). `s.temp` 80 to 120 C, power falls
+  from 108 C to 70 % at 120 C (`thermalDerate`); `s.exh` 300 to 900 C. Rpm past the
+  redline (150 rpm dead zone) is `s.overrev` 0 to 1 toward `engine.blowRpm` (11,000 for
+  every car): it heats the engine, builds `s.damage`, and the wheels drag the car back.
+  Wheel-driven rpm at or above the blow rpm (a money shift: 3rd to 2nd at 144 km/h in the
+  Hayate, anything into R above about 120 km/h) or damage reaching 1 sets `s.blown`,
+  `s.blowCount`, `s.seize` (0.35 s of grab), pegs temp and exh, and puts the car in limp
+  mode: a quarter of the torque, 3,500 rpm cap, torque fading out above 50 to 65 km/h.
+  `repairEngine` clears it: hold the interact key at a pump (`repairCost`, 12,000 yen
+  when blown) or tow with R (tow fee plus the repair).
 - Render plumbing runs in the browser: `stage.js`, `psx.js`, `builder.js`.
 - Car models (`src/vehicles/models.js`), seen in `tools/models.html`. Each body is
   lofted from 9 to 11 cross sections plus 7 arch stations per axle. A station is
@@ -252,7 +279,7 @@ Done and tested:
   120 C, red over 110), BOOST on the Hayate (-0.7 to +1.2 bar) or VAC on the other
   two (-0.8 to 0 bar), EXH (300 to 900 C, red over 820). The values come from
   `src/vehicles/gauges.js` (pure), stepped once per frame from the physics state:
-  water heats with load and cools with airflow over tens of seconds, boost spools
+  temperature and exhaust come from the physics (`thermal.js`), boost spools
   above `engine.turbo.spoolRpm` with `engine.turbo.lag` and dumps on shifts, vacuum
   follows the throttle, exhaust follows load and rpm. Only the Hayate spec has a
   `turbo` block. In the cockpit view the HUD cluster hides and the same `drawCluster`
@@ -263,8 +290,6 @@ Done and tested:
   is closed, and cabin firewall and floor pan prevent light leaks. The hooded binnacle
   sits clean on top of the dash with full visibility of the round dials, needle,
   shift LEDs, speed, and gear box.
-- Sequential manual transmission: sequential shifting with `shiftUp` and `shiftDown`.
-  The limiter holds at redline without auto upshifting. Over-rev downshifts are blocked.
 - Ace Combat and Japanese arcade styled menus:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
   `settingsScreen` (Auto vs Manual transmission toggle, Master, Engine, Effects,
@@ -272,11 +297,13 @@ Done and tested:
   `controlsScreen` briefing, and updated `pauseScreen`.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 47 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 59 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
   push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
   species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,
-  track composition and the speed mix, manual transmission limiter hold and over-rev rejection).
+  track composition and the speed mix, R N 1..n for every car, rpm that reaches the limiter
+  on a loose launch and ignores the heading in a spin, money shifts, limp mode, the heat
+  derate, tarmac and gravel grip).
   `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
   the browser pane.
 
@@ -306,9 +333,8 @@ rates.
   90 degrees of slide in the bench). Intended character; the keyboard throttle ramp
   exists now (`RAMP` in input.js). Needs a real drive with hands on the keys to judge.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
-- Engine rpm can read a few hundred over the redline under wheelspin (physics adds up
-  to 1500 rpm of spin to `s.rpm`). The tach needle then sits in the red zone. Decide
-  whether that is honest feedback or should clamp.
+- Gauge fields `water`, `WATER_MIN` and `WATER_MAX` are deprecated aliases of `temp`,
+  `TEMP_MIN`, `TEMP_MAX`; remove them once the cluster reads `temp` (task A1).
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
 - Lamp pools on Route 7 in town overlap into an even wash at 34 m spacing. Check from

@@ -9,14 +9,32 @@
  *
  * Model: a bicycle model with load transfer and a light magic-formula tire, plus a
  * separate vertical model that lets the car leave the ground over crests.
+ *
+ * Drivetrain: `gear` is -1 (R), 0 (N) or 1 to the number of forward gears. The engine
+ * is tied to the driven wheels through the gearbox, and the wheels may turn faster than
+ * the road passes under them: `slip` (m/s) is that extra surface speed. Engine rpm comes
+ * from the wheel speed, so a spinning car revs to the limiter, and a car that is yawing
+ * or sliding sideways does not drag its rpm around with its heading. Heat, over-rev and
+ * the money shift live in `thermal.js`.
  */
 
-import { surface } from './surfaces.js';
+import { surface, slipFactor } from './surfaces.js';
 import { clamp, approach, lerp } from '../core/mathx.js';
+import { LIMP_RPM, healthScale, stepEngineHealth, thermalDerate, TEMP_START, EXH_START } from './thermal.js';
 
 export const G = 9.81;
 export const DT = 1 / 120;
 const RPM = 60 / (2 * Math.PI);
+
+/** Seconds the clutch is open on a manual shift. */
+const CLUTCH_TIME = 0.1;
+/** Extra engine rpm, as a fraction of wheel rpm, while the clutch slips in first and reverse. */
+const CLUTCH_SLIP = 0.35;
+/** Slip (m/s) below which the driven wheels count as gripping. */
+const SPIN_EPS = 0.05;
+/** Kilograms of rotating wheel and driveline mass per driven axle, as inertia in kg m^2. */
+const WHEEL_INERTIA = 2.2;
+const DEFAULT_ENGINE_INERTIA = 0.25;
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 /** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number, shiftUp?: boolean, shiftDown?: boolean, manual?: boolean }} DriveInput */
@@ -28,8 +46,11 @@ export function createVehicleState(spec) {
     x: 0, y: 0, z: 0, yaw: 0,
     vx: 0, vz: 0, vy: 0, yawRate: 0,
     steer: 0,
-    gear: 1, shiftTimer: 0, revTimer: 0,
-    rpm: spec.engine.idle, throttle: 0, limiter: 0,
+    gear: 1, shiftTimer: 0, revTimer: 0, manual: false,
+    shiftCount: 0, shiftFrom: 1, shiftTo: 1, shiftRpm: 0,
+    rpm: spec.engine.idle, throttle: 0, limiter: 0, slip: 0,
+    temp: TEMP_START, exh: EXH_START, load: 0,
+    overrev: 0, damage: 0, blown: false, blowCount: 0, seize: 0,
     air: false, contact: true, airTime: 0, landing: 0,
     pitch: 0, roll: 0,
     aLong: 0, aLat: 0,
@@ -54,6 +75,7 @@ export function placeVehicle(s, spec, x, z, yaw, ground) {
   s.vx = s.vz = s.vy = s.yawRate = 0;
   s.steer = 0;
   s.gear = 1;
+  s.slip = 0;
   s.air = false;
   s.airTime = 0;
   s.aLong = s.aLat = 0;
@@ -103,6 +125,33 @@ function groundAt(s, spec, ground) {
 }
 
 /**
+ * Moves the gear selector and starts the clutch time.
+ * @param {ReturnType<typeof createVehicleState>} s @param {number} to @param {number} time
+ */
+function shiftTo(s, to, time) {
+  s.shiftCount++;
+  s.shiftFrom = s.gear;
+  s.shiftTo = to;
+  s.shiftRpm = s.rpm;
+  s.gear = to;
+  s.shiftTimer = time;
+}
+
+/**
+ * Engine rpm with the gearbox in neutral or the clutch out: the engine spins freely, so
+ * it climbs at a rate set by its inertia and falls back to idle on its own friction.
+ * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} accel @param {number} dt
+ */
+function freeRev(s, spec, accel, dt) {
+  const e = spec.engine;
+  const torque = torqueAt(spec, s.rpm) * e.peakTorque * accel;
+  const friction = e.peakTorque * (0.06 + 0.22 * (s.rpm / e.redline) ** 2);
+  const idleHold = e.peakTorque * 0.3 * clamp((e.idle - s.rpm) / 150, 0, 1);
+  const alpha = (torque - friction + idleHold) / (e.inertia || DEFAULT_ENGINE_INERTIA);
+  return Math.max(e.idle * 0.85, s.rpm + alpha * RPM * dt);
+}
+
+/**
  * Advances the car by dt seconds.
  * @param {ReturnType<typeof createVehicleState>} s
  * @param {CarSpec} spec
@@ -125,6 +174,7 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   const lz = -fx;
   let vF = s.vx * fx + s.vz * fz;
   let vL = s.vx * lx + s.vz * lz;
+  const vF0 = vF;
   const speed = Math.hypot(s.vx, s.vz);
 
   // ── Ground and vertical motion ────────────────────────────────────────────
@@ -164,27 +214,18 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   // ── Gear selection ────────────────────────────────────────────────────────
   const manual = !!input.manual;
   const nG = spec.gears.length;
+  s.manual = manual;
+  s.shiftTimer = Math.max(0, s.shiftTimer - dt);
 
   if (manual) {
-    s.shiftTimer = Math.max(0, s.shiftTimer - dt);
-    if (input.shiftUp && s.shiftTimer <= 0) {
-      if (s.gear === -1) s.gear = 1;
-      else if (s.gear < nG) s.gear++;
-      s.shiftTimer = 0.18;
-    } else if (input.shiftDown && s.shiftTimer <= 0) {
-      if (s.gear > 1) {
-        // Prevent downshift if it would over-rev the engine past redline
-        const lowerRpm = (Math.abs(vF) / r) * spec.gears[s.gear - 2] * spec.finalDrive * RPM;
-        if (lowerRpm <= eng.redline + 200) {
-          s.gear--;
-          s.shiftTimer = 0.18;
-        }
-      } else if (s.gear === 1 && Math.abs(vF) < 3) {
-        s.gear = -1;
-        s.shiftTimer = 0.18;
-      }
+    // R, N, 1 ... n in order, at any speed. Nothing is refused: shift down too far and the
+    // engine pays for it (see thermal.js).
+    if (s.shiftTimer <= 0) {
+      if (input.shiftUp && s.gear < nG) shiftTo(s, s.gear + 1, CLUTCH_TIME);
+      else if (input.shiftDown && s.gear > -1) shiftTo(s, s.gear - 1, CLUTCH_TIME);
     }
   } else {
+    if (s.gear === 0) s.gear = 1;
     if (s.gear > 0) {
       if (input.brake > 0.5 && input.throttle < 0.1 && vF < 0.6) {
         s.revTimer += dt;
@@ -202,48 +243,61 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
     } else s.revTimer = 0;
   }
 
-  const accel = s.gear > 0 ? input.throttle : input.brake;
-  const brakeIn = s.gear > 0 ? input.brake : input.throttle;
+  const dir = s.gear > 0 ? 1 : s.gear < 0 ? -1 : 0;
+  const accel = manual ? input.throttle : s.gear > 0 ? input.throttle : input.brake;
+  const brakeIn = manual ? input.brake : s.gear > 0 ? input.brake : input.throttle;
   s.throttle = s.engineOn ? accel : 0;
   s.braking = brakeIn > 0.05 && Math.abs(vF) > 0.3;
   s.handbrake = input.handbrake > 0.5;
 
-  const ratio = s.gear > 0 ? spec.gears[s.gear - 1] : spec.reverse;
+  const ratio = s.gear > 0 ? spec.gears[s.gear - 1] : s.gear < 0 ? spec.reverse : 0;
   const total = ratio * spec.finalDrive;
-  const wheelRpm = (Math.abs(vF) / r) * total * RPM;
+  const wheelSpeed = vF + dir * s.slip;
+  const wheelRpm = dir === 0 ? 0 : (Math.abs(wheelSpeed) / r) * total * RPM;
 
-  if (!manual) {
-    s.shiftTimer = Math.max(0, s.shiftTimer - dt);
-    if (s.gear > 0 && s.shiftTimer <= 0 && s.contact) {
-      if (wheelRpm > eng.shiftUp && s.gear < nG) {
-        s.gear++;
-        s.shiftTimer = 0.22;
-      } else if (s.gear > 1) {
+  if (!manual && dir > 0) {
+    // The automatic shifts on road speed, so a spinning wheel does not make it hunt.
+    const roadRpm = (Math.abs(vF) / r) * total * RPM;
+    if (s.shiftTimer <= 0 && s.contact) {
+      if (roadRpm > eng.shiftUp && s.gear < nG) shiftTo(s, s.gear + 1, 0.22);
+      else if (s.gear > 1) {
         const lower = (Math.abs(vF) / r) * spec.gears[s.gear - 2] * spec.finalDrive * RPM;
-        if (wheelRpm < eng.shiftDown && lower < eng.shiftUp * 0.9) {
-          s.gear--;
-          s.shiftTimer = 0.15;
-        }
+        if (roadRpm < eng.shiftDown && lower < eng.shiftUp * 0.9) shiftTo(s, s.gear - 1, 0.15);
       }
     }
   }
 
   // ── Engine ────────────────────────────────────────────────────────────────
-  let rpm = wheelRpm;
-  if (s.gear === 1 || s.gear === -1) rpm = Math.max(rpm, lerp(eng.idle, eng.launch, accel));
-  if (s.shiftTimer > 0) rpm = lerp(s.rpm, rpm, 0.2);
-  rpm = Math.max(rpm, eng.idle);
+  let rpm;
+  if (dir === 0) rpm = freeRev(s, spec, accel, dt);
+  else {
+    rpm = wheelRpm;
+    // The clutch slips in the launch gears: the engine runs above the wheels, by an amount that
+    // fades as the car picks up speed, so the needle climbs instead of sitting on one number.
+    if (Math.abs(s.gear) === 1) rpm = Math.max(rpm, lerp(eng.idle, eng.launch, accel) + CLUTCH_SLIP * rpm);
+    if (s.shiftTimer > 0) rpm = lerp(s.rpm, rpm, 0.2);
+    rpm = Math.max(rpm, eng.idle);
+  }
+  if (s.blown && dir === 0) rpm = Math.min(rpm, LIMP_RPM);
   let torque = 0;
   if (!s.engineOn) {
     rpm = 0;
-  } else if (s.shiftTimer <= 0) {
-    if (rpm < eng.redline) torque = torqueAt(spec, rpm) * eng.peakTorque * accel;
+  } else if (s.shiftTimer <= 0 || dir === 0) {
+    const cap = s.blown ? Math.min(LIMP_RPM, eng.redline) : eng.redline;
+    if (rpm < cap) torque = torqueAt(spec, rpm) * eng.peakTorque * accel;
     else s.limiter = 0.08;
   }
   s.limiter = Math.max(0, s.limiter - dt);
   if (s.limiter > 0) torque = 0;
-  let drive = ((torque * total * spec.efficiency) / r) * (s.gear > 0 ? 1 : -1);
-  if (accel < 0.05 && s.engineOn && Math.abs(vF) > 0.5) drive -= Math.sign(vF) * eng.braking * clamp(rpm / eng.redline, 0.2, 1);
+  torque *= thermalDerate(s.temp) * healthScale(s);
+  const wheelForce = (torque * total * spec.efficiency) / r;
+  let drive = wheelForce * dir;
+  if (dir !== 0 && s.engineOn) {
+    if (accel < 0.05 && Math.abs(vF) > 0.5) drive -= Math.sign(vF) * eng.braking * clamp(rpm / eng.redline, 0.2, 1);
+    // Wheels forcing the engine past its limit drag the car back, harder the further it goes.
+    if (s.overrev > 0) drive -= Math.sign(wheelSpeed) * eng.braking * 2.5 * s.overrev;
+  }
+  if (s.seize > 0) drive -= Math.sign(vF) * 0.5 * W;
 
   // ── Loads and grip ────────────────────────────────────────────────────────
   const transfer = (spec.cgHeight / L) * m * s.aLong;
@@ -265,26 +319,42 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   } else if (spec.drive === 'FWD') FxF = drive;
   else FxR = drive;
   // Traction control: the driven axles never use all their grip for drive, so some is
-  // always left for cornering. tc closer to 1 means a looser, more lurid car.
-  let spin = 0;
+  // always left for cornering. tc closer to 1 means a looser, more lurid car. The
+  // friction circle for cornering uses these clamped values; what actually reaches the
+  // road is lower once the wheels are spinning (slipFactor).
   const tc = spec.tire.tc;
-  if (Math.abs(FxF) > capF * tc) {
-    spin += Math.max(0, Math.abs(FxF) - capF);
-    FxF = Math.sign(FxF) * capF * tc;
+  const kappa = s.slip / Math.max(Math.abs(vF), 2);
+  const spinning = dir !== 0 && s.slip > SPIN_EPS;
+  const demandF = FxF;
+  const demandR = FxR;
+  if (spinning) {
+    // A spinning axle slides: it passes its sliding limit whatever the engine is doing,
+    // which keeps pushing the car while the wheels spin down.
+    FxF = spec.drive !== 'RWD' ? dir * capF * tc : 0;
+    FxR = spec.drive !== 'FWD' ? dir * capR * tc : 0;
+  } else {
+    if (Math.abs(FxF) > capF * tc) FxF = Math.sign(FxF) * capF * tc;
+    if (Math.abs(FxR) > capR * tc) FxR = Math.sign(FxR) * capR * tc;
   }
-  if (Math.abs(FxR) > capR * tc) {
-    spin += Math.max(0, Math.abs(FxR) - capR);
-    FxR = Math.sign(FxR) * capR * tc;
-  }
+  const circleF = FxF;
+  const circleR = FxR;
+  FxF *= slipFactor(kappa, sfF);
+  FxR *= slipFactor(kappa, sfR);
+  const sent = FxF + FxR;
+  const pushed = demandF + demandR;
+  let brakeF = 0;
+  let brakeR = 0;
   if (s.braking) {
     const fb = spec.brake * brakeIn * Math.sign(vF);
-    FxF -= fb * 0.62;
-    FxR -= fb * 0.38;
+    brakeF = -fb * 0.62;
+    brakeR = -fb * 0.38;
   }
-  if (s.handbrake && Math.abs(vF) > 0.3) FxR -= Math.sign(vF) * spec.handbrake;
-  if (Math.abs(FxF) > capF) FxF = Math.sign(FxF) * capF;
-  if (Math.abs(FxR) > capR) FxR = Math.sign(FxR) * capR;
-  s.wheelspin = s.contact && accel > 0.1 ? clamp(spin / (0.25 * W), 0, 1) : 0;
+  if (s.handbrake && Math.abs(vF) > 0.3) brakeR -= Math.sign(vF) * spec.handbrake;
+  const limit = (v, cap) => (Math.abs(v) > cap ? Math.sign(v) * cap : v);
+  const lateralUseF = limit(circleF + brakeF, capF);
+  const lateralUseR = limit(circleR + brakeR, capR);
+  FxF = limit(FxF + brakeF, capF);
+  FxR = limit(FxR + brakeR, capR);
 
   // ── Steering ──────────────────────────────────────────────────────────────
   const lock = spec.steer.max / (1 + Math.abs(vF) / spec.steer.falloff);
@@ -309,8 +379,8 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
     const alphaF = Math.atan2(vLw, Math.max(Math.abs(vFw), 1.5));
     const vLr = vL - s.yawRate * c;
     const alphaR = Math.atan2(vLr, Math.max(Math.abs(vF), 1.5));
-    const latCapF = Math.sqrt(Math.max(0, capF * capF - FxF * FxF));
-    const latCapR = Math.sqrt(Math.max(0, capR * hb * (capR * hb) - FxR * FxR));
+    const latCapF = Math.sqrt(Math.max(0, capF * capF - lateralUseF * lateralUseF));
+    const latCapR = Math.sqrt(Math.max(0, capR * hb * (capR * hb) - lateralUseR * lateralUseR));
     FyF = clamp(tireForce(alphaF, Nf, muF, sfF), -latCapF, latCapF);
     FyR = clamp(tireForce(alphaR, Nr, muR * hb, sfR), -latCapR, latCapR);
     s.slipFront = Math.abs(vLw);
@@ -363,14 +433,31 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   s.x += s.vx * dt;
   s.z += s.vz * dt;
 
+  // ── Driven wheels: what the engine pushes that the tires cannot pass on spins them ─
+  if (dir === 0 || s.seize > 0) s.slip = 0;
+  else {
+    const excess = s.contact ? dir * (pushed - sent) : dir * pushed;
+    const driven = s.shiftTimer > 0 ? 0 : (eng.inertia || DEFAULT_ENGINE_INERTIA) * total * total;
+    const inertia = ((spec.drive === 'AWD' ? 2 : 1) * WHEEL_INERTIA + driven) / (r * r);
+    // Gripping wheels turn with the road, so only a wheel already spinning, or one the
+    // engine is pushing past what the tires can pass on, changes its slip.
+    if (!spinning && excess <= 0) s.slip = 0;
+    else s.slip = clamp(s.slip + (excess / inertia) * dt - dir * (vF - vF0), 0, 90);
+    if (s.slip < SPIN_EPS && excess <= 0) s.slip = 0;
+  }
+  const kappaNow = s.slip / Math.max(Math.abs(vF), 2);
+  s.wheelspin = s.contact && dir !== 0 && accel > 0.1 ? clamp((kappaNow - 0.1) / 0.4, 0, 1) : 0;
+
   // Filtered accelerations feed load transfer and body roll.
   s.aLong = lerp(s.aLong, s.contact ? aF + G * Math.sin(s.pitch) : 0, 0.15);
   s.aLat = lerp(s.aLat, s.contact ? aL : 0, 0.15);
   s.vLong = vF;
   s.vLat = vL;
   s.speed = sp;
-  s.rpm = lerp(s.rpm, rpm + s.wheelspin * 1500, 0.25);
-  s.wheelAngle += ((vF + Math.sign(drive) * s.wheelspin * 6) / r) * dt;
+  s.rpm = dir === 0 ? rpm : lerp(s.rpm, rpm, 0.25);
+  s.wheelAngle += ((vF + dir * s.slip * (spec.drive === 'AWD' ? 1 : 0.6)) / r) * dt;
+
+  stepEngineHealth(s, spec, rpm, dir === 0 || s.shiftTimer > 0 ? 0 : wheelRpm, dt);
 
   if (s.engineOn) {
     s.fuel -= (0.0012 + spec.fuel.burn * accel * clamp(rpm / eng.redline, 0.2, 1)) * dt;

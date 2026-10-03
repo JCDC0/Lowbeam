@@ -1,27 +1,32 @@
 /**
  * Simulated gauge readings for the HUD cluster and the cockpit dash, fed by the physics
- * state each tick. Pure, no three.js. None of these feed back into the physics; they
- * exist so the needles move the way a driver expects.
+ * state each tick. Pure, no three.js. Temperature, exhaust temperature, damage and the
+ * blown state belong to the physics (`thermal.js`) because they change how the car
+ * drives; the gauges mirror them. Boost and manifold vacuum are cosmetic.
  *
- *  - water: coolant, 80 to 120 C. Load heats it, airflow from speed cools it, slowly.
+ *  - temp: engine temperature, 80 to 120 C. Red from 110 C, where power starts to fall.
  *  - boost: turbo cars, -0.7 to +1.2 bar. Builds above the spool rpm with lag, dumps on
  *    a shift and sits in vacuum off throttle.
  *  - intake: naturally aspirated cars, manifold pressure -0.8 to 0 bar. Deep vacuum on a
  *    closed throttle, near zero at full throttle.
  *  - exh: exhaust gas temperature, 300 to 900 C, following load and rpm.
+ *  - gear: 'R', 'N' or '1' to the car's top gear; `gears` is how many forward gears it has.
+ *  - overrev (0 to 1, toward the blow rpm), damage (0 to 1) and blown (limp mode).
  */
 
 import { clamp } from '../core/mathx.js';
+import { TEMP_MAX, TEMP_MIN, TEMP_RED, EXH_MAX, EXH_MIN } from './thermal.js';
+
+export { TEMP_MAX, TEMP_MIN, TEMP_RED, EXH_MAX, EXH_MIN };
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 /** @typedef {ReturnType<typeof import('./physics.js').createVehicleState>} VehicleState */
 
-export const WATER_MIN = 80;
-export const WATER_MAX = 120;
+/** Deprecated names from before the rename, kept until the cluster reads `temp`. */
+export const WATER_MIN = TEMP_MIN;
+export const WATER_MAX = TEMP_MAX;
 export const BOOST_MIN = -0.7;
 export const INTAKE_MIN = -0.8;
-export const EXH_MIN = 300;
-export const EXH_MAX = 900;
 
 /** @param {CarSpec} spec */
 export function createGauges(spec) {
@@ -30,13 +35,18 @@ export function createGauges(spec) {
     rpm: spec.engine.idle,
     kmh: 0,
     gear: 'N',
+    gears: spec.gears.length,
     fuel: spec.fuel.tank,
     tank: spec.fuel.tank,
+    temp: 84,
     water: 84,
     boost: -0.6,
     intake: -0.65,
     exh: 360,
     load: 0,
+    overrev: 0,
+    damage: 0,
+    blown: false,
     shift: false,
     limiter: false,
     engineOn: true,
@@ -58,23 +68,24 @@ export function stepGauges(g, spec, s, dt) {
   const eng = spec.engine;
   const on = s.engineOn;
   const thr = on ? s.throttle : 0;
-  const rpmFrac = clamp(s.rpm / eng.redline, 0, 1);
   g.engineOn = on;
   g.rpm = s.rpm;
-  g.kmh = Math.abs(s.vLong) * 3.6;
-  g.gear = s.gear < 0 ? 'R' : s.speed < 0.3 && thr < 0.05 ? 'N' : String(s.gear);
+  // The magnitude of the velocity, not its forward part, so a spinning car's speedo does not swing.
+  g.kmh = s.speed * 3.6;
+  g.gear = s.gear < 0 ? 'R' : s.gear === 0 ? 'N' : !s.manual && s.speed < 0.3 && thr < 0.05 ? 'N' : String(s.gear);
+  g.gears = spec.gears.length;
   g.fuel = s.fuel;
   g.shift = on && s.gear > 0 && s.gear < spec.gears.length && s.rpm > eng.shiftUp * 0.96;
   g.limiter = s.limiter > 0;
+  g.load = s.load;
+  g.temp = s.temp;
+  g.water = s.temp;
+  g.exh = s.exh;
+  g.overrev = s.overrev;
+  g.damage = s.damage;
+  g.blown = s.blown;
 
-  g.load = follow(g.load, thr * (0.35 + 0.65 * rpmFrac), 0.3, 0.6, dt);
-  const airflow = clamp(s.speed / 28, 0, 1);
-  const waterTarget = on ? 84 + 30 * g.load * (1.15 - 0.75 * airflow) + 7 * (1 - airflow) - 3 * airflow : 80;
-  g.water = clamp(follow(g.water, waterTarget, 22, 40, dt), WATER_MIN, WATER_MAX);
-
-  const exhTarget = on ? 330 + 560 * Math.pow(g.load, 0.85) * (0.45 + 0.55 * rpmFrac) : EXH_MIN;
-  g.exh = clamp(follow(g.exh, exhTarget, 1.6, 3.5, dt), EXH_MIN, EXH_MAX);
-
+  const rpmFrac = clamp(s.rpm / eng.redline, 0, 1);
   const vacuum = on ? -0.55 - 0.2 * rpmFrac : 0;
   if (eng.turbo) {
     const t = eng.turbo;
