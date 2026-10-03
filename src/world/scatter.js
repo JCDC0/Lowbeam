@@ -8,6 +8,7 @@ import { CITY, SEED } from './layout.js';
 import { padDistance } from './ground.js';
 import { makeRng } from '../core/rng.js';
 import { placeForest } from './forest.js';
+import { placeHighway } from './highway.js';
 import { SKIRT, ELEVATED } from './roads.js';
 
 /** @typedef {import('./ground.js').Ground} Ground */
@@ -97,7 +98,8 @@ export function scatterWorld(ground) {
   const buildings = placeBuildings(ground, lights, boxes);
   const trees = placeForest(ground, buildings, circles, clearOfRoads);
   const bridges = placeBridges(ground, circles, boxes);
-  return { lamps, stations, buildings, trees, bridges, lights, circles, boxes };
+  const highway = placeHighway(ground, boxes, circles, lights);
+  return { lamps, stations, buildings, trees, bridges, highway, lights, circles, boxes };
 }
 
 /** Lift (m) from which a road gets side walls, and from which it counts as a deck with piers. */
@@ -170,6 +172,8 @@ function placeBridges(ground, circles, boxes) {
 function clearOfRoads(ground, x, z, margin) {
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
   if (ground.roads.influence(x, z, margin + SKIRT, hit) && hit.edge < margin + SKIRT) return false;
+  // Nothing grows or stands under a deck either.
+  if (ground.roads.query(x, z, hit, margin + 3, -Infinity, Infinity) && (hit.lift || 0) > 1) return false;
   for (const pad of ground.pads) if (padDistance(pad, x, z) < margin) return false;
   return true;
 }

@@ -204,6 +204,34 @@ export function asphaltTexture() {
   });
 }
 
+/**
+ * Asphalt for a carriageway of `lanes` lanes: solid edge lines, a dashed line between
+ * lanes and a darker band where the tires run. With `lanes` 0, only the edge lines (a ramp).
+ * @param {number} lanes
+ */
+export function laneAsphaltTexture(lanes) {
+  return cached(`asphalt-lanes-${lanes}`, () => {
+    const c = noiseCanvas('asphalt', 64, '#55565b', [[92, 92, 96], [78, 78, 83], [104, 102, 100], [70, 70, 74]], 0.5, 11);
+    const t = makeCanvas(64, 96);
+    const g = t.getContext('2d');
+    g.drawImage(c, 0, 0);
+    g.drawImage(c, 0, 64);
+    const lane = 64 / Math.max(1, lanes || 2);
+    g.fillStyle = 'rgba(0,0,0,0.18)';
+    for (let i = 0; i < Math.max(1, lanes || 2); i++) {
+      const mid = lane * (i + 0.5);
+      g.fillRect(mid - 9, 0, 5, 96);
+      g.fillRect(mid + 4, 0, 5, 96);
+    }
+    g.fillStyle = '#d8d6cc';
+    g.fillRect(2, 0, 2, 96);
+    g.fillRect(60, 0, 2, 96);
+    g.fillStyle = '#e8e4d8';
+    for (let i = 1; i < lanes; i++) g.fillRect(Math.round(lane * i) - 1, 8, 2, 40);
+    return canvasTexture(t, { repeat: true, mips: true });
+  });
+}
+
 /** Loose gravel with two darker wheel ruts and a lighter crown of loose stones. */
 export function gravelTexture() {
   return cached('gravel', () => {

@@ -12,6 +12,7 @@ import { psxUniforms } from '../render/psx.js';
 import { buildTerrain, buildWater } from './build-terrain.js';
 import { buildRoads } from './build-roads.js';
 import { buildBridges } from './build-bridges.js';
+import { buildHighway } from './build-highway.js';
 import { buildLamps, buildTown } from './props.js';
 import { buildTrees } from './build-trees.js';
 import { buildStations } from './gas-station.js';
@@ -46,6 +47,9 @@ export class World {
     w.add(roads);
     w.groundChunks.push(...roads.userData.chunks);
     w.add(buildBridges(w.scatter.bridges, w.ground, w.grid));
+    const highway = buildHighway(w.scatter.highway, w.grid);
+    w.add(highway);
+    w.groundChunks.push(...highway.userData.chunks);
     await step('BUILDING THE CITY');
     w.add(buildLamps(w.scatter.lamps, w.grid));
     w.add(buildTown(w.scatter.buildings, w.grid));

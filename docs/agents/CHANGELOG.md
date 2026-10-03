@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.3 (2026-10-03)
+
+Route 1 gets its furniture, and the toll plazas work.
+
+- `highway.js`: a concrete median barrier along the whole loop, steel guard rails on both
+  outer edges, and three toll plazas. Rails and barrier leave gaps at ramps, forecourts and
+  plazas. Every piece has a collider with a height range, so cars on the overpasses are not
+  stopped by what is below them.
+- `build-highway.js`: barrier and rail in 180 m chunks that are culled with the road; the
+  plaza canopy, columns, islands, booths with lit windows, lane lights, barrier arms and a
+  name board.
+- `toll.js`: `TollMeter` detects the crossing, reads the speed and keeps the best per plaza.
+  `Drive` charges the 700 yen toll, saves `tollBest`, and shows the speed trap result.
+- Lane markings: expressway carriageways draw lane lines and tire bands; ramps draw edge lines only.
+- Nothing grows or stands under an overpass deck (`clearOfRoads` now looks for decks).
+- Verified by driving a Hayate through KITA TOLL at 161 km/h: 700 yen charged, toast shown, no collision.
+- Tests: 92 passing (`toll.test.mjs`: crossing, cooldown, saved best, lanes, barrier and booth colliders).
+
 ## 0.3.2 (2026-10-03)
 
 Kurogane replaces the Kirigaoka valley.

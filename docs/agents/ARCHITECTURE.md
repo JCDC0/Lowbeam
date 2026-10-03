@@ -87,6 +87,9 @@ captures such as rendered audio.
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
 | `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
 | `src/world/build-roads.js` | Road ribbons with skirts, forecourt pads with curbs |
+| `src/world/highway.js` | Pure: Route 1's median barrier, guard rails, toll plazas and their colliders |
+| `src/world/build-highway.js` | Barrier and rail chunks, plaza canopy, booths, islands, lane lights and name board |
+| `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
 | `src/world/build-bridges.js` | Slab sides, underside, parapets and piers for roads that are lifted onto a deck |
 | `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
 | `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
@@ -118,13 +121,14 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.3.2)
+## Current state (0.3.3)
 
 Done and tested:
 
 - World data and ground (Kurogane, 6 km square, 8 m terrain cells). Route 1: two one-way
   carriageways of 3 lanes (11 km each) with a 3.2 m median and median lamps, grades under
-  3 %, three toll plazas (positions only so far). Four avenues (Route 18 north, Harbor Ave
+  3 %, a concrete median barrier, guard rails on both outer edges (open at ramps, forecourts
+  and plazas), three toll plazas with speed-trap gates. Four avenues (Route 18 north, Harbor Ave
   south, West Ave, East Ave) pass over it on overpasses with a diamond interchange each
   (four ground-level ramps). Kuro Pass: 6.4 km of 2-lane asphalt from the forest village
   along the northern ridge and down the western mountain, climbing to 254 m at up to 8.5 %,
@@ -338,6 +342,15 @@ Done and tested:
   In the cockpit view the HUD cluster hides and the same `drawCluster` function paints a bold
   cockpit layout onto the binnacle texture (400 by 300, 4:3), updated every frame with fat needle
   (lineWidth: 7), bold glyphs (>= 22px), ticks only every 1000 rpm, bold speed (50px), and enlarged gear box (34px).
+- Toll plazas (`highway.js`, `build-highway.js`, `toll.js`). KITA, HIGASHI and MINATO
+  TOLL straddle both carriageways: a 31 m canopy 5.9 m up on columns, a booth on every lane
+  divider (two per carriageway), a long median island, amber lights over the outer (cash)
+  lane and green over the two ETC lanes, upright barrier arms and a green name board.
+  Islands and columns have colliders; the lanes between are 3.7 m wide. `TollMeter` watches
+  the line across the plaza between the road edges: on a crossing it returns the speed in
+  km/h, the fee (700 yen), the lane and whether it is a new best; `Drive` charges what you
+  can pay, saves `tollBest` per plaza and shows `KITA TOLL 161 KM/H 700 YEN NEW BEST`. Each gate
+  charges once per 8 s. Rivals and traffic will use the same gate later.
 - Cockpit interior fixes: exterior materials and cabin panels use `DoubleSide` so
   the hood and pillars are solid from the driver's POV. Dash gap to the windshield
   is closed, and cabin firewall and floor pan prevent light leaks. The hooded binnacle
@@ -365,7 +378,7 @@ Done and tested:
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
 - Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
-  All suites together: 87 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
+  All suites together: 92 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
   `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in
@@ -399,9 +412,7 @@ rates.
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
 - Between the city and Route 1 the land is empty: suburbs, farmland, a rail line.
-- The median of Route 1 is grass; barriers, guard rails and signs come with the toll plazas.
-- The road texture draws one center line, so each 3-lane carriageway shows a dashed line
-  down its middle; lane markings need a lanes variant.
+- Route 1 has no overhead signs yet (task A5 builds the highway sign gantries).
 - `LAKE` and `TOWN` in layout.js are aliases for the first lake and the city rect, kept
   for the map screen until it moves to `world.mapData`; remove them then.
 - `Ground.at` scans every pad on each call. Fine with 3 pads; add a grid if pads grow.

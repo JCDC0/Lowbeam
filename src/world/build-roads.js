@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
-import { asphaltTexture, concreteTexture, gravelTexture, shoulderTexture } from '../render/textures.js';
+import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture } from '../render/textures.js';
 import { SKIRT, SINK } from './roads.js';
 
 /** Meters of road per texture tile. */
@@ -142,6 +142,14 @@ export function buildRoads(ground, grid) {
     asphalt: psxLambert({ map: asphaltTexture(), baked: true }),
     gravel: psxLambert({ map: gravelTexture(), baked: true }),
   };
+  /** One-way roads get lane lines; ramps get edge lines only. */
+  const laneMats = new Map();
+  const surfaceOf = (road) => {
+    if (road.surface !== 'asphalt' || !road.def.lanes || road.def.lines === 'center' || !road.def.lines) return mats[road.surface] || mats.asphalt;
+    const lanes = road.def.lines === 'none' ? 0 : road.def.lanes;
+    if (!laneMats.has(lanes)) laneMats.set(lanes, psxLambert({ map: laneAsphaltTexture(lanes), baked: true }));
+    return laneMats.get(lanes);
+  };
   const group = new THREE.Group();
   group.name = 'roads';
   /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
@@ -153,7 +161,7 @@ export function buildRoads(ground, grid) {
     for (let r0 = 0; r0 < last; r0 += CHUNK_ROWS) {
       const r1 = Math.min(last, r0 + CHUNK_ROWS);
       const geo = bakeGeometry(ribbon(road, r0, r1), grid, { wrap: 0.6 });
-      const mesh = new THREE.Mesh(geo, [mats[road.surface] || mats.asphalt, shoulder]);
+      const mesh = new THREE.Mesh(geo, [surfaceOf(road), shoulder]);
       mesh.name = road.id;
       group.add(mesh);
       const mid = (r0 + r1) >> 1;

@@ -12,6 +12,7 @@ import { Minimap } from './ui/minimap.js';
 import { store } from './core/store.js';
 import { ECONOMY, WATER_LEVEL } from './world/layout.js';
 import { zoneAt } from './world/zones.js';
+import { TollMeter } from './world/toll.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
@@ -66,6 +67,7 @@ export class Drive {
     this.dashTex = canvasTexture(this.dashCanvas);
     this.time = 0;
     this.env = new EnvMap(world.scatter.trees);
+    this.tolls = new TollMeter(world.scatter.highway.plazas, store.get('tollBest', {}));
   }
 
   /**
@@ -240,6 +242,8 @@ export class Drive {
       this.toast('ENGINE OVERHEATING   EASE OFF', 2.5);
     } else if (s.temp < TEMP_RED - 6) this.hotWarned = false;
 
+    const x0 = s.x;
+    const z0 = s.z;
     this.acc += dt;
     let steps = 0;
     while (this.acc >= DT && steps < MAX_STEPS) {
@@ -252,6 +256,16 @@ export class Drive {
       steps++;
     }
     if (steps === MAX_STEPS) this.acc = 0;
+    const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
+    if (gate) {
+      const paid = Math.min(this.money, gate.fee);
+      this.money -= paid;
+      store.set('money', this.money);
+      store.set('tollBest', this.tolls.best);
+      const kmh = Math.round(gate.speed);
+      this.toast(`${gate.name}   ${kmh} KM/H   ¥${paid.toLocaleString('en-US')}${gate.record ? '   NEW BEST' : `   BEST ${Math.round(gate.best)}`}`, 3.2);
+      audio.ui('select');
+    }
 
     if (s.surfFront === 'water' && s.y < WATER_LEVEL - 0.5) {
       this.resetToRoad();
