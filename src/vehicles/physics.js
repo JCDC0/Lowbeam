@@ -21,6 +21,7 @@
 import { surface, slipFactor } from './surfaces.js';
 import { clamp, approach, lerp } from '../core/mathx.js';
 import { LIMP_RPM, healthScale, stepEngineHealth, thermalDerate, TEMP_START, EXH_START } from './thermal.js';
+import { createFx, stepExhaust } from './exhaust.js';
 
 export const G = 9.81;
 export const DT = 1 / 120;
@@ -51,6 +52,7 @@ export function createVehicleState(spec) {
     rpm: spec.engine.idle, throttle: 0, limiter: 0, slip: 0,
     temp: TEMP_START, exh: EXH_START, load: 0,
     overrev: 0, damage: 0, blown: false, blowCount: 0, seize: 0,
+    fx: createFx(),
     air: false, contact: true, airTime: 0, landing: 0,
     pitch: 0, roll: 0,
     aLong: 0, aLat: 0,
@@ -274,7 +276,10 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
     rpm = wheelRpm;
     // The clutch slips in the launch gears: the engine runs above the wheels, by an amount that
     // fades as the car picks up speed, so the needle climbs instead of sitting on one number.
-    if (Math.abs(s.gear) === 1) rpm = Math.max(rpm, lerp(eng.idle, eng.launch, accel) + CLUTCH_SLIP * rpm);
+    if (Math.abs(s.gear) === 1) {
+      const launch = s.blown ? Math.min(eng.launch, LIMP_RPM * 0.8) : eng.launch;
+      rpm = Math.max(rpm, lerp(eng.idle, launch, accel) + CLUTCH_SLIP * rpm);
+    }
     if (s.shiftTimer > 0) rpm = lerp(s.rpm, rpm, 0.2);
     rpm = Math.max(rpm, eng.idle);
   }
@@ -458,6 +463,7 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   s.wheelAngle += ((vF + dir * s.slip * (spec.drive === 'AWD' ? 1 : 0.6)) / r) * dt;
 
   stepEngineHealth(s, spec, rpm, dir === 0 || s.shiftTimer > 0 ? 0 : wheelRpm, dt);
+  stepExhaust(s, spec, dt);
 
   if (s.engineOn) {
     s.fuel -= (0.0012 + spec.fuel.burn * accel * clamp(rpm / eng.redline, 0.2, 1)) * dt;

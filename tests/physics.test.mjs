@@ -306,18 +306,20 @@ test('over-revving builds damage and heat without blowing at once', () => {
 });
 
 test('a blown engine limps: slow, still moving, rpm capped', () => {
-  const { s, run } = rig('rampart', 'asphalt');
-  s.blown = true;
-  s.damage = 1;
-  let top = 0;
-  let peak = 0;
-  run(25, { throttle: 1 }, () => {
-    top = Math.max(top, s.speed * 3.6);
-    peak = Math.max(peak, s.rpm);
-  });
-  assert.ok(top > 8, `did not move: ${top} km/h`);
-  assert.ok(top < 70, `limp speed ${top} km/h`);
-  assert.ok(peak < 4200, `limp rpm ${peak}`);
+  for (const spec of CARS) {
+    const { s, run } = rig(spec.id, 'asphalt');
+    s.blown = true;
+    s.damage = 1;
+    let top = 0;
+    let peak = 0;
+    run(25, { throttle: 1 }, () => {
+      top = Math.max(top, s.speed * 3.6);
+      peak = Math.max(peak, s.rpm);
+    });
+    assert.ok(top > 8, `${spec.id} did not move: ${top} km/h`);
+    assert.ok(top < 70, `${spec.id} limp speed ${top} km/h`);
+    assert.ok(peak < 4400, `${spec.id} limp rpm ${peak}`);
+  }
 });
 
 test('heat past the red threshold takes power away', () => {

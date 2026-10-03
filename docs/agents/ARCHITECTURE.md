@@ -66,6 +66,8 @@ captures such as rendered audio.
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
+| `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
+| `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
 | `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
@@ -108,7 +110,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.2.0)
+## Current state (0.2.1)
 
 Done and tested:
 
@@ -151,6 +153,15 @@ Done and tested:
   mode: a quarter of the torque, 3,500 rpm cap, torque fading out above 50 to 65 km/h.
   `repairEngine` clears it: hold the interact key at a pump (`repairCost`, 12,000 yen
   when blown) or tow with R (tow fee plus the repair).
+- Exhaust effects (`exhaust.js` state in `s.fx`, drawn by `exhaust-fx.js`). A shift above
+  80 % of the redline throws a 0.16 s flame and sparks and a bang; a lift-off from full
+  throttle above 55 % of the redline crackles 2 to 4 times; over-revving, or sitting on
+  the limiter at full throttle, crackles continuously with a constant stream of sparks;
+  the moment the engine blows there is a smoke puff, then dense smoke while it stays
+  blown (thin smoke from heavy damage). Flames are additive crossed fins parented to the
+  body; sparks and smoke are pooled points in world space (`car.fx.group`, added to the
+  scene root by `Drive.start`). Pipe tips for each car are the `TIPS` table in
+  `exhaust-fx.js`; a body with its own `exhaust: [[x, y, z]]` list wins.
 - Render plumbing runs in the browser: `stage.js`, `psx.js`, `builder.js`.
 - Car models (`src/vehicles/models.js`), seen in `tools/models.html`. Each body is
   lofted from 9 to 11 cross sections plus 7 arch stations per axle. A station is
@@ -204,6 +215,9 @@ Done and tested:
     `setOn(channel, on)`, `toggle(channel)`, `onChange(fn)` (returns an unsubscribe) and
     `audio.ui('move' | 'select' | 'back' | 'error')` for menu chirps. Settings save
     themselves to localStorage under `audio`. `audio.level()` is the output RMS.
+  - Engine health: new k-rate parameters `damage` (misfires, uneven firings, knock, rattle,
+    lost power), `overrev` (harsh rasp and drive) and a `blow` trigger (bang, metal clank and a
+    stumble). Exhaust pops come from `s.fx.pops` with the size in `s.fx.level`.
   - Engine: an AudioWorklet synthesizes each cylinder firing as an exhaust pulse at its
     place in the 720 degree cycle, through a throttle-controlled low pass and two exhaust
     resonances, plus intake noise. Flat-four (Hayate): unequal pairs, the burble, plus a

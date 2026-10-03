@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { CarModel, STEER_RATIO, buildCockpit } from './models.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from './physics.js';
+import { ExhaustFx } from './exhaust-fx.js';
 import { lerp, wrapAngle } from '../core/mathx.js';
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
@@ -20,6 +21,7 @@ export class Car {
     this.state = createVehicleState(spec);
     this.model = new CarModel(spec, paintIndex);
     this.cockpit = buildCockpit(this.model);
+    this.fx = new ExhaustFx(this.model);
     this.prev = { x: 0, y: 0, z: 0, yaw: 0 };
     this.lerped = { x: 0, y: 0, z: 0, yaw: 0 };
     this.headlights = this.makeHeadlights();
@@ -86,6 +88,7 @@ export class Car {
     o.yaw = p.yaw + wrapAngle(s.yaw - p.yaw) * alpha;
     this.model.pose(s, dt, o);
     this.cockpit.wheel.rotation.z = -s.steer * STEER_RATIO;
+    this.fx.update(s, dt);
   }
 
   /** @param {boolean} on */
@@ -96,6 +99,7 @@ export class Car {
   dispose() {
     this.model.dispose();
     this.cockpit.dispose();
+    this.fx.dispose();
     for (const l of this.headlights) l.dispose();
   }
 }

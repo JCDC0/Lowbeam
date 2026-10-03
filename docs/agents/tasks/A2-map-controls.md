@@ -33,8 +33,8 @@ road drawing so both maps share it).
   button unchanged. `shiftUp` loses `KeyE`: shift keys are Shift and Ctrl, plus E and Q
   only if E is no longer double bound. Final bindings: shift up `ShiftLeft`, `ShiftRight`,
   `KeyE`; shift down `ControlLeft`, `ControlRight`, `KeyQ`; interact `KeyF`.
-- Update the prompt strings that say "HOLD E TO REFUEL" in `src/drive.js` to F (that one
-  string edit in drive.js is allowed; Claude edits the rest of that file).
+- Change the `INTERACT_KEY` constant at the top of `src/drive.js` from 'E' to 'F' (that one
+  edit in drive.js is allowed; the refuel and repair prompts both read it).
 - The controls screen lists R, N and 1 to 7 as the manual gear order, Tab for the map,
   F for refuel and repair, C for camera (5 views), R reset.
 - Settings: add an entry for render height (240, 360, 480 lines). Store it under

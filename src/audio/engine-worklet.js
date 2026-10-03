@@ -5,7 +5,8 @@
  * `processorOptions: { voice }` and drives it with six k-rate parameters, which Web Audio
  * can schedule on a timeline, so the same graph works live and in an OfflineAudioContext.
  *
- * `bov` and `pop` are trigger counters: a rise in value fires one event of that size.
+ * `bov`, `pop` and `blow` are trigger counters: a rise in value fires one event (of the
+ * size in the fractional part, for the first two). `damage` and `overrev` are levels.
  */
 
 import { EngineVoice } from './engine-dsp.js';
@@ -21,6 +22,9 @@ class EngineProcessor extends AudioWorkletProcessor {
       k('on', 1, 0, 1),
       k('bov', 0, 0, 1e9),
       k('pop', 0, 0, 1e9),
+      k('damage', 0, 0, 1),
+      k('overrev', 0, 0, 1),
+      k('blow', 0, 0, 1e9),
     ];
   }
 
@@ -30,18 +34,22 @@ class EngineProcessor extends AudioWorkletProcessor {
     this.voice = new EngineVoice(sampleRate, voice);
     this.lastBov = 0;
     this.lastPop = 0;
+    this.lastBlow = 0;
   }
 
   process(inputs, outputs, p) {
     const out = outputs[0];
     const v = this.voice;
-    v.set({ rpm: p.rpm[0], load: p.load[0], boost: p.boost[0], limiter: p.limiter[0], on: p.on[0] });
+    v.set({ rpm: p.rpm[0], load: p.load[0], boost: p.boost[0], limiter: p.limiter[0], on: p.on[0], damage: p.damage[0], overrev: p.overrev[0] });
     const bov = p.bov[0];
     if (bov > this.lastBov) v.triggerBov(Math.min(1, bov - Math.floor(bov) || 1));
     this.lastBov = bov;
     const pop = p.pop[0];
     if (pop > this.lastPop) v.triggerPop(Math.min(1, pop - Math.floor(pop) || 1));
     this.lastPop = pop;
+    const blow = p.blow[0];
+    if (blow > this.lastBlow) v.triggerBlow();
+    this.lastBlow = blow;
     v.process(out[0], out[0].length);
     for (let c = 1; c < out.length; c++) out[c].set(out[0]);
     return true;

@@ -147,7 +147,17 @@ export class EngineVoice {
     this.boost = 0;
     this.limiter = false;
     this.on = true;
-    this.target = { rpm: 900, load: 0, boost: 0, limiter: 0, on: 1 };
+    this.target = { rpm: 900, load: 0, boost: 0, limiter: 0, on: 1, damage: 0, overrev: 0 };
+    this.damage = 0;
+    this.overrev = 0;
+    this.blow = 0;
+    this.clank = 0;
+    this.stutter = 0;
+    this.knock = 0;
+    this.blowLp = 0;
+    this.knockPhase = 0;
+    this.clankPhase = 0;
+    this.clankPhase2 = 0;
     this.level = 0;
     this.phase = 0;
     this.cycle = 0;
@@ -181,7 +191,7 @@ export class EngineVoice {
 
   /**
    * Targets for the next blocks. Values are smoothed inside.
-   * @param {{ rpm?: number, load?: number, boost?: number, limiter?: number | boolean, on?: number | boolean }} p
+   * @param {{ rpm?: number, load?: number, boost?: number, limiter?: number | boolean, on?: number | boolean, damage?: number, overrev?: number }} p
    */
   set(p) {
     const t = this.target;
@@ -190,6 +200,8 @@ export class EngineVoice {
     if (p.boost !== undefined) t.boost = clamp(p.boost, 0, 1.4);
     if (p.limiter !== undefined) t.limiter = +p.limiter;
     if (p.on !== undefined) t.on = +p.on;
+    if (p.damage !== undefined) t.damage = clamp(p.damage, 0, 1);
+    if (p.overrev !== undefined) t.overrev = clamp(p.overrev, 0, 1);
   }
 
   /** Blow-off valve release: the hiss after lifting off at boost. @param {number} amount 0 to 1 */
@@ -200,6 +212,13 @@ export class EngineVoice {
   /** A single exhaust pop, for upshifts and decel. @param {number} amount 0 to 1 */
   triggerPop(amount) {
     this.pop = Math.max(this.pop, amount);
+  }
+
+  /** The engine blowing: a bang, a metal clank and a stumble. */
+  triggerBlow() {
+    this.blow = 1;
+    this.clank = 1;
+    this.stutter = 1;
   }
 
   rand() {
@@ -218,8 +237,14 @@ export class EngineVoice {
     for (let k = 0; k < n; k++) {
       let j = 1 + (this.rand() - 0.5) * 2 * roughness;
       if (this.limiter && (this.cycle & 1) === 0) j = this.rand() < 0.75 ? 0 : j;
+      if (this.damage > 0.02) {
+        // A hurt engine misses firings and fires the rest unevenly.
+        if (this.rand() < this.damage * 0.5) j = 0;
+        else j *= 1 + (this.rand() - 0.5) * this.damage * 1.4;
+      }
       this.jitter[k] = j;
     }
+    if (this.damage > 0.02) this.knock = Math.max(this.knock, this.damage * (0.4 + 0.6 * this.rand()));
   }
 
   /** Recomputes smoothed parameters and filter coefficients. */
@@ -231,6 +256,9 @@ export class EngineVoice {
     this.load += (t.load - this.load) * k(0.05);
     this.boost += (t.boost - this.boost) * k(0.12);
     this.level += (t.on - this.level) * k(t.on > this.level ? 0.15 : 0.04);
+    this.damage += (t.damage - this.damage) * k(0.15);
+    this.overrev += (t.overrev - this.overrev) * k(0.08);
+    this.stutter = Math.max(0, this.stutter - dt / 0.45);
     this.limiter = t.limiter > 0.5;
     this.rpmWobble += (this.rand() - 0.5 - this.rpmWobble * 0.4) * 0.35;
     const v = this.v;
@@ -274,13 +302,13 @@ export class EngineVoice {
         }
       }
       e /= PULSE_PEAK;
-      const drive = 0.34 + 0.66 * load;
+      const drive = (0.34 + 0.66 * load) * (1 - 0.35 * this.damage);
       this.hp += (e - this.hp) * 0.003;
       let x = (e - this.hp) * drive;
 
       const white = this.rand() * 2 - 1;
       this.noiseLp += (white - this.noiseLp) * lerp(0.08, 0.3, load);
-      x += this.noiseLp * v.noise * (0.12 + 0.88 * load) * (0.3 + 0.7 * Math.min(1, rpm / 4000));
+      x += this.noiseLp * v.noise * (0.12 + 0.88 * load) * (0.3 + 0.7 * Math.min(1, rpm / 4000)) * (1 + 1.6 * this.damage);
 
       let y = this.lp2.run(this.lp1.run(x));
       y += this.pipe.run(y) * v.body + this.pipe2.run(y) * v.body * 0.45;
@@ -304,14 +332,39 @@ export class EngineVoice {
         this.pop *= 0.9975;
         if (this.pop < 0.002) this.pop = 0;
       }
+      if (this.knock > 0.002) {
+        this.knockPhase += (TAU * (170 + 90 * this.knock)) / sr;
+        if (this.knockPhase > TAU) this.knockPhase -= TAU;
+        y += (Math.sin(this.knockPhase) * 0.5 + (white - this.noiseLp) * 0.5) * this.knock * 0.55;
+        this.knock *= 0.9987;
+      }
+      if (this.overrev > 0.01) {
+        // Valves floating and the whole engine screaming: a harsh rasp and more drive.
+        y += (white - this.noiseLp) * this.overrev * 0.22;
+        y *= 1 + 0.5 * this.overrev;
+      }
+      let crash = 0;
+      if (this.blow > 0.001) {
+        this.blowLp += (white - this.blowLp) * 0.09;
+        crash += this.blowLp * this.blow * 8;
+        this.blow *= 0.99988;
+      }
+      if (this.clank > 0.001) {
+        this.clankPhase += (TAU * 640) / sr;
+        this.clankPhase2 += (TAU * 1130) / sr;
+        if (this.clankPhase > TAU) this.clankPhase -= TAU;
+        if (this.clankPhase2 > TAU) this.clankPhase2 -= TAU;
+        crash += (Math.sin(this.clankPhase) * 0.5 + Math.sin(this.clankPhase2) * 0.35) * this.clank * 1.6;
+        this.clank *= 0.99955;
+      }
       if (this.bov > 0.001) {
         this.bovLp += (white - this.bovLp) * 0.55;
         y += (white - this.bovLp) * this.bov * 0.55;
         this.bov *= 0.99992;
       }
 
-      y = Math.tanh(y * 1.25 * v.gain) * this.level;
-      out[i] = y * 0.62;
+      y = Math.tanh(y * 1.25 * v.gain) * this.level * (1 - 0.85 * this.stutter * (0.5 + 0.5 * Math.sin(this.cycle * 2.7)));
+      out[i] = (y + Math.tanh(crash)) * 0.62;
     }
     return out;
   }

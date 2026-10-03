@@ -59,8 +59,9 @@ export class Drive {
     this.cluster = null;
     /** @type {ReturnType<typeof createGauges> | null} */
     this.gauges = null;
-    this.dashCanvas = makeCanvas(420, 300);
+    this.dashCanvas = makeCanvas(400, 300);
     this.dashCtx = /** @type {CanvasRenderingContext2D} */ (this.dashCanvas.getContext('2d'));
+    /** @type {*} */ (this.dashCtx).cockpit = true;
     this.dashTex = canvasTexture(this.dashCanvas);
     this.time = 0;
     this.env = new EnvMap(world.scatter.trees);
@@ -72,11 +73,12 @@ export class Drive {
    */
   start(spec, paint) {
     if (this.car) {
-      this.world.root.remove(this.car.group);
+      this.world.root.remove(this.car.group, this.car.fx.group);
       this.car.dispose();
     }
     this.car = new Car(spec, paint);
     this.world.add(this.car.group);
+    this.world.add(this.car.fx.group);
     this.gauges = createGauges(spec);
     audio.setCar(spec);
     if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec);

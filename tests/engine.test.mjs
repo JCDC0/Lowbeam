@@ -153,3 +153,44 @@ test('blow-off hisses and pops crack, then both die away', () => {
     assert.ok(highBand(head) > highBand(tail) * 2, `${event}: ${highBand(head).toFixed(4)} then ${highBand(tail).toFixed(4)}`);
   }
 });
+
+/** Spread of the loudness from one firing to the next: how lumpy the engine is. */
+function firingSpread(a, voice, rpm) {
+  const win = Math.round(SR / ((rpm / 120) * VOICES[voice].cyl));
+  const levels = [];
+  for (let i = 0; i + win <= a.length; i += win) levels.push(rms(a.subarray(i, i + win)));
+  const mean = levels.reduce((s, x) => s + x, 0) / levels.length;
+  return Math.sqrt(levels.reduce((s, x) => s + (x - mean) ** 2, 0) / levels.length) / mean;
+}
+
+test('a damaged engine misfires: the firings get uneven and it is quieter', () => {
+  for (const voice of ['boxer', 'v8', 'v12']) {
+    const healthy = render(voice, { rpm: 3000, load: 0.8, damage: 0 }, 2.5, 1);
+    const hurt = render(voice, { rpm: 3000, load: 0.8, damage: 1 }, 2.5, 1);
+    assert.ok(firingSpread(hurt, voice, 3000) > firingSpread(healthy, voice, 3000) * 1.4, `${voice} spread ${firingSpread(hurt, voice, 3000)} vs ${firingSpread(healthy, voice, 3000)}`);
+    assert.ok(Number.isFinite(rms(hurt)) && peak(hurt) < 1);
+  }
+});
+
+test('every voice stays clean and bounded at 11,000 rpm while over-revving', () => {
+  for (const voice of Object.keys(VOICES)) {
+    const a = render(voice, { rpm: 11000, load: 1, overrev: 1, limiter: 0 }, 1.2, 0.3);
+    assert.ok(a.every(Number.isFinite), `${voice} produced non-finite samples`);
+    assert.ok(peak(a) < 1, `${voice} peak ${peak(a)}`);
+    assert.ok(rms(a) > 0.02, `${voice} silent at 11,000 rpm: ${rms(a)}`);
+  }
+});
+
+test('the blow is a loud bang and a stumble that dies away', () => {
+  const v = new EngineVoice(SR, 'boxer');
+  v.set({ on: 1, rpm: 3000, load: 0.8 });
+  const warm = new Float32Array(SR);
+  v.process(warm);
+  const before = rms(warm.subarray(SR / 2));
+  v.triggerBlow();
+  const after = new Float32Array(SR * 2);
+  v.process(after);
+  assert.ok(rms(after.subarray(0, SR / 5)) > before * 1.4, `bang ${rms(after.subarray(0, SR / 5))} vs idle ${before}`);
+  const tail = rms(after.subarray(SR * 1.5));
+  assert.ok(tail < before * 1.3, `still loud after: ${tail}`);
+});

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.1 (2026-10-03)
+
+Exhaust flames, sparks, smoke and a damaged-engine sound.
+
+- `exhaust.js` (pure) turns the physics state into flame, sparks, smoke and pop events:
+  a flame on a shift at high revs, lift-off crackle, constant sparks and crackle while
+  over-revving, a smoke puff then dense smoke once the engine is blown.
+- `exhaust-fx.js` draws them at each car's pipe tips: additive flame fins on the body, pooled
+  spark and smoke particles in world space.
+- Engine voice: `damage` (misfires, knock, rattle, less power), `overrev` (rasp) and a `blow`
+  event (bang, clank, stumble) in the worklet and the DSP. Exhaust pops now come from the
+  physics events. Verified live: the graph takes the new parameters and reacts to a money shift.
+- Limp mode could not pull away in first gear (the clutch floor sat above the rpm cap);
+  fixed and tested for every car.
+- `tools/render-engines.mjs` also writes `engine-<car>-moneyshift.wav`.
+- Tests: 66 passing.
+
 ## 0.2.0 (2026-10-03)
 
 Driving model: rpm from the driven wheels, a real gearbox, heat, the money shift, tarmac grip.

@@ -130,6 +130,9 @@ export class AudioSystem {
     this.spec = null;
     this.bovN = 0;
     this.popN = 0;
+    this.blowN = 0;
+    this.lastPops = 0;
+    this.lastBlow = 0;
     this.lastGear = 1;
     this.lastThrottle = 0;
     this.pumping = false;
@@ -408,11 +411,14 @@ export class AudioSystem {
     const node = new AudioWorkletNode(c, 'lowbeam-engine', { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1], processorOptions: { voice: spec.engine.voice } });
     node.connect(this.bus.engineIn);
     const p = node.parameters;
-    this.engine = { node, rpm: p.get('rpm'), load: p.get('load'), boost: p.get('boost'), limiter: p.get('limiter'), on: p.get('on'), bov: p.get('bov'), pop: p.get('pop') };
+    this.engine = { node, rpm: p.get('rpm'), load: p.get('load'), boost: p.get('boost'), limiter: p.get('limiter'), on: p.get('on'), bov: p.get('bov'), pop: p.get('pop'), damage: p.get('damage'), overrev: p.get('overrev'), blow: p.get('blow') };
     put(this.engine.rpm, spec.engine.idle, c.currentTime);
     put(this.engine.on, 1, c.currentTime);
     this.bovN = 0;
     this.popN = 0;
+    this.blowN = 0;
+    this.lastPops = 0;
+    this.lastBlow = 0;
   }
 
   /** The engine blips when a car is chosen in the garage. @param {number} [at] */
@@ -467,9 +473,17 @@ export class AudioSystem {
       this.bovN++;
       put(e.bov, this.bovN + clamp(f.boost / 1.2, 0.3, 1), t);
     }
-    if (s.gear !== this.lastGear && s.gear > 1 && this.lastThrottle > 0.7 && s.rpm > spec.engine.redline * 0.4) {
+    put(e.damage, s.blown ? 1 : s.damage, t);
+    put(e.overrev, s.overrev, t);
+    if (s.blowCount !== this.lastBlow) {
+      this.lastBlow = s.blowCount;
+      this.blowN++;
+      put(e.blow, this.blowN, t);
+    }
+    if (s.fx.pops !== this.lastPops) {
+      this.lastPops = s.fx.pops;
       this.popN++;
-      put(e.pop, this.popN + 0.5 + 0.4 * Math.random(), t);
+      put(e.pop, this.popN + clamp(s.fx.level, 0.15, 0.95), t);
     }
     this.lastGear = s.gear;
     this.lastThrottle = load;

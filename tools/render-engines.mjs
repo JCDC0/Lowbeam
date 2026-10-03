@@ -89,3 +89,34 @@ for (const spec of CARS) {
   }
   console.log(`${spec.name.padEnd(12)} ${(total / SR).toFixed(1)} s  rms ${Math.sqrt(sum / total).toFixed(3)}  peak ${peak.toFixed(2)}  ${file}`);
 }
+
+// The money shift: a pull in third, a downshift into a wall of rpm, the bang, then a limp home.
+for (const spec of CARS) {
+  const eng = spec.engine;
+  const v = new EngineVoice(SR, eng.voice);
+  const blocks = [];
+  const run = (seconds, fn) => {
+    const n = Math.round(seconds * SR);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i += 128) {
+      v.set({ on: 1, ...fn(i / n) });
+      v.process(out.subarray(i, Math.min(n, i + 128)));
+    }
+    blocks.push(out);
+  };
+  run(2, () => ({ rpm: eng.idle, load: 0.04 }));
+  run(2.4, (t) => ({ rpm: 3000 + (eng.redline - 3000) * t, load: 1, boost: eng.turbo ? eng.turbo.boost : 0 }));
+  run(0.9, (t) => ({ rpm: eng.redline + (eng.blowRpm - eng.redline) * t * 0.98, load: 0.6, overrev: t, damage: t * 0.4 }));
+  v.triggerBlow();
+  run(7, (t) => ({ rpm: 1500 + 1800 * (0.5 + 0.5 * Math.sin(t * 9)) * (1 - t * 0.2), load: 0.5, damage: 1 }));
+  const total = blocks.reduce((n, b) => n + b.length, 0);
+  const all = new Float32Array(total);
+  let o = 0;
+  for (const b of blocks) {
+    all.set(b, o);
+    o += b.length;
+  }
+  const file = path.join(OUT, `engine-${spec.id}-moneyshift.wav`);
+  writeWav(file, all);
+  console.log(`${spec.name.padEnd(12)} money shift ${(total / SR).toFixed(1)} s  ${file}`);
+}
