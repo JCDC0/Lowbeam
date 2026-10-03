@@ -16,7 +16,63 @@ export const psxUniforms = {
   uLocalColor: { value: new THREE.Color(0, 0, 0) },
   /** Direction toward that light in view space. */
   uLocalDir: { value: new THREE.Vector3(0, 1, 0) },
+  /** Per-pixel light pools (pools.js): every light, and a grid of which lights reach each cell. */
+  uPoolLights: { value: /** @type {THREE.DataTexture | null} */ (null) },
+  uPoolCells: { value: /** @type {THREE.DataTexture | null} */ (null) },
+  /** Grid origin x and z, cell size, cells per side. */
+  uPoolGrid: { value: new THREE.Vector4(0, 0, 24, 0) },
+  /** 1 once installPools has run; until then baked materials use the `bake` attribute. */
+  uPoolsOn: { value: 0 },
 };
+
+/**
+ * The pools in the fragment shader. A light with `spot` 1 is a street lamp head: it lights a
+ * cone under it, full inside about 50 degrees from straight down and fading out by 66, with a
+ * faint spill beyond so the road between lamps is not black. The rest are round point lights.
+ * The light is cut into bands (POOL_BANDS steps) the way the PS1 shaded, which is what makes a
+ * pool read as a shape on the road rather than a smooth glow.
+ */
+const POOL_FRAGMENT = /* glsl */ `
+uniform sampler2D uPoolLights;
+uniform sampler2D uPoolCells;
+uniform vec4 uPoolGrid;
+uniform float uPoolsOn;
+varying vec3 vPoolPos;
+varying vec3 vPoolN;
+vec3 poolLight(vec3 p, vec3 n) {
+  vec2 c = floor((p.xz - uPoolGrid.xy) / uPoolGrid.z);
+  if (c.x < 0.0 || c.y < 0.0 || c.x >= uPoolGrid.w || c.y >= uPoolGrid.w) return vec3(0.0);
+  vec3 sum = vec3(0.0);
+  for (int t = 0; t < 3; t++) {
+    vec4 ids = texelFetch(uPoolCells, ivec2(int(c.x) * 3 + t, int(c.y)), 0);
+    for (int k = 0; k < 4; k++) {
+      float id = ids[k];
+      if (id < 0.0) return sum;
+      int i = int(id + 0.5);
+      ivec2 a = ivec2((i % 1024) * 2, i / 1024);
+      vec4 L0 = texelFetch(uPoolLights, a, 0);
+      vec4 L1 = texelFetch(uPoolLights, a + ivec2(1, 0), 0);
+      vec3 dv = L0.xyz - p;
+      float d = length(dv);
+      if (d >= L0.w) continue;
+      vec3 l = dv / max(d, 0.001);
+      float lam = clamp((dot(n, l) + 0.45) / 1.45, 0.0, 1.0);
+      float r = d / L0.w;
+      float e;
+      if (L1.w > 0.5) {
+        float cone = smoothstep(0.41, 0.66, l.y);
+        e = mix(0.12, 1.0, cone) * (1.0 - r * r) * (1.0 - r * r) * 0.62;
+      } else {
+        e = (1.0 - r) * (1.0 - r);
+      }
+      e = floor(e * POOL_BANDS + 0.35) / POOL_BANDS;
+      sum += L1.rgb * e * lam;
+    }
+  }
+  return sum;
+}
+`;
+const POOL_BANDS = 7;
 
 const SNAP_VERTEX = /* glsl */ `
 #include <project_vertex>
@@ -44,10 +100,21 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false, pain
     let fs = shader.fragmentShader;
     let extra = '';
     if (baked) {
-      vs = 'attribute vec3 bake;\nvarying vec3 vBake;\n' + vs;
-      vs = vs.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBake = bake;');
-      fs = 'varying vec3 vBake;\n' + fs;
-      extra += '\ntotalEmissiveRadiance += vBake * diffuseColor.rgb;';
+      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn']) shader.uniforms[k] = psxUniforms[k];
+      vs = 'attribute vec3 bake;\nvarying vec3 vBake;\nvarying vec3 vPoolPos;\nvarying vec3 vPoolN;\n' + vs;
+      vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
+vBake = bake;
+vec4 poolW = vec4(transformed, 1.0);
+vec3 poolN = objectNormal;
+#ifdef USE_INSTANCING
+poolW = instanceMatrix * poolW;
+poolN = mat3(instanceMatrix) * poolN;
+#endif
+poolW = modelMatrix * poolW;
+vPoolPos = poolW.xyz;
+vPoolN = normalize(mat3(modelMatrix) * poolN);`);
+      fs = `varying vec3 vBake;\n#define POOL_BANDS ${POOL_BANDS.toFixed(1)}\n${POOL_FRAGMENT}${fs}`;
+      extra += '\ntotalEmissiveRadiance += (uPoolsOn > 0.5 ? poolLight(vPoolPos, normalize(vPoolN)) : vBake) * diffuseColor.rgb;';
     }
     if (lamp) {
       vs = 'attribute vec3 lamp;\nattribute float aBrake;\nvarying vec3 vLamp;\n' + vs;

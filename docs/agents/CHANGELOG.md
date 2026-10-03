@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.1 (2026-10-04)
+
+Street lamps throw real pools of light, and every lamp has two arms.
+
+- New `src/render/pools.js` and pure `src/render/pool-grid.js`: every world light goes into a float
+  texture, and a 24 m grid over the map lists up to 12 lights per cell, strongest first.
+  `World.create` installs them; `psx.js` materials made with `baked: true` then light each pixel
+  from the cell's list instead of the per-vertex `bake` attribute, whose glow followed the 8 m
+  terrain cells and the road ribbon columns and had no shape.
+- Lamp heads are cone lights (`spot: 1` on the light): a pool about 16 m across with a visible edge
+  and a faint spill outside it. All pool light is cut into 7 bands (`POOL_BANDS`).
+- `scatter.js`, `props.js`: lamps have two arms. A pole in a median (Route 1, the Bayshore Line)
+  lights both carriageways; a roadside pole also has a short, lower, dimmer arm over the sidewalk.
+  Lamp light reach is 22 m (was 19).
+- Tests: `tests/pools.test.mjs` for the grid (a light is listed in every cell it reaches and no
+  other; a crowded cell keeps the strongest first and never overflows).
+
 ## 0.5.0 (2026-10-04)
 
 Music that follows the speed, a sharper default picture, and cameras that look out over the car.

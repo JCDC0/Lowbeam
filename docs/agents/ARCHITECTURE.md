@@ -44,7 +44,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 - Pure modules never import `three` or touch the DOM: `src/core/mathx.js`,
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
-  `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`.
+  `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
+  `src/render/pool-grid.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -111,6 +112,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/gas-station.js` | Canopy, pumps, kiosk, brand sign; service park tents, floods, rival cars |
 | `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
 | `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
+| `src/render/pools.js` | `installPools`: uploads the world's lights and the cell grid as float textures for the per-pixel light pools |
+| `src/render/pool-grid.js` | Pure: `poolGrid`, which lights each 24 m cell lists (12 at most, strongest first) |
 | `src/render/sky.js` | Gradient dome, stars, moon; `MOON_DIR` |
 | `src/vehicles/specs.js` | The four cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
@@ -141,7 +144,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.23)
+## Current state (0.5.1)
 
 Done and tested:
 
@@ -365,6 +368,16 @@ Done and tested:
   player car and sets `psxUniforms.uLocalColor` and `uLocalDir`; materials made with
   `local: true` add it. Light colors above 1 are deliberate: the bake multiplies
   albedo, and night albedos are dark.
+  Since 0.5.1 the world lights are per-pixel light pools (`render/pools.js`): `World.create`
+  calls `installPools(lights)`, which puts every light into a float texture and a 24 m grid over
+  the map listing up to 12 lights per cell (`pool-grid.js`), and every `baked: true` material then
+  lights each pixel from that list instead of the `bake` attribute (which stays for the garage and
+  anything drawn before the world exists). A light with `spot: 1` is a street lamp head: a cone
+  under it, full to about 50 degrees from straight down and gone by 66 (a pool about 16 m across
+  from 7.2 m up), with a faint spill beyond; the rest are round point lights. The light is cut into
+  7 bands (`POOL_BANDS` in psx.js), the PS1 way, so a pool reads as a shape on the road. Street
+  lamps have two arms (`Lamp.back`): a pole in a median lights both carriageways at full reach, a
+  roadside pole has a short, lower, dimmer arm (`LAMP_BACK` 1.1 m) over the sidewalk. Range 22 m.
 - Driving (`src/drive.js`). Enter in the garage builds the world once (about 0.75 s)
   and puts the chosen car beside a pump at G1. Physics steps at 120 Hz in a fixed-step
   loop; the car is drawn interpolated between steps. Controls: W S or arrows for

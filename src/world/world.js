@@ -9,6 +9,8 @@ import { Ground } from './ground.js';
 import { scatterWorld } from './scatter.js';
 import { LightGrid, sampleLight } from '../render/bake.js';
 import { psxUniforms } from '../render/psx.js';
+import { installPools } from '../render/pools.js';
+import { WORLD_HALF } from './layout.js';
 import { buildTerrain, buildWater } from './build-terrain.js';
 import { buildRoads } from './build-roads.js';
 import { buildBridges } from './build-bridges.js';
@@ -37,6 +39,7 @@ export class World {
     await step('PLACING LAMPS AND TREES');
     w.scatter = scatterWorld(w.ground);
     w.grid = new LightGrid(w.scatter.lights);
+    installPools(w.scatter.lights, WORLD_HALF + 100);
     await step('CUTTING THE TERRAIN');
     const terrain = buildTerrain(w.ground, w.grid);
     w.add(terrain);

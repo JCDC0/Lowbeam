@@ -25,13 +25,23 @@ const FACADE = 24;
 export function buildLamps(lamps, grid) {
   const b = new MeshBuilder();
   const H = LAMP_HEIGHT;
+  /** One arm and its head, reaching `reach` along +Z at height `h`, scaled by `k`. */
+  const arm = (reach, h, k) => {
+    b.box('pole', 0, h - 0.05, reach / 2, 0.09, 0.09, reach);
+    b.box('pole', 0, h - 0.12 * k, reach, 0.38 * k, 0.14 * k, 0.82 * k);
+    const y = h - 0.195 * k;
+    const w = 0.15 * k;
+    const l = 0.36 * k;
+    b.quad('lens', [-w, y, reach - l], [w, y, reach - l], [w, y, reach + l], [-w, y, reach + l]);
+  };
   for (const l of lamps) {
     b.push(l.x, l.y, l.z, l.yaw);
     b.cylinder('pole', 0, H / 2, 0, 0.11, H, 6, 'y', { caps: false });
-    b.box('pole', 0, H - 0.05, LAMP_REACH / 2, 0.09, 0.09, LAMP_REACH);
-    b.box('pole', 0, H - 0.12, LAMP_REACH, 0.38, 0.14, 0.82);
-    const y = H - 0.195;
-    b.quad('lens', [-0.15, y, LAMP_REACH - 0.36], [0.15, y, LAMP_REACH - 0.36], [0.15, y, LAMP_REACH + 0.36], [-0.15, y, LAMP_REACH + 0.36]);
+    arm(LAMP_REACH, H, 1);
+    b.pop();
+    b.push(l.x, l.y, l.z, l.yaw + Math.PI);
+    const backH = l.back.hy - l.y;
+    arm(l.back.reach, backH, l.back.reach < LAMP_REACH ? 0.7 : 1);
     b.pop();
   }
   const mesh = b.mesh({ pole: psxLambert({ color: 0x6c7076, baked: true }), lens: psxBasic({ color: 0xffb24c }) });

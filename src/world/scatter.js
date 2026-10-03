@@ -15,10 +15,18 @@ import { SKIRT, ELEVATED } from './roads.js';
 /** @typedef {import('./ground.js').Pad} Pad */
 
 /**
- * A point light that only exists in the baked vertex light.
- * @typedef {{ x: number, y: number, z: number, c: number[], range: number }} BakeLight
+ * A light that only exists in the baked light: the per-pixel pools (render/pools.js), or the
+ * vertex `bake` attribute before they are installed. `spot` 1 is a street lamp head, which lights
+ * a cone under it; the rest light all round.
+ * @typedef {{ x: number, y: number, z: number, c: number[], range: number, spot?: number }} BakeLight
  */
-/** @typedef {{ x: number, z: number, y: number, yaw: number, hx: number, hy: number, hz: number }} Lamp */
+/**
+ * A street lamp: the pole at (x, y, z), its main head (hx, hy, hz) over the road, and a second
+ * head on the other arm (`back`), over the far carriageway for a pole in a median or over the
+ * sidewalk for a pole beside the road.
+ * @typedef {{ hx: number, hy: number, hz: number, reach: number }} LampHead
+ * @typedef {{ x: number, z: number, y: number, yaw: number, hx: number, hy: number, hz: number, back: LampHead }} Lamp
+ */
 /** @typedef {import('./forest.js').Tree} Tree */
 /**
  * A box building. (x, z) is the footprint center, yaw turns its local +Z toward the
@@ -34,7 +42,13 @@ import { SKIRT, ELEVATED } from './roads.js';
 
 export const LAMP_HEIGHT = 7.2;
 export const LAMP_REACH = 2.4;
+/** The short arm of a roadside lamp, over the sidewalk, and how much lower and dimmer it is. */
+export const LAMP_BACK = 1.1;
+const LAMP_BACK_DROP = 0.9;
 const SODIUM = [5.5, 3.0, 1.1];
+const SODIUM_BACK = [2.6, 1.4, 0.5];
+/** Reach of a lamp head's light, meters. */
+const LAMP_RANGE = 22;
 const CANOPY_WHITE = [0.6, 0.66, 0.74];
 
 /**
@@ -209,8 +223,14 @@ function placeLamps(ground, lights, circles) {
         const yaw = Math.atan2(-lx, -lz);
         const hx = x - lx * LAMP_REACH;
         const hz = z - lz * LAMP_REACH;
-        lamps.push({ x, y, z, yaw, hx, hy: y + LAMP_HEIGHT, hz });
-        lights.push({ x: hx, y: y + LAMP_HEIGHT, z: hz, c: SODIUM, range: 19 });
+        // A pole in a median lights both carriageways; a roadside one also lights the sidewalk.
+        const median = run.offset !== undefined;
+        const reach = median ? LAMP_REACH : LAMP_BACK;
+        const hy = y + LAMP_HEIGHT;
+        const back = { hx: x + lx * reach, hy: median ? hy : hy - LAMP_BACK_DROP, hz: z + lz * reach, reach };
+        lamps.push({ x, y, z, yaw, hx, hy, hz, back });
+        lights.push({ x: hx, y: hy, z: hz, c: SODIUM, range: LAMP_RANGE, spot: 1 });
+        lights.push({ x: back.hx, y: back.hy, z: back.hz, c: median ? SODIUM : SODIUM_BACK, range: median ? LAMP_RANGE : 15, spot: 1 });
         circles.push({ x, z, r: 0.22 });
       }
     }
