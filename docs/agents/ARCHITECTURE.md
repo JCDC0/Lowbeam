@@ -129,7 +129,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.4)
+## Current state (0.4.5)
 
 Done and tested:
 
@@ -182,7 +182,8 @@ Done and tested:
   Wheel-driven rpm at or above the blow rpm (a money shift: 3rd to 2nd at 144 km/h in the
   Hayate, anything into R above about 120 km/h) or damage reaching 1 sets `s.blown`,
   `s.blowCount`, `s.seize` (0.35 s of grab), pegs temp and exh, and puts the car in limp
-  mode: a quarter of the torque, 3,500 rpm cap, torque fading out above 50 to 65 km/h.
+  mode: a quarter of the torque, a rough idle at 1,000 to 2,000 rpm (`LIMP_RPM` 2,000) in all gears,
+  clutch slipping so the wheels no longer set engine rpm, and torque fading out above 50 to 65 km/h.
   `repairEngine` clears it: hold the interact key at a pump (`repairCost`, 12,000 yen
   when blown) or tow with R (tow fee plus the repair).
 - Exhaust effects (`exhaust.js` state in `s.fx`, drawn by `exhaust-fx.js`). A shift above

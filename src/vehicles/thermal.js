@@ -36,7 +36,7 @@ const OVERREV_DEADZONE = 150;
 const DAMAGE_RATE = 0.18;
 /** A blown engine makes this fraction of its torque and may not rev past `LIMP_RPM`. */
 export const LIMP_TORQUE = 0.25;
-export const LIMP_RPM = 3500;
+export const LIMP_RPM = 2000;
 /** Meters per second above which a blown engine's torque tapers to nothing. */
 const LIMP_SPEED = [14, 18];
 /** Seconds the wheels grab when the engine seizes at the moment it blows. */

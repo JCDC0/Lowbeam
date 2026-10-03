@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.5 (2026-10-03)
+
+Blown engine idle: rough idle at 1,000 to 2,000 rpm in gear or neutral.
+
+- `src/vehicles/thermal.js`: `LIMP_RPM` reduced from 3,500 to 2,000.
+- `src/vehicles/physics.js`: when `s.blown`, engine rpm uses `freeRev` targeting a rough idle
+  between 1,100 and 1,850 rpm (derived deterministically from vehicle state, not `Math.random`)
+  and clamped to `LIMP_RPM` (2,000 rpm) in all gears. The wheels no longer drive the engine,
+  slipping the clutch while limp torque (`LIMP_TORQUE`) continues to push the car. Shifting
+  between gear 2, N and 1 keeps the same idle range without jumping.
+- Tests: `tests/physics.test.mjs` verifies that after blowing the engine at 120 km/h in 2nd,
+  rpm stays between 900 and 2,000 rpm for 5 s across gear 2, N and 1 while the car continues
+  moving forward in gear.
+
 ## 0.4.4 (2026-10-03)
 
 Rounder cars: the modeler upgrade.

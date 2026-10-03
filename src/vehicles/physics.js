@@ -52,6 +52,7 @@ export function createVehicleState(spec) {
     rpm: spec.engine.idle, throttle: 0, limiter: 0, slip: 0,
     temp: TEMP_START, exh: EXH_START, load: 0,
     overrev: 0, damage: 0, blown: false, blowCount: 0, seize: 0,
+    idleTime: 0,
     fx: createFx(),
     air: false, contact: true, airTime: 0, landing: 0,
     pitch: 0, roll: 0,
@@ -148,6 +149,14 @@ function shiftTo(s, to, time) {
  * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} accel @param {number} dt
  */
 function freeRev(s, spec, accel, dt) {
+  if (s.blown) {
+    s.idleTime = (s.idleTime || 0) + dt;
+    const phase = s.idleTime * 4 + s.x * 0.05 + s.z * 0.05;
+    const noise = Math.sin(phase) * 240 + Math.sin(phase * 2.3 + 1.1) * 110;
+    const target = clamp(1450 + noise + accel * 200, 1100, 1850);
+    const rpm = s.rpm + (target - s.rpm) * (1 - Math.exp(-dt / 0.15));
+    return clamp(rpm, 900, LIMP_RPM);
+  }
   const e = spec.engine;
   const torque = torqueAt(spec, s.rpm) * e.peakTorque * accel;
   const friction = e.peakTorque * (0.06 + 0.22 * (s.rpm / e.redline) ** 2);
@@ -274,25 +283,24 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
 
   // ── Engine ────────────────────────────────────────────────────────────────
   let rpm;
-  if (dir === 0) rpm = freeRev(s, spec, accel, dt);
+  if (dir === 0 || s.blown) rpm = freeRev(s, spec, accel, dt);
   else {
     rpm = wheelRpm;
     // The clutch slips in the launch gears: the engine runs above the wheels, by an amount that
     // fades as the car picks up speed, so the needle climbs instead of sitting on one number.
     if (Math.abs(s.gear) === 1) {
-      const launch = s.blown ? Math.min(eng.launch, LIMP_RPM * 0.8) : eng.launch;
-      rpm = Math.max(rpm, lerp(eng.idle, launch, accel) + CLUTCH_SLIP * rpm);
+      rpm = Math.max(rpm, lerp(eng.idle, eng.launch, accel) + CLUTCH_SLIP * rpm);
     }
     if (s.shiftTimer > 0) rpm = lerp(s.rpm, rpm, 0.2);
     rpm = Math.max(rpm, eng.idle);
   }
-  if (s.blown && dir === 0) rpm = Math.min(rpm, LIMP_RPM);
+  if (s.blown) rpm = Math.min(rpm, LIMP_RPM);
   let torque = 0;
   if (!s.engineOn) {
     rpm = 0;
   } else if (s.shiftTimer <= 0 || dir === 0) {
     const cap = s.blown ? Math.min(LIMP_RPM, eng.redline) : eng.redline;
-    if (rpm < cap) torque = torqueAt(spec, rpm) * eng.peakTorque * accel;
+    if (s.blown || rpm < cap) torque = torqueAt(spec, rpm) * eng.peakTorque * accel;
     else s.limiter = 0.08;
   }
   s.limiter = Math.max(0, s.limiter - dt);
@@ -466,7 +474,7 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   s.vLong = vF;
   s.vLat = vL;
   s.speed = sp;
-  s.rpm = dir === 0 ? rpm : lerp(s.rpm, rpm, 0.25);
+  s.rpm = dir === 0 || s.blown ? rpm : lerp(s.rpm, rpm, 0.25);
   s.wheelAngle += ((vF + dir * s.slip * (spec.drive === 'AWD' ? 1 : 0.6)) / r) * dt;
 
   stepEngineHealth(s, spec, rpm, dir === 0 || s.shiftTimer > 0 ? 0 : wheelRpm, dt);

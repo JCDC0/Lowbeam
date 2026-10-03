@@ -318,7 +318,39 @@ test('a blown engine limps: slow, still moving, rpm capped', () => {
     });
     assert.ok(top > 8, `${spec.id} did not move: ${top} km/h`);
     assert.ok(top < 70, `${spec.id} limp speed ${top} km/h`);
-    assert.ok(peak < 4400, `${spec.id} limp rpm ${peak}`);
+    assert.ok(peak <= 2000, `${spec.id} limp rpm ${peak}`);
+  }
+});
+
+test('a blown engine idles between 900 and 2000 rpm in gear 2, N, and 1', () => {
+  for (const gear of [2, 0, 1]) {
+    const { s, run, press } = rig('hayate', 'asphalt', true);
+    s.gear = 2;
+    s.vz = 120 / 3.6;
+    s.speed = 120 / 3.6;
+    s.blown = true;
+    s.damage = 1;
+    if (gear === 1) {
+      press('shiftDown');
+      run(0.15);
+    } else if (gear === 0) {
+      press('shiftDown');
+      run(0.15);
+      press('shiftDown');
+      run(0.15);
+    }
+    assert.equal(s.gear, gear);
+    let minRpm = Infinity;
+    let maxRpm = -Infinity;
+    run(5, { throttle: 1 }, () => {
+      minRpm = Math.min(minRpm, s.rpm);
+      maxRpm = Math.max(maxRpm, s.rpm);
+    });
+    assert.ok(minRpm >= 900, `gear ${gear} min rpm ${minRpm}`);
+    assert.ok(maxRpm <= 2000, `gear ${gear} max rpm ${maxRpm}`);
+    if (gear !== 0) {
+      assert.ok(s.vLong > 0, `gear ${gear} forward motion ${s.vLong}`);
+    }
   }
 });
 
