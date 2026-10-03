@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.2 (2026-10-04)
+
+Island map rendering, elevated viaduct runs, new tactical POI icons and legend.
+
+- `src/ui/map.js`: renders sea outside `water.coast` polygon with evenodd winding rule and fallback
+  to `water.sea`. Maps elevated road runs on top of ground ribbons.
+- `src/ui/map.js`: adds dedicated vector icons for `police` (shield), `garage` (wrench), and `hideout`
+  (dashed square) next to existing station, toll, and rally markers, with a tactical map legend.
+- `src/ui/minimap.js`: `drawRoads` renders lifted road runs above ground roads with dark outlines.
+- `tests/map.test.mjs`: tests for island coast, elevated road overlays, and all POI icons with mock data.
+
 ## 0.6.1 (2026-10-04)
 
 Traffic junctions at any angle, T junctions with yield stops, and multi-arm node merging.

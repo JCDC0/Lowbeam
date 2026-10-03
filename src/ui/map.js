@@ -182,26 +182,70 @@ export class MapScreen {
     cvs.height = size;
     const cg = /** @type {CanvasRenderingContext2D} */ (cvs.getContext('2d'));
 
-    // World to cache space: (0, 0) is (-half, -half)
     const toCache = (x, z) => [x + half, z + half];
 
-    // Lake water
-    cg.fillStyle = 'rgba(20, 50, 80, 0.4)';
-    cg.strokeStyle = 'rgba(42, 168, 216, 0.5)';
-    cg.lineWidth = 3;
-    cg.beginPath();
-    const [lx, lz] = toCache(LAKE.x, LAKE.z);
-    cg.arc(lx, lz, LAKE.r, 0, Math.PI * 2);
-    cg.fill();
-    cg.stroke();
+    const water = this.data.water;
+    if (water?.coast && water.coast.length > 2) {
+      cg.fillStyle = 'rgba(10, 24, 44, 0.85)';
+      cg.beginPath();
+      cg.rect(0, 0, size, size);
+      for (let i = 0; i < water.coast.length; i++) {
+        const [cx, cz] = toCache(water.coast[i][0], water.coast[i][1]);
+        if (i === 0) cg.moveTo(cx, cz);
+        else cg.lineTo(cx, cz);
+      }
+      cg.closePath();
+      cg.fill('evenodd');
 
-    // Road lines by hierarchy using shared drawRoads
+      cg.strokeStyle = 'rgba(42, 168, 216, 0.6)';
+      cg.lineWidth = 4;
+      cg.beginPath();
+      for (let i = 0; i < water.coast.length; i++) {
+        const [cx, cz] = toCache(water.coast[i][0], water.coast[i][1]);
+        if (i === 0) cg.moveTo(cx, cz);
+        else cg.lineTo(cx, cz);
+      }
+      cg.closePath();
+      cg.stroke();
+    } else if (water?.sea) {
+      cg.fillStyle = 'rgba(10, 24, 44, 0.85)';
+      const s = water.sea;
+      const x0 = s.x0 ?? s.x ?? -half;
+      const z0 = s.z0 ?? s.z ?? -half;
+      const [sx0, sz0] = toCache(x0, z0);
+      const w = s.x1 !== undefined ? s.x1 - s.x0 : s.w ?? size;
+      const h = s.z1 !== undefined ? s.z1 - s.z0 : s.h ?? size;
+      cg.fillRect(sx0, sz0, w, h);
+    }
+
+    if (water?.lakes) {
+      cg.fillStyle = 'rgba(20, 50, 80, 0.5)';
+      cg.strokeStyle = 'rgba(42, 168, 216, 0.5)';
+      cg.lineWidth = 3;
+      for (const lake of water.lakes) {
+        cg.beginPath();
+        const [lx, lz] = toCache(lake.x, lake.z);
+        cg.arc(lx, lz, lake.r, 0, Math.PI * 2);
+        cg.fill();
+        cg.stroke();
+      }
+    } else if (LAKE) {
+      cg.fillStyle = 'rgba(20, 50, 80, 0.4)';
+      cg.strokeStyle = 'rgba(42, 168, 216, 0.5)';
+      cg.lineWidth = 3;
+      cg.beginPath();
+      const [lx, lz] = toCache(LAKE.x, LAKE.z);
+      cg.arc(lx, lz, LAKE.r, 0, Math.PI * 2);
+      cg.fill();
+      cg.stroke();
+    }
+
     const cacheRoads = this.data.roads.map((r) => ({
       ...r,
       points: r.points.map(([x, z]) => toCache(x, z)),
+      lifted: r.lifted ? r.lifted.map((run) => run.map(([x, z]) => toCache(x, z))) : undefined,
     }));
 
-    // Road background outline
     cg.lineCap = 'round';
     cg.lineJoin = 'round';
     cg.strokeStyle = 'rgba(10, 15, 25, 0.8)';
@@ -218,7 +262,6 @@ export class MapScreen {
       cg.stroke();
     }
 
-    // Road surface pass using shared drawRoads
     drawRoads(cg, cacheRoads);
 
     this.cacheCanvas = cvs;
@@ -361,35 +404,14 @@ export class MapScreen {
       g.fillText(zn.name, zx, zy);
     }
 
-    // POIs (Gas stations & rally)
+    // POIs
     for (const poi of this.data.pois) {
       const [px, py] = toScreen(poi.x, poi.z);
       if (px < -50 || px > w + 50 || py < -50 || py > h + 50) continue;
 
-      if (poi.kind === 'station') {
-        const isHoshi = poi.brand === 'hoshi';
-        const brandColor = isHoshi ? '#3a7bff' : '#ff6a1f';
-        g.fillStyle = brandColor;
-        g.fillRect(px - 7, py - 7, 14, 14);
-        g.fillStyle = '#fff';
-        g.fillRect(px - 3, py - 4, 6, 8);
-
-        // Station label
-        g.fillStyle = INK;
-        g.font = `10px ${FONT}`;
-        g.textAlign = 'center';
-        g.fillText(poi.name, px, py + 15);
-      } else if (poi.kind === 'start') {
-        // Checkered flag marker
-        g.fillStyle = '#fff';
-        g.fillRect(px - 2, py - 9, 3, 16);
-        for (let i = 0; i < 3; i++) {
-          for (let j = 0; j < 2; j++) {
-            g.fillStyle = (i + j) % 2 ? '#111' : '#fff';
-            g.fillRect(px + 1 + i * 3, py - 9 + j * 3, 3, 3);
-          }
-        }
-        g.fillStyle = AMBER;
+      drawPoiIcon(g, poi.kind, px, py, poi.brand);
+      if (poi.name) {
+        g.fillStyle = poi.kind === 'start' ? AMBER : INK;
         g.font = `10px ${FONT}`;
         g.textAlign = 'center';
         g.fillText(poi.name, px, py + 15);
@@ -455,6 +477,37 @@ export class MapScreen {
     g.font = `bold 13px ${FONT}`;
     g.textAlign = 'left';
     g.fillText('// KIRIGAOKA TACTICAL MAP // SATELLITE TELEMETRY', 24, 28);
+
+    const legX = 24;
+    const legY = 56;
+    g.fillStyle = 'rgba(6, 10, 18, 0.82)';
+    g.fillRect(legX, legY, 148, 142);
+    g.strokeStyle = 'rgba(255, 180, 60, 0.35)';
+    g.lineWidth = 1;
+    g.strokeRect(legX, legY, 148, 142);
+
+    g.fillStyle = AMBER;
+    g.font = `bold 9px ${FONT}`;
+    g.textAlign = 'left';
+    g.fillText('// MAP LEGEND', legX + 10, legY + 16);
+
+    const legendItems = [
+      { kind: 'station', label: 'GAS STATION' },
+      { kind: 'start', label: 'RALLY START' },
+      { kind: 'toll', label: 'TOLL PLAZA' },
+      { kind: 'police', label: 'POLICE HQ' },
+      { kind: 'garage', label: 'GARAGE' },
+      { kind: 'hideout', label: 'HIDEOUT' },
+    ];
+    let iy = legY + 32;
+    for (const item of legendItems) {
+      drawPoiIcon(g, item.kind, legX + 18, iy - 2);
+      g.fillStyle = INK;
+      g.font = `8px ${FONT}`;
+      g.textAlign = 'left';
+      g.fillText(item.label, legX + 34, iy + 1);
+      iy += 18;
+    }
 
     // Footer bar
     g.fillStyle = 'rgba(6, 10, 18, 0.75)';
@@ -536,3 +589,83 @@ export class MapScreen {
 export function mapScreen(ui, world = null) {
   return new MapScreen(ui, world);
 }
+
+/**
+ * Draws a tactical map icon for a POI kind onto a 2D canvas context.
+ * @param {CanvasRenderingContext2D} g
+ * @param {string} kind
+ * @param {number} px
+ * @param {number} py
+ * @param {string} [brand]
+ */
+export function drawPoiIcon(g, kind, px, py, brand) {
+  if (kind === 'station') {
+    const isHoshi = brand === 'hoshi';
+    const brandColor = isHoshi ? '#3a7bff' : '#ff6a1f';
+    g.fillStyle = brandColor;
+    g.fillRect(px - 7, py - 7, 14, 14);
+    g.fillStyle = '#fff';
+    g.fillRect(px - 3, py - 4, 6, 8);
+  } else if (kind === 'start') {
+    g.fillStyle = '#fff';
+    g.fillRect(px - 2, py - 9, 3, 16);
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 2; j++) {
+        g.fillStyle = (i + j) % 2 ? '#111' : '#fff';
+        g.fillRect(px + 1 + i * 3, py - 9 + j * 3, 3, 3);
+      }
+    }
+  } else if (kind === 'toll') {
+    g.fillStyle = '#ffb43c';
+    g.fillRect(px - 8, py - 4, 16, 8);
+    g.fillStyle = '#111';
+    g.fillRect(px - 6, py - 2, 12, 4);
+    g.fillStyle = '#00e676';
+    g.fillRect(px - 4, py - 1, 3, 2);
+    g.fillRect(px + 1, py - 1, 3, 2);
+  } else if (kind === 'police') {
+    g.fillStyle = '#2060df';
+    g.beginPath();
+    g.moveTo(px, py - 8);
+    g.lineTo(px + 7, py - 4);
+    g.lineTo(px + 6, py + 3);
+    g.lineTo(px, py + 8);
+    g.lineTo(px - 6, py + 3);
+    g.lineTo(px - 7, py - 4);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = '#fff';
+    g.lineWidth = 1.2;
+    g.stroke();
+    g.fillStyle = '#fff';
+    g.fillRect(px - 1, py - 4, 2, 7);
+    g.fillRect(px - 3, py - 2, 6, 2);
+  } else if (kind === 'garage') {
+    g.fillStyle = '#2eb872';
+    g.fillRect(px - 7, py - 7, 14, 14);
+    g.strokeStyle = '#fff';
+    g.lineWidth = 2.2;
+    g.beginPath();
+    g.moveTo(px - 4, py + 4);
+    g.lineTo(px + 3, py - 3);
+    g.stroke();
+    g.fillStyle = '#fff';
+    g.beginPath();
+    g.arc(px + 3, py - 3, 2.8, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#2eb872';
+    g.beginPath();
+    g.arc(px + 4, py - 4, 1.4, 0, Math.PI * 2);
+    g.fill();
+  } else if (kind === 'hideout') {
+    g.save();
+    g.setLineDash([3, 2]);
+    g.strokeStyle = '#c060ff';
+    g.lineWidth = 2;
+    g.strokeRect(px - 6, py - 6, 12, 12);
+    g.fillStyle = 'rgba(192, 96, 255, 0.25)';
+    g.fillRect(px - 5, py - 5, 10, 10);
+    g.restore();
+  }
+}
+

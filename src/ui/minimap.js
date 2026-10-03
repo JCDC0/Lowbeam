@@ -128,7 +128,7 @@ export class Minimap {
 /**
  * Draws roads onto any 2D canvas context.
  * @param {CanvasRenderingContext2D} g
- * @param {Array<{ pts?: number[], points?: number[][], w?: number, hw?: number, gravel?: boolean, cls?: string }>} roads
+ * @param {Array<{ pts?: number[], points?: number[][], w?: number, hw?: number, gravel?: boolean, cls?: string, lifted?: number[][][] }>} roads
  * @param {number} [minWidth]
  */
 export function drawRoads(g, roads, minWidth = 0) {
@@ -159,6 +159,35 @@ export function drawRoads(g, roads, minWidth = 0) {
       }
     }
     g.stroke();
+  }
+
+  for (const r of roads) {
+    if (!r.lifted || !r.lifted.length) continue;
+    const baseW = (r.w ?? (r.hw ? r.hw * 2 : 6)) + 2;
+    for (const run of r.lifted) {
+      if (!run || run.length < 2) continue;
+      g.strokeStyle = 'rgba(10, 15, 25, 0.95)';
+      g.lineWidth = Math.max(baseW + 5, minWidth + 4);
+      g.beginPath();
+      for (let i = 0; i < run.length; i++) {
+        const px = run[i][0];
+        const pz = run[i][1];
+        if (i === 0) g.moveTo(px, pz);
+        else g.lineTo(px, pz);
+      }
+      g.stroke();
+
+      g.strokeStyle = r.cls === 'expressway' ? 'rgba(255, 255, 255, 0.98)' : 'rgba(230, 235, 245, 0.95)';
+      g.lineWidth = Math.max(baseW, minWidth + 1);
+      g.beginPath();
+      for (let i = 0; i < run.length; i++) {
+        const px = run[i][0];
+        const pz = run[i][1];
+        if (i === 0) g.moveTo(px, pz);
+        else g.lineTo(px, pz);
+      }
+      g.stroke();
+    }
   }
 }
 

@@ -145,10 +145,14 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.1)
+## Current state (0.6.2)
 
 Done and tested:
 
+- Island tactical map and elevated viaducts (0.6.2, A10 part 2). `MapScreen` draws the sea outside
+  the `water.coast` polygon with evenodd fill and fallback to `water.sea`. Elevated road runs are
+  drawn above ground ribbons with dark outlines. New POI icons (`police` shield, `garage` wrench,
+  `hideout` dashed square) and a tactical map legend are added.
 - Traffic at any junction (0.6.1, A10 part 1). `TrafficNet.linkCrossings` links crossings between
   any two-way surface roads of class `street` or `arterial` unless lifted over 2 m. Light axes
   alternate per road at the junction rather than from world directions. T junctions provide yield stop
