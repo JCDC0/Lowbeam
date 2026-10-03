@@ -4,7 +4,8 @@
  * ambience and the tree scatter all ask these.
  */
 
-import { CITY, LAKES, SEA, ZONES } from './layout.js';
+import { CITY, LAKES, ZONES } from './layout.js';
+import { inland } from './island.js';
 import { smoothstep } from '../core/mathx.js';
 
 /** Corners of the Route 1 loop, close enough for an inside test. */
@@ -44,10 +45,9 @@ export function cityAmount(x, z) {
   return 1 - smoothstep(0, 140, Math.hypot(dx, dz));
 }
 
-/** How near water is: the lakes and the bay, 1 at the shore fading to 0 within 160 m. @param {number} x @param {number} z */
+/** How near water is: the lakes and the sea, 1 at the shore fading to 0 within 160 m. @param {number} x @param {number} z */
 export function waterAmount(x, z) {
-  let d = Infinity;
+  let d = inland(x, z) - 40;
   for (const l of LAKES) d = Math.min(d, Math.hypot(x - l.x, z - l.z) - l.r);
-  if (Math.abs(x) < SEA.xMax) d = Math.min(d, SEA.z + 80 - z);
   return 1 - smoothstep(0, 160, Math.max(0, d));
 }

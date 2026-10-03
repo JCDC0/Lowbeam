@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.6.0 (2026-10-04)
+
+Kurogane becomes an island, and the pass no longer ends in a hook by the lake.
+
+- `COAST` in layout.js and new pure `src/world/island.js` (`inland`, the distance inside the
+  shore, precomputed on a 24 m grid with a noisy shore). `heightfield.js` drops the land into the
+  sea along it: cliffs under the western mountains, a low shelf elsewhere. The east coast and the
+  north shore are low land for the industrial district and the coast roads. The bay is part of the
+  same shore; `SEA` no longer shapes the terrain.
+- `build-terrain.js`: one water sheet at sea level under the whole map replaces the lake discs and
+  the bay sheet.
+- `forest.js`: the edge belt and the thicket are gone (the sea is the edge now); trees within
+  150 m of the shore are mostly black pine.
+- New roads: the Higashi Coast Road (port to Hanazaki Cape up the east coast) and the Kita Coast
+  Road (cape to the forest village along the north shore), which runs straight on into Kuro Pass.
+  Route 18 ends on the Kita Coast Road at a T, East Ave on the Higashi Coast Road. G3 moved onto
+  the Kita Coast Road. New zones: Hanazaki Cape, Kita Coast, Higashi Industrial.
+- `mapData.water.coast` for the map screens; `waterAmount` reads the shore.
+- Tests: the island is ringed by sea, the shore is lined with pines, and the terrain test checks
+  the island's shape; the edge belt tests are gone.
+
 ## 0.5.2 (2026-10-04)
 
 Traffic drives with its lights on.

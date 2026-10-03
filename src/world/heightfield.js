@@ -6,7 +6,8 @@
 
 import { fbm } from '../core/rng.js';
 import { smoothstep, lerp } from '../core/mathx.js';
-import { CITY, LAKES, PASS_PROFILE, SEA, WORLD_HALF } from './layout.js';
+import { CITY, LAKES, PASS_PROFILE, WORLD_HALF } from './layout.js';
+import { inland } from './island.js';
 
 export const CELL = 8;
 export const GRID = Math.round((WORLD_HALF * 2) / CELL) + 1;
@@ -61,7 +62,11 @@ export function baseHeight(x, z) {
   const wz = z + 80 * fbm(x * 0.0012 + 5.3, z * 0.0012, 12, 2);
   const dLoop = outside(wx, wz, 0, 1500, 2150, 2200, 500);
   const dForest = outside(wx, wz, 200, -1485, 1300, 865, 400);
-  const d = Math.min(dLoop, dForest);
+  // The low land of the east coast (the industrial district and the port) and the strip along
+  // the north shore that the coast road follows out to the cape.
+  const dEast = outside(wx, wz, 2400, 400, 560, 2050, 320);
+  const dNorth = outside(wx, wz, 1650, -2320, 1000, 330, 250);
+  const d = Math.min(dLoop, dForest, dEast, dNorth);
   const m = smoothstep(80, 850, d);
 
   let h = 5 + 4 * fbm(x * 0.0025, z * 0.0025, 31, 3);
@@ -82,9 +87,15 @@ export function baseHeight(x, z) {
   const cd = outside(x, z, (CITY.x0 + CITY.x1) / 2, (CITY.z0 + CITY.z1) / 2, (CITY.x1 - CITY.x0) / 2, (CITY.z1 - CITY.z0) / 2, 40);
   h = lerp(h, 6.5, 1 - smoothstep(0, 260, cd));
 
-  // The bay.
-  const sea = smoothstep(SEA.z - 60, SEA.z + 200, wz) * (1 - smoothstep(SEA.xMax - 200, SEA.xMax + 350, Math.abs(wx)));
-  h = lerp(h, -9, sea);
+  // The coast: under the western mountains the land falls to the sea in cliffs, everywhere else
+  // it comes down onto a low shelf a few hundred meters wide. Out at sea the bed drops away.
+  const shore = inland(x, z);
+  const cliff = 1 - smoothstep(-2350, -1750, x);
+  const shelf = lerp(360, 110, cliff);
+  if (shore < shelf) {
+    const low = shore > 0 ? 1.6 + shore * 0.018 : lerp(1.6, -14, smoothstep(0, 140, -shore));
+    h = lerp(low, h, smoothstep(0, shelf, shore));
+  }
 
   for (const lake of LAKES) {
     const ld = Math.hypot(x - lake.x, z - lake.z);

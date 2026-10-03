@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { Ground } from '../src/world/ground.js';
 import { scatterWorld } from '../src/world/scatter.js';
 import { Colliders } from '../src/world/collision.js';
-import { BELT, TREE, TREE_COUNT, ringPoint } from '../src/world/forest.js';
-import { CARS } from '../src/vehicles/specs.js';
+import { TREE, TREE_COUNT } from '../src/world/forest.js';
+import { inland } from '../src/world/island.js';
 import { WORLD_HALF } from '../src/world/layout.js';
 
 const g = new Ground();
@@ -20,7 +20,7 @@ test('every species is planted, and the valley is not one or two kinds', () => {
   assert.ok(w.trees.length > 30000, `only ${w.trees.length} trees`);
 });
 
-test('trees keep clear of roads and pads, belt included', () => {
+test('trees keep clear of roads and pads', () => {
   for (const t of w.trees) {
     const hit = g.at(t.x, t.z);
     assert.equal(hit.road, null, `tree on a road at ${t.x.toFixed(0)}, ${t.z.toFixed(0)}`);
@@ -28,58 +28,20 @@ test('trees keep clear of roads and pads, belt included', () => {
   }
 });
 
-test('the thicket lies inside the collision wall', () => {
-  assert.ok(BELT.thicket[1] + 1.5 < WORLD_HALF - 12);
-  const [x, z] = ringPoint(BELT.thicket[0], 0);
-  assert.equal(Math.max(Math.abs(x), Math.abs(z)), BELT.thicket[0]);
+test('the island is ringed by sea: every way off it ends in the water', () => {
+  for (let t = -WORLD_HALF; t <= WORLD_HALF; t += 40) {
+    for (const [x, z] of [[t, -WORLD_HALF + 30], [t, WORLD_HALF - 30], [-WORLD_HALF + 30, t], [WORLD_HALF - 30, t]]) {
+      const hit = g.at(x, z);
+      assert.equal(hit.surface, 'water', `land at the map edge at ${x}, ${z} (${hit.h.toFixed(1)} m)`);
+    }
+  }
 });
 
-test('no car can drive through the edge forest', () => {
-  const spec = CARS.reduce((a, c) => (c.width < a.width ? c : a));
-  const r = spec.width / 2;
-  const col = new Colliders(w.circles, w.boxes);
-  const cell = 1;
-  const lo = BELT.inner;
-  const hi = BELT.thicket[1] + 8;
-  const n = Math.round((WORLD_HALF * 2) / cell);
-  // A strip around the whole ring, indexed by (ring position, depth). Free means a car
-  // centered there touches nothing. Flood from the inner edge and require that no free
-  // path reaches the outer edge.
-  const depth = hi - lo;
-  const rows = depth / cell;
-  const free = (s, d) => {
-    const rho = lo + (d + 0.5) * cell;
-    const [x, z] = ringPoint(rho, (s + 0.5) * cell * (rho / lo));
-    return col.probe(x, z, r) === null && g.at(x, z).surface !== 'water';
-  };
-  const cols = Math.floor((8 * lo) / cell);
-  assert.ok(cols > 0 && n > 0);
-  const seen = new Uint8Array(cols * rows);
-  const stack = [];
-  for (let s = 0; s < cols; s++) {
-    if (free(s, 0)) {
-      seen[s * rows] = 1;
-      stack.push(s, 0);
-    }
-  }
-  assert.ok(stack.length > 0, 'the inner edge of the belt is blocked everywhere, so the test proves nothing');
-  let deepest = 0;
-  while (stack.length) {
-    const d = stack.pop();
-    const s = stack.pop();
-    deepest = Math.max(deepest, d);
-    for (const [ds, dd] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-      const ns = (s + ds + cols) % cols;
-      const nd = d + dd;
-      if (nd < 0 || nd >= rows) continue;
-      const k = ns * rows + nd;
-      if (seen[k] || !free(ns, nd)) continue;
-      seen[k] = 1;
-      stack.push(ns, nd);
-    }
-  }
-  const crossed = lo + (deepest + 1) * cell;
-  assert.ok(crossed < BELT.thicket[1], `a car-sized gap reaches ring ${crossed.toFixed(1)}, past the thicket at ${BELT.thicket[1]}`);
+test('the shore is lined with pines, not a forest wall', () => {
+  const shore = w.trees.filter((t) => inland(t.x, t.z) < 120);
+  assert.ok(shore.length > 500, `only ${shore.length} trees along the shore`);
+  const pines = shore.filter((t) => t.kind === TREE.pine).length;
+  assert.ok(pines > shore.length * 0.45, `${pines} of ${shore.length} shore trees are pines`);
 });
 
 test('shrubs do not collide, other species do', () => {

@@ -85,6 +85,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, street grid, diamond interchange ramps |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
+| `src/world/island.js` | Pure: `inland(x, z)`, meters inside the coast (`COAST` in layout.js), from a precomputed grid with a noisy shore |
 | `src/world/mapdata.js` | Pure: roads, points of interest and zones as plain data for a full-screen map |
 | `src/world/heightfield.js` | Natural terrain (`baseHeight`: two valleys, mountains, bay, lake, pass ledge, flat downtown), blur, the carved grid and triangle sampling |
 | `src/world/spline.js` | Arc-length Catmull-Rom `Path`: sample, nearest, signed offset |
@@ -144,10 +145,24 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.5.2)
+## Current state (0.6.0)
 
 Done and tested:
 
+- Kurogane Island (0.6.0, plan in `docs/agents/tasks/C1-kurogane-island.md`). The map is an island:
+  `COAST` in layout.js is the shore polygon and `island.js` gives the distance inland. The terrain
+  falls into the sea along it, in cliffs under the western mountains and onto a low shelf (about
+  360 m) everywhere else; the bay is the same shore cutting in from the south. The east coast and a
+  strip along the north shore are low land (`dEast`, `dNorth` in `baseHeight`) for the industrial
+  district and the coast roads. One water sheet at sea level covers the whole map, so the sea and
+  the lakes fill wherever the land drops below it, and driving into either resets the car. The edge
+  forest belt and its thicket are gone; the shore is lined with black pines. New roads: the
+  Higashi Coast Road (`higashi`, 4.8 km) from the port up the east coast to Hanazaki Cape, running
+  on into the Kita Coast Road (`kita`, 2 km) west along the north shore and round Kami-ike into the
+  forest village, where it runs straight on into Kuro Pass (the old hook where Route 18 met the
+  pass end to end is gone). Route 18 now ends on the Kita Coast Road at a T east of the village,
+  and East Ave ends on the Higashi Coast Road. G3 moved onto the Kita Coast Road. New zones:
+  Hanazaki Cape, Kita Coast, Higashi Industrial. `mapData.water.coast` is the shore polygon.
 - World data and ground (Kurogane, 6 km square, 8 m terrain cells). Route 1: two one-way
   carriageways of 3 lanes (11 km each) with a 3.2 m median and median lamps, grades under
   3 %, a concrete median barrier, guard rails on both outer edges (open at ramps, forecourts

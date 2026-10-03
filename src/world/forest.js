@@ -1,12 +1,13 @@
 /**
  * Where the trees go. Nine species grouped into habitats (valley floor, lake edge,
  * slopes, high ridge), stands that follow a noise field so a hillside reads as one kind
- * of forest, dense groves on the valley floor, and a forest belt around the map edge.
- * The belt has two staggered rows of overlapping trunks, the thicket, that no car fits
- * between, so the player cannot drive out of the valley. Pure: no three.js.
+ * of forest, dense groves on the valley floor, and black pines along the shore. The sea
+ * round the island is the edge of the map (driving into it resets the car), so there is no
+ * forest wall any more. Pure: no three.js.
  */
 
 import { CITY, LAKES, WATER_LEVEL, WORLD_HALF, SEED } from './layout.js';
+import { inland } from './island.js';
 import { insideLoop, cityAmount, zoneAt } from './zones.js';
 import { makeRng, fbm, valueNoise } from '../core/rng.js';
 
@@ -19,15 +20,8 @@ export const TREE_COUNT = 9;
 /** Trunk collider radius in meters per species. 0 means the car drives through (shrubs). */
 export const TREE_RADIUS = [0.45, 0.5, 0.5, 0.3, 0.5, 0.5, 0.75, 0, 0.25];
 
-/**
- * The edge belt, in Chebyshev distance from the center of the map (the world is a square).
- * `inner` is where the dense forest starts, `thicket` the band of the solid double row,
- * `rim` where the forest stops, a little inside the collision wall at the map edge.
- */
-export const BELT = { inner: WORLD_HALF - 100, thicket: [WORLD_HALF - 73, WORLD_HALF - 61], rim: WORLD_HALF - 10 };
-/** Collider radius of a thicket tree: trunk plus undergrowth. Rows 3 m apart leave 0.4 m gaps. */
-export const THICKET_RADIUS = 1.3;
-const THICKET_STEP = 3;
+/** Within this many meters of the shore the trees are coastal: mostly black pine. */
+const SHORE = 150;
 
 /** Habitat weights per species: spruce, broadleaf, sugi, birch, maple, pine, bamboo, shrub, snag. */
 const HABITAT = {
@@ -35,7 +29,7 @@ const HABITAT = {
   wet: [0.0, 0.2, 0.0, 0.2, 0.05, 0.05, 0.25, 0.25, 0.0],
   slope: [0.32, 0.06, 0.3, 0.06, 0.06, 0.1, 0.0, 0.06, 0.04],
   high: [0.45, 0.0, 0.25, 0.0, 0.0, 0.15, 0.0, 0.07, 0.08],
-  belt: [0.34, 0.04, 0.4, 0.02, 0.02, 0.12, 0.04, 0.0, 0.02],
+  shore: [0.04, 0.06, 0.02, 0.04, 0.0, 0.66, 0.02, 0.16, 0.0],
   forest: [0.2, 0.2, 0.22, 0.08, 0.1, 0.1, 0.03, 0.06, 0.01],
 };
 
@@ -84,8 +78,8 @@ function makeTree(rng, kind, x, y, z, grow = 1) {
 }
 
 /**
- * Everything planted in the valley, in four passes: the open forest, groves, the belt
- * forest and the thicket. Colliders are appended to `circles`.
+ * Everything planted on the island, in two passes: the open forest and the groves. Colliders
+ * are appended to `circles`.
  * @param {Ground} ground
  * @param {{ x: number, z: number, w: number, d: number }[]} buildings
  * @param {{ x: number, z: number, r: number }[]} circles
@@ -128,7 +122,6 @@ export function placeForest(ground, buildings, circles, clear) {
     for (let gx = -lim; gx < lim; gx += step) {
       const x = gx + rng.range(-3.5, 3.5);
       const z = gz + rng.range(-3.5, 3.5);
-      if (Math.max(Math.abs(x), Math.abs(z)) > BELT.inner) continue;
       const dens = 0.5 + 0.5 * fbm(x * 0.006, z * 0.006, 77, 3);
       // Inside the loop it is farmland and suburbs with a tree here and there; outside it is forest.
       const want = Math.min(1, dens * (insideLoop(x, z) ? 0.22 : 1.25));
@@ -137,7 +130,7 @@ export function placeForest(ground, buildings, circles, clear) {
       const g = ground.at(x, z);
       if (g.road || g.pad || g.h < WATER_LEVEL + 0.8) continue;
       if (!clear(ground, x, z, 3.5) || nearBuilding(x, z)) continue;
-      let kind = pickSpecies(rng, habitat(x, z, g.h), x, z);
+      let kind = inland(x, z) < SHORE ? pickWeighted(HABITAT.shore, rng.next()) : pickSpecies(rng, habitat(x, z, g.h), x, z);
       if (g.surface === 'rock') {
         if (rng.chance(0.55)) continue;
         if (rng.chance(0.3)) kind = TREE.snag;
@@ -148,55 +141,9 @@ export function placeForest(ground, buildings, circles, clear) {
 
   placeGroves(ground, add, clear, nearBuilding, inTown);
 
-  const gr = makeRng(SEED ^ 0xbe17);
-  const side = BELT.inner;
-  const edge = WORLD_HALF - 10;
-  for (let gz = -edge; gz < edge; gz += 6) {
-    for (let gx = -edge; gx < edge; gx += 6) {
-      const x = gx + gr.range(-2.4, 2.4);
-      const z = gz + gr.range(-2.4, 2.4);
-      const m = Math.max(Math.abs(x), Math.abs(z));
-      if (m < side || m > BELT.rim) continue;
-      const g = ground.at(x, z);
-      if (g.road || g.pad || g.h < WATER_LEVEL + 0.5) continue;
-      add(makeTree(gr, pickSpecies(gr, HABITAT.belt, x, z), x, g.h - 0.1, z, 1.1));
-    }
-  }
-
-  // The thicket: two staggered rows along a square ring, bigger trees, one big collider each.
-  const rows = [BELT.thicket[0], BELT.thicket[1]];
-  rows.forEach((rho, row) => {
-    const perimeter = 8 * rho;
-    const count = Math.floor(perimeter / THICKET_STEP);
-    for (let i = 0; i < count; i++) {
-      const s = ((i + (row ? 0.5 : 0)) * perimeter) / count;
-      const [x, z] = ringPoint(rho, s);
-      const g = ground.at(x, z);
-      if (g.h < WATER_LEVEL - 0.5) continue;
-      const kind = pickWeighted(HABITAT.belt, gr.next());
-      const t = makeTree(gr, kind, x + gr.range(-0.3, 0.3), g.h - 0.1, z + gr.range(-0.3, 0.3), 1.35);
-      out.push(t);
-      circles.push({ x: t.x, z: t.z, r: THICKET_RADIUS });
-    }
-  });
   return out;
 }
 
-/**
- * Point at arc length s along the square ring of Chebyshev radius rho, starting at the
- * north-west corner and running clockwise (east along the north side).
- * @param {number} rho @param {number} s
- * @returns {[number, number]}
- */
-export function ringPoint(rho, s) {
-  const side = 2 * rho;
-  const k = Math.floor(s / side) % 4;
-  const u = s - Math.floor(s / side) * side;
-  if (k === 0) return [-rho + u, -rho];
-  if (k === 1) return [rho, -rho + u];
-  if (k === 2) return [rho - u, rho];
-  return [-rho, rho - u];
-}
 
 /** Planted stands on the valley floor. */
 const GROVE_KINDS = [

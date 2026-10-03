@@ -14,6 +14,20 @@ export const SEED = 0x10eb3a;
 export const WORLD_HALF = 3000;
 export const WATER_LEVEL = 0;
 
+/**
+ * The island's coast, clockwise from the north-west: everything outside it is sea. The bay
+ * cuts into the south between the two southern headlands. island.js adds a little noise so the
+ * shore is not made of straight lines, and heightfield.js drops the land into the water along it:
+ * cliffs under the western mountains, a low shelf everywhere else.
+ */
+export const COAST = [
+  [-2780, -2780], [-1900, -2900], [-900, -2860], [100, -2840], [900, -2640], [1500, -2700], [2050, -2840],
+  [2560, -2760], [2860, -2420], [2820, -1800], [2700, -1100], [2780, -300], [2840, 500], [2760, 1300],
+  [2700, 1900], [2760, 2500], [2620, 2880], [2330, 2860], [2240, 2560], [2050, 2470], [-2050, 2470],
+  [-2240, 2560], [-2330, 2860], [-2620, 2880], [-2800, 2300], [-2860, 1400], [-2790, 400], [-2880, -700],
+  [-2850, -1800],
+];
+
 /** Lakes: Kami-ike in the forest. */
 export const LAKES = [{ id: 'kami', name: 'KAMI-IKE', x: 950, z: -1450, r: 190 }];
 /** The bay: everything south of this line, between x = -SEA.xMax and SEA.xMax, is sea. */
@@ -88,13 +102,44 @@ const ARTERIAL = {
 const LIFT = { height: 7.4, half: 230, flat: 60 };
 const LIFT_SHORT = { height: 7.4, half: 190, flat: 60 };
 
+/**
+ * The north coast road: from the north-east cape, where it meets the east coast road, west along
+ * the shore and round the north side of Kami-ike into the forest village, where it runs straight on
+ * into Kuro Pass (its last segment lines up with the pass's first, so the join has no kink).
+ * Route 18 meets it at a T just east of the village.
+ */
+const KITA_POINTS = [[2280, -2330], [2140, -2470], [1850, -2530], [1500, -2420], [1250, -2130], [1010, -1880], [800, -1830], [650, -1960]];
+const kitaPath = new Path(KITA_POINTS, { step: 2 });
+/**
+ * The east coast road: from the port in the south-east up the coast past the industrial district
+ * to the cape, where it runs on into the north coast road. East Ave ends on it at a T.
+ */
+const HIGASHI_POINTS = [
+  [2250, 2380], [2420, 2150], [2490, 1800], [2480, 1450], [2470, 1130], [2510, 700], [2560, 200], [2530, -400],
+  [2460, -1000], [2480, -1600], [2440, -2000], [2386, -2224], [2280, -2330],
+];
+const higashiPath = new Path(HIGASHI_POINTS, { step: 2 });
+/** Where a road that ends on another's side meets it: the nearest point of that road's centre line. @param {Path} path @param {number} x @param {number} z */
+function tee(path, x, z) {
+  const q = path.sample(path.nearest(x, z).s);
+  return [q.x, q.z];
+}
+
+const COUNTRY = {
+  surface: 'asphalt', hw: 4.4, priority: 2.85, smooth: 45, lanes: 2, limit: 60, lines: /** @type {const} */ ('center'), maxGrade: 0.085,
+};
+/** @type {RoadDef[]} */
+const KITA = [{ ...COUNTRY, id: 'kita', name: 'KITA COAST ROAD', cls: 'arterial', points: KITA_POINTS }];
+/** @type {RoadDef[]} */
+const HIGASHI = [{ ...COUNTRY, id: 'higashi', name: 'HIGASHI COAST ROAD', cls: 'arterial', hw: 5, lanes: 2, points: HIGASHI_POINTS }];
+
 /** @type {RoadDef[]} */
 const R18 = [{
   ...ARTERIAL, id: 'r18', name: 'ROUTE 18', smooth: 140,
   lifts: [{ at: [crossNorth.x, crossNorth.z], ...LIFT }],
   lamps: [{ from: [0, 760], to: [-170, 300], every: 36 }],
   taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
-  points: [[0, 760], [0, 700], [-50, 620], [-180, 300], [-270, -80], [crossNorth.x, crossNorth.z], [-340, -700], [-280, -1000], [-100, -1300], [110, -1560], [140, -1830], [360, -1990], [650, -1960]],
+  points: [[0, 760], [0, 700], [-50, 620], [-180, 300], [-270, -80], [crossNorth.x, crossNorth.z], [-340, -700], [-280, -1000], [-100, -1300], [110, -1560], [380, -1700], [620, -1770], tee(kitaPath, 860, -1830)],
 }];
 
 /** @type {RoadDef[]} */
@@ -124,7 +169,7 @@ const EAST = [{
   lifts: [{ at: [crossEast.x, crossEast.z], ...LIFT }],
   lamps: [{ from: [1330, 1200], to: [1600, 1150], every: 36 }],
   taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
-  points: [[1330, 1200], [1430, 1197], [1600, 1155], [crossEast.x, crossEast.z], [2200, 1150], [2390, 1130]],
+  points: [[1330, 1200], [1430, 1197], [1600, 1155], [crossEast.x, crossEast.z], [2200, 1150], tee(higashiPath, 2470, 1135)],
 }];
 
 /**
@@ -265,7 +310,7 @@ function bayshoreJunctions() {
 const BAYSHORE_JCT = bayshoreJunctions();
 
 /** @type {RoadDef[]} */
-export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
+export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...KITA, ...HIGASHI, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
 
 /**
  * Gas stations. Each one sits beside a road: `near` is projected onto the road to find
@@ -275,7 +320,7 @@ export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO
 export const STATIONS = [
   { id: 'g1', name: 'KITSUNE OIL HARBOR', brand: 'kitsune', road: 'harbor', near: [0, 1940], side: 'right', w: 54, d: 36 },
   { id: 'g2', name: 'HOSHI GAS ROUTE 1 EAST', brand: 'hoshi', road: 'c1-f', near: [1919, 449], side: 'left', w: 60, d: 40 },
-  { id: 'g3', name: 'KITSUNE OIL MORI', brand: 'kitsune', road: 'r18', near: [231, -1926], side: 'right', w: 54, d: 36 },
+  { id: 'g3', name: 'KITSUNE OIL MORI', brand: 'kitsune', road: 'kita', near: [1180, -2040], side: 'left', w: 54, d: 36 },
   { id: 'g4', name: 'HOSHI GAS TOGE', brand: 'hoshi', road: 'kuro', near: [-2310, 330], side: 'right', w: 54, d: 36 },
 ];
 
@@ -299,6 +344,9 @@ export const ZONES = [
   { id: 'kami', name: 'KAMI-IKE', kind: 'lake', circle: { x: 950, z: -1450, r: 300 } },
   { id: 'forest', name: 'MORI FOREST', kind: 'forest', rect: { x0: -1100, x1: 1500, z0: -2350, z1: -560 } },
   { id: 'pass', name: 'KURO PASS', kind: 'mountain', rect: { x0: -3000, x1: -2000, z0: -2500, z1: 700 } },
+  { id: 'cape', name: 'HANAZAKI CAPE', kind: 'coast', rect: { x0: 2150, x1: 3000, z0: -3000, z1: -2150 } },
+  { id: 'kita', name: 'KITA COAST', kind: 'coast', rect: { x0: 600, x1: 2150, z0: -3000, z1: -2200 } },
+  { id: 'industrial', name: 'HIGASHI INDUSTRIAL', kind: 'industrial', rect: { x0: 2100, x1: 3000, z0: -1600, z1: 2300 } },
 ];
 
 /** The time attack on the pass. Distances are meters along the road. */

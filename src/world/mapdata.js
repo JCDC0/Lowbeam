@@ -4,7 +4,7 @@
  * minimap and tests all read the same thing. Built once from the ground and the layout.
  */
 
-import { LAKES, SEA, STATIONS, TOLLS, WORLD_HALF, ZONES, RALLY } from './layout.js';
+import { COAST, LAKES, SEA, STATIONS, TOLLS, WORLD_HALF, ZONES, RALLY } from './layout.js';
 
 /**
  * @typedef {{ id: string, name: string, cls: string, surface: string, width: number, oneway: boolean,
@@ -63,7 +63,7 @@ export function buildMapData(ground, { step = 24 } = {}) {
     roads,
     pois,
     zones: ZONES.map((z) => ({ id: z.id, name: z.name, kind: z.kind, rect: z.rect || null, circle: z.circle || null })),
-    water: { lakes: LAKES.map((l) => ({ ...l })), sea: { ...SEA } },
+    water: { lakes: LAKES.map((l) => ({ ...l })), sea: { ...SEA }, coast: COAST.map((p) => [p[0], p[1]]) },
     stations: STATIONS.length,
   };
 }

@@ -10,7 +10,7 @@ import { psxLambert, psxPhong } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
 import { terrainTexture } from '../render/textures.js';
 import { fbm } from '../core/rng.js';
-import { LAKES, SEA, WATER_LEVEL, WORLD_HALF } from './layout.js';
+import { WATER_LEVEL, WORLD_HALF } from './layout.js';
 
 /** Cells per chunk side. */
 const CHUNK = 32;
@@ -103,22 +103,18 @@ export function buildTerrain(ground, grid) {
   return group;
 }
 
-/** The water: a disc a little wider than each lake and one wide sheet for the bay. */
+/**
+ * The water: one sheet at sea level under the whole island and past the map edge, so the sea is
+ * everywhere the land drops below it and the lakes fill on their own. Cut into cells so the PSX
+ * vertex snap never stretches one huge triangle across the view.
+ */
 export function buildWater() {
   const mat = psxPhong({ color: 0x07121e, specular: 0x141c2a, shininess: 120 });
-  const group = new THREE.Group();
-  group.name = 'water';
-  for (const lake of LAKES) {
-    const geo = new THREE.CircleGeometry(lake.r + 25, 28);
-    geo.rotateX(-Math.PI / 2);
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(lake.x, WATER_LEVEL + 0.02, lake.z);
-    group.add(mesh);
-  }
-  const bay = new THREE.PlaneGeometry(SEA.xMax * 2 + 800, WORLD_HALF - SEA.z + 150);
-  bay.rotateX(-Math.PI / 2);
-  const sea = new THREE.Mesh(bay, mat);
-  sea.position.set(0, WATER_LEVEL + 0.02, (SEA.z - 150 + WORLD_HALF) / 2);
-  group.add(sea);
-  return group;
+  const size = WORLD_HALF * 2 + 3000;
+  const geo = new THREE.PlaneGeometry(size, size, 60, 60);
+  geo.rotateX(-Math.PI / 2);
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(0, WATER_LEVEL + 0.02, 0);
+  mesh.name = 'water';
+  return mesh;
 }

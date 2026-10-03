@@ -215,10 +215,14 @@ test('the zones answer where things are', () => {
   for (const z of ZONES) assert.ok(z.rect || z.circle, z.id);
 });
 
-test('the terrain has a bay in the south, mountains around the edge and flat ground downtown', () => {
+test('the terrain is an island: a bay in the south, mountains in the west, a low east coast, flat ground downtown', () => {
   assert.ok(baseHeight(0, 2800) < -3, 'the bay should be below the water');
-  assert.ok(baseHeight(-2900, -1200) > 150, 'the western mountains should be high');
-  assert.ok(baseHeight(0, -2900) > 120, 'the northern mountains should be high');
+  assert.ok(baseHeight(-2500, -1200) > 150, 'the western mountains should be high');
+  assert.ok(baseHeight(-2960, -1200) < 0, 'the western mountains should fall into the sea');
+  assert.ok(baseHeight(-600, -2400) > 100, 'the northern ridge should be high');
+  assert.ok(baseHeight(0, -2970) < 0, 'the north should end in the sea');
+  assert.ok(baseHeight(2450, 400) < 40, 'the east coast should be low land');
+  assert.ok(baseHeight(2950, 400) < 0, 'the east should end in the sea');
   const c = [(CITY.x0 + CITY.x1) / 2, (CITY.z0 + CITY.z1) / 2];
   for (const [dx, dz] of [[-300, -200], [300, 200], [0, 0], [200, -300]]) assert.ok(Math.abs(baseHeight(c[0] + dx, c[1] + dz) - 6.5) < 2.5, 'downtown is not flat');
 });
