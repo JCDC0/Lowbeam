@@ -51,8 +51,8 @@ export const ENERGY = { menu: 0, cruise: 1, intense: 2, mountain: 3 };
 /** The thresholds of the driving moods. */
 export const MOOD_RULES = {
   /** km/h that counts as fast, and how long it must be held. */
-  fastKmh: 150,
-  fastHold: 4,
+  fastKmh: 140,
+  fastHold: 3,
   /** A street racer this close (m) makes it intense at once. */
   rivalNear: 150,
   /** Calm again: below this km/h, no racer within `rivalFar`, for `calmHold` seconds. */
@@ -63,6 +63,65 @@ export const MOOD_RULES = {
   mountainIn: 3,
   mountainOut: 10,
 };
+
+/**
+ * How the music follows the speed while driving, the way Night-Runners does it: silent below
+ * `quiet` km/h, swelling in as the car gets faster until it is full at `full` (`fullMountain`
+ * on the pass, where nobody does 140). It rises slowly (`rise` per second, about 8 s from
+ * silence to full) and falls slower still, and only after `holdDown` seconds of lower speed,
+ * so a braking zone does not cut the track. A street racer close by keeps it at least at
+ * `rivalFloor`.
+ */
+export const SWELL = {
+  quiet: 50,
+  full: 140,
+  fullMountain: 100,
+  rise: 0.13,
+  fall: 0.06,
+  holdDown: 3,
+  rivalFloor: 0.55,
+};
+
+/** Smooth 0 to 1 between a and b. @param {number} a @param {number} b @param {number} x */
+function smooth(a, b, x) {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * The music level (0 to 1) from the speed. music.js turns it into gain and a low-pass that
+ * opens with it, so the track comes in muffled and escalates as the speed climbs.
+ */
+export class SpeedSwell {
+  constructor() {
+    this.level = 0;
+    this.below = 0;
+  }
+
+  /**
+   * @param {number} dt seconds since the last call
+   * @param {{ kmh: number, mountain: boolean, rival: number }} scene
+   * @returns {number} the level
+   */
+  update(dt, scene) {
+    const S = SWELL;
+    let want = smooth(S.quiet, scene.mountain ? S.fullMountain : S.full, scene.kmh);
+    if (scene.rival < MOOD_RULES.rivalNear) want = Math.max(want, S.rivalFloor);
+    if (want >= this.level) {
+      this.below = 0;
+      this.level = Math.min(want, this.level + S.rise * dt);
+    } else {
+      this.below += dt;
+      if (this.below >= S.holdDown) this.level = Math.max(want, this.level - S.fall * dt);
+    }
+    return this.level;
+  }
+
+  reset() {
+    this.level = 0;
+    this.below = 0;
+  }
+}
 
 /**
  * Follows the driving situation and answers the mood. Call `update` a few times a second.

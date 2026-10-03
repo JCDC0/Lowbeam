@@ -17,8 +17,18 @@ export const VIEW_NAMES = { chase: 'CHASE CAM', car: 'CAR CAM', hood: 'HOOD CAM'
  */
 const FOLLOW = {
   chase: { dist: 6.2, distSpeed: 0.025, distMax: 1.6, height: 2.0, heightSpeed: 0.006, heightMax: 0.4, lean: 0.35, yawRate: 5, posRate: 12, yRate: 7, ahead: 2.5, lookY: 1.05, fov: 62, fovSpeed: 0.24, fovMax: 16 },
-  car: { dist: 4.4, distSpeed: 0.012, distMax: 0.9, height: 1.3, heightSpeed: 0.004, heightMax: 0.25, lean: 0, yawRate: 14, posRate: 22, yRate: 12, ahead: 1.6, lookY: 0.9, fov: 58, fovSpeed: 0.14, fovMax: 10 },
+  car: { dist: 5.6, distSpeed: 0.012, distMax: 0.9, height: 1.8, heightSpeed: 0.004, heightMax: 0.25, lean: 0, yawRate: 14, posRate: 22, yRate: 12, ahead: 7, lookY: 1.05, fov: 60, fovSpeed: 0.14, fovMax: 10 },
 };
+
+/**
+ * The cockpit camera sits ahead of the modeled eye (closer to the glass, so the roof header and
+ * the dash top both leave the frame) and looks only slightly
+ * down, so the windshield fills the upper two thirds and the instruments still show over the
+ * wheel (looking 1.3 m down over 10 m put the horizon high and the frame on the dash).
+ */
+const COCKPIT_RAISE = -0.02;
+const COCKPIT_FORWARD = 0.22;
+const COCKPIT_DROP = 0.75;
 
 const _eye = new THREE.Vector3();
 const _look = new THREE.Vector3();
@@ -97,7 +107,9 @@ export class CameraRig {
       const parent = view === 'cockpit' ? car.model.bodyRoot : car.model.group;
       if (view === 'cockpit') {
         _eye.copy(car.cockpit.eye);
-        fov = 70;
+        _eye.y += COCKPIT_RAISE;
+        _eye.z += COCKPIT_FORWARD;
+        fov = 72;
         cam.near = 0.08;
       } else if (view === 'hood') {
         const z = def.glass.front[1] + 0.2;
@@ -111,7 +123,7 @@ export class CameraRig {
       }
       _look.copy(_eye);
       _look.z += 10;
-      _look.y -= view === 'cockpit' ? 1.3 : 0.5;
+      _look.y -= view === 'cockpit' ? COCKPIT_DROP : 0.5;
       parent.updateWorldMatrix(true, false);
       parent.localToWorld(_eye);
       parent.localToWorld(_look);

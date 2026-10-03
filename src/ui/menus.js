@@ -1,5 +1,6 @@
 import { audio, CHANNELS } from '../audio/audio.js';
 import { store } from '../core/store.js';
+import { RENDER_HEIGHTS, DEFAULT_LINES } from '../render/stage.js';
 
 /**
  * @param {HTMLElement} ui
@@ -193,7 +194,7 @@ export function settingsScreen(ui, stage = null) {
     ambience: 'ENVIRONMENT SOUNDS',
     music: 'SOUNDTRACK MUSIC',
   };
-  const HEIGHTS = [240, 360, 480];
+  const HEIGHTS = RENDER_HEIGHTS;
 
   const s = screen(
     ui,
@@ -235,10 +236,10 @@ export function settingsScreen(ui, stage = null) {
         <div class="ac-info-panel">
           <div class="ac-info-header">CONFIGURATION HELP</div>
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
-          <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 / 360 / 480 LINES</span></div>
+          <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
-            <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 reproduces authentic PS1 display resolution with dither and 15-bit color quantize.<br><br>
+            <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 is the authentic PS1 resolution; 480 (default) keeps the dither and 15-bit color with a clearer picture.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
         </div>
@@ -276,7 +277,7 @@ export function settingsScreen(ui, stage = null) {
     transEl.classList.toggle('cyan', isManual);
     transEl.classList.toggle('on', !isManual);
 
-    const curH = store.get('renderHeight', 240);
+    const curH = store.get('renderHeight', DEFAULT_LINES);
     renderEl.textContent = `${curH} LINES`;
     renderEl.classList.toggle('cyan', curH > 240);
     renderEl.classList.toggle('on', curH === 240);
@@ -372,7 +373,7 @@ export function settingsScreen(ui, stage = null) {
           audio.ui('select');
           sync();
         } else if (action === 'toggle-render') {
-          const curH = store.get('renderHeight', 240);
+          const curH = store.get('renderHeight', DEFAULT_LINES);
           const nextH = HEIGHTS[(HEIGHTS.indexOf(curH) + 1) % HEIGHTS.length];
           setRenderHeight(nextH);
           audio.ui('select');
@@ -412,7 +413,7 @@ export function settingsScreen(ui, stage = null) {
           audio.ui('select');
           sync();
         } else if (sel === 1) {
-          const curH = store.get('renderHeight', 240);
+          const curH = store.get('renderHeight', DEFAULT_LINES);
           const idx = HEIGHTS.indexOf(curH);
           const nextH = HEIGHTS[(idx + HEIGHTS.length - 1) % HEIGHTS.length];
           setRenderHeight(nextH);
@@ -433,7 +434,7 @@ export function settingsScreen(ui, stage = null) {
           audio.ui('select');
           sync();
         } else if (sel === 1) {
-          const curH = store.get('renderHeight', 240);
+          const curH = store.get('renderHeight', DEFAULT_LINES);
           const idx = HEIGHTS.indexOf(curH);
           const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
           setRenderHeight(nextH);
@@ -455,7 +456,7 @@ export function settingsScreen(ui, stage = null) {
           audio.ui('select');
           sync();
         } else if (sel === 1) {
-          const curH = store.get('renderHeight', 240);
+          const curH = store.get('renderHeight', DEFAULT_LINES);
           const idx = HEIGHTS.indexOf(curH);
           const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
           setRenderHeight(nextH);

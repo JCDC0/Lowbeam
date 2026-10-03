@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SOUNDTRACK, TARGET_LUFS, MoodTracker, MOOD_RULES, nextTrack, trackGain } from '../src/audio/soundtrack.js';
+import { SOUNDTRACK, TARGET_LUFS, MoodTracker, MOOD_RULES, SpeedSwell, SWELL, nextTrack, trackGain } from '../src/audio/soundtrack.js';
 
 test('every track has its file, and each mood has two tracks to rotate', () => {
   for (const t of SOUNDTRACK) assert.ok(fs.existsSync(new URL(`../assets/music/${t.file}`, import.meta.url)), `missing ${t.file}`);
@@ -55,4 +55,42 @@ test('the pass brings in the mountain tracks after a few seconds and lets them g
   assert.equal(run(1, { kmh: 80, mountain: true, rival: 100 }), 'mountain');
   assert.equal(run(MOOD_RULES.mountainOut - 1, { kmh: 80, mountain: false, rival: Infinity }), 'mountain');
   assert.equal(run(1.5, { kmh: 80, mountain: false, rival: Infinity }), 'intense');
+});
+
+test('the music stays silent below 50 km/h and swells in slowly with speed', () => {
+  const w = new SpeedSwell();
+  const run = (seconds, scene) => {
+    for (let t = 0; t < seconds; t += 0.1) w.update(0.1, scene);
+    return w.level;
+  };
+  const road = (kmh) => ({ kmh, mountain: false, rival: Infinity });
+  assert.equal(run(30, road(45)), 0);
+  const early = run(2, road(180));
+  assert.ok(early > 0.15 && early < 0.4, `two seconds in ${early}`);
+  assert.ok(run(8, road(180)) > 0.99);
+  const half = new SpeedSwell();
+  for (let t = 0; t < 30; t += 0.1) half.update(0.1, road(95));
+  assert.ok(half.level > 0.4 && half.level < 0.6, `95 km/h ${half.level}`);
+});
+
+test('the swell holds through a short braking zone and fades out slowly after it', () => {
+  const w = new SpeedSwell();
+  const run = (seconds, scene) => {
+    for (let t = 0; t < seconds; t += 0.1) w.update(0.1, scene);
+    return w.level;
+  };
+  run(20, { kmh: 200, mountain: false, rival: Infinity });
+  assert.ok(run(SWELL.holdDown - 0.5, { kmh: 30, mountain: false, rival: Infinity }) > 0.99);
+  const fading = run(5, { kmh: 30, mountain: false, rival: Infinity });
+  assert.ok(fading > 0.6 && fading < 0.95, `after the hold ${fading}`);
+  assert.equal(run(30, { kmh: 30, mountain: false, rival: Infinity }), 0);
+});
+
+test('the pass reaches full swell sooner, and a racer close by keeps the music up', () => {
+  const pass = new SpeedSwell();
+  for (let t = 0; t < 20; t += 0.1) pass.update(0.1, { kmh: 100, mountain: true, rival: Infinity });
+  assert.ok(pass.level > 0.99);
+  const duel = new SpeedSwell();
+  for (let t = 0; t < 20; t += 0.1) duel.update(0.1, { kmh: 40, mountain: false, rival: 80 });
+  assert.ok(Math.abs(duel.level - SWELL.rivalFloor) < 1e-9);
 });

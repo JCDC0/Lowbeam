@@ -49,6 +49,11 @@ void main() {
 }
 `;
 
+/** Render heights the settings offer, in lines. */
+export const RENDER_HEIGHTS = [240, 360, 480, 600, 720, 1080];
+/** Default render height: 480 lines keeps the dither and the wobble but reads far better than 240. */
+export const DEFAULT_LINES = /** @type {number} */ (480);
+
 export function createStage(canvas) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(1);
@@ -84,7 +89,7 @@ export function createStage(canvas) {
   postScene.add(quad);
   const postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-  const settings = { lines: 240, psx: true };
+  const settings = { lines: DEFAULT_LINES, psx: true };
 
   function resize() {
     const w = Math.max(1, window.innerWidth);

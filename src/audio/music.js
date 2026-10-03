@@ -14,7 +14,7 @@
  */
 
 import { composeTrack, midiToHz, LAYERS, TRACKS } from './songs.js';
-import { SOUNDTRACK, ENERGY, MoodTracker, nextTrack, trackGain } from './soundtrack.js';
+import { SOUNDTRACK, ENERGY, MoodTracker, SpeedSwell, nextTrack, trackGain } from './soundtrack.js';
 import { clamp } from '../core/mathx.js';
 
 /**
@@ -28,6 +28,10 @@ const CROSSFADE = 3;
 const MIN_DWELL = 20;
 /** Synthesized track that stands in for each mood when no file of it can play. */
 const SYNTH_FOR = { menu: 'menu', cruise: 'kirigaoka', intense: 'lowbeam', mountain: 'ridge' };
+/** Low-pass cutoff (Hz) of the recorded tracks at swell 0; it opens an octave per sixth of the swell. */
+const SWELL_CUTOFF = 320;
+/** A track is announced (NOW PLAYING) once the swell makes it this loud. */
+const SWELL_AUDIBLE = 0.15;
 
 /** @typedef {import('./songs.js').NoteEvent} NoteEvent */
 /** @typedef {import('./songs.js').Layer} Layer */
@@ -204,6 +208,7 @@ class Stream {
     this.started = at;
     this.failed = false;
     this.blocked = false;
+    this.announced = false;
     this.stopAt = Infinity;
     this.el = new Audio();
     this.el.preload = 'auto';
@@ -299,7 +304,14 @@ export class MusicPlayer {
 
     this.files = c.createGain();
     this.files.gain.value = FILE_LEVEL;
-    this.files.connect(audio.musicBus);
+    this.swellLp = c.createBiquadFilter();
+    this.swellLp.type = 'lowpass';
+    this.swellLp.Q.value = 0.9;
+    this.swellLp.frequency.value = 20000;
+    this.swellGain = c.createGain();
+    this.files.connect(this.swellLp).connect(this.swellGain).connect(audio.musicBus);
+    /** Speed swell of the recorded tracks while driving (see SWELL in soundtrack.js). */
+    this.swell = new SpeedSwell();
     /** Stream the recorded soundtrack; off on an offline context, which renders the synth. */
     this.recorded = this.live && typeof Audio !== 'undefined';
     /** @type {Stream | null} */
@@ -392,7 +404,7 @@ export class MusicPlayer {
 
   /** What is playing, for checks: the recorded track or the synthesized one. */
   nowPlaying() {
-    if (this.stream) return { id: this.stream.track.id, title: this.stream.track.title, mood: this.stream.mood, time: this.stream.el.currentTime, file: true };
+    if (this.stream) return { id: this.stream.track.id, title: this.stream.track.title, mood: this.stream.mood, time: this.stream.el.currentTime, file: true, swell: this.swell.level };
     return this.current ? { id: this.current.id, title: this.current.id, mood: null, time: 0, file: false } : null;
   }
 
@@ -422,7 +434,24 @@ export class MusicPlayer {
     this.lastId = track.id;
     this.stream = new Stream(this, track, t, fade);
     this.switchedAt = t;
-    this.audio.onTrack?.(track);
+  }
+
+  /**
+   * Sets the swell from the speed: full on the menus, held in pause, following the speed while
+   * driving. Gain and the low-pass glide toward it. @param {number} dt @param {number} now
+   */
+  applySwell(dt, now) {
+    const m = this.mode;
+    if (m === 'drive' || m === 'free') this.swell.update(dt, this.scene);
+    else if (m !== 'pause') this.swell.reset();
+    const level = m === 'drive' || m === 'free' || m === 'pause' ? this.swell.level : 1;
+    this.swellGain.gain.setTargetAtTime(level, now, 0.25);
+    this.swellLp.frequency.setTargetAtTime(Math.min(20000, SWELL_CUTOFF * 2 ** (level * 6)), now, 0.25);
+    const s = this.stream;
+    if (s && !s.announced && level >= SWELL_AUDIBLE) {
+      s.announced = true;
+      this.audio.onTrack?.(s.track);
+    }
   }
 
   /** The recorded soundtrack's part of a tick. @param {number} now */
@@ -446,6 +475,7 @@ export class MusicPlayer {
       if (menuChange || (up && dwelt) || this.override) this.startMood(want, now, menuChange ? 1.5 : CROSSFADE);
     }
     if (this.stream && this.stream.remaining() < CROSSFADE) this.startMood(want, now, CROSSFADE);
+    this.applySwell(dt, now);
     this.fading = this.fading.filter((f) => {
       if (now < f.stopAt) return true;
       f.dispose();

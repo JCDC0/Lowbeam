@@ -5,7 +5,7 @@
  */
 
 import * as THREE from 'three';
-import { createStage } from './render/stage.js';
+import { createStage, DEFAULT_LINES } from './render/stage.js';
 import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
@@ -14,6 +14,7 @@ import { mapScreen } from './ui/map.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
+import { store } from './core/store.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
 const ui = /** @type {HTMLElement} */ (document.getElementById('ui'));
@@ -25,6 +26,7 @@ const version = await fetch('package.json')
 await document.fonts.load('16px "Lowbeam Display"').catch(() => {});
 
 const stage = createStage(canvas);
+stage.configure({ lines: store.get('renderHeight', DEFAULT_LINES) });
 const input = new Input();
 // Browsers keep audio suspended until a key or click; the first one starts it.
 for (const type of ['keydown', 'pointerdown']) {

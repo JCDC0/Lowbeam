@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.5.0 (2026-10-04)
+
+Music that follows the speed, a sharper default picture, and cameras that look out over the car.
+
+- `src/audio/soundtrack.js`: `SpeedSwell` and `SWELL`. While driving, the recorded music is
+  silent below 50 km/h and swells in toward full at 140 km/h (100 on the pass), about 8 s from
+  silence to full, falling slower and only after 3 s of lower speed. A racer within 150 m holds
+  it at 0.55 or more. The fast mood now starts after 3 s above 140 km/h (was 4 s above 150).
+- `src/audio/music.js`: the swell drives a gain and a low-pass (320 Hz at zero, opening an octave
+  per sixth of the swell) on the recorded tracks, so a track comes in muffled and escalates with
+  the speed. Menus play at full, pause holds the swell. `NOW PLAYING` shows once a track is audible.
+- `src/render/stage.js`: `RENDER_HEIGHTS` 240, 360, 480, 600, 720 and 1080 lines, `DEFAULT_LINES`
+  480. `main.js` applies the stored height at boot (it was only applied when changed in settings).
+- `src/render/cameras.js`: the car view is 5.6 m back and 1.8 m up and looks 7 m ahead of the car,
+  so the road shows over it; the cockpit camera sits 22 cm ahead of the modeled eye and looks
+  less far down, so the windshield fills the top half instead of the roof header and the dash.
+- `src/ui/cluster.js`: the TEMP and EXH readouts showed `Â°C` (a mis-encoded degree sign).
+- Tests: three for the swell in `tests/soundtrack.test.mjs`.
+
 ## 0.4.22 (2026-10-03)
 
 Remove the deprecated gauge aliases (A9 part 2).

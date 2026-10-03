@@ -186,7 +186,7 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   const hot = temp >= 115;
   const tempWarn = temp >= tRed;
   const tempWarnFrom = (tRed - tMin) / (tMax - tMin);
-  subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, tf, 'TEMP', `${Math.round(temp)}Â°C`, tempWarn, tempWarnFrom, true, cockpit, hot);
+  subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, tf, 'TEMP', `${Math.round(temp)}°C`, tempWarn, tempWarnFrom, true, cockpit, hot);
 
   if (gs.turbo) {
     const top = spec.engine.turbo?.boost ?? 1.2;
@@ -199,7 +199,7 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   }
 
   const ef = (exh - EXH_MIN) / (EXH_MAX - EXH_MIN);
-  subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(exh)}Â°C`, exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN), true, cockpit);
+  subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(exh)}°C`, exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN), true, cockpit);
 
   const bg = g.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
   bg.addColorStop(0, 'rgba(14, 18, 28, 0.9)');

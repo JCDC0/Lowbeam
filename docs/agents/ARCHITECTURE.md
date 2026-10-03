@@ -115,7 +115,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/vehicles/specs.js` | The four cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
 | `src/vehicles/physics.js` | 120 Hz bicycle model, N R 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
-| `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
+| `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit quantize post pass, `shot()` |
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
 | `src/render/builder.js` | `MeshBuilder`: quads, boxes, cylinders into grouped geometry; `smoothNormals` (crease-limited), `buildWheel` |
 | `src/vehicles/loft.js` | Pure: monotone station curves, wheel arches, the 19-point crowned body ring with its bands, end bevel |
@@ -141,7 +141,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.22)
+## Current state (0.5.0)
 
 Done and tested:
 
@@ -341,7 +341,13 @@ Done and tested:
     are leveled to -16 LUFS from measured loudness (`lufs`); `FILE_LEVEL` sets them against the
     rest. A file that fails falls back to the other track of its mood, then to the synthesized
     track (menu, kirigaoka, lowbeam, ridge); offline contexts (audio-lab) always use the synth.
-    `audio.onTrack` gets each new track; main.js shows `NOW PLAYING <TITLE>` while driving.
+    Since 0.5.0 the music follows the speed while driving, as in Night-Runners (`SpeedSwell`,
+    `SWELL` in soundtrack.js): silent below 50 km/h, swelling in toward full at 140 km/h (100 on
+    the pass) at about 8 s from silence to full, falling slower and only after 3 s of lower speed;
+    a racer within 150 m holds it at 0.55 or more. The swell drives the recorded tracks' gain and a
+    low-pass that opens from 320 Hz, so a track comes in muffled and escalates with the speed. The
+    mood counts as fast after 3 s above 140 km/h. Menus play at full; pause holds the swell.
+    `audio.onTrack` gets each new track once it is audible; main.js shows `NOW PLAYING <TITLE>` while driving.
     `hold('ridge')` means the mountain tracks. `music.nowPlaying()` reports what is on. The dev
     server does not answer range requests, so a stream cannot be seeked there (playback is
     unaffected).
@@ -404,8 +410,10 @@ Done and tested:
   on it if it was in line with it, which carved trenches past road ends).
 - Cameras (`CameraRig`, C cycles, the choice is saved by name under `cameraView`): chase
   (damped, leans toward the direction of travel in a slide, FOV 62 to 78 with speed), car
-  (the standard near view: 4.4 m back, 1.3 m up, straight behind the heading so the whole
-  car stays in frame, FOV 58 to 68), hood, bumper and cockpit. The cockpit is a lofted
+  (the standard near view: 5.6 m back, 1.8 m up, looking 7 m ahead of the car so the road shows
+  over it, FOV 60 to 70), hood, bumper and cockpit. The cockpit camera sits 22 cm ahead of the
+  modeled eye and looks 0.75 m down over 10 m (`COCKPIT_*` in cameras.js), so the windshield
+  fills the top half and the instruments the bottom. The cockpit is a lofted
   interior (`buildCockpit`): dash, binnacle, gauge face (dark until the cluster
   lands), steering wheel turning at 4.5 times the road wheel angle, A-pillars, header,
   liner, door panels, mirror, console and passenger seat. It rides in the leaning body.
@@ -511,7 +519,7 @@ Done and tested:
   looks a little further down. The HUD cluster (`ui/cluster.js`) is only for the outside views.
 - Ace Combat and Japanese arcade styled menus:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
-  `settingsScreen` (Auto vs Manual transmission toggle, Render Height target lines [240, 360, 480],
+  `settingsScreen` (Auto vs Manual transmission toggle, Render Height target lines [240, 360, 480, 600, 720, 1080], default 480 since 0.5.0 and applied at boot from the store,
   Master, Engine, Effects, Ambience, Music channels with volume steps and mutes saved to localStorage),
   `controlsScreen` briefing (N R 1..7 manual gear order, Tab tactical map, F refuel & repair, C 5 camera views),
   and updated `pauseScreen`.
