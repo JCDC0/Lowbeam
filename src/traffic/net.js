@@ -20,8 +20,12 @@ import { clamp } from '../core/mathx.js';
  *   cls: string, oneway: boolean, closed: boolean, width: number,
  *   ends: Link[], mids: Link[], stops: Stop[]
  * }} Lane
- * @typedef {{ s: number, node: LightNode, axis: 0 | 1 }} Stop
- * @typedef {{ x: number, z: number, offset: number }} LightNode
+ * @typedef {{ s: number, node?: LightNode, axis?: 0 | 1, yield?: { lanes: Lane[], at: number } }} Stop
+ * @typedef {{
+ *   x: number, z: number, offset: number,
+ *   _axes?: Map<string, 0 | 1>,
+ *   _dirs?: Map<0 | 1, { tx: number, tz: number }>
+ * }} LightNode
  */
 
 const LANE_WIDTH = 3.5;
@@ -29,8 +33,9 @@ const LANE_WIDTH = 3.5;
 const JOIN = 12;
 const CYCLE = { green: 13, yellow: 2.2 };
 
-/** Light phase for an axis at time t: 'green', 'yellow' or 'red'. @param {LightNode} node @param {0 | 1} axis @param {number} t */
-export function lightState(node, axis, t) {
+/** Light phase for an axis at time t: 'green', 'yellow' or 'red'. @param {LightNode} [node] @param {0 | 1} [axis] @param {number} [t] */
+export function lightState(node, axis, t = 0) {
+  if (!node || axis === undefined) return 'green';
   const period = 2 * (CYCLE.green + CYCLE.yellow);
   let u = (t + node.offset) % period;
   if (axis === 1) u = (u + period / 2) % period;
@@ -138,7 +143,6 @@ export class TrafficNet {
     }
     const cls = road.def.cls;
     for (const lane of this.byRoad.get(road.id) || []) {
-      // The end of a lane is the end of the road in its direction; a ramp's exit end is special-cased by its link.
       this.sample(lane, lane.length, _a);
       const arrive = { tx: _a.tx, tz: _a.tz };
       const pEnd = road.path.sample(lane.dir > 0 ? road.path.length : 0, _q2);
@@ -146,11 +150,36 @@ export class TrafficNet {
         if (other === road || other.id === road.def.twin || other.def.cls === 'expressway') continue;
         if (cls === 'ramp' && road.def.link && other.id === road.def.link.from.id) continue;
         const hit = other.path.nearest(pEnd.x, pEnd.z);
-        // `d` is only the sideways offset: a point far beyond the end of a road can have a small one.
         if (Math.hypot(pEnd.x - hit.x, pEnd.z - hit.z) > JOIN || other.liftAt(hit.s) > 2) continue;
-        const turnLimit = Math.hypot(pEnd.x - hit.x, pEnd.z - hit.z) < 2 && (hit.s < 3 || other.path.length - hit.s < 3) ? -0.95 : -0.3;
-        for (const t of this.joinTargets(other, hit.s, arrive, turnLimit)) {
-          lane.ends.push({ lane: t.lane, at: lane.length, toS: t.s, kind: 'end', weight: 1 });
+        const nearEnd = hit.s < JOIN || other.path.length - hit.s < JOIN;
+        if (!nearEnd && other.def.cls !== 'ramp') {
+          const throughLanes = this.byRoad.get(other.id) || [];
+          const stopS = Math.max(0, lane.length - (other.hw + 3.5));
+          if (!lane.stops.some((st) => st.yield && Math.abs(st.s - stopS) < 5)) {
+            lane.stops.push({ s: stopS, yield: { lanes: throughLanes, at: hit.s } });
+          }
+          for (const tl of throughLanes) {
+            if (tl.index !== 0) continue;
+            const targetS = this.laneS(tl, hit.s);
+            if (!lane.ends.some((e) => e.lane === tl)) {
+              lane.ends.push({ lane: tl, at: lane.length, toS: targetS, kind: 'turn', weight: 0.5 });
+            }
+          }
+          const departLane = this.lane(road.id, lane.dir > 0 ? -1 : 1, 0);
+          if (departLane) {
+            for (const tl of throughLanes) {
+              if (tl.index !== 0) continue;
+              const throughS = this.laneS(tl, hit.s);
+              if (!tl.mids.some((m) => m.lane === departLane && Math.abs(m.at - (throughS - 2)) < 15)) {
+                tl.mids.push({ lane: departLane, at: Math.max(0, throughS - 2), toS: 3, kind: 'turn', weight: 0.14 });
+              }
+            }
+          }
+        } else {
+          const turnLimit = Math.hypot(pEnd.x - hit.x, pEnd.z - hit.z) < 2 && (hit.s < 3 || other.path.length - hit.s < 3) ? -0.95 : -0.3;
+          for (const t of this.joinTargets(other, hit.s, arrive, turnLimit)) {
+            lane.ends.push({ lane: t.lane, at: lane.length, toS: t.s, kind: 'end', weight: 1 });
+          }
         }
       }
     }
@@ -169,12 +198,10 @@ export class TrafficNet {
     const to = this.network.byId.get(link.to.id);
     if (!from || !to) return;
     if (from.def.cls === 'expressway') {
-      // A ramp that carries on from the end of an expressway is joined by linkRoadEnds instead.
       const cl = this.lane(from.id, 1, 0);
       const atEnd = !from.path.closed && link.from.s >= from.path.length - 1;
       if (cl && !atEnd) cl.mids.push({ lane: rl, at: this.laneS(cl, link.from.s), toS: 0, kind: 'exit', weight: 0.22 });
     } else {
-      // An entry ramp starts on the avenue: cars turn in from either direction.
       for (const dir of /** @type {const} */ ([1, -1])) {
         const al = this.lane(from.id, dir, 0);
         if (al) al.mids.push({ lane: rl, at: this.laneS(al, link.from.s) - 6, toS: 0, kind: 'turn', weight: 0.2 });
@@ -189,22 +216,33 @@ export class TrafficNet {
     }
   }
 
-  /** Turns and traffic lights where city streets cross. */
+  /** Turns and traffic lights where city streets and surface arterials cross. */
   linkCrossings() {
-    const streets = this.network.roads.filter((r) => r.def.cls === 'street');
-    const pts = streets.map((r) => {
+    const surfaceRoads = this.network.roads.filter(
+      (r) => !r.def.oneway && (r.def.cls === 'street' || r.def.cls === 'arterial')
+    );
+    const pts = surfaceRoads.map((r) => {
       const a = [];
       for (let s = 0; s < r.path.length; s += 8) {
         const q = r.path.sample(s);
         a.push([q.x, q.z, s]);
       }
+      if (a.length === 0 || a[a.length - 1][2] < r.path.length) {
+        const q = r.path.sample(r.path.length);
+        a.push([q.x, q.z, r.path.length]);
+      }
       return a;
     });
     const ccw = (a, b, c) => (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0]);
     const cross = (a, b, c, d) => ccw(a, c, d) !== ccw(b, c, d) && ccw(a, b, c) !== ccw(a, b, d);
-    let n = 0;
-    for (let a = 0; a < streets.length; a++) {
-      for (let b = a + 1; b < streets.length; b++) {
+
+    /** @type {{ ra: Road, sa: number, rb: Road, sb: number, x: number, z: number }[]} */
+    const intersections = [];
+
+    for (let a = 0; a < surfaceRoads.length; a++) {
+      for (let b = a + 1; b < surfaceRoads.length; b++) {
+        const ra = surfaceRoads[a];
+        const rb = surfaceRoads[b];
         for (let i = 0; i + 1 < pts[a].length; i++) {
           for (let j = 0; j + 1 < pts[b].length; j++) {
             const A = pts[a][i];
@@ -212,44 +250,84 @@ export class TrafficNet {
             const C = pts[b][j];
             const D = pts[b][j + 1];
             if (Math.abs(A[0] - C[0]) > 20 || Math.abs(A[1] - C[1]) > 20 || !cross(A, B, C, D)) continue;
-            const hitA = streets[a].path.nearest(A[0], A[1], undefined, Math.round((A[2] - 12) / 2), Math.round((A[2] + 20) / 2));
-            this.crossAt(streets[a], streets[b], streets[a].path.sample(hitA.s), n++);
+            const hitA = ra.path.nearest(A[0], A[1], undefined, Math.round((A[2] - 12) / 2), Math.round((A[2] + 20) / 2));
+            const hitB = rb.path.nearest(C[0], C[1], undefined, Math.round((C[2] - 12) / 2), Math.round((C[2] + 20) / 2));
+            if (ra.liftAt(hitA.s) > 2 || rb.liftAt(hitB.s) > 2) continue;
+            intersections.push({ ra, sa: hitA.s, rb, sb: hitB.s, x: hitA.x, z: hitA.z });
           }
         }
       }
     }
-  }
 
-  /** @param {Road} ra @param {Road} rb @param {{ x: number, z: number }} at @param {number} n */
-  crossAt(ra, rb, at, n) {
-    const ha = ra.path.nearest(at.x, at.z);
-    const hb = rb.path.nearest(at.x, at.z);
-    /** @type {LightNode} */
-    const node = { x: at.x, z: at.z, offset: (n * 5.3) % 30 };
-    this.nodes.push(node);
-    const axisOf = (road, s) => {
-      const q = road.path.sample(s);
-      return /** @type {0 | 1} */ (Math.abs(q.tx) > Math.abs(q.tz) ? 0 : 1);
-    };
-    /** @type {[Road, number, Road, number][]} */
-    const arms = [[ra, ha.s, rb, hb.s], [rb, hb.s, ra, ha.s]];
-    for (const [road, ps, cross, cps] of arms) {
-      for (const lane of this.byRoad.get(road.id) || []) {
-        const s = this.laneS(lane, ps);
-        lane.stops.push({ s: s - (cross.hw + 3.5), node, axis: axisOf(road, ps) });
-        this.sample(lane, s, _a);
-        for (const other of this.byRoad.get(cross.id) || []) {
-          if (other.index !== 0) continue;
-          const so = this.laneS(other, cps);
-          this.sample(other, so, _s);
-          const dot = _a.tx * _s.tx + _a.tz * _s.tz;
-          if (Math.abs(dot) > 0.5) continue;
-          lane.mids.push({ lane: other, at: s - 2, toS: so + 3, kind: 'turn', weight: 0.14 });
+    for (const ix of intersections) {
+      let node = this.nodes.find((n) => Math.hypot(n.x - ix.x, n.z - ix.z) < 25);
+      if (!node) {
+        node = {
+          x: ix.x,
+          z: ix.z,
+          offset: (this.nodes.length * 5.3) % 30,
+          _axes: new Map(),
+          _dirs: new Map(),
+        };
+        this.nodes.push(node);
+      }
+      if (!node._axes) {
+        node._axes = new Map();
+        node._dirs = new Map();
+      }
+
+      const getAxis = (road, s) => {
+        if (node._axes.has(road.id)) return node._axes.get(road.id);
+        const q = road.path.sample(s);
+        if (node._axes.size === 0) {
+          node._axes.set(road.id, 0);
+          node._dirs.set(0, { tx: q.tx, tz: q.tz });
+          return 0;
+        }
+        if (!node._dirs.has(1)) {
+          node._axes.set(road.id, 1);
+          node._dirs.set(1, { tx: q.tx, tz: q.tz });
+          return 1;
+        }
+        const d0 = node._dirs.get(0);
+        const d1 = node._dirs.get(1);
+        const dot0 = Math.abs(d0.tx * q.tx + d0.tz * q.tz);
+        const dot1 = Math.abs(d1.tx * q.tx + d1.tz * q.tz);
+        const axis = dot0 >= dot1 ? 0 : 1;
+        node._axes.set(road.id, axis);
+        return axis;
+      };
+
+      const axisA = getAxis(ix.ra, ix.sa);
+      const axisB = getAxis(ix.rb, ix.sb);
+
+      const arms = [
+        { road: ix.ra, ps: ix.sa, axis: axisA, crossRoad: ix.rb, cps: ix.sb },
+        { road: ix.rb, ps: ix.sb, axis: axisB, crossRoad: ix.ra, cps: ix.sa },
+      ];
+      for (const { road, ps, axis, crossRoad, cps } of arms) {
+        for (const lane of this.byRoad.get(road.id) || []) {
+          const s = this.laneS(lane, ps);
+          const stopS = s - (crossRoad.hw + 3.5);
+          if (!lane.stops.some((st) => st.node === node && Math.abs(st.s - stopS) < 15)) {
+            lane.stops.push({ s: stopS, node, axis });
+          }
+          this.sample(lane, s, _a);
+          for (const other of this.byRoad.get(crossRoad.id) || []) {
+            if (other.index !== 0) continue;
+            const so = this.laneS(other, cps);
+            this.sample(other, so, _s);
+            const dot = _a.tx * _s.tx + _a.tz * _s.tz;
+            if (Math.abs(dot) > 0.85) continue;
+            if (!lane.mids.some((m) => m.lane === other && Math.abs(m.at - (s - 2)) < 15)) {
+              lane.mids.push({ lane: other, at: s - 2, toS: so + 3, kind: 'turn', weight: 0.14 });
+            }
+          }
         }
       }
     }
+
     for (const lane of this.lanes) lane.stops.sort((a, b) => a.s - b.s);
-    return node;
   }
 }
 

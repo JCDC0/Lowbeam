@@ -145,10 +145,16 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.0)
+## Current state (0.6.1)
 
 Done and tested:
 
+- Traffic at any junction (0.6.1, A10 part 1). `TrafficNet.linkCrossings` links crossings between
+  any two-way surface roads of class `street` or `arterial` unless lifted over 2 m. Light axes
+  alternate per road at the junction rather than from world directions. T junctions provide yield stop
+  data (`{ s, yield: { lanes, at } }`), two-way turns from the side road onto the through road, and
+  turns into the side road from both directions. Crossings closer than 25 m and junctions with five or
+  more arms merge into one light node.
 - Kurogane Island (0.6.0, plan in `docs/agents/tasks/C1-kurogane-island.md`). The map is an island:
   `COAST` in layout.js is the shore polygon and `island.js` gives the distance inland. The terrain
   falls into the sea along it, in cliffs under the western mountains and onto a low shelf (about

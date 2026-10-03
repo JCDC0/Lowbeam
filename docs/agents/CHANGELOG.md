@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.1 (2026-10-04)
+
+Traffic junctions at any angle, T junctions with yield stops, and multi-arm node merging.
+
+- `src/traffic/net.js`: `linkCrossings` supports crossings between any two-way surface roads of class
+  `street` or `arterial`. Crossings where either road is lifted more than 2 m are skipped as bridges.
+- Light axes are assigned per road at the junction node (road A axis 0, road B axis 1) rather than from
+  world direction octants, preserving alternation on curved and non-orthogonal intersections.
+- T junctions: a road ending on another surface road's side receives a stop line with yield data
+  (`{ s, yield: { lanes, at } }`), turn links onto both directions of the through road, and mid turn
+  links from both through road directions into the side road.
+- Crossings with five or more arms and junctions closer than 25 m merge into one light node.
+- `tests/net.test.mjs`: unit tests for angled crossings, T junctions, bridge clearance, and node merging.
+
 ## 0.6.0 (2026-10-04)
 
 Kurogane becomes an island, and the pass no longer ends in a hook by the lake.
