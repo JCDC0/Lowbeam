@@ -82,6 +82,7 @@ captures such as rendered audio.
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
 | `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
 | `src/world/build-roads.js` | Road ribbons with skirts, forecourt pads with curbs |
+| `src/world/build-bridges.js` | Slab sides, underside, parapets and piers for roads that are lifted onto a deck |
 | `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
 | `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
 | `src/world/props.js` | Street lamps, town buildings with windows, konbini, neon |
@@ -110,7 +111,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.2.3)
+## Current state (0.3.0)
 
 Done and tested:
 
@@ -280,6 +281,20 @@ Done and tested:
   kiosks and pump islands are oriented boxes; the valley edge is a wall. Contacts push
   the car out and apply an impulse at the contact point (restitution 0.22, friction
   0.35), so glancing hits turn the car. Driving into the lake resets onto the road.
+- Overpasses (0.3.0). A road def can carry `lifts: [{ at, height, half, flat }]`: it is
+  raised by `height` around the point `at`, flat on top for `flat` meters, with a cosine
+  ease out to `half`. Lifts are applied after the junction blending, so the road still
+  meets the one it crosses and then climbs from there. Above 2 m of lift a road counts as
+  a deck: `RoadNetwork.query(x, z, out, extra, minPriority, y)` and `Ground.at(x, z, y)`
+  only return a deck to something whose height `y` is within 1.6 m of its surface, so a
+  car on the deck gets the deck and a car underneath gets the road below; with no `y` you
+  get the ground, so trees, props and the terrain carve ignore overpasses. `stepVehicle`
+  passes `s.y` for all four wheel samples and `placeVehicle` always places on the ground.
+  Collision shapes may carry `y0`/`y1`, the heights they occupy: the parapet boxes along
+  a deck block only cars at deck height and the piers only cars below it. Every bridge
+  (scatter `bridges`) gets a pier under the middle of its lift and every 22 m wherever no
+  road runs underneath. Approaches shorter than the grade cap allows are the author's
+  problem: 7.5 m over `half` 150 with `flat` 50 peaks at 9.4 %.
 - Cameras (`CameraRig`, C cycles, the choice is saved by name under `cameraView`): chase
   (damped, leans toward the direction of travel in a slide, FOV 62 to 78 with speed), car
   (the standard near view: 4.4 m back, 1.3 m up, straight behind the heading so the whole
@@ -322,7 +337,7 @@ Done and tested:
   `controlsScreen` briefing, and updated `pauseScreen`.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 67 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 74 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
   push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
   species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,

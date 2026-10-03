@@ -11,6 +11,10 @@ import { smoothstep } from '../core/mathx.js';
 export const SKIRT = 1.2;
 /** How far the carved terrain sits below the road surface. */
 export const SINK = 0.25;
+/** A road lifted more than this above its natural profile is on a deck, not on the ground. */
+export const ELEVATED = 2.0;
+/** A car at height y can use a deck whose surface is at most this far above y. */
+const DECK_REACH = 1.6;
 
 const CELL = 16;
 const OFF = 1100;
@@ -18,7 +22,7 @@ const W = Math.ceil((OFF * 2) / CELL);
 const JUNCTION_BLEND = 35;
 
 /** @typedef {import('./layout.js').RoadDef} RoadDef */
-/** @typedef {{ road: Road, s: number, d: number, h: number, edge: number }} RoadHit */
+/** @typedef {{ road: Road, s: number, d: number, h: number, edge: number, lift?: number }} RoadHit */
 
 export class Road {
   /** @param {RoadDef} def @param {number} index */
@@ -32,6 +36,19 @@ export class Road {
     this.priority = def.priority;
     this.path = new Path(def.points, { closed: !!def.closed, step: 2 });
     this.h = new Float32Array(this.path.n);
+    /** Meters this road is lifted above its natural profile: overpasses and viaducts. */
+    this.lift = new Float32Array(this.path.n);
+    this.lifted = false;
+  }
+
+  /** Lift at arc length s. @param {number} s */
+  liftAt(s) {
+    if (!this.lifted) return 0;
+    const p = this.path;
+    s = p.wrapS(s);
+    const fi = s / p.step;
+    const i = Math.min(Math.floor(fi), p.closed ? p.n - 1 : p.n - 2);
+    return this.lift[i] + (this.lift[p.wrapIndex(i + 1)] - this.lift[i]) * (fi - i);
   }
 
   /** @param {number} s */
@@ -72,6 +89,32 @@ export class RoadNetwork {
     // Lower priority roads take the height of anything they cross, so junctions are flush.
     const order = [...this.roads].sort((a, b) => b.priority - a.priority);
     for (const r of order) this.blendJunctions(r);
+    // Lifts come last: junctions blend the natural profiles, then an overpass climbs from there.
+    for (const r of this.roads) this.applyLifts(r);
+  }
+
+  /**
+   * Overpasses. Each lift raises the road by `height` around the point `at`: full height
+   * for `flat` meters, then a cosine ease down to nothing at `half` meters from it.
+   * @param {Road} r
+   */
+  applyLifts(r) {
+    const lifts = r.def.lifts;
+    if (!lifts || !lifts.length) return;
+    const p = r.path;
+    for (const L of lifts) {
+      const hit = p.nearest(L.at[0], L.at[1]);
+      const flat = (L.flat || 0) / 2;
+      for (let i = 0; i < p.n; i++) {
+        let u = Math.abs(i * p.step - hit.s);
+        if (p.closed) u = Math.min(u, p.length - u);
+        const t = Math.min(1, Math.max(0, (u - flat) / Math.max(1, L.half - flat)));
+        const e = 0.5 * (1 + Math.cos(Math.PI * t));
+        r.lift[i] = Math.max(r.lift[i], L.height * e);
+      }
+    }
+    for (let i = 0; i < p.n; i++) r.h[i] += r.lift[i];
+    r.lifted = true;
   }
 
   cellKey(x, z) {
@@ -159,12 +202,16 @@ export class RoadNetwork {
   }
 
   /**
-   * The road under (x, z), if any. Includes the sloped skirt beyond the edge.
+   * The road under (x, z), if any. Includes the sloped skirt beyond the edge. A road on a
+   * deck is only found by something at or above its surface: pass the height `y` of the
+   * thing asking. Without it, only roads on the ground are found, so props, trees and the
+   * terrain carve ignore overpasses.
    * @param {number} x @param {number} z @param {RoadHit} out
    * @param {number} [extra] extra reach past the skirt
    * @param {number} [minPriority] ignore roads at or below this priority
+   * @param {number} [y] height of the asker; roads on a deck above y + 1.6 are skipped
    */
-  query(x, z, out, extra = 0, minPriority = -Infinity) {
+  query(x, z, out, extra = 0, minPriority = -Infinity, y = -Infinity) {
     const best = this._best;
     const bestI = this._bestI;
     best.fill(Infinity);
@@ -193,15 +240,21 @@ export class RoadNetwork {
     let found = null;
     let foundD = 0;
     let foundS = 0;
+    let foundDeck = false;
     for (const r of this.roads) {
       if (best[r.index] === Infinity) continue;
       const h = r.path.refine(bestI[r.index], x, z, this._hit);
       const ad = Math.abs(h.d);
       if (ad > r.hw + SKIRT + extra) continue;
-      if (!found || r.priority > found.priority || (r.priority === found.priority && ad < Math.abs(foundD))) {
+      const deck = r.lifted && r.liftAt(h.s) > ELEVATED;
+      if (deck && r.heightAt(h.s) > y + DECK_REACH) continue;
+      // A deck beats the ground under it; among equals the higher priority, then the closer, wins.
+      const better = !found || (deck && !foundDeck) || (deck === foundDeck && (r.priority > found.priority || (r.priority === found.priority && ad < Math.abs(foundD))));
+      if (better) {
         found = r;
         foundD = h.d;
         foundS = h.s;
+        foundDeck = deck;
       }
     }
     if (!found) return false;
@@ -210,6 +263,7 @@ export class RoadNetwork {
     out.s = foundS;
     out.d = foundD;
     out.edge = edge;
+    out.lift = found.liftAt(foundS);
     out.h = found.heightAt(foundS) - (edge > 0 ? Math.min(1, edge / SKIRT) * SINK : 0);
     return true;
   }
@@ -251,12 +305,16 @@ export class RoadNetwork {
       const h = r.path.refine(bestI[r.index], x, z, this._hit);
       const edge = Math.abs(h.d) - r.hw;
       if (edge > reach || edge >= bestEdge) continue;
+      // Terrain is not shaped to a road that has left the ground; the road below is.
+      const lift = r.liftAt(h.s);
+      if (lift > ELEVATED + 0.4) continue;
       bestEdge = edge;
       found = true;
       out.road = r;
       out.s = h.s;
       out.d = h.d;
       out.edge = edge;
+      out.lift = lift;
       out.h = r.heightAt(h.s);
     }
     return found;

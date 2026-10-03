@@ -8,7 +8,7 @@ import { TOWN, SEED } from './layout.js';
 import { padDistance } from './ground.js';
 import { makeRng } from '../core/rng.js';
 import { placeForest } from './forest.js';
-import { SKIRT } from './roads.js';
+import { SKIRT, ELEVATED } from './roads.js';
 
 /** @typedef {import('./ground.js').Ground} Ground */
 /** @typedef {import('./ground.js').Pad} Pad */
@@ -24,11 +24,11 @@ import { SKIRT } from './roads.js';
  * street, w runs along the street and d away from it.
  * @typedef {{ x: number, z: number, y: number, yaw: number, w: number, d: number, h: number, kind: string, seed: number, sign: number }} Building
  */
-/** @typedef {{ x: number, z: number, r: number }} Circle */
+/** @typedef {{ x: number, z: number, r: number, y0?: number, y1?: number }} Circle */
 /**
  * Oriented box. Local X is (cos yaw, -sin yaw), local Z is (sin yaw, cos yaw), the same
  * frame a car with that yaw has. For a pad, padYaw makes local X run along the road.
- * @typedef {{ x: number, z: number, hx: number, hz: number, yaw: number }} Box
+ * @typedef {{ x: number, z: number, hx: number, hz: number, yaw: number, y0?: number, y1?: number }} Box
  */
 
 export const LAMP_HEIGHT = 7.2;
@@ -96,7 +96,74 @@ export function scatterWorld(ground) {
   const stations = ground.pads.map((pad) => placeStation(ground, pad, lights, circles, boxes));
   const buildings = placeBuildings(ground, lights, boxes);
   const trees = placeForest(ground, buildings, circles, clearOfRoads);
-  return { lamps, stations, buildings, trees, lights, circles, boxes };
+  const bridges = placeBridges(ground, circles, boxes);
+  return { lamps, stations, buildings, trees, bridges, lights, circles, boxes };
+}
+
+/** Lift (m) from which a road gets side walls, and from which it counts as a deck with piers. */
+export const WALL_LIFT = 1.2;
+const PIER_EVERY = 22;
+const WALL_SEGMENT = 6;
+
+/**
+ * Overpasses and viaducts: for every stretch of a lifted road that is clear of the ground,
+ * the wall segments along both edges and the piers under it, with colliders at the right
+ * height so a car underneath never touches them.
+ *
+ * @typedef {{ road: import('./roads.js').Road, i0: number, i1: number,
+ *   piers: { x: number, z: number, top: number, bottom: number, yaw: number }[] }} Bridge
+ * @param {Ground} ground @param {Circle[]} circles @param {Box[]} boxes
+ * @returns {Bridge[]}
+ */
+function placeBridges(ground, circles, boxes) {
+  /** @type {Bridge[]} */
+  const out = [];
+  const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
+  for (const road of ground.roads.roads) {
+    if (!road.lifted) continue;
+    const p = road.path;
+    let start = -1;
+    for (let i = 0; i <= p.n; i++) {
+      const up = i < p.n && road.lift[i] > WALL_LIFT;
+      if (up && start < 0) start = i;
+      if (start >= 0 && !up) {
+        out.push({ road, i0: start, i1: i - 1, piers: [] });
+        start = -1;
+      }
+    }
+  }
+  for (const b of out) {
+    const { road } = b;
+    const p = road.path;
+    const q = { x: 0, z: 0, tx: 0, tz: 1 };
+    for (let s = b.i0 * p.step; s < b.i1 * p.step; s += WALL_SEGMENT) {
+      const mid = Math.min(b.i1 * p.step, s + WALL_SEGMENT / 2);
+      p.sample(mid, q);
+      const top = road.heightAt(mid);
+      const yaw = Math.atan2(q.tx, q.tz);
+      for (const side of [1, -1]) {
+        const off = road.hw + 0.35;
+        boxes.push({ x: q.x + q.tz * off * side, z: q.z - q.tx * off * side, hx: 0.3, hz: WALL_SEGMENT / 2, yaw, y0: top - 0.3, y1: top + 1.0 });
+      }
+    }
+    const spots = [];
+    for (let s = b.i0 * p.step; s < b.i1 * p.step; s += PIER_EVERY) spots.push(s);
+    // One under the middle of every lift, which is where the road it crosses has its median.
+    for (const L of road.def.lifts || []) {
+      const mid = p.nearest(L.at[0], L.at[1]).s;
+      if (mid >= b.i0 * p.step && mid <= b.i1 * p.step) spots.push(mid);
+    }
+    for (const s of spots) {
+      p.sample(s, q);
+      if (road.liftAt(s) < ELEVATED + 1.5) continue;
+      if (ground.roads.query(q.x, q.z, hit, -SKIRT)) continue;
+      const top = road.heightAt(s);
+      const bottom = ground.at(q.x, q.z).h;
+      b.piers.push({ x: q.x, z: q.z, top, bottom, yaw: Math.atan2(q.tx, q.tz) });
+      circles.push({ x: q.x, z: q.z, r: 0.9, y1: top - 0.8 });
+    }
+  }
+  return out;
 }
 
 /** True when (x, z) is clear of every road surface, skirt and pad by `margin`. */

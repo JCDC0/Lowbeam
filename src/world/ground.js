@@ -94,7 +94,7 @@ export class Ground {
         let target = h;
         let surf = TERRAIN.grass;
         if (this.roads.influence(x, z, FLAT + BLEND, inf)) {
-          w = 1 - smoothstep(FLAT, FLAT + BLEND, inf.edge);
+          w = (1 - smoothstep(FLAT, FLAT + BLEND, inf.edge)) * (1 - smoothstep(1.2, 2.4, inf.lift || 0));
           target = inf.h - SINK;
           if (inf.road.surface === 'gravel' && inf.edge < FLAT + 3) surf = TERRAIN.dirt;
         }
@@ -135,14 +135,16 @@ export class Ground {
   }
 
   /**
-   * Height and surface under (x, z). Roads win, then pads, then terrain.
-   * @param {number} x @param {number} z
+   * Height and surface under (x, z). Roads win, then pads, then terrain. `y` is the height
+   * of whatever is asking: a car on an overpass passes its own height and gets the deck, a
+   * car under it gets the road below. Without `y` you get the ground, never a deck.
+   * @param {number} x @param {number} z @param {number} [y]
    */
-  at(x, z) {
+  at(x, z, y = -Infinity) {
     const o = this.out;
     o.road = null;
     o.pad = null;
-    const onRoad = this.roads.query(x, z, this._hit);
+    const onRoad = this.roads.query(x, z, this._hit, 0, -Infinity, y);
     // A pad beats the sloped road skirt it overlaps, never the road surface itself.
     if (!onRoad || this._hit.edge > 0) {
       for (const pad of this.pads) {
@@ -169,6 +171,6 @@ export class Ground {
 
   /** Bound `at` for code that wants a plain function. */
   get fn() {
-    return (x, z) => this.at(x, z);
+    return (x, z, y) => this.at(x, z, y);
   }
 }

@@ -39,7 +39,7 @@ const DEFAULT_ENGINE_INERTIA = 0.25;
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 /** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number, shiftUp?: boolean, shiftDown?: boolean, manual?: boolean }} DriveInput */
-/** @typedef {(x: number, z: number) => { h: number, surface: string }} GroundFn */
+/** @typedef {(x: number, z: number, y?: number) => { h: number, surface: string }} GroundFn */
 
 /** @param {CarSpec} spec */
 export function createVehicleState(spec) {
@@ -81,6 +81,8 @@ export function placeVehicle(s, spec, x, z, yaw, ground) {
   s.air = false;
   s.airTime = 0;
   s.aLong = s.aLat = 0;
+  // Placed on the ground, never on a deck above it.
+  s.y = -Infinity;
   s.y = groundAt(s, spec, ground).y;
 }
 
@@ -112,14 +114,15 @@ function groundAt(s, spec, ground) {
   const b = spec.cgToFront;
   const c = spec.wheelbase - b;
   const ht = spec.track / 2;
-  let g = ground(s.x + fx * b, s.z + fz * b);
+  const y = s.y;
+  let g = ground(s.x + fx * b, s.z + fz * b, y);
   const hF = g.h;
   _gp.surfF = g.surface;
-  g = ground(s.x - fx * c, s.z - fz * c);
+  g = ground(s.x - fx * c, s.z - fz * c, y);
   const hR = g.h;
   _gp.surfR = g.surface;
-  const hL = ground(s.x + lx * ht, s.z + lz * ht).h;
-  const hRt = ground(s.x - lx * ht, s.z - lz * ht).h;
+  const hL = ground(s.x + lx * ht, s.z + lz * ht, y).h;
+  const hRt = ground(s.x - lx * ht, s.z - lz * ht, y).h;
   _gp.y = (hF * c + hR * b) / spec.wheelbase;
   _gp.pitch = Math.atan2(hF - hR, spec.wheelbase);
   _gp.roll = Math.atan2(hL - hRt, spec.track);

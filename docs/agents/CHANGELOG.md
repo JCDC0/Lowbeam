@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 (2026-10-03)
+
+Overpasses: roads can leave the ground.
+
+- `lifts` on a road def raise it over the road it crosses (flat top, cosine ease), applied
+  after junction blending. Above 2 m a road is a deck.
+- `Ground.at(x, z, y)` and `RoadNetwork.query(..., y)` return a deck only to something at
+  or above its surface. The physics passes the car's own height, so a car can drive over
+  and under the same spot. Without `y` you get the ground, so props, trees and the terrain
+  carve ignore decks.
+- Collision shapes get `y0`/`y1` height ranges: deck parapets and piers no longer stop the
+  traffic on the other level.
+- `build-bridges.js`: slab sides that reach down to the ground on embankments, an underside,
+  parapets and piers. `scatter.bridges` lists them with their wall and pier colliders.
+- `roadgen.js`: helpers for the new map (offset paths, dual carriageways, street grids and
+  ramps), in use from the next version.
+- Verified in the browser with a temporary overpass on Route 7: the car climbs onto the
+  deck, drives over a road it passes under, and comes back down.
+- Tests: 74 passing (new `bridge.test.mjs`: lift profile, layered queries, terrain
+  carve, a car under and over, collider heights).
+
 ## 0.2.4 (2026-10-03)
 
 Dashboard repair, bold 240p cockpit cluster, and gauge contract implementation.

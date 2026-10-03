@@ -15,10 +15,12 @@ export const TOWN = { x0: -150, x1: 310, z0: 165, z1: 480 };
 
 /**
  * @typedef {{ at: number[], height: number, half: number }} Bump
+ * @typedef {{ at: number[], height: number, half: number, flat?: number }} Lift
  * @typedef {{
  *   id: string, name: string, surface: string, hw: number, closed?: boolean,
  *   priority: number, smooth: number, lamps?: { from: number[], to: number[], every: number }[],
- *   lines?: 'center' | 'none', bumps?: Bump[], maxGrade?: number, points: number[][]
+ *   lines?: 'center' | 'none', bumps?: Bump[], lifts?: Lift[], maxGrade?: number, points: number[][],
+ *   oneway?: boolean, median?: number
  * }} RoadDef
  */
 

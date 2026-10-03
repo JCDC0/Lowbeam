@@ -9,6 +9,16 @@ import { WORLD_HALF } from './layout.js';
 
 /** @typedef {import('./scatter.js').Circle} Circle */
 /** @typedef {import('./scatter.js').Box} Box */
+
+/**
+ * Shapes may carry `y0` and `y1`, the heights they occupy. A car blocks on one only when
+ * its own height is inside that range (with a little give), so a barrier on an overpass
+ * does not stop a car driving under it.
+ */
+const BELOW = 1.2;
+const ABOVE = 0.3;
+/** @param {{ y0?: number, y1?: number }} shape @param {number} y */
+const sameLevel = (shape, y) => (shape.y0 === undefined || y >= shape.y0 - BELOW) && (shape.y1 === undefined || y <= shape.y1 + ABOVE);
 /** @typedef {import('../vehicles/specs.js').CarSpec} CarSpec */
 
 const CELL = 16;
@@ -54,16 +64,17 @@ export class Colliders {
 
   /**
    * Deepest contact of a circle against the static shapes, or null.
-   * @param {number} x @param {number} z @param {number} r
+   * @param {number} x @param {number} z @param {number} r @param {number} [y] the car's height
    * @returns {Contact | null}
    */
-  probe(x, z, r) {
+  probe(x, z, r, y = 0) {
     const out = this._c;
     out.depth = 0;
     const cell = this.cells.get(Math.floor((z + OFF) / CELL) * W + Math.floor((x + OFF) / CELL));
     if (cell) {
       for (const i of cell.c) {
         const c = this.circles[i];
+        if (!sameLevel(c, y)) continue;
         const dx = x - c.x;
         const dz = z - c.z;
         const d = Math.hypot(dx, dz);
@@ -76,7 +87,7 @@ export class Colliders {
           out.pz = c.z + out.nz * c.r;
         }
       }
-      for (const i of cell.b) this.probeBox(this.boxes[i], x, z, r, out);
+      for (const i of cell.b) if (sameLevel(this.boxes[i], y)) this.probeBox(this.boxes[i], x, z, r, out);
     }
     for (const [axis, sign] of [[0, 1], [0, -1], [1, 1], [1, -1]]) {
       const v = axis === 0 ? x : z;
@@ -156,7 +167,7 @@ export class Colliders {
       const off = mid + k * reach;
       const cx = s.x + fx * off;
       const cz = s.z + fz * off;
-      const hit = this.probe(cx, cz, r);
+      const hit = this.probe(cx, cz, r, s.y);
       if (!hit) continue;
       s.x += hit.nx * hit.depth;
       s.z += hit.nz * hit.depth;

@@ -57,7 +57,7 @@ export class CameraRig {
 
   /**
    * @param {import('../vehicles/car.js').Car} car
-   * @param {(x: number, z: number) => { h: number }} ground
+   * @param {(x: number, z: number, y?: number) => { h: number }} ground
    * @param {number} dt
    */
   update(car, ground, dt) {
@@ -77,7 +77,7 @@ export class CameraRig {
       const dist = f.dist + Math.min(f.distMax, speed * f.distSpeed);
       const height = f.height + Math.min(f.heightMax, speed * f.heightSpeed);
       _eye.set(p.x - Math.sin(this.yaw) * dist, p.y + height, p.z - Math.cos(this.yaw) * dist);
-      const g = ground(_eye.x, _eye.z).h + 0.7;
+      const g = ground(_eye.x, _eye.z, _eye.y).h + 0.7;
       if (_eye.y < g) _eye.y = g;
       if (this.fresh) this.pos.copy(_eye);
       else {
