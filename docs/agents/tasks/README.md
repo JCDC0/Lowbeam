@@ -6,12 +6,13 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 
 | Brief | Start | What |
 |---|---|---|
-| [A1-dashboard.md](A1-dashboard.md) | now | Repair the cockpit dash: mirrored, blocks the view, unreadable |
-| [A2-map-controls.md](A2-map-controls.md) | now | Tab map overlay, interact key moves to F, controls screen |
-| [A6-garage.md](A6-garage.md) | with A2 | Garage handles any number of cars and shows the gear count |
-| [A3-bodies-batch1.md](A3-bodies-batch1.md) | after A1 | Four rival bodies and four civilian bodies |
-| [A4-bodies-batch2.md](A4-bodies-batch2.md) | after A3 is reviewed | Remaining rivals, civilians, vans, trucks, bus |
-| [A5-buildings.md](A5-buildings.md) | after the new map layout lands | Building kit, facade atlas, street furniture |
+| [A1-dashboard.md](A1-dashboard.md) | done (0.2.4) | Repair the cockpit dash: mirrored, blocks the view, unreadable |
+| [A2-map-controls.md](A2-map-controls.md) | done (0.3.1) | Tab map overlay, interact key moves to F, controls screen |
+| [A6-garage.md](A6-garage.md) | done (0.3.1) | Garage handles any number of cars and shows the gear count |
+| [A7-backend-playtest.md](A7-backend-playtest.md) | now | Tach scale, blown idle, diagonal lane changes, fast racers, road joins, bigger city, rails |
+| [A5-buildings.md](A5-buildings.md) | after A7 part 6 | Building kit, facade atlas, street furniture |
+| [A3-bodies-batch1.md](A3-bodies-batch1.md) | cancelled | Claude builds every car body now |
+| [A4-bodies-batch2.md](A4-bodies-batch2.md) | cancelled | Claude builds every car body now |
 
 ## Rules for working in the shared tree
 
@@ -21,11 +22,10 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 - Stage your own files by name. Never `git add -A`.
 - Prefer new files. In a shared file make small exact-string edits, re-read it right
   before editing, never rewrite it whole.
-- Do not touch these (Claude owns them for this stretch): `src/vehicles/physics.js`,
-  `gauges.js`, `specs.js`, `surfaces.js`, `thermal.js`, `src/audio/*`, `src/world/*`,
-  `src/traffic/*`, `src/render/cameras.js`, `src/drive.js` (except hooks named in a brief),
-  `tests/physics.test.mjs`. The gearbox in `physics.js` moved to Claude: the 0.1.9 manual
-  transmission is being replaced by a full R N 1..7 gearbox.
+- From A7 on, Antigravity owns the backend (physics, thermal, gauges, traffic sim, world
+  generation, the HUD cluster) and Claude owns modeling (car bodies, cockpits and their
+  gauges, vehicle rendering) and the planning. The table at the end of A7 lists the files.
+  Do not edit the other side's files; ask in your report.
 - Conventions are in `docs/agents/ARCHITECTURE.md`: meters, north is -Z, car local +X is the
   car's LEFT, no em dashes, no single-line explanatory comments, materials from
   `src/render/psx.js`, pure modules never import `three`.
