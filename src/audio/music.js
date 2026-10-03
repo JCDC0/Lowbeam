@@ -1,14 +1,33 @@
 /**
- * The music player: turns the note events from songs.js into sound with a small
+ * The music player. In the browser it streams the recorded soundtrack (soundtrack.js
+ * decides the mood and the next track) through media elements, crossfading between tracks:
+ * it switches early when the mood goes up (a racer appears, the car reaches the pass) and
+ * lets a track finish when the mood comes down. Streaming keeps memory low; decoding all
+ * eight tracks up front would take about 500 MB.
+ *
+ * The synthesized tracks are the fallback when the files cannot play, and what renders on an
+ * offline context: it turns the note events from songs.js into sound with a small
  * synthesizer built from Web Audio nodes, and mixes the layers by speed so the music
  * builds as the car gets faster (pads and bass when parked, then the arpeggio, the drums
- * and finally the lead). The menu screens get their own slow track. Scheduling looks
- * ahead of the audio clock, so a busy main thread does not make the beat stutter, and the
- * same code renders offline for tests through `renderAhead`.
+ * and finally the lead). Scheduling looks ahead of the audio clock, so a busy main thread
+ * does not make the beat stutter, and the same code renders offline through `renderAhead`.
  */
 
 import { composeTrack, midiToHz, LAYERS, TRACKS } from './songs.js';
+import { SOUNDTRACK, ENERGY, MoodTracker, nextTrack, trackGain } from './soundtrack.js';
 import { clamp } from '../core/mathx.js';
+
+/**
+ * Level of the recorded tracks (already leveled to TARGET_LUFS) before the music channel. At
+ * 1.0 they measure about 1.3 times quieter than the synthesized tracks did at the same settings.
+ */
+const FILE_LEVEL = 1.0;
+/** Seconds two recorded tracks overlap when one hands over to the next. */
+const CROSSFADE = 3;
+/** A track that came in on a mood change plays at least this long before another one may cut in. */
+const MIN_DWELL = 20;
+/** Synthesized track that stands in for each mood when no file of it can play. */
+const SYNTH_FOR = { menu: 'menu', cruise: 'kirigaoka', intense: 'lowbeam', mountain: 'ridge' };
 
 /** @typedef {import('./songs.js').NoteEvent} NoteEvent */
 /** @typedef {import('./songs.js').Layer} Layer */
@@ -172,6 +191,68 @@ class Playback {
   }
 }
 
+/** One recorded track streaming from its file through a media element. */
+class Stream {
+  /**
+   * @param {MusicPlayer} music @param {import('./soundtrack.js').Track} track
+   * @param {number} at context time to start @param {number} fade seconds of fade-in
+   */
+  constructor(music, track, at, fade) {
+    const c = /** @type {AudioContext} */ (music.ctx);
+    this.track = track;
+    this.mood = track.mood;
+    this.started = at;
+    this.failed = false;
+    this.blocked = false;
+    this.stopAt = Infinity;
+    this.el = new Audio();
+    this.el.preload = 'auto';
+    this.el.src = `assets/music/${track.file}`;
+    this.el.addEventListener('error', () => {
+      this.failed = true;
+    });
+    this.node = c.createMediaElementSource(this.el);
+    this.out = c.createGain();
+    const g = trackGain(track);
+    this.out.gain.setValueAtTime(0, at);
+    this.out.gain.linearRampToValueAtTime(g, at + Math.max(0.05, fade));
+    this.node.connect(this.out).connect(music.files);
+    this.play();
+  }
+
+  /** Starts the element; a browser that wants a click first is retried on the next tick. */
+  play() {
+    this.blocked = false;
+    this.el.play().catch((e) => {
+      if (e && e.name === 'NotAllowedError') this.blocked = true;
+      else this.failed = true;
+    });
+  }
+
+  /** Seconds left before the end of the file, Infinity until its length is known. */
+  remaining() {
+    const d = this.el.duration;
+    return Number.isFinite(d) ? d - this.el.currentTime : Infinity;
+  }
+
+  /** @param {number} at @param {number} fade */
+  stop(at, fade) {
+    const g = this.out.gain;
+    g.cancelScheduledValues(at);
+    g.setValueAtTime(g.value, at);
+    g.linearRampToValueAtTime(0, at + fade);
+    this.stopAt = at + fade + 0.2;
+  }
+
+  dispose() {
+    this.el.pause();
+    this.el.removeAttribute('src');
+    this.el.load();
+    this.node.disconnect();
+    this.out.disconnect();
+  }
+}
+
 export class MusicPlayer {
   /** @param {import('./audio.js').AudioSystem} audio */
   constructor(audio) {
@@ -215,6 +296,26 @@ export class MusicPlayer {
     this.override = null;
     this.timer = 0;
     this.live = !('startRendering' in c);
+
+    this.files = c.createGain();
+    this.files.gain.value = FILE_LEVEL;
+    this.files.connect(audio.musicBus);
+    /** Stream the recorded soundtrack; off on an offline context, which renders the synth. */
+    this.recorded = this.live && typeof Audio !== 'undefined';
+    /** @type {Stream | null} */
+    this.stream = null;
+    /** @type {Stream[]} */
+    this.fading = [];
+    /** Track ids that failed to load; their mood falls back to another file, then the synth. */
+    this.broken = new Set();
+    this.moods = new MoodTracker();
+    this.scene = { kmh: 0, mountain: false, rival: Infinity };
+    this.mode = /** @type {import('./audio.js').Mode} */ ('title');
+    this.turn = 0;
+    this.lastId = /** @type {string | null} */ (null);
+    this.lastTick = c.currentTime;
+    this.switchedAt = -Infinity;
+
     if (this.live) this.timer = window.setInterval(() => this.tick(), TICK_MS);
   }
 
@@ -222,6 +323,11 @@ export class MusicPlayer {
   setMode(mode, at) {
     const t = at ?? this.ctx.currentTime;
     const menu = mode === 'title' || mode === 'garage' || mode === 'loading';
+    this.mode = mode;
+    if (this.recorded) {
+      if (this.live) this.tick();
+      return;
+    }
     if (this.override) return;
     if (menu) {
       if (!this.current || this.current.id !== 'menu') this.play('menu', t, { loops: Infinity, fade: 1.2 });
@@ -243,10 +349,15 @@ export class MusicPlayer {
     if (this.live) this.tick();
   }
 
-  /** Holds a track (the rally stage) until `release`. @param {string} id */
+  /**
+   * Holds a track (the rally stage) until `release`. With the recorded soundtrack `ridge`
+   * means the mountain tracks.
+   * @param {string} id
+   */
   hold(id) {
     this.override = id;
-    this.play(id, undefined, { loops: Infinity, fade: 0.8 });
+    if (this.recorded) this.tick();
+    else this.play(id, undefined, { loops: Infinity, fade: 0.8 });
   }
 
   release() {
@@ -257,11 +368,94 @@ export class MusicPlayer {
   /** @param {number} kmh @param {number} [at] */
   setSpeed(kmh, at) {
     this.kmh = kmh;
+    this.scene.kmh = kmh;
     if (this.current) this.current.setSpeed(kmh, at ?? this.ctx.currentTime);
+  }
+
+  /**
+   * What the driving looks like, for the mood: whether the car is on the pass and how far
+   * the nearest street racer is (meters, Infinity for none).
+   * @param {boolean} mountain @param {number} rival
+   */
+  setScene(mountain, rival) {
+    this.scene.mountain = mountain;
+    this.scene.rival = rival;
+  }
+
+  /** The mood the music should be in right now. @returns {import('./soundtrack.js').Mood} */
+  wantedMood() {
+    if (this.override) return 'mountain';
+    const m = this.mode;
+    if (m === 'title' || m === 'garage' || m === 'loading') return 'menu';
+    return this.moods.mood;
+  }
+
+  /** What is playing, for checks: the recorded track or the synthesized one. */
+  nowPlaying() {
+    if (this.stream) return { id: this.stream.track.id, title: this.stream.track.title, mood: this.stream.mood, time: this.stream.el.currentTime, file: true };
+    return this.current ? { id: this.current.id, title: this.current.id, mood: null, time: 0, file: false } : null;
+  }
+
+  /**
+   * Starts the next recorded track of a mood, crossfading from the one playing. Falls back to
+   * the synthesized track for that mood when every file of it has failed.
+   * @param {import('./soundtrack.js').Mood} mood @param {number} t @param {number} fade
+   */
+  startMood(mood, t, fade) {
+    let track = nextTrack(mood, this.lastId, this.turn);
+    for (let i = 0; i < SOUNDTRACK.length && this.broken.has(track.id); i++) track = nextTrack(mood, track.id, ++this.turn);
+    if (this.stream) {
+      this.stream.stop(t, fade);
+      this.fading.push(this.stream);
+      this.stream = null;
+    }
+    if (this.broken.has(track.id)) {
+      const synth = SYNTH_FOR[mood];
+      if (!this.current || this.current.id !== synth || this.current.finished) this.play(synth, t, { loops: Infinity, fade });
+      return;
+    }
+    if (this.current && !this.current.finished) {
+      this.current.stop(t, fade);
+      this.current = null;
+    }
+    this.turn++;
+    this.lastId = track.id;
+    this.stream = new Stream(this, track, t, fade);
+    this.switchedAt = t;
+    this.audio.onTrack?.(track);
+  }
+
+  /** The recorded soundtrack's part of a tick. @param {number} now */
+  tickRecorded(now) {
+    const dt = Math.min(1, now - this.lastTick);
+    this.lastTick = now;
+    if (this.mode === 'drive' || this.mode === 'free') this.moods.update(dt, this.scene);
+    const want = this.wantedMood();
+    const s = this.stream;
+    if (s && s.failed) {
+      this.broken.add(s.track.id);
+      this.startMood(want, now, 0.5);
+    } else if (s && s.blocked) s.play();
+    if (!this.stream) {
+      const playingSynth = this.current && !this.current.finished && this.current.id === SYNTH_FOR[want];
+      if (!playingSynth) this.startMood(want, now, 1.5);
+    } else if (this.stream.mood !== want) {
+      const menuChange = want === 'menu' || this.stream.mood === 'menu';
+      const up = ENERGY[want] > ENERGY[this.stream.mood];
+      const dwelt = now - this.switchedAt > MIN_DWELL;
+      if (menuChange || (up && dwelt) || this.override) this.startMood(want, now, menuChange ? 1.5 : CROSSFADE);
+    }
+    if (this.stream && this.stream.remaining() < CROSSFADE) this.startMood(want, now, CROSSFADE);
+    this.fading = this.fading.filter((f) => {
+      if (now < f.stopAt) return true;
+      f.dispose();
+      return false;
+    });
   }
 
   tick() {
     const now = this.ctx.currentTime;
+    if (this.recorded) this.tickRecorded(now);
     for (const pb of this.playbacks) {
       if (!pb.finished) pb.schedule(now + LOOKAHEAD, now);
       if (pb === this.current && pb.finished && pb.endAt !== Infinity && this.current.id !== 'menu' && !this.override) this.next(pb.endAt);
@@ -481,5 +675,8 @@ export class MusicPlayer {
 
   dispose() {
     if (this.timer) clearInterval(this.timer);
+    for (const st of [this.stream, ...this.fading]) st?.dispose();
+    this.stream = null;
+    this.fading = [];
   }
 }

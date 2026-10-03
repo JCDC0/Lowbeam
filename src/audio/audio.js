@@ -138,6 +138,8 @@ export class AudioSystem {
     this.lastThrottle = 0;
     this.pumping = false;
     this.music = null;
+    /** Called with each recorded track as it starts, for a "now playing" line. */
+    this.onTrack = /** @type {((t: import('./soundtrack.js').Track) => void) | null} */ (null);
   }
 
   /** The graph node the music player connects to, once unlocked. */
@@ -449,8 +451,9 @@ export class AudioSystem {
 
   /**
    * One drive frame. `f.state` is the vehicle state, `f.boost` the gauge boost in bar,
-   * `f.env` the EnvMap result around the car.
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean }} f
+   * `f.env` the EnvMap result around the car. `f.mountain` (on the pass) and `f.rival` (meters
+   * to the nearest street racer) set the music's mood.
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number }} f
    * @param {number} [at]
    */
   update(f, at) {
@@ -460,6 +463,7 @@ export class AudioSystem {
     const spec = f.spec;
     this.setView(/** @type {any} */ (f.view), t);
     this.music?.setSpeed(f.state.speed * 3.6, t);
+    this.music?.setScene(!!f.mountain, f.rival ?? Infinity);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;

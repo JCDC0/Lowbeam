@@ -131,12 +131,14 @@ captures such as rendered audio.
 | `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
 | `src/audio/env.js` | Pure: forest, town and lake amounts around a point, for the ambience |
 | `src/audio/songs.js` | Pure: the four tracks composed as note events (`composeTrack`, `TRACKS`) |
-| `src/audio/music.js` | `MusicPlayer`: the synthesizer, look-ahead scheduling, speed-driven layer mix, track rotation |
+| `src/audio/music.js` | `MusicPlayer`: streams the recorded soundtrack with crossfades; the synthesizer, look-ahead scheduling and speed-driven layer mix as the fallback |
+| `src/audio/soundtrack.js` | Pure: the recorded tracks (`SOUNDTRACK`, mood, measured loudness), `MoodTracker`, `nextTrack` |
+| `assets/music/` | The recorded soundtrack, eight MP3s made by Jc with Google's music tools |
 | `docs/agents/tasks/` | Briefs for Antigravity: dashboard repair, Tab map, garage, vehicle bodies, buildings |
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.19)
+## Current state (0.4.20)
 
 Done and tested:
 
@@ -322,6 +324,24 @@ Done and tested:
     track; driving rotates Kirigaoka and Low Beam, two loops each, seamlessly. Notes are
     scheduled 1.4 s ahead so a throttled tab does not stutter, and late notes are
     skipped. `audio.music.hold('ridge')` and `release()` are for the rally stage.
+  - Recorded soundtrack (0.4.20, `soundtrack.js`, `assets/music/`). In the browser the music is
+    eight recorded tracks, two per mood: menu (Shibuya Rain, and its vocal version) on the title,
+    garage and loading screens; cruise (Midnight Expressway, Night Highway Drift); intense
+    (Redline Pact, Dirt to Crown); mountain (Touge Rush, Touge Overdrive). `MoodTracker` reads
+    `audio.update`'s `mountain` (on Kuro Pass or in its zone) and `rival` (meters to the nearest
+    street racer, from `Drive`): intense at once for a racer within 150 m or after 4 s above
+    150 km/h, back to cruise only after 25 s below 110 km/h with no racer within 300 m; mountain
+    after 3 s on the pass, gone 10 s after leaving it. The player switches early (3 s crossfade)
+    only when the mood goes up and the current track has played 20 s; when it goes down the
+    track finishes first. Tracks follow each other with a 3 s crossfade and never repeat back to
+    back. They stream through media elements (decoding all eight would take about 500 MB) and
+    are leveled to -16 LUFS from measured loudness (`lufs`); `FILE_LEVEL` sets them against the
+    rest. A file that fails falls back to the other track of its mood, then to the synthesized
+    track (menu, kirigaoka, lowbeam, ridge); offline contexts (audio-lab) always use the synth.
+    `audio.onTrack` gets each new track; main.js shows `NOW PLAYING <TITLE>` while driving.
+    `hold('ridge')` means the mountain tracks. `music.nowPlaying()` reports what is on. The dev
+    server does not answer range requests, so a stream cannot be seeked there (playback is
+    unaffected).
   - Verified by numbers, not by ear: `tests/engine.test.mjs` checks the spectrum sits on
     the firing harmonics for every voice, the V12 is even and the others are lumpy, load
     makes it louder and brighter, the limiter chops it and the whistle appears under

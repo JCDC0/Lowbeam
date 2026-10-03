@@ -58,6 +58,8 @@ export class Drive {
     this.blowsSeen = 0;
     this.hotWarned = false;
     this.areaTimer = 0;
+    this.onPass = false;
+    this.rivalDistance = Infinity;
     this.hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
     /** @type {Cluster | null} */
     this.cluster = null;
@@ -296,12 +298,17 @@ export class Drive {
     if (this.areaTimer <= 0) {
       this.areaTimer = 0.3;
       this.hud.area(this.areaName(s.x, s.y, s.z));
+      // The music follows the pass and the street racers (soundtrack.js).
+      const road = this.world.ground.at(s.x, s.z, s.y).road;
+      this.onPass = zoneAt(s.x, s.z)?.id === 'pass' || road?.id === 'kuro';
+      const near = this.traffic.nearestRival(s, 400);
+      this.rivalDistance = near ? near.distance : Infinity;
     }
     this.hud.money(this.money);
     this.hud.prompt(prompt, cockpit);
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
-    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete' });
+    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }

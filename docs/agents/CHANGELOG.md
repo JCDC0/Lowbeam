@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.20 (2026-10-03)
+
+The recorded soundtrack: eight tracks that follow the driving.
+
+- `assets/music/`: Jc's eight tracks, renamed to plain file names.
+- `src/audio/soundtrack.js` (new, pure): the track list with mood and measured loudness, leveling
+  to -16 LUFS, `nextTrack` (never the same twice running) and `MoodTracker` (menu, cruise,
+  intense, mountain; up fast, down slow).
+- `src/audio/music.js`: streams the tracks through media elements with 3 s crossfades, switches
+  early only when the mood rises, falls back to the other track of a mood and then to the
+  synthesized music when a file fails; offline rendering still uses the synth.
+- `src/audio/audio.js`: `update` takes `mountain` and `rival` for the mood; `onTrack` hook.
+- `src/drive.js`: works out whether the car is on the pass and how far the nearest racer is,
+  three times a second. `src/main.js`: `NOW PLAYING` toast while driving.
+- Tests: every file exists, the tracks level to the same loudness, rotation, and the mood rules.
+
 ## 0.4.19 (2026-10-03)
 
 Ramps become slip roads, the Bayshore Line joins Route 1, and the street grid fills the city.

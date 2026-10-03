@@ -42,6 +42,9 @@ const hud = new Hud(ui);
 const pause = pauseScreen(ui);
 const map = mapScreen(ui);
 const toast = toaster(ui);
+audio.onTrack = (t) => {
+  if (state === 'drive') toast(`NOW PLAYING   ${t.title.toUpperCase()}`, 3);
+};
 /** @type {'menu' | 'pause'} */
 let prevSettingsState = 'menu';
 
