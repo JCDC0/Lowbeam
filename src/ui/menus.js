@@ -140,10 +140,11 @@ export function mainMenuScreen(ui) {
     refresh(spec) {
       if (spec) {
         carName.textContent = spec.name.toUpperCase();
-        carDrive.textContent = `${spec.drive.toUpperCase()} / ${spec.engine.cylinders} CYL`;
+        carDrive.textContent = `${spec.layout} // ${spec.gears.length}-SPEED`;
       }
       const isManual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
-      transMode.textContent = isManual ? 'MANUAL (6-SPEED SEQ)' : 'AUTOMATIC';
+      const gearCount = spec ? spec.gears.length : 6;
+      transMode.textContent = isManual ? `MANUAL (${gearCount}-SPEED SEQ)` : 'AUTOMATIC';
     },
     /**
      * @param {import('../core/input.js').Input} input
@@ -183,7 +184,7 @@ export function mainMenuScreen(ui) {
  * Settings menu: Transmission mode (Auto vs Manual) and synthesized audio channels.
  * @param {HTMLElement} ui
  */
-export function settingsScreen(ui) {
+export function settingsScreen(ui, stage = null) {
   /** @type {Record<import('../audio/audio.js').Channel, string>} */
   const CH_NAMES = {
     master: 'MASTER AUDIO',
@@ -192,6 +193,8 @@ export function settingsScreen(ui) {
     ambience: 'ENVIRONMENT SOUNDS',
     music: 'SOUNDTRACK MUSIC',
   };
+  const HEIGHTS = [240, 360, 480];
+
   const s = screen(
     ui,
     'settings',
@@ -207,6 +210,11 @@ export function settingsScreen(ui) {
             <span class="ac-rlabel">TRANSMISSION</span>
             <span class="ac-pill click" data-act="toggle-trans" id="set-trans-val">AUTO</span>
             <span class="hints-inline">MANUAL: [Q/E] OR [SHIFT/CTRL]</span>
+          </div>
+          <div class="ac-row click" data-row="render">
+            <span class="ac-rlabel">RENDER HEIGHT</span>
+            <span class="ac-pill click" data-act="toggle-render" id="set-render-val">240 LINES</span>
+            <span class="hints-inline">TARGET: 240 / 360 / 480 LINES</span>
           </div>
           ${CHANNELS.map((c) => `
             <div class="ac-row click" data-row="${c}">
@@ -227,8 +235,10 @@ export function settingsScreen(ui) {
         <div class="ac-info-panel">
           <div class="ac-info-header">CONFIGURATION HELP</div>
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
+          <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 / 360 / 480 LINES</span></div>
           <div class="ac-notice">
-            <b>MANUAL MODE:</b> Sequential shifting. Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts are electronically blocked.<br><br>
+            <b>MANUAL MODE:</b> Sequential shifting (R, N, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
+            <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 reproduces authentic PS1 display resolution with dither and 15-bit color quantize.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
         </div>
@@ -241,6 +251,7 @@ export function settingsScreen(ui) {
 
   const rows = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.ac-row')]);
   const transEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-trans-val'));
+  const renderEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-render-val'));
   let sel = 0;
   /** @type {string | null} */
   let clickedAction = null;
@@ -251,11 +262,24 @@ export function settingsScreen(ui) {
 
   const mark = () => rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
 
+  function setRenderHeight(h) {
+    store.set('renderHeight', h);
+    const st = stage || window.__lowbeam?.stage;
+    if (typeof st?.setHeight === 'function') st.setHeight(h);
+    else if (typeof st?.configure === 'function') st.configure({ lines: h });
+    sync();
+  }
+
   function sync() {
     const isManual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
     transEl.textContent = isManual ? 'MANUAL' : 'AUTO';
     transEl.classList.toggle('cyan', isManual);
     transEl.classList.toggle('on', !isManual);
+
+    const curH = store.get('renderHeight', 240);
+    renderEl.textContent = `${curH} LINES`;
+    renderEl.classList.toggle('cyan', curH > 240);
+    renderEl.classList.toggle('on', curH === 240);
 
     for (const c of CHANNELS) {
       const setting = audio.settings[c];
@@ -298,6 +322,10 @@ export function settingsScreen(ui) {
       }
       if (rowId === 'trans') {
         clickedAction = 'toggle-trans';
+        return;
+      }
+      if (rowId === 'render') {
+        clickedAction = 'toggle-render';
         return;
       }
       const idx = rows.indexOf(/** @type {HTMLElement} */ (row));
@@ -343,6 +371,11 @@ export function settingsScreen(ui) {
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
           sync();
+        } else if (action === 'toggle-render') {
+          const curH = store.get('renderHeight', 240);
+          const nextH = HEIGHTS[(HEIGHTS.indexOf(curH) + 1) % HEIGHTS.length];
+          setRenderHeight(nextH);
+          audio.ui('select');
         } else if (action === 'toggle-audio' && ch) {
           audio.toggle(ch);
           audio.ui('select');
@@ -378,8 +411,14 @@ export function settingsScreen(ui) {
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
           sync();
-        } else if (sel >= 1 && sel <= CHANNELS.length) {
-          const ch = CHANNELS[sel - 1];
+        } else if (sel === 1) {
+          const curH = store.get('renderHeight', 240);
+          const idx = HEIGHTS.indexOf(curH);
+          const nextH = HEIGHTS[(idx + HEIGHTS.length - 1) % HEIGHTS.length];
+          setRenderHeight(nextH);
+          audio.ui('move');
+        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 2];
           const curV = audio.settings[ch].volume;
           const nextV = Math.max(0, Math.round((curV - 0.1) * 10) / 10);
           audio.setVolume(ch, nextV);
@@ -393,8 +432,14 @@ export function settingsScreen(ui) {
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
           sync();
-        } else if (sel >= 1 && sel <= CHANNELS.length) {
-          const ch = CHANNELS[sel - 1];
+        } else if (sel === 1) {
+          const curH = store.get('renderHeight', 240);
+          const idx = HEIGHTS.indexOf(curH);
+          const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
+          setRenderHeight(nextH);
+          audio.ui('move');
+        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 2];
           const curV = audio.settings[ch].volume;
           const nextV = Math.min(1, Math.round((curV + 0.1) * 10) / 10);
           if (!audio.settings[ch].on && nextV > 0) audio.setOn(ch, true);
@@ -409,8 +454,14 @@ export function settingsScreen(ui) {
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
           sync();
-        } else if (sel >= 1 && sel <= CHANNELS.length) {
-          const ch = CHANNELS[sel - 1];
+        } else if (sel === 1) {
+          const curH = store.get('renderHeight', 240);
+          const idx = HEIGHTS.indexOf(curH);
+          const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
+          setRenderHeight(nextH);
+          audio.ui('select');
+        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 2];
           audio.toggle(ch);
           audio.ui('select');
           sync();
@@ -445,11 +496,13 @@ export function controlsScreen(ui) {
           <div class="ac-binding-row"><span class="k">BRAKE / REVERSE</span><span class="v">S / DOWN ARROW</span></div>
           <div class="ac-binding-row"><span class="k">STEERING</span><span class="v">A / D / LEFT / RIGHT</span></div>
           <div class="ac-binding-row"><span class="k">HANDBRAKE</span><span class="v">SPACEBAR</span></div>
-          <div class="ac-binding-row"><span class="k">UPSHIFT (MANUAL)</span><span class="v">LEFT / RIGHT SHIFT, E</span></div>
-          <div class="ac-binding-row"><span class="k">DOWNSHIFT (MANUAL)</span><span class="v">LEFT / RIGHT CTRL, Q</span></div>
-          <div class="ac-binding-row"><span class="k">CYCLE CAMERA</span><span class="v">C (COCKPIT / CHASE / HOOD / BUMPER)</span></div>
+          <div class="ac-binding-row"><span class="k">MANUAL GEARS</span><span class="v">R &nbsp; N &nbsp; 1 .. 7</span></div>
+          <div class="ac-binding-row"><span class="k">UPSHIFT (MANUAL)</span><span class="v">SHIFT / E</span></div>
+          <div class="ac-binding-row"><span class="k">DOWNSHIFT (MANUAL)</span><span class="v">CTRL / Q</span></div>
+          <div class="ac-binding-row"><span class="k">CYCLE CAMERA</span><span class="v">C (5 VIEWS: CHASE, CAR, HOOD, BUMPER, COCKPIT)</span></div>
+          <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">TAB</span></div>
+          <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD F (AT STATION)</span></div>
           <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">R</span></div>
-          <div class="ac-binding-row"><span class="k">REFUEL AT STATION</span><span class="v">HOLD E</span></div>
           <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">ESCAPE</span></div>
         </div>
         <div class="ac-col-box">
@@ -461,8 +514,9 @@ export function controlsScreen(ui) {
           <div class="ac-binding-row"><span class="k">UPSHIFT (MANUAL)</span><span class="v">RIGHT BUMPER [RB]</span></div>
           <div class="ac-binding-row"><span class="k">DOWNSHIFT (MANUAL)</span><span class="v">LEFT BUMPER [LB]</span></div>
           <div class="ac-binding-row"><span class="k">CYCLE CAMERA</span><span class="v">Y BUTTON</span></div>
+          <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">SELECT / BACK / X</span></div>
+          <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD B (AT STATION)</span></div>
           <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">BACK BUTTON</span></div>
-          <div class="ac-binding-row"><span class="k">REFUEL AT STATION</span><span class="v">HOLD B BUTTON</span></div>
           <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">START BUTTON</span></div>
         </div>
       </div>
@@ -512,7 +566,7 @@ export function pauseScreen(ui) {
     ui,
     'pause',
     `<div class="box"><h3>PAUSED</h3>${PAUSE_OPTIONS.map(([id, label]) => `<div class="opt click" data-id="${id}">${label}</div>`).join('')}
-     <div class="keys">W S throttle and brake, A D steer, Space handbrake<br>Q/E or Shift/Ctrl manual shift, C camera, R reset, E refuel</div></div>`
+     <div class="keys">W S throttle and brake, A D steer, Space handbrake<br>Q/E or Shift/Ctrl manual shift (R N 1..7), C camera, Tab map, R reset, F refuel & repair</div></div>`
   );
   const opts = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.opt')]);
   let sel = 0;

@@ -18,7 +18,8 @@ const KEYS = {
   pause: ['Escape'],
   camera: ['KeyC'],
   reset: ['KeyR'],
-  interact: ['KeyE'],
+  interact: ['KeyF'],
+  map: ['Tab'],
   shiftUp: ['ShiftLeft', 'ShiftRight', 'KeyE'],
   shiftDown: ['ControlLeft', 'ControlRight', 'KeyQ'],
 };
@@ -35,6 +36,7 @@ const PAD = {
   camera: [3],
   reset: [8],
   interact: [1],
+  map: [8, 2],
   shiftUp: [5],
   shiftDown: [4],
 };

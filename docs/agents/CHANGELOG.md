@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.1 (2026-10-03)
+
+Full-screen tactical map overlay, controls update, render height setting, and dynamic garage scaling.
+
+- Tactical map overlay (Task A2): Tab key opens and closes a full-screen tactical map of the whole world, pausing simulation while continuing to render the 3D scene behind a translucent dark veil.
+- Road hierarchy and POIs: cached offscreen road rendering sharing `drawRoads` with the minimap (thick white expressway, rally trails, mountain passes, arterials, and ramps). Displays gas stations with brand badges, rally start checkered flag, Kirigaoka valley zone names, north compass, adaptive scale bar, and vehicle arrow with live heading, model name, speed, and gear telemetry.
+- Navigation controls: map supports click-drag and WASD/arrow panning, mouse wheel and +/- zooming, and Home recentering on the player vehicle.
+- Keybinding conflicts resolved: interact key moved from E to F (`KEYS.interact = ['KeyF']` and `INTERACT_KEY = 'F'` in `src/drive.js`). Manual shift keys unified: shift up (`ShiftLeft`, `ShiftRight`, `KeyE`), shift down (`ControlLeft`, `ControlRight`, `KeyQ`). Map bound to Tab and gamepad Back / Select.
+- Controls briefing screen updated with R, N, 1..7 manual gear order, Tab tactical map, F refuel & repair, C camera views (5 views), and R reset.
+- Render height setting: added display scanline selector (240, 360, 480 lines) persisted under `store.get('renderHeight', 240)` and applied to stage configuration.
+- Dynamic garage scaling (Task A6): garage card and selector handle any number of cars in `CARS` with left/right wrapping and responsive card sizing. Displays drivetrain layout, gear count (`${spec.gears.length}-SPEED`), and live transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
+- Unit tests: added `tests/map.test.mjs` (road hierarchy, POIs, and fallback data extraction) and `tests/garage.test.mjs` (spec metrics, 3-car and 5-car wrapping).
+
 ## 0.3.0 (2026-10-03)
 
 Overpasses: roads can leave the ground.

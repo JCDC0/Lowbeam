@@ -76,18 +76,7 @@ export class Minimap {
       g.closePath();
       g.fill();
     }
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-    for (const r of this.roads) {
-      g.strokeStyle = r.gravel ? 'rgba(196, 150, 96, 0.9)' : 'rgba(205, 212, 226, 0.9)';
-      g.lineWidth = Math.max(r.w, 2.4 / s);
-      g.beginPath();
-      for (let i = 0; i < r.pts.length; i += 2) {
-        if (i) g.lineTo(r.pts[i], r.pts[i + 1]);
-        else g.moveTo(r.pts[i], r.pts[i + 1]);
-      }
-      g.stroke();
-    }
+    drawRoads(g, this.roads, 2.4 / s);
 
     g.setTransform(1, 0, 0, 1, 0, 0);
     for (const p of this.pads) {
@@ -135,3 +124,41 @@ export class Minimap {
     g.fillText('N', nx, ny);
   }
 }
+
+/**
+ * Draws roads onto any 2D canvas context.
+ * @param {CanvasRenderingContext2D} g
+ * @param {Array<{ pts?: number[], points?: number[][], w?: number, hw?: number, gravel?: boolean, cls?: string }>} roads
+ * @param {number} [minWidth]
+ */
+export function drawRoads(g, roads, minWidth = 0) {
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  for (const r of roads) {
+    if (r.cls === 'expressway') {
+      g.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    } else if (r.gravel || r.cls === 'rally') {
+      g.strokeStyle = 'rgba(196, 150, 96, 0.9)';
+    } else if (r.cls === 'mountain') {
+      g.strokeStyle = 'rgba(180, 190, 205, 0.85)';
+    } else {
+      g.strokeStyle = 'rgba(205, 212, 226, 0.9)';
+    }
+    const baseW = r.w ?? (r.hw ? r.hw * 2 : 6);
+    g.lineWidth = Math.max(baseW, minWidth);
+    g.beginPath();
+    if (r.pts) {
+      for (let i = 0; i < r.pts.length; i += 2) {
+        if (i) g.lineTo(r.pts[i], r.pts[i + 1]);
+        else g.moveTo(r.pts[i], r.pts[i + 1]);
+      }
+    } else if (r.points) {
+      for (let i = 0; i < r.points.length; i++) {
+        if (i) g.lineTo(r.points[i][0], r.points[i][1]);
+        else g.moveTo(r.points[i][0], r.points[i][1]);
+      }
+    }
+    g.stroke();
+  }
+}
+

@@ -332,20 +332,25 @@ Done and tested:
   u=1 driver's right). Rearview mirror is compact (14 by 3.5 cm) tucked high against the roof header.
 - Ace Combat and Japanese arcade styled menus:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
-  `settingsScreen` (Auto vs Manual transmission toggle, Master, Engine, Effects,
-  Ambience, Music channels with volume steps and mutes saved to localStorage),
-  `controlsScreen` briefing, and updated `pauseScreen`.
+  `settingsScreen` (Auto vs Manual transmission toggle, Render Height target lines [240, 360, 480],
+  Master, Engine, Effects, Ambience, Music channels with volume steps and mutes saved to localStorage),
+  `controlsScreen` briefing (R N 1..7 manual gear order, Tab tactical map, F refuel & repair, C 5 camera views),
+  and updated `pauseScreen`.
+- Tactical map overlay (`src/ui/map.js`): Tab opens a full-screen tactical map of the whole world,
+  pausing simulation while continuing to render the 3D scene behind a translucent dark veil. Tab or Esc
+  closes it. Cached offscreen road network shares `drawRoads` with `src/ui/minimap.js`, displaying road
+  classes (expressway, ramp, arterial, rally, mountain), gas stations with brand badges, rally start marker,
+  valley zones, north compass, adaptive scale bar, and player vehicle arrow with live heading, model name,
+  speed, and gear telemetry. Supports drag/WASD/arrow pan, wheel/+/- zoom, and Home recenter.
+- Controls: interact key moved from E to F (`KEYS.interact = ['KeyF']` and `INTERACT_KEY = 'F'`). Shift keys
+  unified: shift up (`ShiftLeft`, `ShiftRight`, `KeyE`), shift down (`ControlLeft`, `ControlRight`, `KeyQ`).
+- Garage (`src/ui/garage.js`): dynamically handles any count of cars in `CARS` (left/right wrapping,
+  responsive card layout), displays drivetrain layout, gear count (`${spec.gears.length}-SPEED`), and live
+  transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 74 passing (splines, ground and pads, stage grades, bars vs sim, braking,
-  reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
-  push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
-  species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,
-  track composition and the speed mix, R N 1..n for every car, rpm that reaches the limiter
-  on a loose launch and ignores the heading in a spin, money shifts, limp mode, the heat
-  derate, tarmac and gravel grip).
-  `npm run check` is clean. CPU time for one drive update and render is about 2 ms in
-  the browser pane.
+- Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
+  `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in
 `docs/DESIGN.md`.

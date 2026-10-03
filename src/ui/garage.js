@@ -145,6 +145,8 @@ export class Garage {
   fill() {
     const s = this.spec;
     const q = (sel) => /** @type {HTMLElement} */ (this.el.querySelector(sel));
+    const isManual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
+    const trans = isManual ? 'MANUAL' : 'AUTO';
     q('.count').textContent = `${this.index + 1} / ${CARS.length}`;
     q('.maker').textContent = s.maker;
     q('.name').textContent = s.name;
@@ -152,7 +154,7 @@ export class Garage {
     q('.blurb').textContent = s.blurb;
     q('.bars').innerHTML = Object.entries(BAR_LABELS)
       .map(([k, label]) => {
-        const v = s.bars[k];
+        const v = Math.min(10, Math.max(0, Math.round(s.bars[k])));
         const cells = Array.from({ length: 10 }, (_, i) => `<i class="${i < v ? 'on' : ''}"></i>`).join('');
         return `<div class="bar"><span class="k">${label}</span><span class="v">${cells}</span></div>`;
       })
@@ -160,7 +162,7 @@ export class Garage {
     q('.spec').innerHTML = `
       <span class="k">LAYOUT</span><span>${s.layout}</span>
       <span class="k">ENGINE</span><span>${s.engineLabel}</span>
-      <span class="k">GEARBOX</span><span>${s.gears.length}-speed automatic</span>
+      <span class="k">GEARBOX</span><span>${s.gears.length}-SPEED ${trans}</span>
       <span class="k">WEIGHT</span><span>${s.mass.toLocaleString('en-US')} kg</span>`;
     const pi = this.model.paintIndex;
     const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;
@@ -171,6 +173,7 @@ export class Garage {
 
   /** @param {boolean} on */
   show(on) {
+    if (on) this.fill();
     this.el.classList.toggle('on', on);
   }
 

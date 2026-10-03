@@ -21,7 +21,7 @@ import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 
 /** Key shown in prompts for the interact action. */
-const INTERACT_KEY = 'E';
+const INTERACT_KEY = 'F';
 /** Seconds the interact key is held at a pump to repair the engine. */
 const REPAIR_TIME = 1.5;
 /** Liters per second while holding the pump. */

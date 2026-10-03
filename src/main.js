@@ -10,6 +10,7 @@ import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
 import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
+import { mapScreen } from './ui/map.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
@@ -33,12 +34,13 @@ for (const type of ['keydown', 'pointerdown']) {
 }
 const title = titleScreen(ui, version);
 const menu = mainMenuScreen(ui);
-const settings = settingsScreen(ui);
+const settings = settingsScreen(ui, stage);
 const controls = controlsScreen(ui);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
 const hud = new Hud(ui);
 const pause = pauseScreen(ui);
+const map = mapScreen(ui);
 const toast = toaster(ui);
 /** @type {'menu' | 'pause'} */
 let prevSettingsState = 'menu';
@@ -49,7 +51,7 @@ let world = null;
 let drive = null;
 const fly = { x: 0, y: 30, z: 0, yaw: 0, pitch: -0.2 };
 
-/** @typedef {'title' | 'menu' | 'garage' | 'loading' | 'drive' | 'pause' | 'settings' | 'controls' | 'free'} State */
+/** @typedef {'title' | 'menu' | 'garage' | 'loading' | 'drive' | 'pause' | 'settings' | 'controls' | 'map' | 'free'} State */
 /** @type {State} */
 let state = 'title';
 
@@ -64,8 +66,9 @@ function setState(next) {
   loading.show(state === 'loading');
   hud.show(state === 'drive' || state === 'pause');
   pause.show(state === 'pause');
+  map.show(state === 'map', drive?.car);
   if (state === 'menu') menu.refresh(garage.spec);
-  const audioMode = state === 'menu' || state === 'controls' ? 'title' : (state === 'settings' ? (prevSettingsState === 'pause' ? 'pause' : 'title') : state);
+  const audioMode = state === 'menu' || state === 'controls' ? 'title' : (state === 'settings' ? (prevSettingsState === 'pause' ? 'pause' : 'title') : (state === 'map' ? 'pause' : state));
   audio.setMode(/** @type {import('./audio/audio.js').Mode} */ (audioMode));
   if (state === 'garage') garageSound();
 }
@@ -92,6 +95,7 @@ async function enterWorld() {
     });
     console.log(`world built in ${world.buildMs.toFixed(0)} ms`);
     drive = new Drive({ world, stage, input, hud, toast });
+    map.setWorld(world);
   }
   drive.start(garage.spec, garage.model.paintIndex);
   setState('drive');
@@ -169,8 +173,22 @@ function frame(now) {
     garage.update(dt, null);
     garage.render(stage);
   } else if (state === 'drive') {
-    if (drive.update(dt) === 'pause') setState('pause');
-    drive.render();
+    if (input.pressed('map')) {
+      audio.ui('select');
+      setState('map');
+    } else {
+      if (drive.update(dt) === 'pause') setState('pause');
+      drive.render();
+    }
+  } else if (state === 'map') {
+    if (drive) drive.render();
+    const ev = map.update(input, drive?.car);
+    if (ev === 'close' || input.pressed('map') || input.pressed('back')) {
+      audio.ui('back');
+      setState('drive');
+    } else if (drive?.car) {
+      map.render(drive.car);
+    }
   } else if (state === 'pause') {
     const pick = pause.update(input);
     if (pick === 'resume') setState('drive');
@@ -203,6 +221,7 @@ window.__lowbeam = {
   menu,
   settings,
   controls,
+  map,
   get world() {
     return world;
   },
