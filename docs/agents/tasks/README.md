@@ -10,6 +10,7 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 | [A2-map-controls.md](A2-map-controls.md) | done (0.3.1) | Tab map overlay, interact key moves to F, controls screen |
 | [A6-garage.md](A6-garage.md) | done (0.3.1) | Garage handles any number of cars and shows the gear count |
 | [A7-backend-playtest.md](A7-backend-playtest.md) | now | Tach scale, blown idle, diagonal lane changes, fast racers, road joins, bigger city, rails |
+| [A8-gearbox-traffic-fixes.md](A8-gearbox-traffic-fixes.md) | now | Neutral limiter bug, N R 1 gear order, safe crawl downshift, lane flip-flop, prompt in cockpit view |
 | [A5-buildings.md](A5-buildings.md) | after A7 part 6 | Building kit, facade atlas, street furniture |
 | [A3-bodies-batch1.md](A3-bodies-batch1.md) | cancelled | Claude builds every car body now |
 | [A4-bodies-batch2.md](A4-bodies-batch2.md) | cancelled | Claude builds every car body now |
