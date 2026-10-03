@@ -116,7 +116,9 @@ captures such as rendered audio.
 | `src/render/builder.js` | `MeshBuilder`: quads, boxes, cylinders into grouped geometry; `smoothNormals` (crease-limited), `buildWheel` |
 | `src/vehicles/loft.js` | Pure: monotone station curves, wheel arches, the 19-point crowned body ring with its bands, end bevel |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
-| `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
+| `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `vehicleGeometry` |
+| `src/vehicles/cockpit.js` | `buildCockpit`: the interior and each car's modeled instruments (pods, bezels, faces, needles), `update(gauges, dt, time)` |
+| `src/vehicles/dash.js` | Pure: each car's instruments (`DASHES`), gauge scales and needle angles |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: every car on a floor (keys 1 to 9 solo one), orbit, views, `shot()` |
 | `tools/bodies.html` | Dev catalog: every racer and traffic kind through the game's instanced material; `__bodies.show(...ids)`, `grid`, `shot` |
@@ -133,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.8)
+## Current state (0.4.9)
 
 Done and tested:
 
@@ -414,13 +416,21 @@ Done and tested:
   km/h, the fee (700 yen), the lane and whether it is a new best; `Drive` charges what you
   can pay, saves `tollBest` per plaza and shows `KITA TOLL 161 KM/H 700 YEN NEW BEST`. Each gate
   charges once per 8 s. Rivals and traffic will use the same gate later.
-- Cockpit interior fixes: exterior materials and cabin panels use `DoubleSide` so
-  the hood and pillars are solid from the driver's POV. Dash gap to the windshield
-  is closed, and cabin firewall and floor pan prevent light leaks. The hooded binnacle
-  rises at most 4 cm above the dash top (`bTopY = beltY + 0.04`), opening the forward sightline.
-  The gauge face sits low (`gh0 = beltY - 0.19`) and tilted toward the eye, clearly framed
-  through the steering wheel. Gauge quad u coordinates are non-mirrored (u=0 driver's left,
-  u=1 driver's right). Rearview mirror is compact (14 by 3.5 cm) tucked high against the roof header.
+- Cockpit (`cockpit.js`, since 0.4.9). The interior is lofted from the body (dash top, a
+  rounded lip and face, firewall, floor, console, vents, A-pillars, header, liner, door
+  panels and sills, mirror, passenger seat) and each car has its own real instruments, not a
+  painted image: `DASHES` in `dash.js` lists the pods and gauges. Hayate: speedometer, tach,
+  fuel and temp in the binnacle plus a boost gauge in a pod on the dash top. Rampart: only a
+  big speedometer and a big tach. Vespera: tach in the middle, speedometer, temp and fuel, no
+  boost or exhaust gauge. Tsurugi: the four-gauge cluster plus a center stack of boost, oil
+  pressure and volts. A pod is a backing plate turned to face the driver's eye, sides buried in
+  the dash and an arched hood over the top. A gauge is a depth can, a chrome bezel, a canvas
+  face (ticks, numerals sized for 240 lines, red zone, label) and a needle in its own group;
+  `update` turns the needles toward the readings (tach and boost fast, the rest slower), sets
+  the gear readout in the tach, the shift lamp over the tach and a warning lamp (blinking when
+  blown). The tach ends 1,000 to 2,000 rpm past the redline; the blow rpm is never drawn. The
+  steering wheel sits low enough that the cluster shows over its rim, and the cockpit camera
+  looks a little further down. The HUD cluster (`ui/cluster.js`) is only for the outside views.
 - Ace Combat and Japanese arcade styled menus:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
   `settingsScreen` (Auto vs Manual transmission toggle, Render Height target lines [240, 360, 480],

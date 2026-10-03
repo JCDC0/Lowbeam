@@ -111,7 +111,7 @@ export class CameraRig {
       }
       _look.copy(_eye);
       _look.z += 10;
-      _look.y -= view === 'cockpit' ? 0.9 : 0.5;
+      _look.y -= view === 'cockpit' ? 1.3 : 0.5;
       parent.updateWorldMatrix(true, false);
       parent.localToWorld(_eye);
       parent.localToWorld(_look);

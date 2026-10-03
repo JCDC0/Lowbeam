@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.9 (2026-10-03)
+
+Real dashboards.
+
+- `vehicles/cockpit.js` (new): the cockpit moves out of `models.js` and gets modeled instruments
+  per car: hooded pods facing the driver, gauges with depth cans, chrome bezels, canvas faces and
+  turning needles, a gear readout, a shift lamp and a warning lamp. The painted 2D cluster on the
+  dash is gone (`drive.js` calls `cockpit.update`).
+- `vehicles/dash.js` (new, pure): `DASHES` (Hayate with a boost pod, Rampart with two gauges only,
+  Vespera without boost or exhaust, Tsurugi with a three-gauge center stack), `gaugeScale`,
+  `needleAngle`.
+- Steering wheel lowered and the cockpit camera tilted down so the cluster shows over the rim.
+- Tests: `dash.test.mjs` (every car has its dash, the differences, no overlaps, tach range,
+  needle sweep).
+
 ## 0.4.8 (2026-10-03)
 
 Diagonal lane changes and civilian yielding.

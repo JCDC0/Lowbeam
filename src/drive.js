@@ -20,8 +20,7 @@ import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
 import { repairCost, repairEngine, TEMP_RED } from './vehicles/thermal.js';
-import { Cluster, drawCluster } from './ui/cluster.js';
-import { canvasTexture, makeCanvas } from './render/textures.js';
+import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 
@@ -64,10 +63,6 @@ export class Drive {
     this.cluster = null;
     /** @type {ReturnType<typeof createGauges> | null} */
     this.gauges = null;
-    this.dashCanvas = makeCanvas(400, 300);
-    this.dashCtx = /** @type {CanvasRenderingContext2D} */ (this.dashCanvas.getContext('2d'));
-    /** @type {*} */ (this.dashCtx).cockpit = true;
-    this.dashTex = canvasTexture(this.dashCanvas);
     this.time = 0;
     this.env = new EnvMap(world.scatter.trees);
     this.tolls = new TollMeter(world.scatter.highway.plazas, store.get('tollBest', {}));
@@ -92,9 +87,6 @@ export class Drive {
     audio.setCar(spec);
     if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec);
     else this.cluster.setSpec(spec);
-    this.car.cockpit.gaugeMat.map = this.dashTex;
-    this.car.cockpit.gaugeMat.color.set(0xffffff);
-    this.car.cockpit.gaugeMat.needsUpdate = true;
     this.toPump(this.world.scatter.stations[0]);
     this.traffic.agents.length = 0;
     this.traffic.populate(this.car.state);
@@ -297,10 +289,8 @@ export class Drive {
     stepGauges(this.gauges, spec, s, dt);
     const cockpit = this.rig.view === 'cockpit';
     this.cluster.show(!cockpit);
-    if (cockpit) {
-      drawCluster(this.dashCtx, this.gauges, spec, this.time, this.dashCanvas.width, this.dashCanvas.height);
-      this.dashTex.needsUpdate = true;
-    } else this.cluster.draw(this.gauges, dt);
+    if (cockpit) car.cockpit.update(this.gauges, dt, this.time);
+    else this.cluster.draw(this.gauges, dt);
 
     this.areaTimer -= dt;
     if (this.areaTimer <= 0) {

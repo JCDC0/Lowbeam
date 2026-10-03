@@ -5,7 +5,8 @@
  */
 
 import * as THREE from 'three';
-import { CarModel, STEER_RATIO, buildCockpit } from './models.js';
+import { CarModel } from './models.js';
+import { STEER_RATIO, buildCockpit } from './cockpit.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from './physics.js';
 import { ExhaustFx } from './exhaust-fx.js';
 import { lerp, wrapAngle } from '../core/mathx.js';
