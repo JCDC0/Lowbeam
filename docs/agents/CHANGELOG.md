@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.14 (2026-10-03)
+
+Neutral hits the rev limiter (Antigravity's A8 part 1).
+
+- `src/vehicles/physics.js`: `freeRev` takes the throttle away while a limiter cut is running, so
+  full throttle in N bounces on the redline like it does in gear. Peak rpm in neutral over 4 s fell
+  from 13,684 to 7,840 (Hayate), 11,397 to 6,377 (Rampart), 16,463 to 8,634 (Vespera) and 13,938 to
+  7,710 (Tsurugi); the limiter now fires about 30 times in those 4 s instead of once, and neutral can
+  never reach the 11,000 rpm blow rpm on its own.
+- Tests: `neutral bounces on the limiter without driving the car or blowing` replaces the old weak
+  check and asserts, for all four cars, that rpm stays under redline + 150, the limiter cuts at least
+  4 times, the car does not move, and the engine still falls back to idle when the throttle is lifted.
+
 ## 0.4.13 (2026-10-03)
 
 Bayshore Line, a larger city rect with suburbs, and rails on steep drops (Antigravity's A7 part 6,

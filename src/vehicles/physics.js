@@ -146,6 +146,8 @@ function shiftTo(s, to, time) {
 /**
  * Engine rpm with the gearbox in neutral or the clutch out: the engine spins freely, so
  * it climbs at a rate set by its inertia and falls back to idle on its own friction.
+ * A running limiter cut takes the throttle away here too, so free revving bounces off
+ * the redline the same way it does in gear instead of climbing past it to the blow rpm.
  * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec @param {number} accel @param {number} dt
  */
 function freeRev(s, spec, accel, dt) {
@@ -158,7 +160,8 @@ function freeRev(s, spec, accel, dt) {
     return clamp(rpm, 900, LIMP_RPM);
   }
   const e = spec.engine;
-  const torque = torqueAt(spec, s.rpm) * e.peakTorque * accel;
+  const throttle = s.limiter > 0 ? 0 : accel;
+  const torque = torqueAt(spec, s.rpm) * e.peakTorque * throttle;
   const friction = e.peakTorque * (0.06 + 0.22 * (s.rpm / e.redline) ** 2);
   const idleHold = e.peakTorque * 0.3 * clamp((e.idle - s.rpm) / 150, 0, 1);
   const alpha = (torque - friction + idleHold) / (e.inertia || DEFAULT_ENGINE_INERTIA);

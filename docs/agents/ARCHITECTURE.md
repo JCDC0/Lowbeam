@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.13)
+## Current state (0.4.14)
 
 Done and tested:
 
@@ -184,7 +184,10 @@ Done and tested:
   speed (`s.rpm`), never from the car's heading, so a spinning or sliding car does not
   swing its tach. The speedometer is `hypot(vx, vz)`. In first and reverse the clutch
   slips (`CLUTCH_SLIP`) so the needle climbs from the launch rpm instead of sitting on a
-  number. Neutral free-revs with the engine's own inertia (`engine.inertia`).
+  number. Neutral free-revs with the engine's own inertia (`engine.inertia`) and bounces
+  on the limiter: since 0.4.14 a running cut takes the throttle away in `freeRev` too, so
+  full throttle in N peaks just above each car's redline and can never reach the 11,000 rpm
+  blow rpm on its own.
   Auto shifts on road speed (not wheel speed) and holds brake at rest for reverse.
   Manual (Settings, store key `transmission`) goes R, N, 1 ... n with 0.1 s of clutch,
   at any speed, W always throttle and S always brake; nothing is refused.
@@ -462,8 +465,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
-  All suites together: 102 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
+- Tests: 121 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
+  `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in

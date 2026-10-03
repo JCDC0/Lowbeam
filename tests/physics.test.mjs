@@ -169,16 +169,28 @@ test('manual: W is always throttle and the gear sets the direction', () => {
   assert.ok(s.vLong < -1.5, `reversing at ${s.vLong}`);
 });
 
-test('neutral free-revs to the limiter without driving the car', () => {
-  const { spec, s, run, press } = rig('rampart', 'asphalt', true);
-  press('shiftDown');
-  run(0.3);
-  assert.equal(s.gear, 0);
-  run(2, { throttle: 1 });
-  assert.ok(s.rpm > spec.engine.redline - 300, `rpm ${s.rpm}`);
-  assert.ok(Math.abs(s.vLong) < 0.2, `moved ${s.vLong}`);
-  run(3);
-  assert.ok(s.rpm < spec.engine.idle + 300, `rpm ${s.rpm} did not fall back`);
+test('neutral bounces on the limiter without driving the car or blowing', () => {
+  for (const spec of CARS) {
+    const { s, run, press } = rig(spec.id, 'asphalt', true);
+    press('shiftDown');
+    run(0.3);
+    assert.equal(s.gear, 0, spec.id);
+    let peak = 0;
+    let cuts = 0;
+    let wasCut = false;
+    run(4, { throttle: 1 }, () => {
+      peak = Math.max(peak, s.rpm);
+      const cut = s.limiter > 0;
+      if (cut && !wasCut) cuts++;
+      wasCut = cut;
+    });
+    assert.ok(peak > spec.engine.redline - 300, `${spec.id} only reached ${peak.toFixed(0)}`);
+    assert.ok(peak <= spec.engine.redline + 150, `${spec.id} peaked at ${peak.toFixed(0)}, redline ${spec.engine.redline}`);
+    assert.ok(cuts >= 4, `${spec.id} cut the limiter ${cuts} times`);
+    assert.ok(Math.abs(s.vLong) < 0.2, `${spec.id} moved ${s.vLong}`);
+    run(6);
+    assert.ok(s.rpm < spec.engine.idle + 300, `${spec.id} rpm ${s.rpm} did not fall back`);
+  }
 });
 
 test('a loose launch revs to the limiter instead of holding a fixed rpm', () => {
