@@ -12,6 +12,9 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 | [A7-backend-playtest.md](A7-backend-playtest.md) | now | Tach scale, blown idle, diagonal lane changes, fast racers, road joins, bigger city, rails |
 | [A8-gearbox-traffic-fixes.md](A8-gearbox-traffic-fixes.md) | done (0.4.14 to 0.4.18) | Neutral limiter bug, N R 1 gear order, safe crawl downshift, lane flip-flop, prompt in cockpit view |
 | [A9-rival-duels.md](A9-rival-duels.md) | now (Hermes) | Dev server range requests, gauge alias cleanup, rival duels with a `RaceEvent` base and HUD |
+| [C1-kurogane-island.md](C1-kurogane-island.md) | now (Claude) | The map overhaul: island, built-up zones, real street network, viaduct, new buildings, lamps and light pools |
+| [A10-junction-traffic-map-icons.md](A10-junction-traffic-map-icons.md) | now (Antigravity) | Traffic lights and give-way at any crossing or T junction, the island and new POIs on the map, a stats overlay |
+| [A11-rally.md](A11-rally.md) | after A9 (Hermes) | Pace notes, the rally RaceEvent with gates, medals, penalties and a ghost, its HUD |
 | [A5-buildings.md](A5-buildings.md) | after A7 part 6 | Building kit, facade atlas, street furniture |
 | [A3-bodies-batch1.md](A3-bodies-batch1.md) | cancelled | Claude builds every car body now |
 | [A4-bodies-batch2.md](A4-bodies-batch2.md) | cancelled | Claude builds every car body now |
