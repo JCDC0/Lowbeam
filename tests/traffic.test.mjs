@@ -218,7 +218,7 @@ test('street racers cruise Route 1 far above the limit, stay on it and are repla
   const ratio = racerSpeed / racerSamples / (trafficSpeed / trafficSamples);
   assert.ok(ratio > 1.4, `racers only ${ratio.toFixed(2)} times faster than traffic`);
   assert.ok(sim.countRivals() >= 3, `${sim.countRivals()} rivals left after 90 s`);
-  for (const k of RIVALS) assert.ok(k.speed[0] > 1.0 && k.name && k.weights.expressway > 0, k.id);
+  for (const k of RIVALS) assert.ok(k.speed[0] > 1.4 && k.name && k.weights.expressway > 0, k.id);
 });
 
 test('the nearest rival is reported with its distance and whether it is ahead', () => {

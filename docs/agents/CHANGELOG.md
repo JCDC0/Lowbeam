@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.18 (2026-10-03)
+
+Cockpit prompt out of the way, racer speed check restored (A8 part 5, written by Hermes, committed
+by Claude after Hermes stopped).
+
+- `src/ui/hud.js`, `style.css`, `src/drive.js`: `hud.prompt(text, cockpit)` toggles a `cockpit`
+  class that moves the prompt from the bottom to 12 vh from the top, clear of the modeled gauges.
+- `tests/traffic.test.mjs`: every racer kind must want more than 1.4 times the limit again (it had
+  been loosened to 1.0).
+
 ## 0.4.17 (2026-10-03)
 
 Civilians stop flip-flopping between lanes (Antigravity's A8 part 4).

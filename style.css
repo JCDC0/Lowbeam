@@ -348,6 +348,11 @@ html, body {
   background: var(--panel);
   border-left: 3px solid var(--amber);
 }
+/* In the cockpit the modeled gauges own the lower half, so the prompt sits up top. */
+#hud .prompt.cockpit {
+  bottom: auto;
+  top: 12vh;
+}
 #hud .mapslot {
   position: absolute;
   left: 2.5vw;

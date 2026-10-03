@@ -298,7 +298,7 @@ export class Drive {
       this.hud.area(this.areaName(s.x, s.y, s.z));
     }
     this.hud.money(this.money);
-    this.hud.prompt(prompt);
+    this.hud.prompt(prompt, cockpit);
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
     audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete' });

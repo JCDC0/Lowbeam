@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.17)
+## Current state (0.4.18)
 
 Done and tested:
 
@@ -364,6 +364,8 @@ Done and tested:
   weaker values vanish on the dark ground.
 - HUD: area name (fades), money, prompts, the minimap (rotates with the car, zooms
   out with speed, north marker, station and rally start icons) and the gauge cluster.
+  In the cockpit view the prompt moves to the top of the screen (`hud.prompt(text, cockpit)`
+  sets the `cockpit` class), so it never covers the modeled gauges.
 - Gauge cluster (`src/ui/cluster.js`, bottom right, canvas, Michroma): a round tach
   sweeping 240 degrees with scale running to redline plus 1,000 rounded up to the next 1,000 for each
   car (Hayate 9,000, Rampart 8,000, Vespera 10,000, Tsurugi 9,000; blowRpm 11,000 is never drawn), a red

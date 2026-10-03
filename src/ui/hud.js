@@ -24,6 +24,7 @@ export class Hud {
     this.clusterSlot = q('.cluster');
     /** @type {Record<string, string>} */
     this.last = {};
+    this.cockpit = false;
   }
 
   /** @param {boolean} on */
@@ -52,9 +53,17 @@ export class Hud {
     this.text(this.moneyEl, 'money', `¥ ${Math.round(yen).toLocaleString('en-US')}`);
   }
 
-  /** @param {string} text empty to hide */
-  prompt(text) {
+  /**
+   * @param {string} text empty to hide
+   * @param {boolean} [cockpit] true while the camera is in the cockpit, where the prompt
+   *   moves up out of the way of the modeled gauges
+   */
+  prompt(text, cockpit) {
     this.text(this.promptEl, 'prompt', text);
     this.promptEl.style.display = text ? 'block' : 'none';
+    if (this.cockpit !== !!cockpit) {
+      this.cockpit = !!cockpit;
+      this.promptEl.classList.toggle('cockpit', this.cockpit);
+    }
   }
 }
