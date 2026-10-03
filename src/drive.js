@@ -236,6 +236,10 @@ export class Drive {
     }
     if (!s.engineOn && !pump) prompt = `OUT OF FUEL   R  TOW TO A STATION  ¥${ECONOMY.towCost.toLocaleString('en-US')}`;
     else if (s.blown && !pump) prompt = `ENGINE BLOWN   LIMP TO A PUMP OR  R  TOW  ¥${(ECONOMY.towCost + repairCost(s)).toLocaleString('en-US')}`;
+    if (!prompt) {
+      const rival = this.traffic.nearestRival(s, 220);
+      if (rival) prompt = `RIVAL  ${rival.agent.kind.name}   ${rival.ahead ? 'AHEAD' : 'BEHIND'} ${Math.round(rival.distance)} M`;
+    }
     if (input.pressed('reset')) {
       if (!s.engineOn || s.blown) this.tow();
       else this.resetToRoad();

@@ -12,7 +12,7 @@ street racer in the line of Night-Runners Prologue and Need for Speed: Most Want
 a bay, Route 1 (an expressway loop with toll plazas) round it, avenues that pass over the
 loop on overpasses, a mountain pass in the west, a forest and a lake in the north, four
 gas stations, and three cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic).
-Traffic is in; rivals and the rally come next.
+Traffic and the street racers are in; challenging a rival and the rally come next.
 
 ## Commands
 
@@ -92,7 +92,7 @@ captures such as rendered audio.
 | `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
-| `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds, sizes, speeds and where each is common |
+| `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the ten street racers (`RIVALS`), sizes, speeds and where each is common |
 | `src/traffic/bodies.js` | Boxy stand-in geometry per kind (to be replaced by the A3/A4 bodies) |
 | `src/traffic/render.js` | `TrafficRenderer`: one InstancedMesh per kind, tint per instance, brake lights |
 | `src/vehicles/contact.js` | Pure: car against car contact with impulse and friction |
@@ -127,7 +127,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.0)
+## Current state (0.4.1)
 
 Done and tested:
 
@@ -364,7 +364,18 @@ Done and tested:
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
   friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
   Agents are drawn by `TrafficRenderer` as boxy stand-ins until the real bodies arrive.
-  The tick is about 0.02 ms; with traffic a downtown view is about 130 draw calls.
+  The tick is about 0.07 ms; with traffic a downtown view is about 130 draw calls.
+- Street racers (`RIVALS` in `kinds.js`, `TrafficSim.spawnRival`). Ten low, wide kinds
+  (kei sports car, rotary coupe, hot hatch, boxer sedan, V8 drifter, wedge GT, hardtop,
+  roadster, widebody, hypercar; ids `rv-*`) share the traffic sim but want 1.5 to 2.6
+  times the limit (150 to 260 km/h on Route 1), spawn only on the fast lanes of the loop
+  and never take an exit or turn. Five are kept alive (`rivals` option); the traffic target
+  does not count them. A racer picks whichever neighbouring lane has the most open road
+  when blocked within 120 m and never drops back to relax; the bench is about 155 km/h on
+  average with a top of 240. `nearestRival(player, range)` gives the agent, distance and
+  whether it is ahead; `Drive` shows it as the prompt `RIVAL <name> AHEAD <m> M` when no
+  other prompt is up. Bodies are the same stand-ins (a wing and big wheels) until the
+  A3/A4 bodies arrive. Challenging a rival is not built yet.
 - Toll plazas (`highway.js`, `build-highway.js`, `toll.js`). KITA, HIGASHI and MINATO
   TOLL straddle both carriageways: a 31 m canopy 5.9 m up on columns, a booth on every lane
   divider (two per carriageway), a long median island, amber lights over the outer (cash)
@@ -401,7 +412,7 @@ Done and tested:
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
 - Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
-  All suites together: 100 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
+  All suites together: 102 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
   `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in
@@ -409,10 +420,12 @@ Not started: the rally event and everything after it in the build order in
 
 ## Next steps (in order)
 
-1. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
+1. **Rival challenge**: flash headlights or pull alongside to start a duel with a rival, a
+   `RaceEvent` interface so races, mid-race joins, cops and escapes can plug in.
+2. **Rally**: start, countdown, checkpoints, pace notes from curvature, results,
    ghost. Config is `RALLY` in layout.js (start at s = 130 m). The rally should call
    `audio.music.hold('ridge')`, `audio.beep('count')` and `audio.beep('go')`.
-2. Tune engine, music and mix levels from listening in a real drive session.
+3. Tune engine, music and mix levels from listening in a real drive session.
 
 ## Verification
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.1 (2026-10-03)
+
+Street racers.
+
+- `traffic/kinds.js`: ten racer kinds (`RIVALS`, ids `rv-*`) that want 1.5 to 2.6 times the
+  limit; `ALL_KINDS` is what the renderer draws. `bodies.js` draws them as low, wide stand-ins
+  with a wing and big wheels.
+- `traffic/sim.js`: `spawnRival` (fast lanes of Route 1 only, out of sight), `countRivals`,
+  `nearestRival`, a `rivals` option (default 5) kept apart from the traffic target. Racers stay on
+  the loop, change lanes earlier and pick the most open neighbouring lane (`openAhead`).
+- `Drive` shows the nearest rival within 220 m as a prompt.
+- Tests: 102 passing (racers cruise far above the limit, stay on Route 1 and are replaced;
+  nearest rival distance and side).
+
 ## 0.4.0 (2026-10-03)
 
 Traffic.

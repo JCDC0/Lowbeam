@@ -6,7 +6,7 @@
 
 import * as THREE from 'three';
 import { psxLambert } from '../render/psx.js';
-import { KINDS } from './kinds.js';
+import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
 
 const _m = new THREE.Matrix4();
@@ -25,7 +25,7 @@ export class TrafficRenderer {
     this.material = psxLambert({ vertexColors: true, local: true, lamp: true, side: THREE.DoubleSide });
     /** @type {Map<string, { mesh: THREE.InstancedMesh, brake: THREE.InstancedBufferAttribute, max: number, n: number }>} */
     this.meshes = new Map();
-    for (const kind of KINDS) {
+    for (const kind of ALL_KINDS) {
       const max = kind.length > 7 ? 10 : 28;
       const geo = buildKindGeometry(kind);
       const brake = new THREE.InstancedBufferAttribute(new Float32Array(max), 1);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { Ground } from '../src/world/ground.js';
 import { TrafficNet, lightState } from '../src/traffic/net.js';
 import { TrafficSim } from '../src/traffic/sim.js';
-import { KINDS } from '../src/traffic/kinds.js';
+import { KINDS, RIVALS } from '../src/traffic/kinds.js';
 import { collideCars } from '../src/vehicles/contact.js';
 import { carById } from '../src/vehicles/specs.js';
 import { createVehicleState } from '../src/vehicles/physics.js';
@@ -96,7 +96,8 @@ test('the traffic fills the roads, keeps its distance and respects the limits', 
         assert.ok(Number.isFinite(a.x + a.z + a.speed + a.yaw), 'bad number');
         // Coming off a faster road, a car slows down to the new limit rather than jumping to it.
         const before = last.get(a.id) ?? 0;
-        assert.ok(a.speed <= a.lane.limit * 1.16 + 0.5 || a.speed <= before + 0.05, `${a.kind.id} at ${(a.speed * 3.6).toFixed(0)} km/h in a ${(a.lane.limit * 3.6).toFixed(0)} lane`);
+        const ceiling = sim.isRival(a) ? a.lane.limit * a.factor * 1.1 : a.lane.limit * 1.16;
+        assert.ok(a.speed <= ceiling + 0.5 || a.speed <= before + 0.05, `${a.kind.id} at ${(a.speed * 3.6).toFixed(0)} km/h in a ${(a.lane.limit * 3.6).toFixed(0)} lane`);
         last.set(a.id, a.speed);
       }
       if (Math.round(t * 30) % 30 === 0) {
@@ -181,4 +182,63 @@ test('contact between two cars conserves momentum and does not need the same mas
   assert.ok(Math.abs(after - before) / before < 0.02, `momentum ${before} to ${after}`);
   assert.ok(a.vx < 5 && b.vx > 0, 'the light car should bounce off the heavy one');
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) > 4, 'still overlapping');
+});
+
+test('street racers cruise Route 1 far above the limit, stay on it and are replaced when lost', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 1500, q);
+  const player = { x: q.x, z: q.z, speed: 0 };
+  const sim = new TrafficSim(net, { seed: 21, target: 30, rivals: 5 });
+  sim.populate(player);
+  assert.equal(sim.countRivals(), 5, 'rivals at the start');
+  const seen = new Set();
+  let racerSpeed = 0;
+  let racerSamples = 0;
+  let trafficSpeed = 0;
+  let trafficSamples = 0;
+  for (let t = 0; t < 90; t += 1 / 30) {
+    sim.update(1 / 30, player);
+    assert.ok(sim.countRivals() <= 5, 'too many rivals');
+    for (const a of sim.agents) {
+      assert.ok(Number.isFinite(a.x + a.z + a.speed), 'bad number');
+      if (sim.isRival(a)) {
+        seen.add(a.kind.id);
+        assert.ok(a.lane.cls === 'expressway', `${a.kind.id} left the expressway for ${a.lane.id}`);
+        racerSpeed += a.speed;
+        racerSamples++;
+      } else if (a.lane.cls === 'expressway') {
+        trafficSpeed += a.speed;
+        trafficSamples++;
+      }
+    }
+  }
+  assert.ok(racerSamples > 0 && trafficSamples > 0, 'nobody to compare');
+  const ratio = racerSpeed / racerSamples / (trafficSpeed / trafficSamples);
+  assert.ok(ratio > 1.4, `racers only ${ratio.toFixed(2)} times faster than traffic`);
+  assert.ok(sim.countRivals() >= 3, `${sim.countRivals()} rivals left after 90 s`);
+  for (const k of RIVALS) assert.ok(k.speed[0] > 1.4 && k.name && k.weights.expressway > 0, k.id);
+});
+
+test('the nearest rival is reported with its distance and whether it is ahead', () => {
+  const sim = new TrafficSim(net, { seed: 5, target: 0, rivals: 0 });
+  const lane = net.lane('c1-f', 1, 2);
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 800, q);
+  const far = { x: q.x + 4000, z: q.z, speed: 0 };
+  const a = sim.spawnRival({ x: q.x, z: q.z }, 0, 1e9);
+  assert.ok(a);
+  a.lane = lane;
+  a.s = 800;
+  a.x = q.x;
+  a.z = q.z;
+  const yaw = Math.atan2(q.tx, q.tz);
+  const behind = { x: q.x - q.tx * 90, z: q.z - q.tz * 90, yaw };
+  const hit = sim.nearestRival(behind, 200);
+  assert.ok(hit && hit.agent === a);
+  assert.ok(Math.abs(hit.distance - 90) < 0.5, `distance ${hit.distance}`);
+  assert.equal(hit.ahead, true);
+  const past = { x: q.x + q.tx * 60, z: q.z + q.tz * 60, yaw };
+  assert.equal(sim.nearestRival(past, 200)?.ahead, false);
+  assert.equal(sim.nearestRival(far, 200), null);
 });

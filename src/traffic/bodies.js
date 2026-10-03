@@ -127,7 +127,20 @@ export function buildKindGeometry(k) {
   const wheelW = r * 0.7;
   const track = W / 2 - wheelW / 2 + 0.02;
 
-  if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan'].includes(k.id)) {
+  if (k.id.startsWith('rv-')) {
+    // A racer: low and wide, a small cabin set back, a wing, big wheels.
+    const belt = H * 0.5;
+    const low = 0.2;
+    p.box(0, (low + belt) / 2, 0, W, belt - low, L, PAINT);
+    p.cabin(belt, H, W * 0.88, W * 0.7, -L * 0.28, L * 0.12, 0.7, 0.9, { side: GLASS, top: PAINT });
+    p.box(0, belt + 0.02, L * 0.3, W * 0.5, 0.06, L * 0.2, PAINT);
+    p.box(0, H + 0.12, -L / 2 + 0.25, W * 0.92, 0.07, 0.4, DARK);
+    for (const s of [1, -1]) p.box(s * W * 0.38, H + 0.02, -L / 2 + 0.25, 0.06, 0.2, 0.3, DARK);
+    p.box(0, 0.3, L / 2 - 0.04, W - 0.04, 0.22, 0.14, DARK);
+    p.box(0, 0.3, -L / 2 + 0.04, W - 0.04, 0.22, 0.14, DARK);
+    lights(p, W, belt - 0.1, L, 0.3);
+    wheels(p, [L * 0.3, -L * 0.3], W / 2 - 0.12, 0.33, 0.27);
+  } else if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan'].includes(k.id)) {
     const belt = H * (k.id === 'suv' || k.id === 'minivan' ? 0.5 : 0.52);
     const low = 0.24;
     p.box(0, (low + belt) / 2, 0, W, belt - low, L, { top: PAINT, side: PAINT, front: PAINT, back: PAINT });

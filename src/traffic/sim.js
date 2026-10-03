@@ -9,7 +9,7 @@
 
 import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp } from '../core/mathx.js';
-import { KINDS } from './kinds.js';
+import { KINDS, RIVALS } from './kinds.js';
 import { lightState } from './net.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 
@@ -48,14 +48,15 @@ function idm(v, v0, accel, gap, closing) {
 export class TrafficSim {
   /**
    * @param {import('./net.js').TrafficNet} net
-   * @param {{ seed?: number, target?: number }} [opts]
+   * @param {{ seed?: number, target?: number, rivals?: number }} [opts]
    */
-  constructor(net, { seed = 77, target = 38 } = {}) {
+  constructor(net, { seed = 77, target = 38, rivals = 5 } = {}) {
     this.net = net;
     this.rng = makeRng(seed);
     /** @type {Agent[]} */
     this.agents = [];
     this.target = target;
+    this.rivalTarget = rivals;
     this.time = 0;
     this.nextId = 1;
     this.spawnTimer = 0;
@@ -87,6 +88,71 @@ export class TrafficSim {
       if (t <= 0) return KINDS[i];
     }
     return KINDS[0];
+  }
+
+  /** True for a street racer. @param {Agent} a */
+  isRival(a) {
+    return a.kind.id.startsWith('rv-');
+  }
+
+  /**
+   * Adds a street racer on one of the fast lanes of Route 1, out of sight of the player.
+   * @param {{ x: number, z: number }} player @param {number} min @param {number} max
+   * @returns {Agent | null}
+   */
+  spawnRival(player, min, max) {
+    const lanes = this.net.lanes.filter((l) => l.cls === 'expressway' && l.index > 0);
+    for (let tries = 0; tries < 16; tries++) {
+      const lane = this.rng.pick(lanes);
+      const s = this.rng.next() * lane.length;
+      const q = this.net.sample(lane, s, this._q);
+      const d = Math.hypot(q.x - player.x, q.z - player.z);
+      if (d < min || d > max || this.crowded(lane, s, 40)) continue;
+      const w = RIVALS.map((k) => k.weights.expressway ?? 1);
+      let t = this.rng.next() * w.reduce((a, b) => a + b, 0);
+      let kind = RIVALS[0];
+      for (let i = 0; i < RIVALS.length; i++) {
+        t -= w[i];
+        if (t <= 0) {
+          kind = RIVALS[i];
+          break;
+        }
+      }
+      const factor = this.rng.range(kind.speed[0], kind.speed[1]);
+      const a = /** @type {Agent} */ ({
+        id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.8, factor,
+        x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
+        ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+        mode: 'drive', age: 0, wreckAge: 0, nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        brake: 0, fade: 1,
+      });
+      this.choose(a);
+      this.agents.push(a);
+      return a;
+    }
+    return null;
+  }
+
+  /**
+   * The nearest street racer within `range` meters of the player: the agent, its distance
+   * and whether it is ahead of the car.
+   * @param {{ x: number, z: number, yaw?: number }} player @param {number} range
+   */
+  nearestRival(player, range = 250) {
+    let best = null;
+    let bd = range;
+    for (const a of this.agents) {
+      if (!this.isRival(a) || a.mode !== 'drive') continue;
+      const d = Math.hypot(a.x - player.x, a.z - player.z);
+      if (d < bd) {
+        bd = d;
+        best = a;
+      }
+    }
+    if (!best) return null;
+    const yaw = player.yaw ?? 0;
+    const ahead = (best.x - player.x) * Math.sin(yaw) + (best.z - player.z) * Math.cos(yaw) > 0;
+    return { agent: best, distance: bd, ahead };
   }
 
   /**
@@ -134,12 +200,14 @@ export class TrafficSim {
   /** Fills the roads around the player at the start. @param {{ x: number, z: number }} player */
   populate(player) {
     for (let i = 0; i < this.target * 3 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
+    for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 150, SPAWN_MAX);
   }
 
   /** Picks this agent's turn off the lane and what happens at its end. @param {Agent} a */
   choose(a) {
     a.plan = null;
-    for (const m of a.lane.mids) {
+    // Street racers stay on the loop.
+    for (const m of this.isRival(a) ? [] : a.lane.mids) {
       if (m.at <= a.s) continue;
       if (this.rng.chance(m.weight)) {
         a.plan = m;
@@ -182,10 +250,18 @@ export class TrafficSim {
     }
     this.agents = keep;
     this.spawnTimer -= dt;
-    if (this.spawnTimer <= 0 && this.agents.length < this.target) {
-      this.spawn(player, SPAWN_MIN, SPAWN_MAX);
+    if (this.spawnTimer <= 0) {
+      const rivals = this.countRivals();
+      if (rivals < this.rivalTarget) this.spawnRival(player, SPAWN_MIN, SPAWN_MAX);
+      else if (this.agents.length - rivals < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
       this.spawnTimer = 0.25;
     }
+  }
+
+  countRivals() {
+    let n = 0;
+    for (const a of this.agents) if (this.isRival(a)) n++;
+    return n;
   }
 
   sortLanes() {
@@ -330,6 +406,20 @@ export class TrafficSim {
     this.choose(a);
   }
 
+  /**
+   * Free road ahead of s in a lane, up to 300 m.
+   * @param {import('./net.js').Lane} lane @param {number} s
+   */
+  openAhead(lane, s) {
+    let gap = 300;
+    for (const o of this.byLane.get(lane) || []) {
+      let ds = o.s - s;
+      if (lane.closed && ds < 0) ds += lane.length;
+      if (ds > 0 && ds < gap) gap = ds;
+    }
+    return gap;
+  }
+
   /** Overtaking on roads with more than one lane in the direction of travel. */
   maybeChange(a, lead) {
     if (this.time < a.nextChange) return;
@@ -340,7 +430,20 @@ export class TrafficSim {
     if (same.length < 2) return;
     let want = -1;
     const wanted = lane.limit * a.factor;
-    if (lead.gap < 38 && wanted - lead.v > 2) want = lane.index + 1;
+    if (this.isRival(a)) {
+      // A racer takes whichever neighbouring lane has the most open road, and never drops back to relax.
+      if (lead.gap < 120 && wanted - lead.v > 1) {
+        let open = lead.gap * 1.5;
+        for (const idx of [lane.index + 1, lane.index - 1]) {
+          const next = same.find((l) => l.index === idx);
+          const room = next ? this.openAhead(next, a.s) : 0;
+          if (room > open) {
+            open = room;
+            want = idx;
+          }
+        }
+      }
+    } else if (lead.gap < 38 && wanted - lead.v > 2) want = lane.index + 1;
     else if (lane.index > 0 && lead.gap > 70 && a.speed < wanted * 1.02) want = lane.index - 1;
     if (want < 0 || want >= same.length) return;
     const target = same.find((l) => l.index === want);
