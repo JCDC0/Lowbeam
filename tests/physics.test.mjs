@@ -134,7 +134,7 @@ test('manual transmission: no automatic upshift and limiter holds at redline', (
   assert.ok(s.limiter > 0 || s.rpm <= spec.engine.redline + 50, 'limiter did not engage');
 });
 
-test('the manual selector runs R, N, 1 to the top gear for every car, at any speed', () => {
+test('the manual selector runs N, R, 1 to the top gear for every car, at any speed', () => {
   for (const spec of CARS) {
     const { s, run, press } = rig(spec.id, 'asphalt', true);
     const order = [s.gear];
@@ -146,22 +146,45 @@ test('the manual selector runs R, N, 1 to the top gear for every car, at any spe
     assert.deepEqual(order.slice(0, 5), [1, 2, 3, 4, 5].slice(0, 5), spec.id);
     assert.equal(s.gear, spec.gears.length, `${spec.id} stops at its top gear`);
     s.blown = false;
-    for (let i = 0; i < spec.gears.length + 3; i++) {
+    for (let i = 0; i < spec.gears.length; i++) {
       press('shiftDown');
       run(0.15);
     }
     assert.equal(s.gear, -1, `${spec.id} reaches R`);
+    press('shiftDown');
+    run(0.15);
+    assert.equal(s.gear, 0, `${spec.id} ends in N`);
     press('shiftUp');
     run(0.15);
-    assert.equal(s.gear, 0, `${spec.id} passes through N`);
+    assert.equal(s.gear, -1, `${spec.id} leaves N for R`);
   }
   assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6, 7]);
 });
 
+test('the manual selector steps N, R, 1 with a single tap, in both directions', () => {
+  for (const spec of CARS) {
+    const { s, run, press } = rig(spec.id, 'asphalt', true);
+    s.gear = 1;
+    press('shiftDown');
+    run(0.15);
+    assert.equal(s.gear, -1, `${spec.id} down from 1 goes to R`);
+    press('shiftDown');
+    run(0.15);
+    assert.equal(s.gear, 0, `${spec.id} down from R goes to N`);
+    press('shiftDown');
+    run(0.15);
+    assert.equal(s.gear, 0, `${spec.id} stops at N`);
+    press('shiftUp');
+    run(0.15);
+    assert.equal(s.gear, -1, `${spec.id} up from N goes to R`);
+    press('shiftUp');
+    run(0.15);
+    assert.equal(s.gear, 1, `${spec.id} up from R goes to 1`);
+  }
+});
+
 test('manual: W is always throttle and the gear sets the direction', () => {
   const { s, run, press } = rig('hayate', 'asphalt', true);
-  press('shiftDown');
-  run(0.15);
   press('shiftDown');
   run(0.15);
   assert.equal(s.gear, -1);
@@ -173,7 +196,9 @@ test('neutral bounces on the limiter without driving the car or blowing', () => 
   for (const spec of CARS) {
     const { s, run, press } = rig(spec.id, 'asphalt', true);
     press('shiftDown');
-    run(0.3);
+    run(0.15);
+    press('shiftDown');
+    run(0.15);
     assert.equal(s.gear, 0, spec.id);
     let peak = 0;
     let cuts = 0;
@@ -283,8 +308,6 @@ test('selecting reverse while moving forward is a money shift', () => {
   slow.s.vz = 10;
   slow.s.speed = 10;
   slow.press('shiftDown');
-  slow.run(0.2);
-  slow.press('shiftDown');
   slow.run(0.4);
   assert.equal(slow.s.gear, -1);
   assert.ok(!slow.s.blown, 'reverse at 36 km/h should only scrub speed');
@@ -293,8 +316,6 @@ test('selecting reverse while moving forward is a money shift', () => {
   s.gear = 1;
   s.vz = 40;
   s.speed = 40;
-  press('shiftDown');
-  run(0.2);
   press('shiftDown');
   run(0.4);
   assert.equal(s.gear, -1);
@@ -346,10 +367,10 @@ test('a blown engine idles between 900 and 2000 rpm in gear 2, N, and 1', () => 
       press('shiftDown');
       run(0.15);
     } else if (gear === 0) {
-      press('shiftDown');
-      run(0.15);
-      press('shiftDown');
-      run(0.15);
+      for (let i = 0; i < 3; i++) {
+        press('shiftDown');
+        run(0.15);
+      }
     }
     assert.equal(s.gear, gear);
     let minRpm = Infinity;

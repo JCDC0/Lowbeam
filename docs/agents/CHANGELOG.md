@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.15 (2026-10-03)
+
+Manual gear order runs N, R, 1 to the top gear (Antigravity's A8 part 2).
+
+- `src/vehicles/physics.js`: new `stepGear` returns the next rung along N, R, 1 ... n for a
+  manual shift, so shifting down from 1 lands in R and R is the last rung below neutral, and
+  shifting up from N goes to R and from R to 1. Gear values are unchanged (-1 for R, 0 for N),
+  only the order moved. The money-shift rule into R is unchanged, so a careless double tap down
+  from 1 at speed still blows the engine. Auto mode is untouched.
+- `src/ui/menus.js`: the settings notice and the pause key list now read (N, R, 1..7).
+- Tests: `the manual selector runs N, R, 1 to the top gear for every car, at any speed` and the
+  new `the manual selector steps N, R, 1 with a single tap, in both directions` (all four cars,
+  single taps in both directions, N as the bottom stop). Tests that walked to R or N by tapping
+  were adjusted for the new order.
+
 ## 0.4.14 (2026-10-03)
 
 Neutral hits the rev limiter (Antigravity's A8 part 1).

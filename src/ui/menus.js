@@ -237,7 +237,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 / 360 / 480 LINES</span></div>
           <div class="ac-notice">
-            <b>MANUAL MODE:</b> Sequential shifting (R, N, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
+            <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
             <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 reproduces authentic PS1 display resolution with dither and 15-bit color quantize.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
@@ -566,7 +566,7 @@ export function pauseScreen(ui) {
     ui,
     'pause',
     `<div class="box"><h3>PAUSED</h3>${PAUSE_OPTIONS.map(([id, label]) => `<div class="opt click" data-id="${id}">${label}</div>`).join('')}
-     <div class="keys">W S throttle and brake, A D steer, Space handbrake<br>Q/E or Shift/Ctrl manual shift (R N 1..7), C camera, Tab map, R reset, F refuel & repair</div></div>`
+     <div class="keys">W S throttle and brake, A D steer, Space handbrake<br>Q/E or Shift/Ctrl manual shift (N R 1..7), C camera, Tab map, R reset, F refuel & repair</div></div>`
   );
   const opts = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.opt')]);
   let sel = 0;

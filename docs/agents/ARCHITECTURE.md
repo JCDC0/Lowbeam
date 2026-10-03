@@ -110,7 +110,7 @@ captures such as rendered audio.
 | `src/render/sky.js` | Gradient dome, stars, moon; `MOON_DIR` |
 | `src/vehicles/specs.js` | The four cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
-| `src/vehicles/physics.js` | 120 Hz bicycle model, R N 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
+| `src/vehicles/physics.js` | 120 Hz bicycle model, N R 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
 | `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
 | `src/render/builder.js` | `MeshBuilder`: quads, boxes, cylinders into grouped geometry; `smoothNormals` (crease-limited), `buildWheel` |
@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.14)
+## Current state (0.4.15)
 
 Done and tested:
 
@@ -189,8 +189,11 @@ Done and tested:
   full throttle in N peaks just above each car's redline and can never reach the 11,000 rpm
   blow rpm on its own.
   Auto shifts on road speed (not wheel speed) and holds brake at rest for reverse.
-  Manual (Settings, store key `transmission`) goes R, N, 1 ... n with 0.1 s of clutch,
-  at any speed, W always throttle and S always brake; nothing is refused.
+  Manual (Settings, store key `transmission`) goes N, R, 1 ... n with 0.1 s of clutch,
+  at any speed, W always throttle and S always brake; nothing is refused. Since 0.4.15
+  the manual selector runs up from the bottom N, R, 1 (`stepGear` in `physics.js`), so a
+  downshift from 1 goes straight to R and R is the last rung below neutral. Auto is
+  unchanged.
 - Engine health (`thermal.js`, state in the physics). `s.temp` 80 to 120 C, power falls
   from 108 C to 70 % at 120 C (`thermalDerate`); `s.exh` 300 to 900 C. Rpm past the
   redline (150 rpm dead zone) is `s.overrev` 0 to 1 toward `engine.blowRpm` (11,000 for
@@ -450,7 +453,7 @@ Done and tested:
   `mainMenuScreen` (tactical wireframe, telemetry card, audio chirps),
   `settingsScreen` (Auto vs Manual transmission toggle, Render Height target lines [240, 360, 480],
   Master, Engine, Effects, Ambience, Music channels with volume steps and mutes saved to localStorage),
-  `controlsScreen` briefing (R N 1..7 manual gear order, Tab tactical map, F refuel & repair, C 5 camera views),
+  `controlsScreen` briefing (N R 1..7 manual gear order, Tab tactical map, F refuel & repair, C 5 camera views),
   and updated `pauseScreen`.
 - Tactical map overlay (`src/ui/map.js`): Tab opens a full-screen tactical map of the whole world,
   pausing simulation while continuing to render the 3D scene behind a translucent dark veil. Tab or Esc

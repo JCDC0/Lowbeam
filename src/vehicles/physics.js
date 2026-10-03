@@ -144,6 +144,19 @@ function shiftTo(s, to, time) {
 }
 
 /**
+ * Moves the manual selector one rung along N, R, 1 ... n and returns the gear to shift
+ * to, or the current gear when that end of the box is already reached.
+ * @param {number} gear @param {number} dir @param {number} nG
+ */
+function stepGear(gear, dir, nG) {
+  const order = [0, -1];
+  for (let g = 1; g <= nG; g++) order.push(g);
+  const i = order.indexOf(gear);
+  if (i < 0) return gear;
+  return order[clamp(i + dir, 0, order.length - 1)];
+}
+
+/**
  * Engine rpm with the gearbox in neutral or the clutch out: the engine spins freely, so
  * it climbs at a rate set by its inertia and falls back to idle on its own friction.
  * A running limiter cut takes the throttle away here too, so free revving bounces off
@@ -235,11 +248,16 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   s.shiftTimer = Math.max(0, s.shiftTimer - dt);
 
   if (manual) {
-    // R, N, 1 ... n in order, at any speed. Nothing is refused: shift down too far and the
+    // N, R, 1 ... n in order, at any speed. Nothing is refused: shift down too far and the
     // engine pays for it (see thermal.js).
     if (s.shiftTimer <= 0) {
-      if (input.shiftUp && s.gear < nG) shiftTo(s, s.gear + 1, CLUTCH_TIME);
-      else if (input.shiftDown && s.gear > -1) shiftTo(s, s.gear - 1, CLUTCH_TIME);
+      if (input.shiftUp) {
+        const to = stepGear(s.gear, 1, nG);
+        if (to !== s.gear) shiftTo(s, to, CLUTCH_TIME);
+      } else if (input.shiftDown) {
+        const to = stepGear(s.gear, -1, nG);
+        if (to !== s.gear) shiftTo(s, to, CLUTCH_TIME);
+      }
     }
   } else {
     if (s.gear === 0) s.gear = 1;
