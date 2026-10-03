@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.10 (2026-10-03)
+
+Task briefs for Antigravity, ahead of the 0.2 to 0.5 work.
+
+- `docs/agents/tasks/`: A1 dashboard repair (mirrored image, hood blocking the view,
+  unreadable at 240p, the new gauge contract), A2 Tab map and controls (interact moves to
+  F), A6 garage for any number of cars, A3 and A4 vehicle bodies for rivals, traffic,
+  vans, trucks and a bus, A5 buildings and street furniture.
+- Plan ahead: 0.2.x driving model (rpm from a driven-wheel state, R N 1..7 gearbox,
+  temperature, money shift and limp mode, exhaust flames, tarmac grip, near chase view),
+  0.3.x a 6 km map with a city, an expressway with toll plazas, a mountain pass and a
+  forest section, 0.4.x traffic and rivals, 0.5.x quality pass.
+
 ## 0.1.9 (2026-10-02)
 
 Cockpit overhaul, manual transmission, arcade main menu and settings.

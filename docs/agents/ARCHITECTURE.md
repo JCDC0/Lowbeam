@@ -103,6 +103,7 @@ captures such as rendered audio.
 | `src/audio/env.js` | Pure: forest, town and lake amounts around a point, for the ambience |
 | `src/audio/songs.js` | Pure: the four tracks composed as note events (`composeTrack`, `TRACKS`) |
 | `src/audio/music.js` | `MusicPlayer`: the synthesizer, look-ahead scheduling, speed-driven layer mix, track rotation |
+| `docs/agents/tasks/` | Briefs for Antigravity: dashboard repair, Tab map, garage, vehicle bodies, buildings |
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
