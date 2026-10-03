@@ -22,17 +22,17 @@ function dragRun(spec) {
   return { quarter, top };
 }
 
-function cornering(spec, surface) {
+function cornering(spec, surface, v = 20, gear = 2) {
   const g = flat(surface);
   const s = createVehicleState(spec);
   placeVehicle(s, spec, 0, 0, 0, g);
-  s.vz = 20;
-  s.gear = 2;
+  s.vz = v;
+  s.gear = gear;
   let t = 0;
   let sum = 0;
   let n = 0;
   while (t < 6) {
-    const throttle = Math.min(1, Math.max(0, (20 - s.speed) * 0.4 + 0.15));
+    const throttle = Math.min(1, Math.max(0, (v - s.speed) * 0.4 + 0.15));
     stepVehicle(s, spec, { throttle, brake: 0, steer: t > 0.5 ? 0.5 : 0, handbrake: 0 }, g, DT);
     t += DT;
     if (t > 2.5) {
@@ -349,4 +349,20 @@ test('tarmac grip is high for the sports cars and gravel grip is untouched', () 
   const gravel = Object.fromEntries(CARS.map((c) => [c.id, cornering(c, 'gravel') / 9.81]));
   const was = { hayate: 0.8, rampart: 0.61, vespera: 0.59 };
   for (const id of Object.keys(was)) assert.ok(Math.abs(gravel[id] - was[id]) / was[id] < 0.03, `${id} gravel ${gravel[id]}`);
+});
+
+test('downforce adds grip with speed on tarmac and none on gravel', () => {
+  const vespera = carById('vespera');
+  const slow = cornering(vespera, 'asphalt', 22, 3) / 9.81;
+  const fast = cornering(vespera, 'asphalt', 50, 5) / 9.81;
+  assert.ok(fast > slow * 1.12, `slow ${slow.toFixed(2)} g, fast ${fast.toFixed(2)} g`);
+  const rampart = carById('rampart');
+  const rSlow = cornering(rampart, 'asphalt', 22, 3) / 9.81;
+  const rFast = cornering(rampart, 'asphalt', 50, 5) / 9.81;
+  assert.ok(fast / slow > rFast / rSlow, 'the exotic should gain more from downforce than the muscle car');
+  const bare = { ...vespera, aero: { front: 0, rear: 0 } };
+  const withWing = cornering(vespera, 'gravel', 30, 3);
+  const without = cornering(bare, 'gravel', 30, 3);
+  assert.ok(Math.abs(withWing - without) / without < 0.005, `gravel ${without} with downforce ${withWing}`);
+  assert.ok(cornering(vespera, 'asphalt', 50, 5) > cornering(bare, 'asphalt', 50, 5) * 1.1, 'no gain on tarmac');
 });

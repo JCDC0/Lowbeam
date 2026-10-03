@@ -72,7 +72,7 @@ captures such as rendered audio.
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
-| `src/render/cameras.js` | `CameraRig`: chase, hood, bumper, cockpit |
+| `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
 | `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
 | `src/world/layout.js` | Authored data: roads, stations, rally config, economy |
 | `src/world/heightfield.js` | Natural terrain (`baseHeight`), blur, the carved grid and triangle sampling |
@@ -110,7 +110,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.2.1)
+## Current state (0.2.3)
 
 Done and tested:
 
@@ -123,12 +123,16 @@ Done and tested:
 
   | Car | 0-100 | 1/4 mile | Top | 100-0 | Grip tarmac / gravel |
   |---|---|---|---|---|---|
-  | Hayate RS-4 | 4.64 s | 13.10 s | 203 km/h | 35.1 m | 1.34 g / 0.80 g |
-  | Rampart 440 | 3.74 s | 11.67 s | 245 km/h | 37.4 m | 1.20 g / 0.61 g |
-  | Vespera GT | 4.20 s | 12.13 s | 293 km/h | 31.7 m | 1.41 g / 0.59 g |
+  | Hayate RS-4 | 4.64 s | 13.10 s | 203 km/h | 34.7 m | 1.35 g / 0.80 g |
+  | Rampart 440 | 3.74 s | 11.67 s | 245 km/h | 37.2 m | 1.20 g / 0.61 g |
+  | Vespera GT | 4.20 s | 12.13 s | 293 km/h | 31.7 m | 1.46 g / 0.59 g |
 
   Tarmac grip was raised in 0.2.0 (`SURFACES.asphalt.mu` 1.0 to 1.28, concrete 1.24, brakes
-  stronger). Gravel, dirt, grass, sand are unchanged and a test guards gravel within 3 %.
+  stronger) and 0.2.3 added downforce (`spec.aero`, N per (m/s)^2 per axle, hard surfaces
+  only): the Vespera gains the most at speed, the Rampart the least. The tire curve shape
+  (`peak`, `shape`) was left alone on purpose: measured, it already lets a keyboard
+  player hold full lock at 1.1 to 1.3 g, and a sharper falloff only made that feel slipperier.
+  Gravel, dirt, grass, sand are unchanged and a test guards gravel within 3 %.
 - Drivetrain (`physics.js`). `gear` is -1 (R), 0 (N) or 1 to the top gear (Hayate and
   Rampart 5, Vespera 6). The engine is tied to the driven wheels, which can turn faster
   than the road passes under them: `s.slip` (m/s) is that extra wheel surface speed.
@@ -276,8 +280,10 @@ Done and tested:
   kiosks and pump islands are oriented boxes; the valley edge is a wall. Contacts push
   the car out and apply an impulse at the contact point (restitution 0.22, friction
   0.35), so glancing hits turn the car. Driving into the lake resets onto the road.
-- Cameras (`CameraRig`): chase (damped, leans toward the direction of travel in a
-  slide, FOV 62 to 78 with speed), hood, bumper and cockpit. The cockpit is a lofted
+- Cameras (`CameraRig`, C cycles, the choice is saved by name under `cameraView`): chase
+  (damped, leans toward the direction of travel in a slide, FOV 62 to 78 with speed), car
+  (the standard near view: 4.4 m back, 1.3 m up, straight behind the heading so the whole
+  car stays in frame, FOV 58 to 68), hood, bumper and cockpit. The cockpit is a lofted
   interior (`buildCockpit`): dash, binnacle, gauge face (dark until the cluster
   lands), steering wheel turning at 4.5 times the road wheel angle, A-pillars, header,
   liner, door panels, mirror, console and passenger seat. It rides in the leaning body.
@@ -311,7 +317,7 @@ Done and tested:
   `controlsScreen` briefing, and updated `pauseScreen`.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 59 passing (splines, ground and pads, stage grades, bars vs sim, braking,
+- Tests: 67 passing (splines, ground and pads, stage grades, bars vs sim, braking,
   reverse, jumps, lamp, tree, building and pump placement, wall and pole impacts,
   push-out, valley edge, boost lag, manifold vacuum, temperature ranges, shift light,
   species mix, the edge-belt flood fill, engine spectra and levels, the ambience map,

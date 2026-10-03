@@ -310,11 +310,15 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   const Nr = W - Nf;
   const sfF = surface(s.surfFront);
   const sfR = surface(s.surfRear);
+  // Downforce adds grip on hard surfaces only; on loose ground the tires sink in and it does little.
+  const v2 = speed * speed;
+  const downF = sfF.loose ? 0 : spec.aero.front * v2;
+  const downR = sfR.loose ? 0 : spec.aero.rear * v2;
   const muF = spec.tire.mu * sfF.mu * (sfF.loose ? spec.tire.looseGrip : 1);
   const hb = s.handbrake ? 0.5 : 1;
   const muR = spec.tire.mu * spec.tire.rearMu * sfR.mu * (sfR.loose ? spec.tire.looseGrip : 1);
-  const capF = muF * Nf;
-  const capR = muR * Nr;
+  const capF = muF * (Nf + downF);
+  const capR = muR * (Nr + downR);
 
   let FxF = 0;
   let FxR = 0;
@@ -386,8 +390,8 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
     const alphaR = Math.atan2(vLr, Math.max(Math.abs(vF), 1.5));
     const latCapF = Math.sqrt(Math.max(0, capF * capF - lateralUseF * lateralUseF));
     const latCapR = Math.sqrt(Math.max(0, capR * hb * (capR * hb) - lateralUseR * lateralUseR));
-    FyF = clamp(tireForce(alphaF, Nf, muF, sfF), -latCapF, latCapF);
-    FyR = clamp(tireForce(alphaR, Nr, muR * hb, sfR), -latCapR, latCapR);
+    FyF = clamp(tireForce(alphaF, Nf + downF, muF, sfF), -latCapF, latCapF);
+    FyR = clamp(tireForce(alphaR, Nr + downR, muR * hb, sfR), -latCapR, latCapR);
     s.slipFront = Math.abs(vLw);
     s.slipRear = Math.abs(vLr);
   } else {

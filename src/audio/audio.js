@@ -50,6 +50,7 @@ const MODES = {
 /** Low-pass cutoff and loudness of the vehicle sounds per camera. The cockpit is a closed room. */
 const VIEW = {
   chase: { lp: 9000, gain: 1 },
+  car: { lp: 9500, gain: 1 },
   hood: { lp: 3600, gain: 0.95 },
   bumper: { lp: 12000, gain: 1.05 },
   cockpit: { lp: 1700, gain: 0.82 },
@@ -384,7 +385,7 @@ export class AudioSystem {
     this.music?.setMode(mode, t);
   }
 
-  /** @param {'chase' | 'hood' | 'bumper' | 'cockpit'} view @param {number} [at] */
+  /** @param {'chase' | 'car' | 'hood' | 'bumper' | 'cockpit'} view @param {number} [at] */
   setView(view, at) {
     if (view === this.view || !this.built) {
       this.view = view;

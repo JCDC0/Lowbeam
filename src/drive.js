@@ -44,7 +44,7 @@ export class Drive {
     this.colliders = new Colliders(world.scatter.circles, world.scatter.boxes);
     this.ground = world.ground.fn;
     this.minimap = new Minimap(hud.mapSlot, world.ground);
-    this.rig = new CameraRig(stage.camera, store.get('camera', 0));
+    this.rig = new CameraRig(stage.camera, store.get('cameraView', 'chase'));
     /** @type {Car | null} */
     this.car = null;
     this.acc = 0;
@@ -168,7 +168,7 @@ export class Drive {
     if (input.pressed('pause')) return 'pause';
     if (input.pressed('camera')) {
       const v = this.rig.cycle();
-      store.set('camera', this.rig.mode);
+      store.set('cameraView', this.rig.view);
       this.toast(VIEW_NAMES[v], 1.2);
     }
 

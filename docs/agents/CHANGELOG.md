@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.3 (2026-10-03)
+
+Aero grip and the car camera.
+
+- `spec.aero = { front, rear }`: downforce in N per (m/s)^2, added to each axle's load on
+  hard surfaces only (gravel numbers are untouched). Vespera 0.5 and 0.9, Hayate 0.15 and
+  0.45, Rampart 0.05 and 0.15. Tarmac grip: 1.35, 1.20 and 1.46 g at the bench speed.
+- New `car` view next to `chase`: the standard near view from behind. The camera choice is
+  saved by name (`cameraView`) so reordering views never changes a saved choice.
+- Tests: 67 passing from the physics, engine, exhaust and gauge suites.
+
 ## 0.2.1 (2026-10-03)
 
 Exhaust flames, sparks, smoke and a damaged-engine sound.
