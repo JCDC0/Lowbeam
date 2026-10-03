@@ -28,9 +28,12 @@ Traffic and the street racers are in; challenging a rival and the rally come nex
 No build step and no bundler. The browser loads `src/` directly through the import map
 in `index.html`. Three.js r185 is vendored in `vendor/` (copied from
 `node_modules/three/build/`). `tools/devserver.mjs` serves with no-store caching and
-accepts `POST /__shot` to write a canvas capture to `tools/shots/` (git-ignored) and
-`POST /__file` (`{ name, ext, data }`, base64, ext one of wav, json, txt, png) for other
-captures such as rendered audio.
+answers `Range: bytes=` requests (`206` with `Content-Range`, `416` past the end,
+`Accept-Ranges: bytes` on every file), so a media element can seek inside a track. It
+exports `createServer` and only listens when it is the entry point, so a test can start
+it on a free port. It also accepts `POST /__shot` to write a canvas capture to
+`tools/shots/` (git-ignored) and `POST /__file` (`{ name, ext, data }`, base64, ext one of
+wav, json, txt, png) for other captures such as rendered audio.
 
 ## Conventions
 
@@ -138,7 +141,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.20)
+## Current state (0.4.21)
 
 Done and tested:
 
@@ -525,7 +528,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 125 passing (`npm test`), including `tests/map.test.mjs` for the tactical map and
+- Tests: 138 passing (`npm test`), including `tests/devserver.test.mjs` for the dev server's range
+  requests, `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.
 

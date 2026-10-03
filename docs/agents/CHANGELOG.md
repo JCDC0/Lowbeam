@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.21 (2026-10-03)
+
+The dev server answers range requests (A9 part 1).
+
+- `tools/devserver.mjs`: `Range: bytes=` is honored with `206 Partial Content`, `Content-Range`,
+  `Content-Length` and `Accept-Ranges: bytes` on every file, and `416` with `bytes */<size>` for a
+  range that starts past the end. All three forms work (`a-b`, `a-`, `-n` for the last n bytes), a
+  range that runs past the last byte is clamped, and an unparseable header falls back to the whole
+  file. The no-store caching is unchanged, so a media element can now seek inside a track.
+- `tools/devserver.mjs` exports `createServer` and the module only listens when it is the entry
+  point, so `tests/devserver.test.mjs` can start the server on a free port instead of taking 8040.
+- Tests: new `tests/devserver.test.mjs` with eight cases: `parseRange` over the three forms and a
+  past-the-end range, a `206` slice of `package.json`, an open ended range, a suffix range, a `416`
+  with the real length, a plain request still getting the whole file with `Accept-Ranges`, a ranged
+  request for a missing file still a `404`, and ROOT being the repo.
+
 ## 0.4.20 (2026-10-03)
 
 The recorded soundtrack: eight tracks that follow the driving.

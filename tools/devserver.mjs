@@ -31,6 +31,35 @@ const TYPES = {
   '.txt': 'text/plain; charset=utf-8',
 };
 const NO_STORE = { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0', Pragma: 'no-cache', Expires: '0' };
+const RANGES = { 'Accept-Ranges': 'bytes' };
+
+/**
+ * Reads a `Range: bytes=` header against a file of `size` bytes.
+ * @param {string} header @param {number} size
+ * @returns {{ start: number, end: number } | null | undefined} the slice, null when the
+ *   range cannot be satisfied (416), or undefined when there is no usable range and the
+ *   whole file should be sent.
+ */
+export function parseRange(header, size) {
+  const m = /^bytes=(\d*)-(\d*)$/.exec((header || '').trim());
+  if (!m) return undefined;
+  const [, from, to] = m;
+  if (from === '' && to === '') return undefined;
+  let start;
+  let end;
+  if (from === '') {
+    // A suffix range asks for the last n bytes.
+    const n = Number(to);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    start = Math.max(0, size - n);
+    end = size - 1;
+  } else {
+    start = Number(from);
+    end = to === '' ? size - 1 : Math.min(Number(to), size - 1);
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start >= size || start > end) return null;
+  return { start, end };
+}
 
 function shot(req, res) {
   let body = '';
@@ -77,8 +106,9 @@ function capture(req, res) {
   });
 }
 
-http
-  .createServer((req, res) => {
+/** Builds the static server without listening, so a test can start it on a free port. */
+export function createServer() {
+  return http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (req.method === 'POST' && url.pathname === '/__shot') return shot(req, res);
     if (req.method === 'POST' && url.pathname === '/__file') return capture(req, res);
@@ -94,8 +124,34 @@ http
         res.writeHead(404, NO_STORE).end('not found');
         return;
       }
-      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', ...NO_STORE });
-      res.end(data);
+      const type = TYPES[path.extname(file)] || 'application/octet-stream';
+      const slice = parseRange(req.headers.range, data.length);
+      if (slice === null) {
+        res.writeHead(416, { 'Content-Range': `bytes */${data.length}`, ...RANGES, ...NO_STORE }).end();
+        return;
+      }
+      if (slice) {
+        const body = data.subarray(slice.start, slice.end + 1);
+        res.writeHead(206, {
+          'Content-Type': type,
+          'Content-Range': `bytes ${slice.start}-${slice.end}/${data.length}`,
+          'Content-Length': String(body.length),
+          ...RANGES,
+          ...NO_STORE,
+        });
+        res.end(req.method === 'HEAD' ? undefined : body);
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': type, 'Content-Length': String(data.length), ...RANGES, ...NO_STORE });
+      res.end(req.method === 'HEAD' ? undefined : data);
     });
-  })
-  .listen(PORT, '127.0.0.1', () => console.log(`LOWBEAM :: serving ${ROOT} at http://localhost:${PORT}  (no-store)`));
+  });
+}
+
+// Only listen when this file is the entry point, so a test can import createServer
+// without taking the port.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  createServer().listen(PORT, '127.0.0.1', () => {
+    console.log(`LOWBEAM :: serving ${ROOT} at http://localhost:${PORT}  (no-store, ranges)`);
+  });
+}
