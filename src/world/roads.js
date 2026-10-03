@@ -62,6 +62,15 @@ export class Road {
     return this.h[i] + (this.h[p.wrapIndex(i + 1)] - this.h[i]) * f;
   }
 
+  hwAt(s) {
+    if (!this.def.taper) return this.hw;
+    const { from, to, s0, s1 } = this.def.taper;
+    if (s <= s0) return from;
+    if (s >= s1) return to;
+    const t = (s - s0) / (s1 - s0);
+    return from + (to - from) * (3 * t * t - 2 * t * t * t);
+  }
+
   /** Grade between two arc lengths, as rise over run. */
   grade(s0, s1) {
     return (this.heightAt(s1) - this.heightAt(s0)) / Math.max(1e-3, Math.abs(s1 - s0));
@@ -197,9 +206,40 @@ export class RoadNetwork {
     let any = false;
     for (let i = 0; i < n; i++) {
       if (this.query(p.x[i], p.z[i], hit, 1.5, r.priority) && hit.road !== r) {
+        if (hit.road.def.cls === 'ramp') continue;
         delta[i] = hit.road.heightAt(hit.s) - r.h[i];
         fixed[i] = 1;
         any = true;
+      }
+    }
+    if (r.def.link) {
+      for (const end of [r.def.link.from, r.def.link.to]) {
+        const target = this.byId.get(end.id);
+        if (!target) continue;
+        const targetH = target.heightAt(end.s);
+        const pt = target.path.sample(end.s);
+        for (let i = 0; i < n; i++) {
+          if (Math.hypot(p.x[i] - pt.x, p.z[i] - pt.z) < 14) {
+            delta[i] = targetH - r.h[i];
+            fixed[i] = 1;
+            any = true;
+          }
+        }
+      }
+    }
+    if (r.def.gore) {
+      const carriage = this.byId.get(r.def.gore.carriageId);
+      if (carriage) {
+        for (let i = 0; i < n; i++) {
+          const s = i * p.step;
+          const hitC = carriage.path.nearest(p.x[i], p.z[i]);
+          const gap = Math.abs(hitC.d) - carriage.hw - r.hw;
+          if (gap < 4.0 && (r.def.gore.kind === 'exit' ? s < 60 : s > p.length - 60)) {
+            delta[i] = carriage.heightAt(hitC.s) - r.h[i];
+            fixed[i] = 1;
+            any = true;
+          }
+        }
       }
     }
     if (!any) return;
@@ -298,11 +338,13 @@ export class RoadNetwork {
       if (best[r.index] === Infinity) continue;
       const h = r.path.refine(bestI[r.index], x, z, this._hit);
       const ad = Math.abs(h.d);
-      if (ad > r.hw + SKIRT + extra) continue;
+      const hw = r.hwAt(h.s);
+      if (ad > hw + SKIRT + extra) continue;
       const deck = r.lifted && r.liftAt(h.s) > ELEVATED;
       if (deck && r.heightAt(h.s) > y + DECK_REACH) continue;
-      // A deck beats the ground under it; among equals the higher priority, then the closer, wins.
-      const better = !found || (deck && !foundDeck) || (deck === foundDeck && (r.priority > found.priority || (r.priority === found.priority && ad < Math.abs(foundD))));
+      const onR = ad <= hw;
+      const onFound = found ? Math.abs(foundD) <= found.hwAt(foundS) : false;
+      const better = !found || (deck && !foundDeck) || (deck === foundDeck && (onR !== onFound ? onR : (r.priority > found.priority || (r.priority === found.priority && ad < Math.abs(foundD)))));
       if (better) {
         found = r;
         foundD = h.d;
@@ -311,7 +353,7 @@ export class RoadNetwork {
       }
     }
     if (!found) return false;
-    const edge = Math.abs(foundD) - found.hw;
+    const edge = Math.abs(foundD) - found.hwAt(foundS);
     out.road = found;
     out.s = foundS;
     out.d = foundD;

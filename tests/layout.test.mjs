@@ -88,6 +88,56 @@ test('roads only cross each other at overpasses', () => {
   assert.deepEqual(flat, [], `roads cross on the ground: ${flat.join('; ')}`);
 });
 
+test('no grade breaks or lips at road joins', () => {
+  let maxLip = 0;
+  let maxGradeBreak = 0;
+  for (const r of g.roads.roads) {
+    if (r.def.link) {
+      for (const [targetEnd, sRamp] of [[r.def.link.from, 0], [r.def.link.to, r.path.length]]) {
+        const target = g.roads.byId.get(targetEnd.id);
+        if (!target) continue;
+        const hRamp = r.heightAt(sRamp);
+        const hTarget = target.heightAt(targetEnd.s);
+        const lip = Math.abs(hRamp - hTarget);
+        maxLip = Math.max(maxLip, lip);
+        const gRamp = sRamp === 0 ? r.grade(0, 6) : r.grade(r.path.length - 6, r.path.length);
+        const gTarget = target.grade(target.path.wrapS(targetEnd.s - 3), target.path.wrapS(targetEnd.s + 3));
+        maxGradeBreak = Math.max(maxGradeBreak, Math.abs(gRamp - gTarget));
+      }
+    }
+  }
+  for (const [aId, sA, bId, sB] of [
+    ['r18', 0, 'k-ns5', 0],
+    ['west', g.roads.byId.get('west').path.length, 'k-ew3', 140],
+    ['east', 0, 'k-ew3', g.roads.byId.get('k-ew3').path.length - 140],
+    ['harbor', 0, 'k-ns5', g.roads.byId.get('k-ns5').path.length],
+  ]) {
+    const a = g.roads.byId.get(aId), b = g.roads.byId.get(bId);
+    maxLip = Math.max(maxLip, Math.abs(a.heightAt(sA) - b.heightAt(sB)));
+  }
+  assert.ok(maxLip < 0.05, `join lip exceeds 5 cm: ${(maxLip * 100).toFixed(1)} cm`);
+  assert.ok(maxGradeBreak < 0.06, `grade break exceeds 6%: ${(maxGradeBreak * 100).toFixed(1)}%`);
+});
+
+test('ramps taper into Route 1 with gores and matching heights', () => {
+  const ramps = g.roads.roads.filter((r) => r.def.cls === 'ramp');
+  assert.equal(ramps.length, 16);
+  for (const ramp of ramps) {
+    assert.ok(ramp.def.gore, `ramp ${ramp.id} missing gore definition`);
+    const carriage = g.roads.byId.get(ramp.def.gore.carriageId);
+    assert.ok(carriage, `carriageway missing for ${ramp.id}`);
+    const exit = ramp.def.gore.kind === 'exit';
+    const sRamp = exit ? 0 : ramp.path.length;
+    const sCarriage = ramp.def.gore.carriageS;
+    const diffH = Math.abs(ramp.heightAt(sRamp) - carriage.heightAt(sCarriage));
+    assert.ok(diffH < 0.02, `${ramp.id} height diff at gore is ${(diffH * 100).toFixed(1)} cm`);
+    const pRamp = ramp.path.sample(sRamp);
+    const hit = carriage.path.nearest(pRamp.x, pRamp.z);
+    const innerDist = Math.abs(hit.d) - ramp.hw;
+    assert.ok(Math.abs(innerDist - carriage.hw) < 0.1, `${ramp.id} inner edge offset ${innerDist.toFixed(2)} m does not touch carriageway ${carriage.hw} m`);
+  }
+});
+
 test('the toll plazas sit on both carriageways of Route 1', () => {
   assert.equal(TOLLS.length, 3);
   for (const t of TOLLS) {

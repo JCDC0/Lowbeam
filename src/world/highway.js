@@ -41,19 +41,30 @@ export function placeHighway(ground, boxes, circles, lights) {
   const p = fwd.path;
   const q = { x: 0, z: 0, tx: 0, tz: 1 };
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
-  // Ramp centre lines, coarsely, to keep the verge open where one meets the loop.
-  const ramps = ground.roads.roads.filter((r) => r.def.cls === 'ramp').map((r) => {
-    const pts = [];
-    for (let i = 0; i < r.path.n; i += 4) pts.push([r.path.x[i], r.path.z[i]]);
-    return pts;
-  });
-  const nearRamp = (x, z, r) => ramps.some((pts) => pts.some((a) => (a[0] - x) ** 2 + (a[1] - z) ** 2 < r * r));
+  const rampOpen = (roadId, s) => {
+    const road = ground.roads.byId.get(roadId);
+    if (!road) return false;
+    const p = road.path;
+    const ws = p.wrapS(s);
+    for (const r of ground.roads.roads) {
+      if (!r.def.gore || r.def.gore.carriageId !== roadId) continue;
+      const g = r.def.gore;
+      const noseDist = 60;
+      if (g.kind === 'exit') {
+        const d = p.wrapS(ws - g.carriageS);
+        if (d >= 0 && d <= noseDist) return true;
+      } else {
+        const d = p.wrapS(g.carriageS - ws);
+        if (d >= 0 && d <= noseDist) return true;
+      }
+    }
+    return false;
+  };
 
   /** @type {Plaza[]} */
   const plazas = TOLLS.map((toll) => {
     const h = fwd.path.nearest(toll.x, toll.z);
     fwd.path.sample(h.s, q);
-    // The plaza sits on the median line, half a carriageway right of the forward road.
     const x = q.x - q.tz * half;
     const z = q.z + q.tx * half;
     const lanes = [];
@@ -84,7 +95,6 @@ export function placeHighway(ground, boxes, circles, lights) {
     const y = fwd.heightAt(mid);
     const chunk = chunkOf(mid);
 
-    // Median: the line half a carriageway to the right of the forward road.
     const mx = q.x - q.tz * half;
     const mz = q.z + q.tx * half;
     if (!inPlaza(mx, mz, PLAZA.reach)) {
@@ -92,20 +102,18 @@ export function placeHighway(ground, boxes, circles, lights) {
       boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: SEGMENT / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
     }
 
-    // Outer rails of the forward road (left) and, mirrored, of the reverse road.
     const edge = hw + RAIL.offset;
     const lx = q.tz;
     const lz = -q.tx;
     const rx = q.x + lx * edge;
     const rz = q.z + lz * edge;
-    railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, inPlaza(rx, rz, PLAZA.openRail) || nearRamp(rx, rz, 20));
+    railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, inPlaza(rx, rz, PLAZA.openRail) || rampOpen('c1-f', mid));
     const rp = rev.path.nearest(mx - q.tz * half, mz + q.tx * half);
     rev.path.sample(rp.s, q);
     const rEdge = hw + RAIL.offset;
-    // The reverse road's left is its outer edge: (tz, -tx) of its own tangent.
     const ox = q.x + q.tz * rEdge;
     const oz = q.z - q.tx * rEdge;
-    railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, inPlaza(ox, oz, PLAZA.openRail) || nearRamp(ox, oz, 20));
+    railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, inPlaza(ox, oz, PLAZA.openRail) || rampOpen('c1-r', rp.s));
   }
 
   for (const pl of plazas) {

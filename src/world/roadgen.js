@@ -136,14 +136,14 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
   const out = [];
   const aHit = arterial.nearest(cross[0], cross[1]);
   const at = arterial.sample(aHit.s);
-  const nA = [at.tz, -at.tx];
-  const d0 = carriageHw + hw - 1.4;
+  const d0 = carriageHw + hw;
   for (const [tag, C] of /** @type {const} */ ([['f', fwd], ['r', rev]])) {
     const cHit = C.nearest(cross[0], cross[1]);
     const ct = C.sample(cHit.s);
     const left = [ct.tz, -ct.tx];
     const towardLeft = at.tx * left[0] + at.tz * left[1] > 0 ? 1 : -1;
     const T = arterial.sample(aHit.s + towardLeft * reach);
+    const nT = [T.tz, -T.tx];
     const off = (s, d) => {
       const p = C.sample(C.wrapS(s));
       return [p.x + p.tz * d, p.z - p.tx * d];
@@ -152,7 +152,7 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
       const p = C.sample(C.wrapS(s));
       return [p.tx, p.tz];
     };
-    const sideOf = (pt) => Math.sign((pt[0] - T.x) * nA[0] + (pt[1] - T.z) * nA[1]) || 1;
+    const sideOf = (pt) => Math.sign((pt[0] - T.x) * nT[0] + (pt[1] - T.z) * nT[1]) || 1;
 
     const exitS0 = cHit.s - before;
     const exitPts = [];
@@ -161,13 +161,14 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
       exitPts.push(off(exitS0 + run * t, d0 + (24 - d0) * t * t));
     }
     const eEnd = exitPts[exitPts.length - 1];
-    const arrive = [-sideOf(eEnd) * nA[0], -sideOf(eEnd) * nA[1]];
+    const arrive = [-sideOf(eEnd) * nT[0], -sideOf(eEnd) * nT[1]];
     const exitTail = hermite(eEnd, tan(exitS0 + run), [T.x, T.z], arrive, 8);
     const carriageId = tag === 'f' ? ids.fwd : ids.rev;
     const joinsAt = { id: ids.arterial, s: arterial.wrapS(aHit.s + towardLeft * reach) };
     out.push(/** @type {RoadDef} */ ({
       ...base, id: `${id}-${tag}x`, name: base.name, hw, oneway: true, points: [...exitPts, ...exitTail, [T.x, T.z]],
       link: { from: { id: carriageId, s: C.wrapS(exitS0) }, to: joinsAt },
+      gore: { carriageId, carriageS: exitS0, run, kind: 'exit', carriageHw, rampHw: hw },
     }));
 
     const entryS1 = cHit.s + before;
@@ -177,11 +178,12 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
       entryPts.push(off(entryS1 - run * t, d0 + (24 - d0) * t * t));
     }
     const nStart = entryPts[0];
-    const depart = [sideOf(nStart) * nA[0], sideOf(nStart) * nA[1]];
+    const depart = [sideOf(nStart) * nT[0], sideOf(nStart) * nT[1]];
     const entryHead = hermite([T.x, T.z], depart, nStart, tan(entryS1 - run), 8);
     out.push(/** @type {RoadDef} */ ({
       ...base, id: `${id}-${tag}n`, name: base.name, hw, oneway: true, points: [[T.x, T.z], ...entryHead, ...entryPts],
       link: { from: joinsAt, to: { id: carriageId, s: C.wrapS(entryS1) } },
+      gore: { carriageId, carriageS: entryS1, run, kind: 'entry', carriageHw, rampHw: hw },
     }));
   }
   return out;

@@ -57,6 +57,15 @@ for (let a = 0; a < net.roads.length; a++) {
   for (let b = a + 1; b < net.roads.length; b++) {
     const ra = net.roads[a], rb = net.roads[b];
     if (/^k-/.test(ra.id) && /^k-/.test(rb.id)) continue;
+    const linked = (ra.def.link && (ra.def.link.from.id === rb.id || ra.def.link.to.id === rb.id)) ||
+      (rb.def.link && (rb.def.link.from.id === ra.id || rb.def.link.to.id === ra.id));
+    if (linked) continue;
+    const pAn = ra.path.n - 1, pBn = rb.path.n - 1;
+    const sharedNode = Math.hypot(ra.path.x[0] - rb.path.x[0], ra.path.z[0] - rb.path.z[0]) < 2 ||
+      Math.hypot(ra.path.x[pAn] - rb.path.x[0], ra.path.z[pAn] - rb.path.z[0]) < 2 ||
+      Math.hypot(ra.path.x[0] - rb.path.x[pBn], ra.path.z[0] - rb.path.z[pBn]) < 2 ||
+      Math.hypot(ra.path.x[pAn] - rb.path.x[pBn], ra.path.z[pAn] - rb.path.z[pBn]) < 2;
+    if (sharedNode) continue;
     for (let i = 0; i + 1 < segs[a].length; i++) {
       for (let j = 0; j + 1 < segs[b].length; j++) {
         if (Math.abs(segs[a][i][0] - segs[b][j][0]) > 40 || Math.abs(segs[a][i][1] - segs[b][j][1]) > 40) continue;
@@ -73,3 +82,31 @@ for (let a = 0; a < net.roads.length; a++) {
   }
 }
 for (const [key, e] of found) console.log(`cross ${key}: ${e.n}x${e.lifted ? `, ${e.lifted} on a deck` : ''} near ${e.at.map((v) => v.toFixed(0)).join(', ')}`);
+
+let maxLip = 0;
+let maxGrade = 0;
+for (const r of net.roads) {
+  if (r.def.link) {
+    for (const [targetEnd, sRamp] of [[r.def.link.from, 0], [r.def.link.to, r.path.length]]) {
+      const target = net.byId.get(targetEnd.id);
+      if (!target) continue;
+      const hRamp = r.heightAt(sRamp);
+      const hTarget = target.heightAt(targetEnd.s);
+      maxLip = Math.max(maxLip, Math.abs(hRamp - hTarget));
+      const gRamp = sRamp === 0 ? r.grade(0, 6) : r.grade(r.path.length - 6, r.path.length);
+      const gTarget = target.grade(target.path.wrapS(targetEnd.s - 3), target.path.wrapS(targetEnd.s + 3));
+      maxGrade = Math.max(maxGrade, Math.abs(gRamp - gTarget));
+    }
+  }
+}
+for (const [aId, sA, bId, sB] of [
+  ['r18', 0, 'k-ns5', 0],
+  ['west', net.byId.get('west').path.length, 'k-ew3', 140],
+  ['east', 0, 'k-ew3', net.byId.get('k-ew3').path.length - 140],
+  ['harbor', 0, 'k-ns5', net.byId.get('k-ns5').path.length],
+]) {
+  const a = net.byId.get(aId), b = net.byId.get(bId);
+  const lip = Math.abs(a.heightAt(sA) - b.heightAt(sB));
+  maxLip = Math.max(maxLip, lip);
+}
+console.log(`joins: max lip ${(maxLip * 100).toFixed(1)} cm, max grade break ${(maxGrade * 100).toFixed(1)}%`);

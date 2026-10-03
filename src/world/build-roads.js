@@ -9,29 +9,42 @@
 import * as THREE from 'three';
 import { psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
-import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture } from '../render/textures.js';
+import { MeshBuilder } from '../render/builder.js';
+import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture, makeCanvas, canvasTexture } from '../render/textures.js';
 import { SKIRT, SINK } from './roads.js';
 
-/** Meters of road per texture tile. */
 export const TILE = 12;
-
-/** Samples per road chunk: 90 samples of 2 m, so each mesh is about 180 m long and can be culled. */
 const CHUNK_ROWS = 90;
 
-/**
- * The ribbon for samples r0 to r1 (inclusive) of a road.
- * @param {import('./roads.js').Road} road @param {number} r0 @param {number} r1
- */
+function goreTexture() {
+  const c = makeCanvas(64, 64);
+  const g = c.getContext('2d');
+  g.fillStyle = '#4e5056';
+  g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = '#f0eee6';
+  g.lineWidth = 4;
+  g.beginPath();
+  for (let y = -32; y < 96; y += 16) {
+    g.moveTo(4, y);
+    g.lineTo(32, y + 16);
+    g.lineTo(60, y);
+  }
+  g.stroke();
+  g.fillStyle = '#f0eee6';
+  g.fillRect(0, 0, 4, 64);
+  g.fillRect(60, 0, 4, 64);
+  return canvasTexture(c, { repeat: true, mips: true });
+}
+
 function ribbon(road, r0, r1) {
   const p = road.path;
-  const hw = road.hw;
   const lift = 0.012 * road.priority;
-  const cols = [-(hw + SKIRT), -hw, -hw / 2, 0, hw / 2, hw, hw + SKIRT];
-  const drop = [SINK - 0.02, 0, 0, 0, 0, 0, SINK - 0.02];
   const rows = r1 - r0 + 1;
-  const nc = cols.length;
+  const nc = 7;
   const pos = new Float32Array(rows * nc * 3);
   const uv = new Float32Array(rows * nc * 2);
+  const isRamp = road.def.cls === 'ramp';
+  const hasGore = !!road.def.gore;
   for (let r = 0; r < rows; r++) {
     const i = (r0 + r) % p.n;
     const s = (r0 + r) * p.step;
@@ -40,6 +53,47 @@ function ribbon(road, r0, r1) {
     const lx = p.tz[i];
     const lz = -p.tx[i];
     const h = road.h[i] + lift;
+    const hw = road.hwAt(s);
+    let skirtL = SKIRT;
+    let skirtR = SKIRT;
+    let dropL = SINK - 0.02;
+    let dropR = SINK - 0.02;
+    if (hasGore) {
+      const g = road.def.gore;
+      const nearC1 = g.kind === 'exit' ? s < 58 : s > p.length - 58;
+      if (nearC1) {
+        skirtL = 0;
+        dropL = 0;
+      }
+    }
+    if (isRamp) {
+      if (s < 12 || s > p.length - 12) {
+        skirtL = 0;
+        skirtR = 0;
+        dropL = 0;
+        dropR = 0;
+      }
+    }
+    if (road.def.cls === 'street' || road.def.cls === 'arterial') {
+      if (x > -860 && x < 860 && z > 750 && z < 1870) {
+        for (const ew of [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800]) {
+          if (Math.abs(z - ew) < hw + 0.5) {
+            for (const ns of [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700]) {
+              if (Math.abs(x - ns) < hw + 0.5) {
+                dropL = 0;
+                dropR = 0;
+                skirtL = 0;
+                skirtR = 0;
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+    const cols = [-(hw + skirtL), -hw, -hw / 2, 0, hw / 2, hw, hw + skirtR];
+    const drop = [dropL, 0, 0, 0, 0, 0, dropR];
     for (let c = 0; c < nc; c++) {
       const k = r * nc + c;
       const d = cols[c];
@@ -73,10 +127,128 @@ function ribbon(road, r0, r1) {
   return geo;
 }
 
-/**
- * A pad: a grid of concrete at pad height with a short curb face on every side.
- * @param {import('./ground.js').Pad} pad
- */
+function buildGores(ground) {
+  const b = new MeshBuilder();
+  const L = 52;
+  const N = 18;
+  for (const road of ground.roads.roads) {
+    if (!road.def.gore) continue;
+    const g = road.def.gore;
+    const carriage = ground.roads.byId.get(g.carriageId);
+    if (!carriage) continue;
+    const exit = g.kind === 'exit';
+    const ptsC = [];
+    const ptsR = [];
+    for (let k = 0; k <= N; k++) {
+      const t = k / N;
+      const sC = exit ? carriage.path.wrapS(g.carriageS + t * L) : carriage.path.wrapS(g.carriageS - (1 - t) * L);
+      const sR = exit ? t * L : road.path.length - (1 - t) * L;
+      const pC = carriage.path.sample(sC);
+      const pR = road.path.sample(sR);
+      const hwC = carriage.hw;
+      const hwR = road.hw;
+      const xC = pC.x + pC.tz * hwC;
+      const zC = pC.z - pC.tx * hwC;
+      const yC = carriage.heightAt(sC) + 0.012 * carriage.priority;
+      const xR = pR.x - pR.tz * hwR;
+      const zR = pR.z + pR.tx * hwR;
+      const yR = road.heightAt(sR) + 0.012 * road.priority;
+      ptsC.push([xC, yC, zC]);
+      ptsR.push([xR, yR, zR]);
+    }
+    for (let k = 0; k < N; k++) {
+      const c0 = ptsC[k];
+      const c1 = ptsC[k + 1];
+      const r0 = ptsR[k];
+      const r1 = ptsR[k + 1];
+      const v0 = (k / N) * (L / 8);
+      const v1 = ((k + 1) / N) * (L / 8);
+      b.quad('gore', c0, r0, r1, c1, [0, v0, 1, v1]);
+    }
+  }
+  return b;
+}
+
+function buildCityCrossingsAndCurbs(ground) {
+  const b = new MeshBuilder();
+  const GRID_EW = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
+  const GRID_NS = [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700];
+  const crossings = [];
+  for (const z of GRID_EW) {
+    for (const x of GRID_NS) {
+      crossings.push([x, z]);
+    }
+  }
+  const hw = 4.6;
+  const R = 3.0;
+  const H = 0.16;
+
+  for (const [cx, cz] of crossings) {
+    const y = ground.at(cx, cz).h + 0.005;
+    const u0 = (cx - hw) / 12;
+    const u1 = (cx + hw) / 12;
+    const v0 = (cz - hw) / 12;
+    const v1 = (cz + hw) / 12;
+    b.quad('asphalt', [cx - hw, y, cz - hw], [cx + hw, y, cz - hw], [cx + hw, y, cz + hw], [cx - hw, y, cz + hw], [u0, v0, u1, v1]);
+
+    for (const sx of [-1, 1]) {
+      for (const sz of [-1, 1]) {
+        const ox = cx + sx * (hw + R);
+        const oz = cz + sz * (hw + R);
+        const steps = 4;
+        const ptsArc = [];
+        for (let j = 0; j <= steps; j++) {
+          const a = (j / steps) * (Math.PI / 2);
+          const angle = sx > 0
+            ? (sz > 0 ? Math.PI + a : Math.PI / 2 + a)
+            : (sz > 0 ? (3 * Math.PI) / 2 + a : a);
+          const px = ox + Math.cos(angle) * R;
+          const pz = oz + Math.sin(angle) * R;
+          ptsArc.push([px, pz]);
+        }
+        for (let j = 0; j < steps; j++) {
+          const p0 = ptsArc[j];
+          const p1 = ptsArc[j + 1];
+          b.quad('curb', [p0[0], y, p0[1]], [p1[0], y, p1[1]], [p1[0], y + H, p1[1]], [p0[0], y + H, p0[1]], [0, 0, 0.2, 0.16]);
+          b.quad('curb', [p0[0], y + H, p0[1]], [p1[0], y + H, p1[1]], [ox, y + H, oz], [ox, y + H, oz], [p0[0] / 4, p0[1] / 4, p1[0] / 4, p1[1] / 4]);
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < GRID_NS.length - 1; i++) {
+    for (let j = 0; j < GRID_EW.length; j++) {
+      const x0 = GRID_NS[i] + hw + R;
+      const x1 = GRID_NS[i + 1] - (hw + R);
+      const cz = GRID_EW[j];
+      const y = ground.at((x0 + x1) / 2, cz).h + 0.005;
+      for (const sz of [-1, 1]) {
+        const zRoad = cz + sz * hw;
+        const zWalk = cz + sz * (hw + 2.4);
+        b.quad('curb', [x0, y, zRoad], [x1, y, zRoad], [x1, y + H, zRoad], [x0, y + H, zRoad], [0, 0, (x1 - x0) / 4, 0.16]);
+        b.quad('curb', [x0, y + H, zRoad], [x1, y + H, zRoad], [x1, y + H, zWalk], [x0, y + H, zWalk], [x0 / 4, zRoad / 4, x1 / 4, zWalk / 4]);
+      }
+    }
+  }
+
+  for (let i = 0; i < GRID_NS.length; i++) {
+    for (let j = 0; j < GRID_EW.length - 1; j++) {
+      const z0 = GRID_EW[j] + hw + R;
+      const z1 = GRID_EW[j + 1] - (hw + R);
+      const cx = GRID_NS[i];
+      const y = ground.at(cx, (z0 + z1) / 2).h + 0.005;
+      for (const sx of [-1, 1]) {
+        const xRoad = cx + sx * hw;
+        const xWalk = cx + sx * (hw + 2.4);
+        b.quad('curb', [xRoad, y, z0], [xRoad, y, z1], [xRoad, y + H, z1], [xRoad, y + H, z0], [0, 0, (z1 - z0) / 4, 0.16]);
+        b.quad('curb', [xRoad, y + H, z0], [xRoad, y + H, z1], [xWalk, y + H, z1], [xWalk, y + H, z0], [xRoad / 4, z0 / 4, xWalk / 4, z1 / 4]);
+      }
+    }
+  }
+
+  return b;
+}
+
 function padGeometry(pad) {
   const step = 3;
   const nu = Math.ceil((pad.hw * 2) / step) + 1;
@@ -95,7 +267,6 @@ function padGeometry(pad) {
       uv.push(x / 4, z / 4);
     }
   }
-  // Winding depends on whether (u, v) is a right- or left-handed frame on the ground.
   const flip = pad.ux * pad.vz - pad.uz * pad.vx > 0;
   for (let j = 0; j < nv - 1; j++) {
     for (let i = 0; i < nu - 1; i++) {
@@ -132,17 +303,12 @@ function padGeometry(pad) {
   return geo;
 }
 
-/**
- * @param {import('./ground.js').Ground} ground
- * @param {import('../render/bake.js').LightGrid} grid
- */
 export function buildRoads(ground, grid) {
   const shoulder = psxLambert({ map: shoulderTexture(), baked: true });
   const mats = {
     asphalt: psxLambert({ map: asphaltTexture(), baked: true }),
     gravel: psxLambert({ map: gravelTexture(), baked: true }),
   };
-  /** One-way roads get lane lines; ramps get edge lines only. */
   const laneMats = new Map();
   const surfaceOf = (road) => {
     if (road.surface !== 'asphalt' || !road.def.lanes || road.def.lines === 'center' || !road.def.lines) return mats[road.surface] || mats.asphalt;
@@ -152,7 +318,6 @@ export function buildRoads(ground, grid) {
   };
   const group = new THREE.Group();
   group.name = 'roads';
-  /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
   const chunks = [];
   group.userData.chunks = chunks;
   for (const road of ground.roads.roads) {
@@ -168,11 +333,29 @@ export function buildRoads(ground, grid) {
       chunks.push({ mesh, x: p.x[mid % p.n], z: p.z[mid % p.n] });
     }
   }
-  const concrete = psxLambert({ map: concreteTexture(), baked: true });
+  const concrete = psxLambert({ map: concreteTexture(), baked: true, side: THREE.DoubleSide });
   for (const pad of ground.pads) {
     const mesh = new THREE.Mesh(bakeGeometry(padGeometry(pad), grid, { wrap: 0.6 }), concrete);
     mesh.name = `pad-${pad.id}`;
     group.add(mesh);
   }
+
+  const goreMeshBuilder = buildGores(ground);
+  const goreData = goreMeshBuilder.geometry(['gore']);
+  if (goreData.geometry.attributes.position && goreData.geometry.attributes.position.count > 0) {
+    const goreMat = psxLambert({ map: goreTexture(), baked: true, side: THREE.DoubleSide });
+    const goreMesh = new THREE.Mesh(bakeGeometry(goreData.geometry, grid, { wrap: 0.6 }), goreMat);
+    goreMesh.name = 'road-gores';
+    group.add(goreMesh);
+  }
+
+  const cityCrossingsBuilder = buildCityCrossingsAndCurbs(ground);
+  const cityData = cityCrossingsBuilder.geometry(['asphalt', 'curb']);
+  if (cityData.geometry.attributes.position && cityData.geometry.attributes.position.count > 0) {
+    const cityMesh = new THREE.Mesh(bakeGeometry(cityData.geometry, grid, { wrap: 0.6 }), [mats.asphalt, concrete]);
+    cityMesh.name = 'city-crossings-and-curbs';
+    group.add(cityMesh);
+  }
+
   return group;
 }

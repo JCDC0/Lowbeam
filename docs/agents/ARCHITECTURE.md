@@ -135,7 +135,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.11)
+## Current state (0.4.12)
 
 Done and tested:
 
@@ -144,10 +144,12 @@ Done and tested:
   3 %, a concrete median barrier, guard rails on both outer edges (open at ramps, forecourts
   and plazas), three toll plazas with speed-trap gates. Four avenues (Route 18 north, Harbor Ave
   south, West Ave, East Ave) pass over it on overpasses with a diamond interchange each
-  (four ground-level ramps). Kuro Pass: 6.4 km of 2-lane asphalt from the forest village
-  along the northern ridge and down the western mountain, climbing to 254 m at up to 8.5 %,
-  on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks), four
-  gas stations (Harbor, Route 1 east, Mori, Toge). Total 70 km of road. Terrain: the loop
+  (four ground-level ramps). Ramps taper flush into Route 1 with chevron gore meshes and matching
+  heights; avenues taper width to meet the downtown grid with zero lip; city intersections feature
+  continuous crossing patches and rounded corner curbs with sidewalks. Kuro Pass: 6.4 km of 2-lane
+  asphalt from the forest village along the northern ridge and down the western mountain, climbing
+  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks),
+  four gas stations (Harbor, Route 1 east, Mori, Toge). Total 70 km of road. Terrain: the loop
   valley rises gently to the north, a second valley holds the forest and Kami-ike, the
   rest climbs to 300 m and more, the bay is open sea. Ground build about 1 s.
   `node tools/mapcheck.mjs` prints the road numbers; `tools/mapview.html` draws the map.

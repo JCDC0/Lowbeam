@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.12 (2026-10-03)
+
+Road joins and city grid: gore tapers, crossing patches, and corner curbs.
+
+- `src/world/roadgen.js`: diamond interchange ramp departure and arrival tangents align strictly
+  with the normal vector of the arterial tangent, and the ramp inner edge aligns flush with the
+  carriageway outer edge at the gore split. Ramp definitions include gore metadata.
+- `src/world/roads.js`: `Road.hwAt(s)` supports width tapers between arterials and street grids;
+  `blendJunctions` links ramp heights with carriageways and arterials while preventing main roads
+  from warping to ramps; `RoadNetwork.query` prioritizes paved roadway surface over unpaved skirts.
+- `src/world/build-roads.js`: painted chevron gores fill triangles between Route 1 outer edge and
+  ramp inner edge; city intersections receive seamless asphalt crossing patches and concrete corner
+  curbs with rounded sidewalk corner fans; ribbon skirts suppress in gores and crossings.
+- `src/world/highway.js`: guard rail verges open cleanly along the ramp throat from taper to gore nose.
+- `src/world/layout.js`: Route 18, Harbor Ave, West Ave, and East Ave taper width between 7.0 m and
+  4.6 m to join city streets flush; station g1 moved to [0, 1940] to keep clear of the harbor ramp gore.
+- Tests: `tests/layout.test.mjs` verifies 0 lips and grade breaks at joins, and flush gore heights;
+  `tools/mapcheck.mjs` confirms 0 unexplained crossings and max grade break under 2%.
+
 ## 0.4.11 (2026-10-03)
 
 - Gauge faces lose their numerals and labels: ticks, the red zone and the needle only, since

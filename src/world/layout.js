@@ -31,7 +31,9 @@ export const CITY = { x0: -850, x1: 850, z0: 740, z1: 1870 };
  *   lines?: 'center' | 'lanes' | 'none', bumps?: Bump[], lifts?: Lift[], maxGrade?: number, points: number[][],
  *   cls?: 'expressway' | 'arterial' | 'street' | 'ramp' | 'mountain' | 'forest', lanes?: number, limit?: number,
  *   oneway?: boolean, median?: number, twin?: string,
- *   link?: { from: { id: string, s: number }, to: { id: string, s: number } }
+ *   link?: { from: { id: string, s: number }, to: { id: string, s: number } },
+ *   taper?: { from: number, to: number, s0: number, s1: number },
+ *   gore?: { carriageId: string, carriageS: number, run: number, kind: 'exit' | 'entry', carriageHw?: number, rampHw?: number }
  * }} RoadDef
  */
 
@@ -71,18 +73,20 @@ const LIFT_SHORT = { height: 7.4, half: 190, flat: 60 };
 
 /** @type {RoadDef[]} */
 const R18 = [{
-  ...ARTERIAL, id: 'r18', name: 'ROUTE 18',
+  ...ARTERIAL, id: 'r18', name: 'ROUTE 18', smooth: 140,
   lifts: [{ at: [crossNorth.x, crossNorth.z], ...LIFT }],
   lamps: [{ from: [0, 760], to: [-170, 300], every: 36 }],
-  points: [[0, 760], [-70, 640], [-180, 300], [-270, -80], [crossNorth.x, crossNorth.z], [-340, -700], [-280, -1000], [-100, -1300], [110, -1560], [140, -1830], [360, -1990], [650, -1960]],
+  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
+  points: [[0, 760], [0, 700], [-50, 620], [-180, 300], [-270, -80], [crossNorth.x, crossNorth.z], [-340, -700], [-280, -1000], [-100, -1300], [110, -1560], [140, -1830], [360, -1990], [650, -1960]],
 }];
 
 /** @type {RoadDef[]} */
 const HARBOR = [{
   ...ARTERIAL, id: 'harbor', name: 'HARBOR AVE',
   lifts: [{ at: [crossSouth.x, crossSouth.z], ...LIFT_SHORT }],
-  lamps: [{ from: [0, 1870], to: [0, 2000], every: 36 }],
-  points: [[0, 1870], [0, 2000], [crossSouth.x, crossSouth.z], [10, 2330], [30, 2440]],
+  lamps: [{ from: [0, 1860], to: [0, 2000], every: 36 }],
+  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
+  points: [[0, 1860], [0, 2000], [crossSouth.x, crossSouth.z], [10, 2330], [30, 2440]],
 }];
 
 /** @type {RoadDef[]} */
@@ -90,6 +94,7 @@ const WEST = [{
   ...ARTERIAL, id: 'west', name: 'WEST AVE',
   lifts: [{ at: [crossWest.x, crossWest.z], ...LIFT }],
   lamps: [{ from: [-1500, 1130], to: [-700, 1200], every: 36 }],
+  taper: { from: 7, to: 4.6, s0: 1890, s1: 1925 },
   points: [[-2300, 500], [-2200, 800], [crossWest.x, crossWest.z], [-1500, 1130], [-1100, 1180], [-700, 1200]],
 }];
 
@@ -98,6 +103,7 @@ const EAST = [{
   ...ARTERIAL, id: 'east', name: 'EAST AVE',
   lifts: [{ at: [crossEast.x, crossEast.z], ...LIFT }],
   lamps: [{ from: [700, 1200], to: [1500, 1160], every: 36 }],
+  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
   points: [[700, 1200], [1100, 1170], [1500, 1150], [crossEast.x, crossEast.z], [2200, 1150], [2390, 1130]],
 }];
 
@@ -158,7 +164,7 @@ export const ROADS = [...C1, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...ST
  * `w` runs along the road, `d` runs away from it.
  */
 export const STATIONS = [
-  { id: 'g1', name: 'KITSUNE OIL HARBOR', brand: 'kitsune', road: 'harbor', near: [0, 1960], side: 'right', w: 54, d: 36 },
+  { id: 'g1', name: 'KITSUNE OIL HARBOR', brand: 'kitsune', road: 'harbor', near: [0, 1940], side: 'right', w: 54, d: 36 },
   { id: 'g2', name: 'HOSHI GAS ROUTE 1 EAST', brand: 'hoshi', road: 'c1-f', near: [1960, 1000], side: 'left', w: 60, d: 40 },
   { id: 'g3', name: 'KITSUNE OIL MORI', brand: 'kitsune', road: 'r18', near: [231, -1926], side: 'right', w: 54, d: 36 },
   { id: 'g4', name: 'HOSHI GAS TOGE', brand: 'hoshi', road: 'kuro', near: [-2310, 330], side: 'right', w: 54, d: 36 },
