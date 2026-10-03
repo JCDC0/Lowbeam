@@ -5,7 +5,7 @@
  */
 
 import { Heightfield, baseHeight } from './heightfield.js';
-import { RoadNetwork, SINK } from './roads.js';
+import { ELEVATED, RoadNetwork, SINK } from './roads.js';
 import { ROADS, STATIONS, WATER_LEVEL } from './layout.js';
 import { lerp, smoothstep } from '../core/mathx.js';
 
@@ -93,8 +93,10 @@ export class Ground {
         let w = 0;
         let target = h;
         let surf = TERRAIN.grass;
-        if (this.roads.influence(x, z, FLAT + BLEND, inf)) {
-          w = (1 - smoothstep(FLAT, FLAT + BLEND, inf.edge)) * (1 - smoothstep(1.2, 2.4, inf.lift || 0));
+        if (this.roads.influence(x, z, FLAT + BLEND, inf, h)) {
+          w = 1 - smoothstep(FLAT, FLAT + BLEND, inf.edge);
+          // A lifted road stops shaping the ground once it is clear of it: that is the viaduct.
+          if ((inf.lift || 0) > 0.5) w *= 1 - smoothstep(ELEVATED, ELEVATED + 1.6, inf.h - h);
           target = inf.h - SINK;
           if (inf.road.surface === 'gravel' && inf.edge < FLAT + 3) surf = TERRAIN.dirt;
         }

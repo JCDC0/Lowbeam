@@ -10,7 +10,7 @@ import { psxLambert, psxPhong } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
 import { terrainTexture } from '../render/textures.js';
 import { fbm } from '../core/rng.js';
-import { LAKE, WATER_LEVEL } from './layout.js';
+import { LAKES, SEA, WATER_LEVEL, WORLD_HALF } from './layout.js';
 
 /** Cells per chunk side. */
 const CHUNK = 32;
@@ -31,6 +31,9 @@ export function buildTerrain(ground, grid) {
   const mat = psxLambert({ vertexColors: true, map: terrainTexture(), baked: true });
   const group = new THREE.Group();
   group.name = 'terrain';
+  /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
+  const chunks = [];
+  group.userData.chunks = chunks;
   const col = new THREE.Color();
   const H = (i, j) => hf.h[Math.min(n - 1, Math.max(0, j)) * n + Math.min(n - 1, Math.max(0, i))];
 
@@ -94,18 +97,28 @@ export function buildTerrain(ground, grid) {
       const mesh = new THREE.Mesh(geo, mat);
       mesh.matrixAutoUpdate = false;
       group.add(mesh);
+      chunks.push({ mesh, x: (hf.vx(ci) + hf.vx(ci + ni - 1)) / 2, z: (hf.vz(cj) + hf.vz(cj + nj - 1)) / 2 });
     }
   }
   return group;
 }
 
-/** The lake surface: a flat disc a little wider than the lake. */
+/** The water: a disc a little wider than each lake and one wide sheet for the bay. */
 export function buildWater() {
-  const geo = new THREE.CircleGeometry(LAKE.r + 25, 28);
-  geo.rotateX(-Math.PI / 2);
   const mat = psxPhong({ color: 0x07121e, specular: 0x141c2a, shininess: 120 });
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(LAKE.x, WATER_LEVEL + 0.02, LAKE.z);
-  mesh.name = 'water';
-  return mesh;
+  const group = new THREE.Group();
+  group.name = 'water';
+  for (const lake of LAKES) {
+    const geo = new THREE.CircleGeometry(lake.r + 25, 28);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(lake.x, WATER_LEVEL + 0.02, lake.z);
+    group.add(mesh);
+  }
+  const bay = new THREE.PlaneGeometry(SEA.xMax * 2 + 800, WORLD_HALF - SEA.z + 150);
+  bay.rotateX(-Math.PI / 2);
+  const sea = new THREE.Mesh(bay, mat);
+  sea.position.set(0, WATER_LEVEL + 0.02, (SEA.z - 150 + WORLD_HALF) / 2);
+  group.add(sea);
+  return group;
 }

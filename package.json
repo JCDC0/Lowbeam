@@ -1,8 +1,8 @@
 {
   "name": "lowbeam",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
-  "description": "A PS1-style night driving game: three cars, one valley, three gas stations and a gravel rally stage.",
+  "description": "A PS1-style night driving game: cars, an expressway, a city, a mountain pass and a forest at night.",
   "type": "module",
   "scripts": {
     "start": "node tools/devserver.mjs 8040",

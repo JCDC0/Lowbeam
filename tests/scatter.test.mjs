@@ -35,7 +35,7 @@ test('trees and buildings keep clear of roads and pads', () => {
 });
 
 test('every station has pumps on its pad and baked canopy lights', () => {
-  assert.equal(w.stations.length, 3);
+  assert.equal(w.stations.length, 4);
   for (const st of w.stations) {
     assert.ok(st.pumps.length >= 2, st.pad.id);
     for (const p of st.pumps) assert.ok(padDistance(st.pad, p.x, p.z) < 0, `${st.pad.id} pump off the pad`);

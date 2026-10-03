@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam map view</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #05070d; overflow: hidden; color: #9ab; font: 12px monospace; }
+  canvas { display: block; }
+  #info { position: fixed; left: 8px; top: 6px; background: rgba(0, 0, 0, 0.55); padding: 4px 6px; pointer-events: none; }
+  #tip { position: fixed; right: 8px; top: 6px; background: rgba(0, 0, 0, 0.55); padding: 4px 6px; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">drag to pan, wheel to zoom. h: toggle hillshade, r: toggle roads, l: lifts, g: grid</div>
+<div id="tip"></div>
+<script type="module">
+// Dev tool: the layout from above, straight from layout.js and baseHeight, with no meshes
+// built. Roads are colored by class; the thick ends mark overpasses. window.__map has the
+// state, window.__map.shot() saves tools/shots/map.png.
+import { ROADS, STATIONS, TOLLS, ZONES, LAKES, SEA, WORLD_HALF, WATER_LEVEL, CITY } from '/src/world/layout.js';
+import { RoadNetwork } from '/src/world/roads.js';
+import { baseHeight } from '/src/world/heightfield.js';
+
+const canvas = document.getElementById('c');
+const g = canvas.getContext('2d');
+const tip = document.getElementById('tip');
+const net = new RoadNetwork(ROADS);
+const view = { cx: 0, cz: 0, scale: 0.1, fitted: false, hill: true, roads: true, lifts: true, grid: true };
+
+// A hillshade of the natural terrain, one pixel per 24 m.
+const STEP = 24;
+const N = Math.round((WORLD_HALF * 2) / STEP);
+const shade = document.createElement('canvas');
+shade.width = shade.height = N;
+{
+  const sg = shade.getContext('2d');
+  const img = sg.createImageData(N, N);
+  const H = new Float32Array((N + 2) * (N + 2));
+  const at = (i, j) => H[(j + 1) * (N + 2) + (i + 1)];
+  for (let j = -1; j <= N; j++) for (let i = -1; i <= N; i++) H[(j + 1) * (N + 2) + (i + 1)] = baseHeight(-WORLD_HALF + i * STEP, -WORLD_HALF + j * STEP);
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      const h = at(i, j);
+      const gx = (at(i + 1, j) - at(i - 1, j)) / (2 * STEP);
+      const gz = (at(i, j + 1) - at(i, j - 1)) / (2 * STEP);
+      const light = Math.max(0, Math.min(1, 0.55 + (gx * 0.6 + gz * 0.8) * 1.4));
+      let r, gg, b;
+      if (h < WATER_LEVEL) { r = 20; gg = 50; b = 90; }
+      else {
+        const t = Math.min(1, h / 320);
+        r = 40 + 110 * t; gg = 70 + 80 * t; b = 40 + 90 * t;
+        r *= 0.5 + light; gg *= 0.5 + light; b *= 0.5 + light;
+      }
+      const k = (j * N + i) * 4;
+      img.data[k] = r; img.data[k + 1] = gg; img.data[k + 2] = b; img.data[k + 3] = 255;
+    }
+  }
+  sg.putImageData(img, 0, 0);
+}
+
+const COLORS = { expressway: '#ffcf4a', arterial: '#ff8a3c', street: '#b8c0d0', ramp: '#ff5f8a', mountain: '#7ad7ff', forest: '#7affb0' };
+
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+  if (!view.fitted && innerWidth > 100) {
+    view.scale = Math.min(innerWidth, innerHeight) / (WORLD_HALF * 2.05);
+    view.fitted = true;
+  }
+  draw();
+}
+const sx = (x) => (x - view.cx) * view.scale + canvas.width / 2;
+const sz = (z) => (z - view.cz) * view.scale + canvas.height / 2;
+
+function draw() {
+  g.fillStyle = '#05070d';
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  if (view.hill) {
+    g.imageSmoothingEnabled = true;
+    g.drawImage(shade, sx(-WORLD_HALF), sz(-WORLD_HALF), WORLD_HALF * 2 * view.scale, WORLD_HALF * 2 * view.scale);
+  }
+  if (view.grid) {
+    g.strokeStyle = 'rgba(255,255,255,0.08)';
+    g.lineWidth = 1;
+    g.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let v = -3000; v <= 3000; v += 500) {
+      g.beginPath(); g.moveTo(sx(v), sz(-WORLD_HALF)); g.lineTo(sx(v), sz(WORLD_HALF)); g.stroke();
+      g.beginPath(); g.moveTo(sx(-WORLD_HALF), sz(v)); g.lineTo(sx(WORLD_HALF), sz(v)); g.stroke();
+      g.fillText(String(v), sx(v) + 2, sz(-WORLD_HALF) + 10);
+      g.fillText(String(v), sx(-WORLD_HALF) + 2, sz(v) - 2);
+    }
+  }
+  g.strokeStyle = '#ff4040';
+  g.strokeRect(sx(-WORLD_HALF), sz(-WORLD_HALF), WORLD_HALF * 2 * view.scale, WORLD_HALF * 2 * view.scale);
+
+  for (const z of ZONES) {
+    g.strokeStyle = 'rgba(255,255,255,0.35)';
+    g.setLineDash([6, 6]);
+    if (z.rect) g.strokeRect(sx(z.rect.x0), sz(z.rect.z0), (z.rect.x1 - z.rect.x0) * view.scale, (z.rect.z1 - z.rect.z0) * view.scale);
+    if (z.circle) { g.beginPath(); g.arc(sx(z.circle.x), sz(z.circle.z), z.circle.r * view.scale, 0, Math.PI * 2); g.stroke(); }
+    g.setLineDash([]);
+    g.fillStyle = 'rgba(255,255,255,0.7)';
+    const lx = z.rect ? (z.rect.x0 + z.rect.x1) / 2 : z.circle.x;
+    const lz = z.rect ? z.rect.z0 + 40 : z.circle.z;
+    g.textAlign = 'center';
+    g.fillText(z.name, sx(lx), sz(lz));
+    g.textAlign = 'left';
+  }
+  for (const l of LAKES) { g.fillStyle = 'rgba(40,90,160,0.8)'; g.beginPath(); g.arc(sx(l.x), sz(l.z), l.r * view.scale, 0, Math.PI * 2); g.fill(); }
+  g.strokeStyle = 'rgba(60,120,200,0.9)';
+  g.beginPath(); g.moveTo(sx(-SEA.xMax), sz(SEA.z)); g.lineTo(sx(SEA.xMax), sz(SEA.z)); g.stroke();
+
+  if (view.roads) {
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (const r of net.roads) {
+      const p = r.path;
+      g.strokeStyle = COLORS[r.def.cls || 'street'] || '#fff';
+      g.lineWidth = Math.max(1.2, r.hw * 2 * view.scale * (r.def.cls === 'street' ? 1.4 : 1.1));
+      g.beginPath();
+      for (let i = 0; i <= p.n; i += 2) {
+        const k = p.closed ? i % p.n : Math.min(i, p.n - 1);
+        if (i === 0) g.moveTo(sx(p.x[k]), sz(p.z[k])); else g.lineTo(sx(p.x[k]), sz(p.z[k]));
+      }
+      g.stroke();
+      if (view.lifts && r.lifted) {
+        g.strokeStyle = '#ffffff';
+        g.lineWidth = Math.max(2, r.hw * 2.6 * view.scale);
+        g.beginPath();
+        let on = false;
+        for (let i = 0; i < p.n; i++) {
+          const up = r.lift[i] > 2;
+          if (up && !on) g.moveTo(sx(p.x[i]), sz(p.z[i])); else if (up) g.lineTo(sx(p.x[i]), sz(p.z[i]));
+          on = up;
+        }
+        g.stroke();
+      }
+    }
+  }
+  for (const s of STATIONS) {
+    const road = net.byId.get(s.road);
+    const hit = road.path.nearest(s.near[0], s.near[1]);
+    const q = road.path.sample(hit.s);
+    g.fillStyle = s.brand === 'hoshi' ? '#3a7bff' : '#ff6a1f';
+    g.fillRect(sx(q.x) - 5, sz(q.z) - 5, 10, 10);
+    g.fillStyle = '#fff';
+    g.fillText(s.id.toUpperCase(), sx(q.x) + 8, sz(q.z) + 4);
+  }
+  for (const t of TOLLS) {
+    g.fillStyle = '#ff2d55';
+    g.fillRect(sx(t.x) - 6, sz(t.z) - 3, 12, 6);
+    g.fillStyle = '#fff';
+    g.fillText(t.name, sx(t.x) + 8, sz(t.z) + 4);
+  }
+}
+
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, cx: view.cx, cz: view.cz }; });
+addEventListener('pointerup', () => { drag = null; });
+addEventListener('pointermove', (e) => {
+  if (drag) { view.cx = drag.cx - (e.clientX - drag.x) / view.scale; view.cz = drag.cz - (e.clientY - drag.y) / view.scale; draw(); }
+  const x = (e.clientX - canvas.width / 2) / view.scale + view.cx;
+  const z = (e.clientY - canvas.height / 2) / view.scale + view.cz;
+  tip.textContent = `${x.toFixed(0)}, ${z.toFixed(0)}  natural ${baseHeight(x, z).toFixed(0)} m`;
+});
+canvas.addEventListener('wheel', (e) => {
+  const f = Math.exp(-e.deltaY * 0.0015);
+  const x = (e.clientX - canvas.width / 2) / view.scale + view.cx;
+  const z = (e.clientY - canvas.height / 2) / view.scale + view.cz;
+  view.scale *= f;
+  view.cx = x - (e.clientX - canvas.width / 2) / view.scale;
+  view.cz = z - (e.clientY - canvas.height / 2) / view.scale;
+  draw();
+  e.preventDefault();
+}, { passive: false });
+addEventListener('keydown', (e) => {
+  if (e.key === 'h') view.hill = !view.hill;
+  if (e.key === 'r') view.roads = !view.roads;
+  if (e.key === 'l') view.lifts = !view.lifts;
+  if (e.key === 'g') view.grid = !view.grid;
+  draw();
+});
+addEventListener('resize', resize);
+async function shot(name = 'map') {
+  draw();
+  const data = canvas.toDataURL('image/png');
+  const res = await fetch('/__shot', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, data, png: true }) });
+  return res.json();
+}
+window.__map = { view, net, draw, resize, shot, CITY };
+resize();
+</script>
+</body>
+</html>

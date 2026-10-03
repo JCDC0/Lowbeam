@@ -8,9 +8,11 @@ reasoning behind every system, is `docs/DESIGN.md`. Read both before changing co
 
 A PS1-style night driving game in the browser. The long-term target is an open-world
 street racer in the line of Night-Runners Prologue and Need for Speed: Most Wanted
-(2005). The current milestone tests the limits with one level: the Kirigaoka valley,
-three cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic), three gas
-stations and one gravel rally stage (SS1 Kirigaoka Ridge).
+(2005). The current milestone is one level, Kurogane: a 6 km square map with a city on
+a bay, Route 1 (an expressway loop with toll plazas) round it, avenues that pass over the
+loop on overpasses, a mountain pass in the west, a forest and a lake in the north, four
+gas stations, and three cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic).
+Traffic, rivals, the toll gameplay and the rally come next.
 
 ## Commands
 
@@ -74,10 +76,13 @@ captures such as rendered audio.
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
 | `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
 | `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
-| `src/world/layout.js` | Authored data: roads, stations, rally config, economy |
-| `src/world/heightfield.js` | Natural terrain (`baseHeight`), blur, the carved grid and triangle sampling |
+| `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
+| `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, street grid, diamond interchange ramps |
+| `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
+| `src/world/mapdata.js` | Pure: roads, points of interest and zones as plain data for a full-screen map |
+| `src/world/heightfield.js` | Natural terrain (`baseHeight`: two valleys, mountains, bay, lake, pass ledge, flat downtown), blur, the carved grid and triangle sampling |
 | `src/world/spline.js` | Arc-length Catmull-Rom `Path`: sample, nearest, signed offset |
-| `src/world/roads.js` | Road profiles (smoothing, grade clamp, bumps, junction blending), grid queries |
+| `src/world/roads.js` | Road profiles (smoothing, grade clamp, bumps, lifts, twin carriageways, junction blending), grid queries |
 | `src/world/ground.js` | `Ground.at(x, z)`: height and surface from roads, then pads, then terrain; carving |
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
 | `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
@@ -101,6 +106,8 @@ captures such as rendered audio.
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
 | `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
+| `tools/mapview.html` | Dev top-down map: hillshade, roads by class, overpasses, stations, tolls, zones; `__map.shot(name)` |
+| `tools/mapcheck.mjs` | Node: every road's length, height range, steepest grade, cut and fill, and where roads cross |
 | `src/audio/audio.js` | The `audio` singleton: graph, channels and settings, engine voice, tires, wind, ambience, impacts, pump, menu chirps |
 | `src/audio/engine-dsp.js` | Pure: per-sample engine synthesis (`EngineVoice`, `VOICES`) |
 | `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
@@ -111,14 +118,21 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.3.0)
+## Current state (0.3.2)
 
 Done and tested:
 
-- World data and ground. Route 7 loop (2.8 km asphalt), three town streets, SS1 gravel
-  stage (2.9 km, climbs to about 85 m, grades capped at 13 %, one jump crest), three
-  gas station pads, a lake. Terrain is carved under every road and pad. Ground build
-  takes about 0.4 s.
+- World data and ground (Kurogane, 6 km square, 8 m terrain cells). Route 1: two one-way
+  carriageways of 3 lanes (11 km each) with a 3.2 m median and median lamps, grades under
+  3 %, three toll plazas (positions only so far). Four avenues (Route 18 north, Harbor Ave
+  south, West Ave, East Ave) pass over it on overpasses with a diamond interchange each
+  (four ground-level ramps). Kuro Pass: 6.4 km of 2-lane asphalt from the forest village
+  along the northern ridge and down the western mountain, climbing to 254 m at up to 8.5 %,
+  on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks), four
+  gas stations (Harbor, Route 1 east, Mori, Toge). Total 70 km of road. Terrain: the loop
+  valley rises gently to the north, a second valley holds the forest and Kami-ike, the
+  rest climbs to 300 m and more, the bay is open sea. Ground build about 1 s.
+  `node tools/mapcheck.mjs` prints the road numbers; `tools/mapview.html` draws the map.
 - Vehicle physics for all three cars, tuned so the garage bars are honest. Bench
   output (`node tools/sim.mjs`):
 
@@ -188,28 +202,29 @@ Done and tested:
   world exists.
 - Display font: CSS family `Lowbeam Display` tries `local()` Microgramma D Extended
   and Eurostile Extended, then the vendored Michroma.
-- World meshes (`World.create`, about 0.75 s): 10 by 10 terrain chunks with vertex
-  colors per surface and a detail texture, road ribbons (7 columns: skirt, edge, three
-  across, edge, skirt; higher priority roads sit 12 mm per priority higher so junctions
-  never z-fight), concrete pads with curbs, 56 sodium street lamps, about 100 town
-  buildings (two konbini, vertical neon signs), about 48k instanced trees in 250 m
-  chunks hidden past the fog (see Forest), three gas stations, the service park with
-  tents, floodlights and two rival cars, the lake, sky and moon. A town street view
-  draws about 70 calls and 165k triangles; a view into the edge belt about 50 calls and
-  275k.
+- World meshes (`World.create`, about 1.9 s in the browser pane): 24 by 24 terrain chunks
+  with vertex colors per surface and a detail texture, road ribbons cut into 180 m chunks
+  (7 columns: skirt, edge, three across, edge, skirt; higher priority roads sit 12 mm per
+  priority higher so junctions never z-fight), bridges, concrete pads with curbs, about
+  1,100 sodium street lamps, about 1,700 buildings (towers up to 100 m toward the middle
+  of downtown, four konbini, vertical neon signs), about 250k instanced trees in 250 m
+  chunks (see Forest), four gas stations, a lake, the bay, sky and moon. Terrain and road
+  chunks past the fog (`GROUND_DRAW` 620 m) are hidden like the trees. Views measured:
+  downtown 90 to 100 calls and 150k triangles, the expressway about 140 and 255k, the
+  pass about 70 and 355k, the edge belt about 70 and 315k.
 - Forest (`forest.js`, `build-trees.js`): nine species, `TREE` in forest.js: spruce,
   broadleaf, sugi (tall cedar), birch, maple (red, orange or gold per instance),
   black pine, bamboo clump, shrub (no collider) and dead snag, 30 to 144 triangles
   each. Habitats weight the species: valley floor (mixed broadleaf, birch, maple),
   lake edge (bamboo, shrubs, birch), slopes (spruce, sugi) and the high ridge (spruce,
-  snags). A noise field makes stands, so a hillside is mostly one species. 18 groves
-  of 34 to 68 m sit on the valley floor, each with its own species mix. The edge belt
-  is Chebyshev distance 900 to 990 from the center: a dense forest of spruce and sugi
-  plus the thicket, two staggered rows (rings 927 and 939) of big trees 3 m apart, each
-  with a 1.3 m collider, so no gap is wider than 0.4 m. The wall at 988 stays as the
-  backstop. tests/forest.test.mjs floods a car-sized circle through the belt and
-  requires that it never gets past the first row. The mountain slopes are also too
-  steep for the cars to climb far, so the belt mostly sits behind the terrain itself.
+  snags). A noise field makes stands, so a hillside is mostly one species. Inside the
+  loop it is farmland with a tree here and there and 36 groves of 34 to 68 m; outside it
+  is forest (the forest valley has its own mix with a lot of sugi). The edge belt is
+  Chebyshev distance 2900 to 2990 from the center: a dense forest of spruce and sugi
+  plus the thicket, two staggered rows (rings 2927 and 2939) of big trees 3 m apart, each
+  with a 1.3 m collider, so no gap is wider than 0.4 m. Nothing grows in the sea. The wall at
+  2988 stays as the backstop. tests/forest.test.mjs floods a car-sized circle through
+  the belt, treating water as blocked, and requires that it never gets past the first row.
 - Audio (`src/audio/`, all synthesized, nothing loaded from a file). The page calls
   `audio.unlock()` on the first key or click, `setMode(state)` on every screen change,
   `setCar(spec)` when the car changes (the garage plays its idle with a blip) and
@@ -350,6 +365,7 @@ Done and tested:
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
 - Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
+  All suites together: 87 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
   `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in
@@ -382,10 +398,12 @@ rates.
   `TEMP_MIN`, `TEMP_MAX`; remove them once the cluster reads `temp` (task A1).
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
-- Lamp pools on Route 7 in town overlap into an even wash at 34 m spacing. Check from
-  the driver's seat; shorter range or wider spacing gives distinct pools.
-- The valley floor inside Route 7 is empty. Candidates: rice fields, a rail line, a
-  second town block. Not needed for this milestone.
+- Between the city and Route 1 the land is empty: suburbs, farmland, a rail line.
+- The median of Route 1 is grass; barriers, guard rails and signs come with the toll plazas.
+- The road texture draws one center line, so each 3-lane carriageway shows a dashed line
+  down its middle; lane markings need a lanes variant.
+- `LAKE` and `TOWN` in layout.js are aliases for the first lake and the city rect, kept
+  for the map screen until it moves to `world.mapData`; remove them then.
 - `Ground.at` scans every pad on each call. Fine with 3 pads; add a grid if pads grow.
 - Neon signs draw Japanese text with the system font (Yu Gothic, Meiryo, MS Gothic or
   Noto Sans CJK). A machine without any of them shows boxes.

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Colliders } from '../src/world/collision.js';
 import { CARS } from '../src/vehicles/specs.js';
+import { WORLD_HALF } from '../src/world/layout.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from '../src/vehicles/physics.js';
 
 const flat = () => ({ h: 0, surface: 'asphalt' });
@@ -51,12 +52,12 @@ test('a car that starts inside a tree is pushed clear', () => {
   assert.equal(col.probe(s.x, s.z, spec.width / 2), null);
 });
 
-test('the valley edge is a wall', () => {
+test('the map edge is a wall', () => {
   const spec = CARS[0];
   const col = new Colliders([], []);
   const s = createVehicleState(spec);
-  placeVehicle(s, spec, 0, 985, 0, flat);
+  placeVehicle(s, spec, 0, WORLD_HALF - 15, 0, flat);
   s.vz = 30;
   run(col, s, spec, 2);
-  assert.ok(s.z < 990, `z ${s.z}`);
+  assert.ok(s.z < WORLD_HALF - 10, `z ${s.z}`);
 });

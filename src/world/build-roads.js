@@ -15,22 +15,26 @@ import { SKIRT, SINK } from './roads.js';
 /** Meters of road per texture tile. */
 export const TILE = 12;
 
+/** Samples per road chunk: 90 samples of 2 m, so each mesh is about 180 m long and can be culled. */
+const CHUNK_ROWS = 90;
+
 /**
- * @param {import('./roads.js').Road} road
+ * The ribbon for samples r0 to r1 (inclusive) of a road.
+ * @param {import('./roads.js').Road} road @param {number} r0 @param {number} r1
  */
-function ribbon(road) {
+function ribbon(road, r0, r1) {
   const p = road.path;
   const hw = road.hw;
   const lift = 0.012 * road.priority;
   const cols = [-(hw + SKIRT), -hw, -hw / 2, 0, hw / 2, hw, hw + SKIRT];
   const drop = [SINK - 0.02, 0, 0, 0, 0, 0, SINK - 0.02];
-  const rows = p.closed ? p.n + 1 : p.n;
+  const rows = r1 - r0 + 1;
   const nc = cols.length;
   const pos = new Float32Array(rows * nc * 3);
   const uv = new Float32Array(rows * nc * 2);
   for (let r = 0; r < rows; r++) {
-    const i = r % p.n;
-    const s = r * p.step;
+    const i = (r0 + r) % p.n;
+    const s = (r0 + r) * p.step;
     const x = p.x[i];
     const z = p.z[i];
     const lx = p.tz[i];
@@ -140,11 +144,21 @@ export function buildRoads(ground, grid) {
   };
   const group = new THREE.Group();
   group.name = 'roads';
+  /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
+  const chunks = [];
+  group.userData.chunks = chunks;
   for (const road of ground.roads.roads) {
-    const geo = bakeGeometry(ribbon(road), grid, { wrap: 0.6 });
-    const mesh = new THREE.Mesh(geo, [mats[road.surface] || mats.asphalt, shoulder]);
-    mesh.name = road.id;
-    group.add(mesh);
+    const p = road.path;
+    const last = p.closed ? p.n : p.n - 1;
+    for (let r0 = 0; r0 < last; r0 += CHUNK_ROWS) {
+      const r1 = Math.min(last, r0 + CHUNK_ROWS);
+      const geo = bakeGeometry(ribbon(road, r0, r1), grid, { wrap: 0.6 });
+      const mesh = new THREE.Mesh(geo, [mats[road.surface] || mats.asphalt, shoulder]);
+      mesh.name = road.id;
+      group.add(mesh);
+      const mid = (r0 + r1) >> 1;
+      chunks.push({ mesh, x: p.x[mid % p.n], z: p.z[mid % p.n] });
+    }
   }
   const concrete = psxLambert({ map: concreteTexture(), baked: true });
   for (const pad of ground.pads) {

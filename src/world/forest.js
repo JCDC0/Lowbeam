@@ -6,7 +6,8 @@
  * between, so the player cannot drive out of the valley. Pure: no three.js.
  */
 
-import { LAKE, TOWN, WATER_LEVEL, WORLD_HALF, SEED } from './layout.js';
+import { CITY, LAKES, WATER_LEVEL, WORLD_HALF, SEED } from './layout.js';
+import { insideLoop, cityAmount, zoneAt } from './zones.js';
 import { makeRng, fbm, valueNoise } from '../core/rng.js';
 
 /** @typedef {{ x: number, y: number, z: number, s: number, kind: number, tint: number, hue: number }} Tree */
@@ -19,11 +20,11 @@ export const TREE_COUNT = 9;
 export const TREE_RADIUS = [0.45, 0.5, 0.5, 0.3, 0.5, 0.5, 0.75, 0, 0.25];
 
 /**
- * The edge belt, in Chebyshev distance from the valley center (the world is a square).
+ * The edge belt, in Chebyshev distance from the center of the map (the world is a square).
  * `inner` is where the dense forest starts, `thicket` the band of the solid double row,
  * `rim` where the forest stops, a little inside the collision wall at the map edge.
  */
-export const BELT = { inner: 900, thicket: [927, 939], rim: 990 };
+export const BELT = { inner: WORLD_HALF - 100, thicket: [WORLD_HALF - 73, WORLD_HALF - 61], rim: WORLD_HALF - 10 };
 /** Collider radius of a thicket tree: trunk plus undergrowth. Rows 3 m apart leave 0.4 m gaps. */
 export const THICKET_RADIUS = 1.3;
 const THICKET_STEP = 3;
@@ -35,6 +36,7 @@ const HABITAT = {
   slope: [0.32, 0.06, 0.3, 0.06, 0.06, 0.1, 0.0, 0.06, 0.04],
   high: [0.45, 0.0, 0.25, 0.0, 0.0, 0.15, 0.0, 0.07, 0.08],
   belt: [0.34, 0.04, 0.4, 0.02, 0.02, 0.12, 0.04, 0.0, 0.02],
+  forest: [0.2, 0.2, 0.22, 0.08, 0.1, 0.1, 0.03, 0.06, 0.01],
 };
 
 /** Scale range per species. */
@@ -54,10 +56,11 @@ function pickWeighted(w, u) {
 
 /** @param {number} x @param {number} z @param {number} h */
 function habitat(x, z, h) {
-  if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 90) return HABITAT.wet;
-  const r = Math.hypot(x, z);
-  if (r < 520) return HABITAT.valley;
-  return h > 55 ? HABITAT.high : HABITAT.slope;
+  for (const lake of LAKES) if (Math.hypot(x - lake.x, z - lake.z) < lake.r + 90) return HABITAT.wet;
+  if (insideLoop(x, z)) return HABITAT.valley;
+  const zone = zoneAt(x, z);
+  if (zone && zone.kind === 'forest') return HABITAT.forest;
+  return h > 110 ? HABITAT.high : HABITAT.slope;
 }
 
 /**
@@ -95,8 +98,28 @@ export function placeForest(ground, buildings, circles, clear) {
     out.push(t);
     if (collide && radius > 0) circles.push({ x: t.x, z: t.z, r: radius * Math.min(1.25, t.s) });
   };
-  const nearBuilding = (x, z) => buildings.some((b) => Math.hypot(b.x - x, b.z - z) < Math.max(b.w, b.d));
-  const inTown = (x, z, m) => x > TOWN.x0 - m && x < TOWN.x1 + m && z > TOWN.z0 - m && z < TOWN.z1 + m;
+  // Buildings in a coarse grid, so a tree only looks at the few that are near it.
+  const BCELL = 64;
+  /** @type {Map<number, typeof buildings>} */
+  const bgrid = new Map();
+  for (const b of buildings) {
+    const key = Math.floor(b.x / BCELL) * 100003 + Math.floor(b.z / BCELL);
+    const list = bgrid.get(key);
+    if (list) list.push(b);
+    else bgrid.set(key, [b]);
+  }
+  const nearBuilding = (x, z) => {
+    const cx = Math.floor(x / BCELL);
+    const cz = Math.floor(z / BCELL);
+    for (let j = cz - 1; j <= cz + 1; j++) {
+      for (let i = cx - 1; i <= cx + 1; i++) {
+        const list = bgrid.get(i * 100003 + j);
+        if (list) for (const b of list) if (Math.hypot(b.x - x, b.z - z) < Math.max(b.w, b.d)) return true;
+      }
+    }
+    return false;
+  };
+  const inTown = (x, z, m) => x > CITY.x0 - m && x < CITY.x1 + m && z > CITY.z0 - m && z < CITY.z1 + m;
 
   const rng = makeRng(SEED ^ 0x7ee5);
   const step = 9;
@@ -107,9 +130,10 @@ export function placeForest(ground, buildings, circles, clear) {
       const z = gz + rng.range(-3.5, 3.5);
       if (Math.max(Math.abs(x), Math.abs(z)) > BELT.inner) continue;
       const dens = 0.5 + 0.5 * fbm(x * 0.006, z * 0.006, 77, 3);
-      const want = Math.min(1, dens * (Math.hypot(x, z) > 520 ? 1.25 : 0.7));
+      // Inside the loop it is farmland and suburbs with a tree here and there; outside it is forest.
+      const want = Math.min(1, dens * (insideLoop(x, z) ? 0.22 : 1.25));
       if (rng.next() > want) continue;
-      if (inTown(x, z, 15)) continue;
+      if (inTown(x, z, 15) || cityAmount(x, z) > 0.01) continue;
       const g = ground.at(x, z);
       if (g.road || g.pad || g.h < WATER_LEVEL + 0.8) continue;
       if (!clear(ground, x, z, 3.5) || nearBuilding(x, z)) continue;
@@ -148,6 +172,7 @@ export function placeForest(ground, buildings, circles, clear) {
       const s = ((i + (row ? 0.5 : 0)) * perimeter) / count;
       const [x, z] = ringPoint(rho, s);
       const g = ground.at(x, z);
+      if (g.h < WATER_LEVEL - 0.5) continue;
       const kind = pickWeighted(HABITAT.belt, gr.next());
       const t = makeTree(gr, kind, x + gr.range(-0.3, 0.3), g.h - 0.1, z + gr.range(-0.3, 0.3), 1.35);
       out.push(t);
@@ -186,12 +211,11 @@ const GROVE_KINDS = [
 function placeGroves(ground, add, clear, nearBuilding, inTown) {
   const gr = makeRng(SEED ^ 0x9a0e);
   const groves = [];
-  for (let tries = 0; tries < 400 && groves.length < 18; tries++) {
-    const x = gr.range(-470, 470);
-    const z = gr.range(-470, 470);
+  for (let tries = 0; tries < 1200 && groves.length < 36; tries++) {
+    const x = gr.range(-1700, 1700);
+    const z = gr.range(-150, 1950);
     const r = gr.range(34, 68);
-    if (inTown(x, z, r + 20)) continue;
-    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + r + 20) continue;
+    if (!insideLoop(x, z) || inTown(x, z, r + 40)) continue;
     if (groves.some((o) => Math.hypot(o.x - x, o.z - z) < o.r + r + 30)) continue;
     let ok = true;
     for (let a = 0; a < 8 && ok; a++) {

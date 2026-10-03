@@ -22,7 +22,7 @@ const sameLevel = (shape, y) => (shape.y0 === undefined || y >= shape.y0 - BELOW
 /** @typedef {import('../vehicles/specs.js').CarSpec} CarSpec */
 
 const CELL = 16;
-const OFF = 1100;
+const OFF = WORLD_HALF + 100;
 const W = Math.ceil((OFF * 2) / CELL);
 const RESTITUTION = 0.22;
 const FRICTION = 0.35;

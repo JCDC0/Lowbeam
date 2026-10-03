@@ -57,7 +57,7 @@ export function createStage(canvas) {
   renderer.autoClear = true;
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(62, 4 / 3, 0.25, 900);
+  const camera = new THREE.PerspectiveCamera(62, 4 / 3, 0.25, 760);
 
   const target = new THREE.WebGLRenderTarget(320, 240, {
     minFilter: THREE.NearestFilter,

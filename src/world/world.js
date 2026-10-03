@@ -20,8 +20,9 @@ import { buildSky, MOON_DIR } from '../render/sky.js';
 const _dir = new THREE.Vector3();
 
 export const FOG = { color: 0x070a14, near: 30, far: 420 };
-/** Tree chunks whose center is farther than this from the camera are hidden. */
+/** Chunks whose center is farther than this from the camera are hidden: they are lost in the fog. */
 const TREE_DRAW = FOG.far + 180;
+const GROUND_DRAW = FOG.far + 200;
 
 export class World {
   /**
@@ -30,18 +31,22 @@ export class World {
   static async create(step = async () => {}) {
     const w = new World();
     const t0 = performance.now();
-    await step('SURVEYING THE VALLEY');
+    await step('SURVEYING KUROGANE');
     w.ground = new Ground();
     await step('PLACING LAMPS AND TREES');
     w.scatter = scatterWorld(w.ground);
     w.grid = new LightGrid(w.scatter.lights);
     await step('CUTTING THE TERRAIN');
-    w.add(buildTerrain(w.ground, w.grid));
+    const terrain = buildTerrain(w.ground, w.grid);
+    w.add(terrain);
+    w.groundChunks.push(...terrain.userData.chunks);
     w.add(buildWater());
     await step('LAYING THE ROADS');
-    w.add(buildRoads(w.ground, w.grid));
+    const roads = buildRoads(w.ground, w.grid);
+    w.add(roads);
+    w.groundChunks.push(...roads.userData.chunks);
     w.add(buildBridges(w.scatter.bridges, w.ground, w.grid));
-    await step('BUILDING THE TOWN');
+    await step('BUILDING THE CITY');
     w.add(buildLamps(w.scatter.lamps, w.grid));
     w.add(buildTown(w.scatter.buildings, w.grid));
     w.add(buildStations(w.scatter.stations, w.grid));
@@ -74,6 +79,8 @@ export class World {
     this.grid = null;
     /** @type {{ mesh: THREE.InstancedMesh, x: number, z: number }[]} */
     this.treeChunks = [];
+    /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
+    this.groundChunks = [];
     this.buildMs = 0;
   }
 
@@ -92,6 +99,7 @@ export class World {
     const p = camera.position;
     this.sky.position.copy(p);
     for (const c of this.treeChunks) c.mesh.visible = Math.hypot(c.x - p.x, c.z - p.z) < TREE_DRAW;
+    for (const c of this.groundChunks) c.mesh.visible = Math.hypot(c.x - p.x, c.z - p.z) < GROUND_DRAW;
     if (focus) {
       sampleLight(this.grid, focus.x, focus.y + 0.8, focus.z, psxUniforms.uLocalColor.value, _dir);
       psxUniforms.uLocalDir.value.copy(_dir).transformDirection(camera.matrixWorldInverse);

@@ -50,7 +50,7 @@ test('no car can drive through the edge forest', () => {
   const free = (s, d) => {
     const rho = lo + (d + 0.5) * cell;
     const [x, z] = ringPoint(rho, (s + 0.5) * cell * (rho / lo));
-    return col.probe(x, z, r) === null;
+    return col.probe(x, z, r) === null && g.at(x, z).surface !== 'water';
   };
   const cols = Math.floor((8 * lo) / cell);
   assert.ok(cols > 0 && n > 0);

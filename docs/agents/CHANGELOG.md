@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.2 (2026-10-03)
+
+Kurogane replaces the Kirigaoka valley.
+
+- A new 6 km map (`layout.js`, `heightfield.js`, `zones.js`, `roadgen.js`, `mapdata.js`):
+  Route 1, a 11 km expressway loop of two 3-lane one-way carriageways with a median;
+  four avenues that pass over it on overpasses with diamond interchanges; Kuro Pass
+  (6.4 km, up to 254 m on a terrain ledge); a 20 street downtown grid with towers; the
+  forest valley with Kami-ike; a bay in the south; four gas stations; three toll plaza
+  positions; 70 km of road.
+- Roads: twin carriageways share one height profile, closed roads obey the grade limit
+  across the seam, junction blending spreads a correction over enough road to stay
+  climbable and blends neighbouring junctions into each other.
+- Terrain carving: a lifted road shapes the ground only where it is cut into it.
+- Scatter: median lamps along the loop, lamp runs for a full road, no poles on decks, bigger
+  and taller downtown buildings, trees by zone (forest outside the loop, farmland inside),
+  buildings indexed in a grid (tree scatter went from 8.3 s to 0.6 s), nothing planted in the sea.
+- Render: terrain and road ribbons in chunks hidden past the fog, a bay, the camera far plane.
+- `buildMapData(ground)` for a full-screen map (roads, pois, zones).
+- Tools: `tools/mapview.html` (top-down map with hillshade, `__map.shot()`) and
+  `tools/mapcheck.mjs` (road numbers and crossings).
+- Tests: 87 passing (new `layout.test.mjs`: roads inside the map, Route 1 closed with equal
+  carriageway heights, interchange ramps, roads cross only at overpasses, tolls, zones,
+  terrain, map data).
+
 ## 0.3.1 (2026-10-03)
 
 Full-screen tactical map overlay, controls update, render height setting, and dynamic garage scaling.

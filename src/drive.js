@@ -10,7 +10,8 @@ import { Colliders } from './world/collision.js';
 import { CameraRig, VIEW_NAMES } from './render/cameras.js';
 import { Minimap } from './ui/minimap.js';
 import { store } from './core/store.js';
-import { ECONOMY, LAKE, TOWN, WATER_LEVEL } from './world/layout.js';
+import { ECONOMY, WATER_LEVEL } from './world/layout.js';
+import { zoneAt } from './world/zones.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
@@ -148,12 +149,14 @@ export class Drive {
 
   /** @param {number} x @param {number} y @param {number} z */
   areaName(x, y, z) {
-    const g = this.world.ground.at(x, z);
+    const g = this.world.ground.at(x, z, y);
     if (g.pad) return g.pad.name;
-    if (x > TOWN.x0 && x < TOWN.x1 && z > TOWN.z0 && z < TOWN.z1) return 'KIRIGAOKA';
+    const named = g.road && g.road.def.cls !== 'street';
+    if (named) return g.road.name;
+    const zone = zoneAt(x, z);
+    if (zone) return zone.name;
     if (g.road) return g.road.name;
-    if (Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 30) return 'KAGAMI-IKE';
-    return y > 40 ? 'KIRIGAOKA RIDGE' : 'KIRIGAOKA VALLEY';
+    return y > 150 ? 'KURO MOUNTAINS' : 'KUROGANE OUTSKIRTS';
   }
 
   /**

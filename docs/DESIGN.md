@@ -1,6 +1,6 @@
 # Lowbeam: design plan
 
-Working title **LOWBEAM**, subtitle *Kirigaoka Night Rally*. A night driving game in
+Working title **LOWBEAM**, subtitle *Kurogane Night Run*. A night driving game in
 the spirit of Night-Runners Prologue: PS1-era rendering, one open valley to drive
 around at night, gas stations as the places you stop at, and a rally stage cut into
 the mountains. Car choice follows Need for Speed: Most Wanted (2005): a small roster
@@ -62,50 +62,58 @@ Four paint choices per car in the garage.
 - Rampart: long hood, short deck, fastback roof, hood scoop, twin stripes, ducktail.
 - Vespera: wedge nose, cabin pushed forward, wide hips, side intakes, low roof.
 
-## 4. The world: Kirigaoka valley
+## 4. The world: Kurogane
 
-A 2 km by 2 km square. Flat valley floor in the middle, mountains on every side,
-one lake in the south west. North is up on the map (-Z in world space).
+A 6 km by 6 km square (see `docs/agents/ARCHITECTURE.md` for the numbers and
+`tools/mapview.html` to look at it). A city on a bay in the south, an expressway loop
+round it, a mountain pass in the west, a forest with a lake in the north, mountains on
+every other edge. North is up on the map (-Z in world space).
 
 ```
             N
-   +-----------------------------------+
-   | mountains   ridge (stage summit)  |
-   |   /~~~~~~~~~~~~~~~~~~~~~\          |
-   |  |   SS1 gravel stage    \___     |
-   |  |                       FINISH   |
-   |  START   .------ Route 7 ------.  |
-   |  [G3]---'                       \ |
-   |  service park                  [G2] truck stop
-   |      \                         /  |
-   |  lake  '--[G1]--TOWN--------- '   |
-   |  ~~~~          Kirigaoka          |
-   +-----------------------------------+
+   +--------------------------------------------+
+   | mountains           MORI FOREST + KAMI-IKE |
+   |   KURO PASS         (valley, village G3)   |
+   |  (ledge road,            Route 18          |
+   |   254 m crest)             |               |
+   |       .-----------[KITA TOLL]---------.    |
+   |      /              |                  \   |
+   |  G4 + West Ave -----+-- city ------ East Ave
+   |      \   KUROGANE CITY (towers)       /    |
+   |       '--[MINATO TOLL]--|---[HIGASHI]-'     |
+   |        ROUTE 1          | Harbor Ave  G1    |
+   |   ~~~~~~~~~~~ the bay ~~~~~~~~~~~~~~~~~~~  |
+   +--------------------------------------------+
 ```
 
-- **Route 7**: a 3.5 km asphalt loop on the valley floor. Streetlights near town and
-  junctions, dark between them.
-- **Kirigaoka town**: a small grid on the south side of the loop. Box buildings with
-  lit windows, neon signs, parked cars, a convenience store.
-- **SS1 Kirigaoka Ridge**: about 3.5 km of gravel. Leaves Route 7 on the west side,
-  passes the service park, climbs switchbacks into the north west mountains, runs
-  along the ridge, drops back down over a jump crest and finishes near Route 7 on
-  the north side. The road stays open in free roam.
-- **Gas stations** (3), all drivable, all refuel:
-  - G1 Kitsune Oil Kirigaoka, at the west edge of town.
-  - G2 Hoshi Gas truck stop, on the east side of Route 7.
-  - G3 Kitsune Oil Service Park, at the stage start. Rally tents, parked rivals.
+- **Route 1**: an 11 km expressway loop. Two one-way carriageways of three lanes with a
+  median, traffic keeping left. Long straights on the north and south sides, wide curves
+  in the corners. Three toll plazas. Streetlights in the median.
+- **Overpasses**: four avenues (Route 18, Harbor Ave, West Ave, East Ave) pass over the
+  loop on decks with piers, each with a diamond interchange of four ramps, so you can
+  join the loop from either side in either direction.
+- **Kurogane City**: a grid of 20 streets with towers up to 100 m toward the middle,
+  neon, low rise at the edges.
+- **Kuro Pass**: 6.4 km of two-lane road from the forest village along the northern
+  ridge and down the western mountain, hairpins and a crest at 254 m. The time attack
+  runs here.
+- **Mori forest**: the northern valley, rolling hills, dense trees, Kami-ike, a village.
+- **Gas stations** (4), all drivable, all refuel: Harbor (start), Route 1 east, Mori
+  village, Toge at the foot of the pass.
 
-**How the ground is built.** Terrain is a seeded noise heightfield (8 m cells).
-Roads are Catmull-Rom splines. Each road gets its own height profile from a blurred
-terrain height, smoothed along its length, plus authored crest bumps. The terrain is
-then carved to sit just under every road and pad. The game asks one function,
-`ground(x, z)`, for height and surface; it checks roads, then pads, then terrain.
+**How the ground is built.** Terrain is a seeded noise heightfield (8 m cells). Roads
+are Catmull-Rom splines. Each road gets its own height profile from a blurred terrain
+height, smoothed along its length, grade-clamped, blended into the roads it meets, and
+lifted over the road it crosses where it is an overpass. The terrain is then carved to
+sit just under every road and pad (except under a viaduct). The pass is the exception:
+the terrain is shaped around its drawn elevations so it has a natural ledge. The game
+asks one function, `ground(x, z, y)`, for height and surface; the height `y` of the asker
+picks the deck or the road below.
 
 **Light.** Moonlight and a dim sky fill are the only real lights in the world. The
 player car carries a real spot light for headlights. Every street lamp, canopy and
 flare is baked into a per-vertex light attribute at load time (the PS1 approach), so
-there can be hundreds of them for free.
+there can be thousands of them for free.
 
 ## 5. Driving model
 

@@ -6,6 +6,7 @@
 import { Path } from './spline.js';
 import { blurredHeight } from './heightfield.js';
 import { smoothstep } from '../core/mathx.js';
+import { WORLD_HALF } from './layout.js';
 
 /** Width of the sloped edge between the road top and the carved terrain beside it. */
 export const SKIRT = 1.2;
@@ -17,7 +18,7 @@ export const ELEVATED = 2.0;
 const DECK_REACH = 1.6;
 
 const CELL = 16;
-const OFF = 1100;
+const OFF = WORLD_HALF + 100;
 const W = Math.ceil((OFF * 2) / CELL);
 const JUNCTION_BLEND = 35;
 
@@ -86,6 +87,7 @@ export class RoadNetwork {
     this._hit = { s: 0, d: 0, x: 0, z: 0, i: 0 };
 
     for (const r of this.roads) this.buildProfile(r);
+    for (const r of this.roads) if (r.def.twin) this.copyTwin(r, /** @type {Road} */ (this.byId.get(r.def.twin)));
     // Lower priority roads take the height of anything they cross, so junctions are flush.
     const order = [...this.roads].sort((a, b) => b.priority - a.priority);
     for (const r of order) this.blendJunctions(r);
@@ -124,6 +126,24 @@ export class RoadNetwork {
     return cz * W + cx;
   }
 
+  /**
+   * A divided road's second carriageway takes the height of the first at the same cross
+   * section, so the level across the median is always the same.
+   * @param {Road} r @param {Road} twin
+   */
+  copyTwin(r, twin) {
+    const p = r.path;
+    const t = twin.path;
+    const hit = { s: 0, d: 0, x: 0, z: 0, i: 0 };
+    let prev = -1;
+    for (let i = 0; i < p.n; i++) {
+      if (prev < 0) t.nearest(p.x[i], p.z[i], hit);
+      else t.nearest(p.x[i], p.z[i], hit, prev - 90, prev + 90);
+      prev = t.wrapIndex(Math.round(hit.s / t.step));
+      r.h[i] = twin.heightAt(hit.s);
+    }
+  }
+
   /** @param {Road} r */
   buildProfile(r) {
     const p = r.path;
@@ -143,9 +163,19 @@ export class RoadNetwork {
     const g = r.def.maxGrade;
     if (g) {
       const dh = g * p.step;
+      // A closed road is clamped round and round so the seam obeys the limit too.
+      const laps = p.closed ? 3 : 1;
       for (let pass = 0; pass < 2; pass++) {
-        for (let i = 1; i < n; i++) r.h[i] = Math.min(Math.max(r.h[i], r.h[i - 1] - dh), r.h[i - 1] + dh);
-        for (let i = n - 2; i >= 0; i--) r.h[i] = Math.min(Math.max(r.h[i], r.h[i + 1] - dh), r.h[i + 1] + dh);
+        for (let i = 1; i < n * laps; i++) {
+          const a = i % n;
+          const b = (i - 1) % n;
+          r.h[a] = Math.min(Math.max(r.h[a], r.h[b] - dh), r.h[b] + dh);
+        }
+        for (let i = n * laps - 2; i >= 0; i--) {
+          const a = i % n;
+          const b = (i + 1) % n;
+          r.h[a] = Math.min(Math.max(r.h[a], r.h[b] - dh), r.h[b] + dh);
+        }
       }
     }
     for (const b of r.def.bumps || []) {
@@ -173,30 +203,53 @@ export class RoadNetwork {
       }
     }
     if (!any) return;
-    const reach = Math.ceil(JUNCTION_BLEND / p.step);
+    // Spread the correction over enough road to stay climbable: about 5 % per meter of delta.
+    let worst = 0;
+    for (let i = 0; i < n; i++) if (fixed[i]) worst = Math.max(worst, Math.abs(delta[i]));
+    const reach = Math.ceil(Math.min(450, Math.max(JUNCTION_BLEND, worst / 0.05)) / p.step);
+    // The nearest fixed sample on each side, so two junctions close together blend into each other.
+    const laps = p.closed ? 2 : 1;
+    const far = 1e9;
+    const dl = new Int32Array(n).fill(far);
+    const dr = new Int32Array(n).fill(far);
+    const il = new Int32Array(n).fill(-1);
+    const ir = new Int32Array(n).fill(-1);
+    let seen = -far;
+    let seenAt = -1;
+    for (let k = 0; k < n * laps; k++) {
+      const i = k % n;
+      if (fixed[i]) {
+        seen = k;
+        seenAt = i;
+      }
+      if (k >= (laps - 1) * n && seenAt >= 0) {
+        dl[i] = k - seen;
+        il[i] = seenAt;
+      }
+    }
+    seen = far;
+    seenAt = -1;
+    for (let k = n * laps - 1; k >= 0; k--) {
+      const i = k % n;
+      if (fixed[i]) {
+        seen = k;
+        seenAt = i;
+      }
+      if (k < n && seenAt >= 0) {
+        dr[i] = seen - k;
+        ir[i] = seenAt;
+      }
+    }
+    const weight = (d) => (d >= reach ? 0 : 1 - smoothstep(0, 1, d / reach));
     const out = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       if (fixed[i]) {
         out[i] = delta[i];
         continue;
       }
-      let best = 0;
-      let bw = 0;
-      for (let j = 1; j <= reach; j++) {
-        for (const k of [i - j, i + j]) {
-          if (!p.closed && (k < 0 || k >= n)) continue;
-          const kk = p.wrapIndex(k);
-          if (fixed[kk]) {
-            const w = 1 - smoothstep(0, 1, j / reach);
-            if (w > bw) {
-              bw = w;
-              best = delta[kk];
-            }
-          }
-        }
-        if (bw > 0) break;
-      }
-      out[i] = best * bw;
+      const wl = il[i] >= 0 ? weight(dl[i]) : 0;
+      const wr = ir[i] >= 0 ? weight(dr[i]) : 0;
+      out[i] = ((wl ? wl * delta[il[i]] : 0) + (wr ? wr * delta[ir[i]] : 0)) / Math.max(1, wl + wr);
     }
     for (let i = 0; i < n; i++) r.h[i] += out[i];
   }
@@ -270,9 +323,12 @@ export class RoadNetwork {
 
   /**
    * Nearest road edge within `reach` meters, for carving terrain and placing props.
+   * A road on a deck is ignored unless it is cut into the ground: pass the natural ground
+   * height `groundH` here and a lifted road only counts when it is within 2 m of it.
    * @param {number} x @param {number} z @param {number} reach @param {RoadHit} out
+   * @param {number} [groundH]
    */
-  influence(x, z, reach, out) {
+  influence(x, z, reach, out, groundH = -Infinity) {
     const rc = Math.ceil(reach / CELL);
     const cx = Math.floor((x + OFF) / CELL);
     const cz = Math.floor((z + OFF) / CELL);
@@ -307,7 +363,7 @@ export class RoadNetwork {
       if (edge > reach || edge >= bestEdge) continue;
       // Terrain is not shaped to a road that has left the ground; the road below is.
       const lift = r.liftAt(h.s);
-      if (lift > ELEVATED + 0.4) continue;
+      if (lift > ELEVATED + 0.4 && r.heightAt(h.s) - groundH > ELEVATED) continue;
       bestEdge = edge;
       found = true;
       out.road = r;

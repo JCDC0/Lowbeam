@@ -4,7 +4,7 @@
  * the light baker and the collision grid all read the same lists.
  */
 
-import { TOWN, SEED } from './layout.js';
+import { CITY, SEED } from './layout.js';
 import { padDistance } from './ground.js';
 import { makeRng } from '../core/rng.js';
 import { placeForest } from './forest.js';
@@ -181,19 +181,26 @@ function placeLamps(ground, lights, circles) {
   for (const road of ground.roads.roads) {
     const p = road.path;
     for (const run of road.def.lamps || []) {
-      const s0 = p.nearest(run.from[0], run.from[1]).s;
-      let s1 = p.nearest(run.to[0], run.to[1]).s;
-      if (p.closed && s1 < s0) s1 += p.length;
+      let s0 = 4;
+      let s1 = p.length - 4;
+      if (!run.all) {
+        s0 = p.nearest(run.from[0], run.from[1]).s;
+        s1 = p.nearest(run.to[0], run.to[1]).s;
+        if (p.closed && s1 < s0) s1 += p.length;
+      }
       let k = 0;
       for (let s = s0; s <= s1 + 0.1; s += run.every, k++) {
+        // Poles stand on the ground, so none under or on an overpass.
+        if (road.liftAt(s) > 0.6) continue;
         const q = p.sample(s);
-        const side = k % 2 === 0 ? 1 : -1;
+        const side = run.side || (k % 2 === 0 ? 1 : -1);
         const lx = q.tz * side;
         const lz = -q.tx * side;
-        const off = road.hw + SKIRT + 0.8;
+        const off = run.offset ?? road.hw + SKIRT + 0.8;
         const x = q.x + lx * off;
         const z = q.z + lz * off;
-        if (!clearOfRoads(ground, x, z, 0.5)) continue;
+        // A pole placed exactly (in a median) is allowed closer to the roads than a roadside one.
+        if (!clearOfRoads(ground, x, z, run.offset === undefined ? 0.5 : -0.2)) continue;
         const y = ground.at(x, z).h;
         const yaw = Math.atan2(-lx, -lz);
         const hx = x - lx * LAMP_REACH;
@@ -269,7 +276,8 @@ function placeBuildings(ground, lights, boxes) {
   const rng = makeRng(SEED ^ 0xb11d);
   /** @type {Building[]} */
   const out = [];
-  const inTown = (x, z) => x > TOWN.x0 && x < TOWN.x1 && z > TOWN.z0 && z < TOWN.z1;
+  const inTown = (x, z) => x > CITY.x0 && x < CITY.x1 && z > CITY.z0 && z < CITY.z1;
+  const heart = [(CITY.x0 + CITY.x1) / 2, (CITY.z0 + CITY.z1) / 2];
   const corners = (b) => {
     const c = Math.cos(b.yaw);
     const s = Math.sin(b.yaw);
@@ -290,16 +298,19 @@ function placeBuildings(ground, lights, boxes) {
     for (let s = 6; s < p.length - 6; s += rng.range(13, 19)) {
       const q = p.sample(s);
       if (!inTown(q.x, q.z)) continue;
+      // Taller and wider toward the middle of downtown, low rise at its edges.
+      const core = Math.max(0, 1 - Math.hypot(q.x - heart[0], (q.z - heart[1]) * 1.3) / 640);
       for (const side of [1, -1]) {
-        if (rng.chance(0.18)) continue;
+        if (rng.chance(0.14)) continue;
         const lx = q.tz * side;
         const lz = -q.tx * side;
-        const w = rng.range(8, 15);
-        const d = rng.range(8, 14);
+        const tower = rng.chance(0.15 + 0.55 * core);
+        const w = tower ? rng.range(14, 30) : rng.range(8, 15);
+        const d = tower ? rng.range(14, 26) : rng.range(8, 14);
         const setback = road.hw + SKIRT + 3 + d / 2;
         const x = q.x + lx * setback;
         const z = q.z + lz * setback;
-        const isKonbini = konbini < 2 && rng.chance(0.08);
+        const isKonbini = konbini < 4 && !tower && rng.chance(0.07);
         const b = {
           x,
           z,
@@ -307,7 +318,7 @@ function placeBuildings(ground, lights, boxes) {
           yaw: Math.atan2(-lx, -lz),
           w: isKonbini ? 16 : w,
           d: isKonbini ? 12 : d,
-          h: isKonbini ? 4.2 : rng.chance(0.3) ? rng.range(12, 22) : rng.range(5, 11),
+          h: isKonbini ? 4.2 : tower ? rng.range(26, 40 + 80 * core) : rng.chance(0.3) ? rng.range(12, 22) : rng.range(5, 11),
           kind: isKonbini ? 'konbini' : 'block',
           seed: rng.int(0, 1e6),
           sign: rng.chance(0.55) ? rng.int(0, 7) : -1,

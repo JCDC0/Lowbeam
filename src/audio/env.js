@@ -4,8 +4,8 @@
  * in the trees, water lapping and the town hum.
  */
 
-import { LAKE, TOWN, WORLD_HALF } from '../world/layout.js';
-import { smoothstep } from '../core/mathx.js';
+import { WORLD_HALF } from '../world/layout.js';
+import { cityAmount, waterAmount } from '../world/zones.js';
 
 const CELL = 40;
 const N = Math.ceil((WORLD_HALF * 2) / CELL) + 1;
@@ -45,10 +45,8 @@ export class EnvMap {
     }
     const o = this.out;
     o.forest = Math.min(1, sum / FULL);
-    const dx = Math.max(TOWN.x0 - x, 0, x - TOWN.x1);
-    const dz = Math.max(TOWN.z0 - z, 0, z - TOWN.z1);
-    o.town = 1 - smoothstep(0, 140, Math.hypot(dx, dz));
-    o.water = 1 - smoothstep(0, 160, Math.max(0, Math.hypot(x - LAKE.x, z - LAKE.z) - LAKE.r));
+    o.town = cityAmount(x, z);
+    o.water = waterAmount(x, z);
     return o;
   }
 }
