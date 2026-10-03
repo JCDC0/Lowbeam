@@ -4,6 +4,7 @@
  * the light baker and the collision grid all read the same lists.
  */
 
+import { placeBuildings } from './buildings.js';
 import { CITY, SEED } from './layout.js';
 import { padDistance } from './ground.js';
 import { makeRng } from '../core/rng.js';
@@ -31,7 +32,9 @@ import { SKIRT, ELEVATED } from './roads.js';
 /**
  * A box building. (x, z) is the footprint center, yaw turns its local +Z toward the
  * street, w runs along the street and d away from it.
- * @typedef {{ x: number, z: number, y: number, yaw: number, w: number, d: number, h: number, kind: string, seed: number, sign: number }} Building
+ * `kind` is block, tower, apartment, house, konbini, warehouse, garage or factory; `roof` is flat,
+ * pitched, shed or saw.
+ * @typedef {{ x: number, z: number, y: number, yaw: number, w: number, d: number, h: number, kind: string, roof: string, seed: number, sign: number }} Building
  */
 /** @typedef {{ x: number, z: number, r: number, y0?: number, y1?: number }} Circle */
 /**
@@ -109,7 +112,7 @@ export function scatterWorld(ground) {
   const boxes = [];
   const lamps = placeLamps(ground, lights, circles);
   const stations = ground.pads.map((pad) => placeStation(ground, pad, lights, circles, boxes));
-  const buildings = placeBuildings(ground, lights, boxes);
+  const buildings = placeBuildings(ground, lights, boxes, SIGN_COLORS);
   const trees = placeForest(ground, buildings, circles, clearOfRoads);
   const bridges = placeBridges(ground, circles, boxes);
   const highway = placeHighway(ground, boxes, circles, lights);
@@ -207,18 +210,23 @@ function placeLamps(ground, lights, circles) {
         if (p.closed && s1 < s0) s1 += p.length;
       }
       let k = 0;
+      const spans = ground.junctionSpans.get(road) || [];
       for (let s = s0; s <= s1 + 0.1; s += run.every, k++) {
-        // Poles stand on the ground, so none under or on an overpass.
+        // Poles stand on the ground, so none under or on an overpass, and none in a junction.
         if (road.liftAt(s) > 0.6) continue;
+        const sw = p.wrapS(s);
+        if (spans.some(([a, b]) => sw > a - 6 && sw < b + 6)) continue;
         const q = p.sample(s);
         const side = run.side || (k % 2 === 0 ? 1 : -1);
         const lx = q.tz * side;
         const lz = -q.tx * side;
-        const off = run.offset ?? road.hw + SKIRT + 0.8;
+        // On a road with a sidewalk the pole stands at the sidewalk's outer edge.
+        const off = run.offset ?? (road.walk ? road.hw + road.walk - 0.5 : road.hw + SKIRT + 0.8);
         const x = q.x + lx * off;
         const z = q.z + lz * off;
-        // A pole placed exactly (in a median) is allowed closer to the roads than a roadside one.
-        if (!clearOfRoads(ground, x, z, run.offset === undefined ? 0.5 : -0.2)) continue;
+        // A pole placed exactly (in a median, on a sidewalk) is allowed closer to the roads than a roadside one.
+        const margin = run.offset !== undefined ? -0.2 : road.walk ? 0.4 - road.walk - SKIRT : 0.5;
+        if (!clearOfRoads(ground, x, z, margin)) continue;
         const y = ground.at(x, z).h;
         const yaw = Math.atan2(-lx, -lz);
         const hx = x - lx * LAMP_REACH;
@@ -295,78 +303,6 @@ function placeStation(ground, pad, lights, circles, boxes) {
   return { pad, layout: L, yaw, pillars, canopyLights, pumps: pumps.map((q) => ({ ...q, ...padPoint(pad, q.u, q.v) })) };
 }
 
-/** @param {Ground} ground @param {BakeLight[]} lights @param {Box[]} boxes */
-function placeBuildings(ground, lights, boxes) {
-  const rng = makeRng(SEED ^ 0xb11d);
-  /** @type {Building[]} */
-  const out = [];
-  const inTown = (x, z) => x > CITY.x0 && x < CITY.x1 && z > CITY.z0 && z < CITY.z1;
-  const heart = [(CITY.x0 + CITY.x1) / 2, (CITY.z0 + CITY.z1) / 2];
-  const corners = (b) => {
-    const c = Math.cos(b.yaw);
-    const s = Math.sin(b.yaw);
-    const pts = [];
-    for (const [a, d] of [[-1, -1], [1, -1], [1, 1], [-1, 1], [0, 0], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
-      const lx = (a * b.w) / 2;
-      const lz = (d * b.d) / 2;
-      pts.push([b.x + lx * c + lz * s, b.z - lx * s + lz * c]);
-    }
-    return pts;
-  };
-  const overlaps = (b) =>
-    out.some((o) => Math.hypot(o.x - b.x, o.z - b.z) < (Math.max(o.w, o.d) + Math.max(b.w, b.d)) * 0.55);
-  let konbini = 0;
-  for (const road of ground.roads.roads) {
-    if (road.surface !== 'asphalt') continue;
-    const p = road.path;
-    for (let s = 6; s < p.length - 6;) {
-      const q = p.sample(s);
-      if (!inTown(q.x, q.z)) {
-        s += 16;
-        continue;
-      }
-      const core = Math.max(0, 1 - Math.hypot(q.x - heart[0], (q.z - heart[1]) * 1.3) / 640);
-      s += core > 0 ? rng.range(12, 17) : rng.range(22, 32);
-      for (const side of [1, -1]) {
-        if (rng.chance(core > 0 ? 0.12 : 0.25)) continue;
-        const lx = q.tz * side;
-        const lz = -q.tx * side;
-        const tower = core > 0 && rng.chance(0.18 + 0.55 * core);
-        const w = tower ? rng.range(14, 30) : rng.range(8, 15);
-        const d = tower ? rng.range(14, 26) : rng.range(8, 14);
-        const setback = road.hw + SKIRT + 3 + d / 2;
-        const x = q.x + lx * setback;
-        const z = q.z + lz * setback;
-        const isKonbini = konbini < 6 && !tower && rng.chance(0.07);
-        const b = {
-          x,
-          z,
-          y: 0,
-          yaw: Math.atan2(-lx, -lz),
-          w: isKonbini ? 16 : w,
-          d: isKonbini ? 12 : d,
-          h: isKonbini ? 4.2 : tower ? rng.range(26, 40 + 85 * core) : rng.chance(core > 0 ? 0.3 : 0.15) ? rng.range(10, 18) : rng.range(4.5, 9.5),
-          kind: isKonbini ? 'konbini' : 'block',
-          seed: rng.int(0, 1e6),
-          sign: rng.chance(core > 0 ? 0.55 : 0.2) ? rng.int(0, 7) : -1,
-        };
-        if (!inTown(x, z) || overlaps(b)) continue;
-        if (!corners(b).every(([cx, cz]) => clearOfRoads(ground, cx, cz, 1.5))) continue;
-        let lo = Infinity;
-        for (const [cx, cz] of corners(b)) lo = Math.min(lo, ground.at(cx, cz).h);
-        b.y = lo - 0.3;
-        if (isKonbini) konbini++;
-        out.push(b);
-        boxes.push({ x: b.x, z: b.z, hx: b.w / 2, hz: b.d / 2, yaw: b.yaw });
-        const fx = x - lx * (b.d / 2 + 1.2);
-        const fz = z - lz * (b.d / 2 + 1.2);
-        if (b.kind === 'konbini') lights.push({ x: fx, y: b.y + 2.5, z: fz, c: [1.8, 2.0, 2.0], range: 15 });
-        else if (b.sign >= 0) lights.push({ x: fx, y: b.y + 4, z: fz, c: SIGN_COLORS[b.sign % SIGN_COLORS.length], range: 7 });
-      }
-    }
-  }
-  return out;
-}
 
 /** Neon sign colors, indexed by Building.sign. */
 export const SIGN_COLORS = [

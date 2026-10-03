@@ -4,9 +4,10 @@
  * surface for physics, props and the camera. Pure, no three.js.
  */
 
+import { findJunctions, junctionSpans } from './junctions.js';
 import { Heightfield, baseHeight } from './heightfield.js';
 import { ELEVATED, RoadNetwork, SINK } from './roads.js';
-import { ROADS, STATIONS, WATER_LEVEL } from './layout.js';
+import { ROADS, STATIONS, WATER_LEVEL, cityStyle } from './layout.js';
 import { lerp, smoothstep } from '../core/mathx.js';
 
 /** Terrain within this distance of a road edge is flattened to the road. Must exceed CELL * sqrt(2). */
@@ -15,8 +16,9 @@ export const FLAT = 9.5;
 export const BLEND = 26;
 
 /** Terrain surface codes stored per heightfield vertex. */
-export const TERRAIN = { grass: 0, dirt: 1, rock: 2, sand: 3 };
-const TERRAIN_NAMES = ['grass', 'dirt', 'rock', 'sand'];
+/** Terrain surfaces. `paved` is the town's ground between the sidewalks and the buildings: lots, yards, car parks. */
+export const TERRAIN = { grass: 0, dirt: 1, rock: 2, sand: 3, paved: 4 };
+const TERRAIN_NAMES = ['grass', 'dirt', 'rock', 'sand', 'concrete'];
 
 /**
  * @typedef {{
@@ -73,6 +75,9 @@ export class Ground {
     this.roads = new RoadNetwork(ROADS);
     /** @type {Pad[]} */
     this.pads = STATIONS.map((st) => makePad(this.roads, st));
+    /** Where surface roads cross or meet at a T (junctions.js), and the stretches of road inside them. */
+    this.junctions = findJunctions(this.roads.roads);
+    this.junctionSpans = junctionSpans(this.junctions);
     this.hf = new Heightfield();
     this.surface = new Uint8Array(this.hf.n * this.hf.n);
     this.carve();
@@ -84,7 +89,26 @@ export class Ground {
   carve() {
     const hf = this.hf;
     const n = hf.n;
-    const inf = { road: null, s: 0, d: 0, h: 0, edge: 0 };
+    const inf = { road: null, s: 0, d: 0, h: 0, edge: 0, low: Infinity };
+    // Cells no road comes near skip the road lookup: stamp every road's reach onto the grid first.
+    const near = new Uint8Array(n * n);
+    for (const road of this.roads.roads) {
+      const p = road.path;
+      const r = road.hw + road.walk + FLAT + BLEND + hf.cell * 1.5;
+      const rc = Math.ceil(r / hf.cell);
+      for (let k = 0; k < p.n; k += 4) {
+        const ci = Math.round((p.x[k] + hf.half) / hf.cell);
+        const cj = Math.round((p.z[k] + hf.half) / hf.cell);
+        for (let dj = -rc; dj <= rc; dj++) {
+          const jj = cj + dj;
+          if (jj < 0 || jj >= n) continue;
+          for (let di = -rc; di <= rc; di++) {
+            const ii = ci + di;
+            if (ii >= 0 && ii < n) near[jj * n + ii] = 1;
+          }
+        }
+      }
+    }
     for (let j = 0; j < n; j++) {
       for (let i = 0; i < n; i++) {
         const x = hf.vx(i);
@@ -93,11 +117,11 @@ export class Ground {
         let w = 0;
         let target = h;
         let surf = TERRAIN.grass;
-        if (this.roads.influence(x, z, FLAT + BLEND, inf, h)) {
+        if (near[j * n + i] && this.roads.influence(x, z, FLAT + BLEND, inf, h, FLAT)) {
           w = 1 - smoothstep(FLAT, FLAT + BLEND, inf.edge);
           // A lifted road stops shaping the ground once it is clear of it: that is the viaduct.
           if ((inf.lift || 0) > 0.5) w *= 1 - smoothstep(ELEVATED, ELEVATED + 1.6, inf.h - h);
-          target = inf.h - SINK;
+          target = Math.min(inf.h, inf.low ?? Infinity) - SINK;
           if (inf.road.surface === 'gravel' && inf.edge < FLAT + 3) surf = TERRAIN.dirt;
         }
         for (const pad of this.pads) {
@@ -110,6 +134,11 @@ export class Ground {
           }
         }
         h = lerp(h, target, w);
+        // Town ground is paved: all of it in the dense districts, the front yards in the residential ones.
+        if (surf === TERRAIN.grass) {
+          const style = cityStyle(x, z);
+          if (style && (style !== 'residential' || w > 0.55)) surf = TERRAIN.paved;
+        }
         if (h < WATER_LEVEL + 0.6 && w < 0.5) surf = TERRAIN.sand;
         hf.h[j * n + i] = h;
         this.surface[j * n + i] = surf;

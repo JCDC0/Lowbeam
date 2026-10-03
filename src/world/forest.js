@@ -128,7 +128,7 @@ export function placeForest(ground, buildings, circles, clear) {
       if (rng.next() > want) continue;
       if (inTown(x, z, 15) || cityAmount(x, z) > 0.01) continue;
       const g = ground.at(x, z);
-      if (g.road || g.pad || g.h < WATER_LEVEL + 0.8) continue;
+      if (g.road || g.pad || g.h < WATER_LEVEL + 0.8 || g.surface === 'concrete') continue;
       if (!clear(ground, x, z, 3.5) || nearBuilding(x, z)) continue;
       let kind = inland(x, z) < SHORE ? pickWeighted(HABITAT.shore, rng.next()) : pickSpecies(rng, habitat(x, z, g.h), x, z);
       if (g.surface === 'rock') {
@@ -180,7 +180,7 @@ function placeGroves(ground, add, clear, nearBuilding, inTown) {
         const d = Math.hypot(x - gv.x, z - gv.z) / gv.r;
         if (d > 1 || gr.next() < d * d * 0.8) continue;
         const g = ground.at(x, z);
-        if (g.road || g.pad || g.h < WATER_LEVEL + 0.8) continue;
+        if (g.road || g.pad || g.h < WATER_LEVEL + 0.8 || g.surface === 'concrete') continue;
         if (!clear(ground, x, z, 5) || nearBuilding(x, z)) continue;
         add(makeTree(gr, gr.pick(gv.kinds), x, g.h - 0.1, z, 1 + (1 - d) * 0.25));
       }

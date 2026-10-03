@@ -42,7 +42,7 @@ const LANE_HOLD = 8;
 /** Clear gap a civilian needs ahead in the slow lane before drifting back into it. */
 const SLOW_LANE_GAP = 120;
 
-const CLASS_DENSITY = { expressway: 3, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
+const CLASS_DENSITY = { expressway: 4.5, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
 
 /** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] */
 function idm(v, v0, accel, gap, closing, rival = false) {
@@ -55,6 +55,9 @@ function idm(v, v0, accel, gap, closing, rival = false) {
   return accel * (free - (wanted / Math.max(gap, 0.2)) ** 2);
 }
 
+/** Lane pieces for spawning, and the grid they are filed in, meters. */
+const PIECE = 40;
+const PIECE_CELL = 160;
 
 export class TrafficSim {
   /**
@@ -76,8 +79,65 @@ export class TrafficSim {
     const weights = net.lanes.map((l) => l.length * (CLASS_DENSITY[l.cls] ?? 1) * (l.index === 0 ? 1 : 0.7));
     this.laneWeights = weights;
     this.weightSum = weights.reduce((a, b) => a + b, 0);
+    /**
+     * Every lane cut into PIECE meter pieces, filed in a grid by where they are, so a spawn picks
+     * from the lanes around the player and not from the whole island (where most of the city's
+     * streets would be too far away to use).
+     * @type {Map<number, { lane: Lane, s0: number, x: number, z: number, w: number }[]>}
+     */
+    this.pieces = new Map();
+    const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+    net.lanes.forEach((lane, i) => {
+      const w = (weights[i] / Math.max(1, lane.length)) * PIECE;
+      for (let s0 = 0; s0 < lane.length; s0 += PIECE) {
+        net.sample(lane, Math.min(lane.length, s0 + PIECE / 2), q);
+        const key = this.pieceKey(Math.floor(q.x / PIECE_CELL), Math.floor(q.z / PIECE_CELL));
+        let list = this.pieces.get(key);
+        if (!list) this.pieces.set(key, (list = []));
+        list.push({ lane, s0, x: q.x, z: q.z, w });
+      }
+    });
     this._q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
     this._r = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  }
+
+  /** @param {number} cx @param {number} cz */
+  pieceKey(cx, cz) {
+    return cx * 7919 + cz;
+  }
+
+  /**
+   * A place on a lane between `min` and `max` meters from the player, busier roads more often.
+   * @param {{ x: number, z: number }} player @param {number} min @param {number} max
+   * @returns {{ lane: Lane, s: number } | null}
+   */
+  pickNear(player, min, max) {
+    const found = [];
+    let sum = 0;
+    const c0 = Math.floor((player.x - max) / PIECE_CELL);
+    const c1 = Math.floor((player.x + max) / PIECE_CELL);
+    const r0 = Math.floor((player.z - max) / PIECE_CELL);
+    const r1 = Math.floor((player.z + max) / PIECE_CELL);
+    for (let cx = c0; cx <= c1; cx++) {
+      for (let cz = r0; cz <= r1; cz++) {
+        const list = this.pieces.get(this.pieceKey(cx, cz));
+        if (!list) continue;
+        for (const p of list) {
+          const d = Math.hypot(p.x - player.x, p.z - player.z);
+          if (d < min - PIECE / 2 || d > max + PIECE / 2) continue;
+          found.push(p);
+          sum += p.w;
+        }
+      }
+    }
+    if (!found.length) return null;
+    let t = this.rng.next() * sum;
+    for (const p of found) {
+      t -= p.w;
+      if (t <= 0) return { lane: p.lane, s: Math.min(p.lane.length, p.s0 + this.rng.next() * PIECE) };
+    }
+    const p = found[found.length - 1];
+    return { lane: p.lane, s: p.s0 };
   }
 
   /** A lane drawn at random, longer and busier roads more often. */
@@ -199,8 +259,9 @@ export class TrafficSim {
    */
   spawn(player, min, max) {
     for (let tries = 0; tries < 16; tries++) {
-      const lane = this.pickLane();
-      const s = this.rng.next() * lane.length;
+      const pick = max < 1e6 ? this.pickNear(player, min, max) : null;
+      const lane = pick ? pick.lane : this.pickLane();
+      const s = pick ? pick.s : this.rng.next() * lane.length;
       const q = this.net.sample(lane, s, this._q);
       const d = Math.hypot(q.x - player.x, q.z - player.z);
       if (d < min || d > max) continue;

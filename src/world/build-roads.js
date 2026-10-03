@@ -3,7 +3,12 @@
  * edge, three across the lane surface, edge, skirt. The surface is flat across at the
  * road profile height; the skirts drop by SINK over SKIRT to the carved terrain, the
  * same shape Ground.at reports. Higher priority roads sit a few millimeters higher so
- * junctions never z-fight.
+ * junctions never z-fight. A road with a sidewalk (`walk`) has four more: a curb up and the
+ * sidewalk on each side, 16 cm above the road.
+ *
+ * Junctions (junctions.js) are paved as one patch each, and the ribbons drop their skirts and
+ * sidewalks inside them. The ribbon pieces are merged per 256 m cell and material, so a city of
+ * hundreds of streets costs a few draw calls per cell.
  */
 
 import * as THREE from 'three';
@@ -13,10 +18,13 @@ import { MeshBuilder } from '../render/builder.js';
 import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture, makeCanvas, canvasTexture } from '../render/textures.js';
 import { SKIRT, SINK } from './roads.js';
 import { inStretch } from './merge.js';
-import { GRID } from './layout.js';
 
 export const TILE = 12;
 const CHUNK_ROWS = 90;
+/** Curb height, meters. */
+const CURB = 0.16;
+/** Side of the cells ribbons are merged in, meters. */
+const MERGE_CELL = 256;
 
 function goreTexture() {
   const c = makeCanvas(64, 64);
@@ -77,12 +85,17 @@ function sharedEdges(roads) {
   return out;
 }
 
-/** @param {import('./roads.js').Road} road @param {{ side: 1 | -1, a: number, b: number }[] | undefined} shared */
-function ribbon(road, r0, r1, shared) {
+/**
+ * @param {import('./roads.js').Road} road @param {number} r0 @param {number} r1
+ * @param {{ side: 1 | -1, a: number, b: number }[] | undefined} shared
+ * @param {number[][] | undefined} inJunction stretches of this road inside a junction
+ */
+function ribbon(road, r0, r1, shared, inJunction) {
   const p = road.path;
   const lift = 0.012 * road.priority;
   const rows = r1 - r0 + 1;
-  const nc = 7;
+  const walk = road.walk;
+  const nc = walk ? 11 : 7;
   const pos = new Float32Array(rows * nc * 3);
   const uv = new Float32Array(rows * nc * 2);
   const isRamp = road.def.cls === 'ramp';
@@ -99,6 +112,8 @@ function ribbon(road, r0, r1, shared) {
     let skirtR = SKIRT;
     let dropL = SINK - 0.02;
     let dropR = SINK - 0.02;
+    let wL = walk;
+    let wR = walk;
     for (const e of shared || []) {
       if (!inStretch(p.wrapS(s), [e.a, e.b], p.length, p.closed)) continue;
       if (e.side > 0) {
@@ -109,34 +124,21 @@ function ribbon(road, r0, r1, shared) {
         dropL = 0;
       }
     }
-    if (isRamp) {
-      if (s < 12 || s > p.length - 12) {
-        skirtL = 0;
-        skirtR = 0;
-        dropL = 0;
-        dropR = 0;
-      }
+    if (isRamp && (s < 12 || s > p.length - 12)) {
+      skirtL = skirtR = 0;
+      dropL = dropR = 0;
     }
-    if (road.def.cls === 'street' || road.def.cls === 'arterial') {
-      if (x > GRID.rect.x0 - 20 && x < GRID.rect.x1 + 20 && z > GRID.rect.z0 - 10 && z < GRID.rect.z1 + 10) {
-        for (const ew of GRID.ew) {
-          if (Math.abs(z - ew) < hw + 0.5) {
-            for (const ns of GRID.ns) {
-              if (Math.abs(x - ns) < hw + 0.5) {
-                dropL = 0;
-                dropR = 0;
-                skirtL = 0;
-                skirtR = 0;
-                break;
-              }
-            }
-            break;
-          }
-        }
-      }
+    if (inJunction && inJunction.some(([a, b]) => s >= a && s <= b)) {
+      skirtL = skirtR = 0;
+      dropL = dropR = 0;
+      wL = wR = 0;
     }
-    const cols = [-(hw + skirtL), -hw, -hw / 2, 0, hw / 2, hw, hw + skirtR];
-    const drop = [dropL, 0, 0, 0, 0, 0, dropR];
+    const cols = walk
+      ? [-(hw + wL + skirtL), -(hw + wL), -hw, -hw, -hw / 2, 0, hw / 2, hw, hw, hw + wR, hw + wR + skirtR]
+      : [-(hw + skirtL), -hw, -hw / 2, 0, hw / 2, hw, hw + skirtR];
+    const cL = wL ? CURB : 0;
+    const cR = wR ? CURB : 0;
+    const drop = walk ? [dropL - cL, -cL, -cL, 0, 0, 0, 0, 0, -cR, -cR, dropR - cR] : [dropL, 0, 0, 0, 0, 0, dropR];
     for (let c = 0; c < nc; c++) {
       const k = r * nc + c;
       const d = cols[c];
@@ -149,25 +151,63 @@ function ribbon(road, r0, r1, shared) {
   }
   const surf = [];
   const skirt = [];
+  const side = [];
+  const lane0 = walk ? 3 : 1;
+  const lane1 = walk ? 7 : 5;
   for (let r = 0; r < rows - 1; r++) {
     for (let c = 0; c < nc - 1; c++) {
       const a = r * nc + c;
       const b = a + 1;
       const d = a + nc;
       const e = d + 1;
-      const list = c === 0 || c === nc - 2 ? skirt : surf;
+      const list = c === 0 || c === nc - 2 ? skirt : c >= lane0 && c < lane1 ? surf : side;
       list.push(a, e, b, a, d, e);
     }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-  geo.setIndex([...surf, ...skirt]);
+  geo.setIndex([...surf, ...skirt, ...side]);
   geo.addGroup(0, surf.length, 0);
   geo.addGroup(surf.length, skirt.length, 1);
+  if (side.length) geo.addGroup(surf.length + skirt.length, side.length, 2);
   geo.computeVertexNormals();
-  geo.computeBoundingSphere();
   return geo;
+}
+
+/**
+ * One paved patch per junction: a polygon through the edges (sidewalks included) of every road
+ * leaving it, a little higher than the highest of them, so lane paint and curbs stop at it.
+ * @param {import('./junctions.js').Junction[]} junctions
+ */
+function buildJunctions(junctions) {
+  const b = new MeshBuilder();
+  for (const j of junctions) {
+    /** @type {{ a: number, p: number[] }[]} */
+    const pts = [];
+    let y = -Infinity;
+    for (const arm of j.arms) {
+      const road = arm.road;
+      const s = road.path.wrapS(arm.s + arm.dir * (j.r + 2.5));
+      const q = road.path.sample(s);
+      const w = road.hwAt(s) + road.walk;
+      y = Math.max(y, road.heightAt(road.path.wrapS(arm.s)) + 0.012 * road.priority);
+      for (const k of [-1, 1]) {
+        const x = q.x + q.tz * w * k;
+        const z = q.z - q.tx * w * k;
+        pts.push({ a: Math.atan2(x - j.x, z - j.z), p: [x, z] });
+      }
+    }
+    if (pts.length < 3) continue;
+    pts.sort((p, q) => p.a - q.a);
+    y += 0.006;
+    for (let k = 0; k < pts.length; k++) {
+      const p0 = pts[k].p;
+      const p1 = pts[(k + 1) % pts.length].p;
+      b.tri('asphalt', [j.x, y, j.z], [p1[0], y, p1[1]], [p0[0], y, p0[1]], [j.x / TILE, j.z / TILE], [p1[0] / TILE, p1[1] / TILE], [p0[0] / TILE, p0[1] / TILE]);
+    }
+  }
+  return b;
 }
 
 /**
@@ -234,86 +274,6 @@ function buildGores(ground) {
   return b;
 }
 
-function buildCityCrossingsAndCurbs(ground) {
-  const b = new MeshBuilder();
-  const GRID_EW = GRID.ew;
-  const GRID_NS = GRID.ns;
-  const crossings = [];
-  for (const z of GRID_EW) {
-    for (const x of GRID_NS) {
-      crossings.push([x, z]);
-    }
-  }
-  const hw = 4.6;
-  const R = 3.0;
-  const H = 0.16;
-
-  for (const [cx, cz] of crossings) {
-    const y = ground.at(cx, cz).h + 0.005;
-    const u0 = (cx - hw) / 12;
-    const u1 = (cx + hw) / 12;
-    const v0 = (cz - hw) / 12;
-    const v1 = (cz + hw) / 12;
-    b.quad('asphalt', [cx - hw, y, cz - hw], [cx + hw, y, cz - hw], [cx + hw, y, cz + hw], [cx - hw, y, cz + hw], [u0, v0, u1, v1]);
-
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) {
-        const ox = cx + sx * (hw + R);
-        const oz = cz + sz * (hw + R);
-        const steps = 4;
-        const ptsArc = [];
-        for (let j = 0; j <= steps; j++) {
-          const a = (j / steps) * (Math.PI / 2);
-          const angle = sx > 0
-            ? (sz > 0 ? Math.PI + a : Math.PI / 2 + a)
-            : (sz > 0 ? (3 * Math.PI) / 2 + a : a);
-          const px = ox + Math.cos(angle) * R;
-          const pz = oz + Math.sin(angle) * R;
-          ptsArc.push([px, pz]);
-        }
-        for (let j = 0; j < steps; j++) {
-          const p0 = ptsArc[j];
-          const p1 = ptsArc[j + 1];
-          b.quad('curb', [p0[0], y, p0[1]], [p1[0], y, p1[1]], [p1[0], y + H, p1[1]], [p0[0], y + H, p0[1]], [0, 0, 0.2, 0.16]);
-          b.quad('curb', [p0[0], y + H, p0[1]], [p1[0], y + H, p1[1]], [ox, y + H, oz], [ox, y + H, oz], [p0[0] / 4, p0[1] / 4, p1[0] / 4, p1[1] / 4]);
-        }
-      }
-    }
-  }
-
-  for (let i = 0; i < GRID_NS.length - 1; i++) {
-    for (let j = 0; j < GRID_EW.length; j++) {
-      const x0 = GRID_NS[i] + hw + R;
-      const x1 = GRID_NS[i + 1] - (hw + R);
-      const cz = GRID_EW[j];
-      const y = ground.at((x0 + x1) / 2, cz).h + 0.005;
-      for (const sz of [-1, 1]) {
-        const zRoad = cz + sz * hw;
-        const zWalk = cz + sz * (hw + 2.4);
-        b.quad('curb', [x0, y, zRoad], [x1, y, zRoad], [x1, y + H, zRoad], [x0, y + H, zRoad], [0, 0, (x1 - x0) / 4, 0.16]);
-        b.quad('curb', [x0, y + H, zRoad], [x1, y + H, zRoad], [x1, y + H, zWalk], [x0, y + H, zWalk], [x0 / 4, zRoad / 4, x1 / 4, zWalk / 4]);
-      }
-    }
-  }
-
-  for (let i = 0; i < GRID_NS.length; i++) {
-    for (let j = 0; j < GRID_EW.length - 1; j++) {
-      const z0 = GRID_EW[j] + hw + R;
-      const z1 = GRID_EW[j + 1] - (hw + R);
-      const cx = GRID_NS[i];
-      const y = ground.at(cx, (z0 + z1) / 2).h + 0.005;
-      for (const sx of [-1, 1]) {
-        const xRoad = cx + sx * hw;
-        const xWalk = cx + sx * (hw + 2.4);
-        b.quad('curb', [xRoad, y, z0], [xRoad, y, z1], [xRoad, y + H, z1], [xRoad, y + H, z0], [0, 0, (z1 - z0) / 4, 0.16]);
-        b.quad('curb', [xRoad, y + H, z0], [xRoad, y + H, z1], [xWalk, y + H, z1], [xWalk, y + H, z0], [xRoad / 4, z0 / 4, xWalk / 4, z1 / 4]);
-      }
-    }
-  }
-
-  return b;
-}
-
 function padGeometry(pad) {
   const step = 3;
   const nu = Math.ceil((pad.hw * 2) / step) + 1;
@@ -368,6 +328,47 @@ function padGeometry(pad) {
   return geo;
 }
 
+/**
+ * Concatenates geometries that share the same group layout (material index per group).
+ * @param {THREE.BufferGeometry[]} geos @param {number} groups
+ */
+function mergeGroups(geos, groups) {
+  let verts = 0;
+  for (const g of geos) verts += g.attributes.position.count;
+  const pos = new Float32Array(verts * 3);
+  const nrm = new Float32Array(verts * 3);
+  const uv = new Float32Array(verts * 2);
+  /** @type {number[][]} */
+  const idx = Array.from({ length: groups }, () => []);
+  let base = 0;
+  for (const g of geos) {
+    pos.set(/** @type {Float32Array} */ (g.attributes.position.array), base * 3);
+    nrm.set(/** @type {Float32Array} */ (g.attributes.normal.array), base * 3);
+    uv.set(/** @type {Float32Array} */ (g.attributes.uv.array), base * 2);
+    const index = /** @type {THREE.BufferAttribute} */ (g.index).array;
+    for (const gr of g.groups) {
+      const list = idx[gr.materialIndex ?? 0];
+      for (let k = gr.start; k < gr.start + gr.count; k++) list.push(index[k] + base);
+    }
+    base += g.attributes.position.count;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.BufferAttribute(nrm, 3));
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  const all = [];
+  let start = 0;
+  idx.forEach((list, m) => {
+    if (!list.length) return;
+    geo.addGroup(start, list.length, m);
+    for (const v of list) all.push(v);
+    start += list.length;
+  });
+  geo.setIndex(all);
+  geo.computeBoundingSphere();
+  return geo;
+}
+
 export function buildRoads(ground, grid) {
   const shoulder = psxLambert({ map: shoulderTexture(), baked: true });
   const mats = {
@@ -386,20 +387,35 @@ export function buildRoads(ground, grid) {
   const chunks = [];
   group.userData.chunks = chunks;
   const shared = sharedEdges(ground.roads);
+  const concrete = psxLambert({ map: concreteTexture(), baked: true, side: THREE.DoubleSide });
+  const walkMat = psxLambert({ map: concreteTexture(), baked: true, color: 0xb8b6b0 });
+  /** @type {Map<string, { geos: THREE.BufferGeometry[], mats: THREE.Material[], x: number, z: number, n: number }>} */
+  const buckets = new Map();
   for (const road of ground.roads.roads) {
     const p = road.path;
     const last = p.closed ? p.n : p.n - 1;
+    const surface = surfaceOf(road);
     for (let r0 = 0; r0 < last; r0 += CHUNK_ROWS) {
       const r1 = Math.min(last, r0 + CHUNK_ROWS);
-      const geo = bakeGeometry(ribbon(road, r0, r1, shared.get(road)), grid, { wrap: 0.6 });
-      const mesh = new THREE.Mesh(geo, [surfaceOf(road), shoulder]);
-      mesh.name = road.id;
-      group.add(mesh);
-      const mid = (r0 + r1) >> 1;
-      chunks.push({ mesh, x: p.x[mid % p.n], z: p.z[mid % p.n] });
+      const geo = ribbon(road, r0, r1, shared.get(road), ground.junctionSpans.get(road));
+      const mid = ((r0 + r1) >> 1) % p.n;
+      const key = `${Math.floor(p.x[mid] / MERGE_CELL)},${Math.floor(p.z[mid] / MERGE_CELL)},${surface.uuid}`;
+      let bucket = buckets.get(key);
+      if (!bucket) buckets.set(key, (bucket = { geos: [], mats: [surface, shoulder, walkMat], x: 0, z: 0, n: 0 }));
+      bucket.geos.push(geo);
+      bucket.x += p.x[mid];
+      bucket.z += p.z[mid];
+      bucket.n++;
     }
   }
-  const concrete = psxLambert({ map: concreteTexture(), baked: true, side: THREE.DoubleSide });
+  for (const [key, bucket] of buckets) {
+    const geo = bakeGeometry(mergeGroups(bucket.geos, 3), grid, { wrap: 0.6 });
+    for (const g of bucket.geos) g.dispose();
+    const mesh = new THREE.Mesh(geo, bucket.mats);
+    mesh.name = `roads-${key.split(',').slice(0, 2).join(',')}`;
+    group.add(mesh);
+    chunks.push({ mesh, x: bucket.x / bucket.n, z: bucket.z / bucket.n });
+  }
   for (const pad of ground.pads) {
     const mesh = new THREE.Mesh(bakeGeometry(padGeometry(pad), grid, { wrap: 0.6 }), concrete);
     mesh.name = `pad-${pad.id}`;
@@ -416,12 +432,11 @@ export function buildRoads(ground, grid) {
     group.add(goreMesh);
   }
 
-  const cityCrossingsBuilder = buildCityCrossingsAndCurbs(ground);
-  const cityData = cityCrossingsBuilder.geometry(['asphalt', 'curb']);
-  if (cityData.geometry.attributes.position && cityData.geometry.attributes.position.count > 0) {
-    const cityMesh = new THREE.Mesh(bakeGeometry(cityData.geometry, grid, { wrap: 0.6 }), [mats.asphalt, concrete]);
-    cityMesh.name = 'city-crossings-and-curbs';
-    group.add(cityMesh);
+  const junctionData = buildJunctions(ground.junctions).geometry(['asphalt']);
+  if (junctionData.geometry.attributes.position && junctionData.geometry.attributes.position.count > 0) {
+    const mesh = new THREE.Mesh(bakeGeometry(junctionData.geometry, grid, { wrap: 0.6 }), [mats.asphalt]);
+    mesh.name = 'junctions';
+    group.add(mesh);
   }
 
   return group;

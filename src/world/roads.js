@@ -20,7 +20,7 @@ const DECK_REACH = 1.6;
 const CELL = 16;
 const OFF = WORLD_HALF + 100;
 const W = Math.ceil((OFF * 2) / CELL);
-const JUNCTION_BLEND = 35;
+const JUNCTION_BLEND = 50;
 
 /** @typedef {import('./layout.js').RoadDef} RoadDef */
 /** @typedef {{ road: Road, s: number, d: number, h: number, edge: number, lift?: number }} RoadHit */
@@ -34,6 +34,8 @@ export class Road {
     this.name = def.name;
     this.surface = def.surface;
     this.hw = def.hw;
+    /** Sidewalk width beside each edge; the ground counts it as road (flat at road height). */
+    this.walk = def.walk || 0;
     this.priority = def.priority;
     this.path = new Path(def.points, { closed: !!def.closed, step: 2 });
     this.h = new Float32Array(this.path.n);
@@ -91,8 +93,10 @@ export class RoadNetwork {
         if (key >= 0) this.cells[key].push(r.index, i);
       }
     }
-    this._best = new Float64Array(this.roads.length);
+    this._best = new Float64Array(this.roads.length).fill(Infinity);
     this._bestI = new Int32Array(this.roads.length);
+    /** Indices of the roads a query found near the point, so it never walks every road. */
+    this._touched = new Int32Array(this.roads.length);
     this._hit = { s: 0, d: 0, x: 0, z: 0, i: 0 };
 
     for (const r of this.roads) this.buildProfile(r);
@@ -289,7 +293,12 @@ export class RoadNetwork {
       }
       const wl = il[i] >= 0 ? weight(dl[i]) : 0;
       const wr = ir[i] >= 0 ? weight(dr[i]) : 0;
-      out[i] = ((wl ? wl * delta[il[i]] : 0) + (wr ? wr * delta[ir[i]] : 0)) / Math.max(1, wl + wr);
+      // Between two junctions, run from one correction to the other (so each junction is met
+      // exactly), fading out where both are far away.
+      if (wl > 0 && wr > 0) {
+        const t = dl[i] / (dl[i] + dr[i]);
+        out[i] = (delta[il[i]] * (1 - t) + delta[ir[i]] * t) * Math.max(wl, wr);
+      } else out[i] = wl > 0 ? wl * delta[il[i]] : wr > 0 ? wr * delta[ir[i]] : 0;
     }
     for (let i = 0; i < n; i++) r.h[i] += out[i];
   }
@@ -307,7 +316,8 @@ export class RoadNetwork {
   query(x, z, out, extra = 0, minPriority = -Infinity, y = -Infinity) {
     const best = this._best;
     const bestI = this._bestI;
-    best.fill(Infinity);
+    const touched = this._touched;
+    let nt = 0;
     const cx = Math.floor((x + OFF) / CELL);
     const cz = Math.floor((z + OFF) / CELL);
     for (let dz = -1; dz <= 1; dz++) {
@@ -324,6 +334,7 @@ export class RoadNetwork {
           const ez = r.path.z[i] - z;
           const d2 = ex * ex + ez * ez;
           if (d2 < best[r.index]) {
+            if (best[r.index] === Infinity) touched[nt++] = r.index;
             best[r.index] = d2;
             bestI[r.index] = i;
           }
@@ -335,17 +346,19 @@ export class RoadNetwork {
     let foundS = 0;
     let foundDeck = false;
     let foundAd = 0;
-    for (const r of this.roads) {
-      if (best[r.index] === Infinity) continue;
-      const h = r.path.refine(bestI[r.index], x, z, this._hit);
+    for (let t = 0; t < nt; t++) {
+      const r = this.roads[touched[t]];
+      const bi = bestI[r.index];
+      best[r.index] = Infinity;
+      const h = r.path.refine(bi, x, z, this._hit);
       // Past the end of an open road only the true distance counts, not its sideways part.
       const ad = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z));
-      const hw = r.hwAt(h.s);
+      const hw = r.hwAt(h.s) + r.walk;
       if (ad > hw + SKIRT + extra) continue;
       const deck = r.lifted && r.liftAt(h.s) > ELEVATED;
       if (deck && r.heightAt(h.s) > y + DECK_REACH) continue;
       const onR = ad <= hw;
-      const onFound = found ? foundAd <= found.hwAt(foundS) : false;
+      const onFound = found ? foundAd <= found.hwAt(foundS) + found.walk : false;
       const better = !found || (deck && !foundDeck) || (deck === foundDeck && (onR !== onFound ? onR : (r.priority > found.priority || (r.priority === found.priority && ad < foundAd))));
       if (better) {
         found = r;
@@ -356,7 +369,7 @@ export class RoadNetwork {
       }
     }
     if (!found) return false;
-    const edge = foundAd - found.hwAt(foundS);
+    const edge = foundAd - found.hwAt(foundS) - found.walk;
     out.road = found;
     out.s = foundS;
     out.d = foundD;
@@ -370,16 +383,19 @@ export class RoadNetwork {
    * Nearest road edge within `reach` meters, for carving terrain and placing props.
    * A road on a deck is ignored unless it is cut into the ground: pass the natural ground
    * height `groundH` here and a lifted road only counts when it is within 2 m of it.
-   * @param {number} x @param {number} z @param {number} reach @param {RoadHit} out
-   * @param {number} [groundH]
+   * `out.low` is the lowest surface of any road whose edge is within `flat` meters, so terrain
+   * shaped to the nearest road never rises through another one close by on a hillside.
+   * @param {number} x @param {number} z @param {number} reach @param {RoadHit & { low?: number }} out
+   * @param {number} [groundH] @param {number} [flat]
    */
-  influence(x, z, reach, out, groundH = -Infinity) {
+  influence(x, z, reach, out, groundH = -Infinity, flat = 0) {
     const rc = Math.ceil(reach / CELL);
     const cx = Math.floor((x + OFF) / CELL);
     const cz = Math.floor((z + OFF) / CELL);
     const best = this._best;
     const bestI = this._bestI;
-    best.fill(Infinity);
+    const touched = this._touched;
+    let nt = 0;
     for (let dz = -rc; dz <= rc; dz++) {
       for (let dx = -rc; dx <= rc; dx++) {
         const ix = cx + dx;
@@ -393,6 +409,7 @@ export class RoadNetwork {
           const ez = r.path.z[i] - z;
           const d2 = ex * ex + ez * ez;
           if (d2 < best[r.index]) {
+            if (best[r.index] === Infinity) touched[nt++] = r.index;
             best[r.index] = d2;
             bestI[r.index] = i;
           }
@@ -401,16 +418,21 @@ export class RoadNetwork {
     }
     let found = false;
     let bestEdge = Infinity;
-    for (const r of this.roads) {
-      if (best[r.index] === Infinity) continue;
-      const h = r.path.refine(bestI[r.index], x, z, this._hit);
+    out.low = Infinity;
+    for (let t = 0; t < nt; t++) {
+      const r = this.roads[touched[t]];
+      const bi = bestI[r.index];
+      best[r.index] = Infinity;
+      const h = r.path.refine(bi, x, z, this._hit);
       // Past the end of an open road `d` is only the sideways part of the distance, which would
       // carve a trench at the end road's height straight on into the land beyond it.
-      const edge = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z)) - r.hw;
-      if (edge > reach || edge >= bestEdge) continue;
+      const edge = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z)) - r.hw - r.walk;
+      if (edge > reach) continue;
       // Terrain is not shaped to a road that has left the ground; the road below is.
       const lift = r.liftAt(h.s);
       if (lift > ELEVATED + 0.4 && r.heightAt(h.s) - groundH > ELEVATED) continue;
+      if (edge < flat) out.low = Math.min(out.low, r.heightAt(h.s));
+      if (edge >= bestEdge) continue;
       bestEdge = edge;
       found = true;
       out.road = r;

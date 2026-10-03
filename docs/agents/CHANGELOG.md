@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.6.3 (2026-10-04)
+
+Kurogane City becomes a real street network, built up from the waterfront to the expressway.
+
+- New pure `src/world/citygen.js`: frame roads (Chuo-dori, Kurogane-dori, the Naikan and Sotokan
+  rings) are authored; each district fills with its own streets at its own angle and spacing, bent,
+  broken off a block early here and there, meeting the frame roads at T junctions, clear of the
+  expressway, the ramps, lifted road and the pass. Nine districts, inside and outside the loop
+  (downtown, midtown, residential, the port, the industrial east coast, the west side). About 400
+  streets replace the 28-street grid; `GRID` and `streetGrid` are gone, and the avenues no longer
+  taper to meet it.
+- New pure `src/world/junctions.js`: crossings and T junctions from the road geometry. The road
+  builder paves each as one patch and drops skirts and sidewalks inside it; the old grid-only
+  crossing and curb builder is gone.
+- Roads can have sidewalks (`walk` on the def): a 16 cm curb and a concrete walk on each side,
+  part of the ribbon; the ground counts them as road. Lamps stand at the sidewalk's edge and never in
+  a junction. Ribbons are merged per 256 m cell and material.
+- New pure `src/world/buildings.js`: a row of buildings along each side of every town road and a
+  second row behind in the denser districts, by district style (`cityStyle` in layout.js): towers
+  and offices downtown, offices and apartment blocks in midtown, houses and small blocks in the
+  residential districts, warehouses, garages and factories in the port and the industrial east,
+  a house now and then on country roads. A 2 m road mask and a building hash keep it fast (about
+  13,000 buildings).
+- `props.js`: the town is merged per 320 m cell and culled like the ground, and each kind has a
+  shape: stepped tower crowns with an aviation lamp, apartment balconies, pitched house roofs,
+  corrugated sheds with roller doors, lit garage shutters, saw-tooth factory roofs.
+- Town ground is paved (`TERRAIN.paved`); no trees grow on it. The east coast has a wider shelf.
+- Faster build: district polygons are rasterized (`polygonMask`), road queries visit only the
+  roads near the point, terrain far from every road skips the road lookup, and once the light pools
+  are on `bakeGeometry` writes zeros instead of baking.
+- Road heights at junctions run from one junction's correction to the next instead of averaging
+  them (the average left steps beside a junction); the shortest junction blend is 50 m (was 35).
+  Terrain is carved to the lowest road within reach, so it never pokes through a street beside
+  another on a hillside.
+- `traffic/sim.js`: spawns pick from the lanes near the player (40 m lane pieces in a 160 m grid);
+  with ten times the lanes, picking from the whole island left the player's surroundings empty.
+  Expressway traffic density 4.5 (was 3).
+- Tests: town roads that cross at grade are joined by a paved junction; at-grade crossings are only
+  forbidden for expressways and ramps; joins at Chuo-dori, Kurogane-dori and the coast roads;
+  lamps may stand on sidewalks; streets may reach 20 % at hillside junctions.
+
 ## 0.6.2 (2026-10-04)
 
 Island map rendering, elevated viaduct runs, new tactical POI icons and legend.

@@ -57,7 +57,8 @@ test('the four avenues pass over Route 1 and have a ramp pair on each carriagewa
   }
 });
 
-test('roads only cross each other at overpasses', () => {
+test('expressways and ramps only cross other roads at overpasses; town roads meet at junctions', () => {
+  const grade = new Set(['street', 'arterial', 'mountain']);
   const lines = g.roads.roads.map((r) => {
     const pts = [];
     for (let s = 0; s < r.path.length; s += 10) {
@@ -73,7 +74,7 @@ test('roads only cross each other at overpasses', () => {
     for (let b = a + 1; b < lines.length; b++) {
       const ra = g.roads.roads[a];
       const rb = g.roads.roads[b];
-      const streets = /^k-/.test(ra.id) && /^k-/.test(rb.id);
+      const streets = grade.has(ra.def.cls) && grade.has(rb.def.cls);
       for (let i = 0; i + 1 < lines[a].length && !streets; i++) {
         for (let j = 0; j + 1 < lines[b].length; j++) {
           if (Math.abs(lines[a][i][0] - lines[b][j][0]) > 30 || Math.abs(lines[a][i][1] - lines[b][j][1]) > 30) continue;
@@ -87,6 +88,26 @@ test('roads only cross each other at overpasses', () => {
     }
   }
   assert.deepEqual(flat, [], `roads cross on the ground: ${flat.join('; ')}`);
+});
+
+test('town roads that cross at grade are joined by a paved junction', () => {
+  const near = (x, z) => g.junctions.some((j) => Math.hypot(j.x - x, j.z - z) < j.r + 6);
+  const missed = [];
+  const town = g.roads.roads.filter((r) => r.def.cls === 'street' || r.def.cls === 'arterial');
+  for (let a = 0; a < town.length && missed.length < 10; a++) {
+    for (let b = a + 1; b < town.length; b++) {
+      const ra = town[a];
+      const rb = town[b];
+      for (let s = 0; s < ra.path.length; s += 6) {
+        const q = ra.path.sample(s);
+        const h = rb.path.nearest(q.x, q.z);
+        if (Math.hypot(q.x - h.x, q.z - h.z) > 0.8 || ra.liftAt(s) > 0.5 || rb.liftAt(h.s) > 0.5) continue;
+        if (!near(q.x, q.z)) missed.push(`${ra.id} x ${rb.id} at ${q.x.toFixed(0)}, ${q.z.toFixed(0)}`);
+        break;
+      }
+    }
+  }
+  assert.deepEqual(missed, []);
 });
 
 test('no grade breaks or lips at road joins', () => {
@@ -108,10 +129,12 @@ test('no grade breaks or lips at road joins', () => {
     }
   }
   for (const [aId, sA, bId, sB] of [
-    ['r18', 0, 'k-ns9', 0],
-    ['west', g.roads.byId.get('west').path.length, 'k-ew3', 0],
-    ['east', 0, 'k-ew3', g.roads.byId.get('k-ew3').path.length],
-    ['harbor', 0, 'k-ns9', g.roads.byId.get('k-ns9').path.length],
+    ['r18', 0, 'chuo', 0],
+    ['west', g.roads.byId.get('west').path.length, 'dori', 0],
+    ['east', 0, 'dori', g.roads.byId.get('dori').path.length],
+    ['harbor', 0, 'chuo', g.roads.byId.get('chuo').path.length],
+    ['kita', g.roads.byId.get('kita').path.length, 'kuro', 0],
+    ['higashi', g.roads.byId.get('higashi').path.length, 'kita', 0],
   ]) {
     const a = g.roads.byId.get(aId), b = g.roads.byId.get(bId);
     maxLip = Math.max(maxLip, Math.abs(a.heightAt(sA) - b.heightAt(sB)));

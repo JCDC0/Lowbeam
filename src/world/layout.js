@@ -7,26 +7,16 @@
  */
 
 import { Path } from './spline.js';
-import { dualCarriageway, streetGrid, pathCrossing, diamond } from './roadgen.js';
+import { dualCarriageway, pathCrossing, diamond } from './roadgen.js';
+import { cityStreets, pathPolygon, polygonMask } from './citygen.js';
+import { inland } from './island.js';
 import { slipRamp, slipMeta, heading, biarc } from './merge.js';
 
 export const SEED = 0x10eb3a;
 export const WORLD_HALF = 3000;
 export const WATER_LEVEL = 0;
 
-/**
- * The island's coast, clockwise from the north-west: everything outside it is sea. The bay
- * cuts into the south between the two southern headlands. island.js adds a little noise so the
- * shore is not made of straight lines, and heightfield.js drops the land into the water along it:
- * cliffs under the western mountains, a low shelf everywhere else.
- */
-export const COAST = [
-  [-2780, -2780], [-1900, -2900], [-900, -2860], [100, -2840], [900, -2640], [1500, -2700], [2050, -2840],
-  [2560, -2760], [2860, -2420], [2820, -1800], [2700, -1100], [2780, -300], [2840, 500], [2760, 1300],
-  [2700, 1900], [2760, 2500], [2620, 2880], [2330, 2860], [2240, 2560], [2050, 2470], [-2050, 2470],
-  [-2240, 2560], [-2330, 2860], [-2620, 2880], [-2800, 2300], [-2860, 1400], [-2790, 400], [-2880, -700],
-  [-2850, -1800],
-];
+export { COAST } from './island.js';
 
 /** Lakes: Kami-ike in the forest. */
 export const LAKES = [{ id: 'kami', name: 'KAMI-IKE', x: 950, z: -1450, r: 190 }];
@@ -47,7 +37,7 @@ export const CITY = { x0: -1280, x1: 1280, z0: 520, z1: 2020 };
  *   oneway?: boolean, median?: number, twin?: string,
  *   link?: { from: { id: string, s: number }, to: { id: string, s: number } },
  *   taper?: { from: number, to: number, s0: number, s1: number },
- *   slip?: import('./merge.js').SlipMeta
+ *   slip?: import('./merge.js').SlipMeta, walk?: number
  * }} RoadDef
  */
 
@@ -138,7 +128,6 @@ const R18 = [{
   ...ARTERIAL, id: 'r18', name: 'ROUTE 18', smooth: 140,
   lifts: [{ at: [crossNorth.x, crossNorth.z], ...LIFT }],
   lamps: [{ from: [0, 760], to: [-170, 300], every: 36 }],
-  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
   points: [[0, 760], [0, 700], [-50, 620], [-180, 300], [-270, -80], [crossNorth.x, crossNorth.z], [-340, -700], [-280, -1000], [-100, -1300], [110, -1560], [380, -1700], [620, -1770], tee(kitaPath, 860, -1830)],
 }];
 
@@ -147,19 +136,16 @@ const HARBOR = [{
   ...ARTERIAL, id: 'harbor', name: 'HARBOR AVE',
   lifts: [{ at: [crossSouth.x, crossSouth.z], ...LIFT_SHORT }],
   lamps: [{ from: [0, 1860], to: [0, 2000], every: 36 }],
-  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
   points: [[0, 1860], [0, 2000], [crossSouth.x, crossSouth.z], [10, 2330], [30, 2440]],
 }];
 
 const WEST_POINTS = [[-2300, 500], [-2200, 800], [crossWest.x, crossWest.z], [-1600, 1140], [-1430, 1197], [-1330, 1200]];
-const WEST_LENGTH = new Path(WEST_POINTS, { step: 2 }).length;
 
 /** @type {RoadDef[]} */
 const WEST = [{
   ...ARTERIAL, id: 'west', name: 'WEST AVE',
   lifts: [{ at: [crossWest.x, crossWest.z], ...LIFT }],
   lamps: [{ from: [-1600, 1140], to: [-1330, 1200], every: 36 }],
-  taper: { from: 7, to: 4.6, s0: WEST_LENGTH - 35, s1: WEST_LENGTH },
   points: WEST_POINTS,
 }];
 
@@ -168,7 +154,6 @@ const EAST = [{
   ...ARTERIAL, id: 'east', name: 'EAST AVE',
   lifts: [{ at: [crossEast.x, crossEast.z], ...LIFT }],
   lamps: [{ from: [1330, 1200], to: [1600, 1150], every: 36 }],
-  taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
   points: [[1330, 1200], [1430, 1197], [1600, 1155], [crossEast.x, crossEast.z], [2200, 1150], tee(higashiPath, 2470, 1135)],
 }];
 
@@ -190,20 +175,6 @@ const KURO = [{
   id: 'kuro', name: 'KURO PASS',
   points: PASS_PROFILE.map((p) => [p[0], p[1]]),
 }];
-
-const CITY_STREET = {
-  surface: 'asphalt', hw: 4.6, priority: 2.5, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40, lines: /** @type {const} */ ('center'),
-};
-const GRID_EW = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
-const GRID_NS = Array.from({ length: 19 }, (_, i) => -1260 + i * 140);
-/**
- * The street grid: east-west streets at `ew` (z), north-south streets at `ns` (x), each street
- * running a block's stub past the last crossing to the edge of `rect`. Downtown is the middle;
- * scatter.js thins the buildings out toward the edges. West Ave and East Ave arrive at the ends
- * of the middle east-west street (`k-ew3`), Route 18 and Harbor Ave at the ends of `x = 0`.
- */
-export const GRID = { ew: GRID_EW, ns: GRID_NS, rect: { x0: -1330, x1: 1330, z0: 760, z1: 1860 } };
-const STREETS = streetGrid(GRID.rect, GRID_EW, GRID_NS, { ...CITY_STREET, prefix: 'k', nsPriority: 2.6 });
 
 /** Four ramps for each place an avenue passes over Route 1. */
 const OVERPASSES = [
@@ -309,8 +280,103 @@ function bayshoreJunctions() {
 }
 const BAYSHORE_JCT = bayshoreJunctions();
 
+/**
+ * Kurogane City. The frame roads are authored: Chuo-dori, the boulevard from Route 18 to Harbor
+ * Ave; Kurogane-dori, across town from West Ave to East Ave; the inner ring (Naikan) round
+ * downtown and the outer ring (Sotokan) round the midtown districts. Every district between them
+ * fills with its own streets (citygen.js): downtown nearly square and dense, the midtown districts
+ * turned and bent, the residential districts out to the expressway narrow and crooked.
+ */
+const CITY_ARTERIAL = { ...ARTERIAL, lamps: undefined, walk: 3 };
+const CHUO_POINTS = [[0, 760], [25, 980], [-15, 1250], [20, 1520], [0, 1860]];
+const DORI_POINTS = [[-1330, 1200], [-1000, 1180], [-500, 1235], [-15, 1250], [480, 1190], [1000, 1230], [1330, 1200]];
+const NAIKAN = { x: 0, z: 1290, rx: 800, rz: 410 };
+const NAIKAN_POINTS = Array.from({ length: 32 }, (_, i) => {
+  const a = (i / 32) * Math.PI * 2;
+  return [Math.round(NAIKAN.x + Math.sin(a) * NAIKAN.rx), Math.round(NAIKAN.z - Math.cos(a) * NAIKAN.rz)];
+});
+const SOTOKAN_POINTS = [
+  [-1560, 1250], [-1580, 700], [-1480, 420], [-1250, 300], [-700, 280], [-190, 320], [400, 310], [1000, 300], [1400, 420],
+  [1590, 700], [1600, 1250], [1560, 1600], [1380, 1840], [900, 1905], [0, 1900], [-900, 1905], [-1380, 1840], [-1540, 1600],
+];
+const lampsAll = (every) => [{ all: true, every }];
 /** @type {RoadDef[]} */
-export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...KITA, ...HIGASHI, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
+const CITY_FRAME = [
+  { ...CITY_ARTERIAL, id: 'chuo', name: 'CHUO-DORI', points: CHUO_POINTS, lamps: lampsAll(34) },
+  { ...CITY_ARTERIAL, id: 'dori', name: 'KUROGANE-DORI', priority: 2.78, points: DORI_POINTS, lamps: lampsAll(34) },
+  { ...CITY_ARTERIAL, id: 'naikan', name: 'NAIKAN RING', hw: 6.2, priority: 2.74, closed: true, points: NAIKAN_POINTS, lamps: lampsAll(36) },
+  { ...CITY_ARTERIAL, id: 'sotokan', name: 'SOTOKAN RING', hw: 6.2, priority: 2.72, closed: true, points: SOTOKAN_POINTS, lamps: lampsAll(38) },
+];
+
+/** @param {RoadDef} def @returns {(s: number) => boolean} where a street may cross it: not on a lift */
+function crossable(def) {
+  const path = new Path(def.points, { closed: !!def.closed, step: 2 });
+  const spans = (def.lifts || []).map((l) => [path.nearest(l.at[0], l.at[1]).s, l.half + 20]);
+  return (s) => spans.every(([c, h]) => Math.abs(s - c) > h);
+}
+const inLoop = polygonMask(pathPolygon(loopCenter));
+const inSoto = polygonMask(pathPolygon(new Path(SOTOKAN_POINTS, { closed: true, step: 4 })));
+const inNaikan = (x, z, m) => ((x - NAIKAN.x) / (NAIKAN.rx + m)) ** 2 + ((z - NAIKAN.z) / (NAIKAN.rz + m)) ** 2 < 1;
+const CITY_STREET = {
+  surface: 'asphalt', hw: 4.6, priority: 2.5, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40,
+  lines: /** @type {const} */ ('center'), maxGrade: 0.09, lamps: lampsAll(34), walk: 2.4,
+};
+const STREETS = cityStreets({
+  seed: SEED,
+  base: CITY_STREET,
+  frame: [...CITY_FRAME, ...R18, ...HARBOR, ...WEST, ...EAST, ...HIGASHI].map((d) => ({
+    id: d.id, path: new Path(d.points, { closed: !!d.closed, step: 2 }), hw: d.hw, cross: crossable(d),
+  })),
+  avoid: [
+    ...[...C1, ...C2].map((d) => ({ path: new Path(d.points, { closed: !!d.closed, step: 2 }), clear: d.hw + 42 })),
+    ...[...interchanges, ...BAYSHORE_JCT].map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 26 })),
+    // The pass runs on a ledge above the west side's streets: they keep clear of it.
+    ...KURO.map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 30 })),
+  ],
+  districts: [
+    { id: 'ginza', name: 'GINZA-MACHI', center: [0, 1290], angle: 0.08, spacing: [100, 92], bend: 7, breaks: 0.2,
+      inside: (x, z) => inNaikan(x, z, -26) },
+    { id: 'shin', name: 'SHINMACHI', center: [-700, 1300], angle: -0.32, spacing: [118, 104], bend: 15, breaks: 0.35,
+      inside: (x, z) => x < -24 && inSoto(x, z) && !inNaikan(x, z, 26) },
+    { id: 'minato', name: 'MINATOMACHI', center: [700, 1300], angle: 0.36, spacing: [124, 110], bend: 15, breaks: 0.35,
+      inside: (x, z) => x > 24 && inSoto(x, z) && !inNaikan(x, z, 26) },
+    { id: 'kitaw', name: 'KITAMACHI', center: [-900, 0], angle: 0.55, spacing: [92, 84], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+      inside: (x, z) => x < -20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
+    { id: 'kitae', name: 'HIGASHIMACHI', center: [900, 0], angle: -0.42, spacing: [96, 86], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+      inside: (x, z) => x > 20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
+    { id: 'hama', name: 'HAMACHO', center: [0, 2000], angle: 0, spacing: [150, 70], bend: 10, breaks: 0.3, hw: 3.9, priority: 2.4, walk: 1.6,
+      inside: (x, z) => z >= 1700 && inLoop(x, z) && !inSoto(x, z) },
+    // Outside the loop: the industrial east coast, the port behind the Bayshore Line and the west
+    // side under the mountains. The ridge between the loop and the forest valley stays wooded.
+    { id: 'kogyo', name: 'HIGASHI KOGYO', center: [2350, 400], angle: 0.04, spacing: [170, 130], bend: 12, breaks: 0.45, hw: 4.6, priority: 2.45, walk: 1.2,
+      inside: (x, z) => x > 1950 && z > -1500 && z < 2330 && !inLoop(x, z) && inland(x, z) > 70 },
+    { id: 'futo', name: 'KUROGANE FUTO', center: [0, 2290], angle: 0, spacing: [180, 95], bend: 6, breaks: 0.3, hw: 4.6, priority: 2.45, walk: 1.2,
+      inside: (x, z) => z > 2150 && Math.abs(x) < 1900 && !inLoop(x, z) && inland(x, z) > 40 },
+    { id: 'nishi', name: 'NISHIMACHI', center: [-2150, 800], angle: 0.18, spacing: [110, 95], bend: 20, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+      inside: (x, z) => x < -1900 && x > -2290 && z > -300 && z < 1950 && !inLoop(x, z) },
+  ],
+});
+
+/**
+ * What a place in town is built like, for the buildings: `downtown` towers inside the inner ring,
+ * `midtown` offices and apartments inside the outer ring, `residential` houses and small blocks
+ * out to the expressway and beyond, `port` and `industrial` warehouses and yards, or null for
+ * the countryside.
+ * @param {number} x @param {number} z
+ * @returns {'downtown' | 'midtown' | 'residential' | 'port' | 'industrial' | null}
+ */
+export function cityStyle(x, z) {
+  if (inNaikan(x, z, 30)) return 'downtown';
+  if (inSoto(x, z)) return 'midtown';
+  if (x > 1950 && z > -1500 && z < 2400) return 'industrial';
+  if (z > 2150 && Math.abs(x) < 2000) return 'port';
+  if (inLoop(x, z)) return z > 1750 ? 'port' : 'residential';
+  if (x < -1880 && x > -2400 && z > -350 && z < 2000) return 'residential';
+  return null;
+}
+
+/** @type {RoadDef[]} */
+export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...KITA, ...HIGASHI, ...CITY_FRAME, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
 
 /**
  * Gas stations. Each one sits beside a road: `near` is projected onto the road to find

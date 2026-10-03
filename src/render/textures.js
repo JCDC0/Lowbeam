@@ -278,6 +278,48 @@ export function concreteTexture() {
   });
 }
 
+/** Corrugated sheet metal for warehouses and sheds: vertical ribs, a little rust and grime. */
+export function metalTexture() {
+  return cached('metal', () => {
+    const c = makeCanvas(64, 64);
+    const g = c.getContext('2d');
+    g.fillStyle = '#9aa0a4';
+    g.fillRect(0, 0, 64, 64);
+    for (let x = 0; x < 64; x += 4) {
+      g.fillStyle = '#b4babd';
+      g.fillRect(x, 0, 1, 64);
+      g.fillStyle = '#7c8286';
+      g.fillRect(x + 2, 0, 1, 64);
+    }
+    const rng = makeRng(31);
+    for (let i = 0; i < 40; i++) {
+      g.fillStyle = rng.chance(0.5) ? 'rgba(120,80,50,0.25)' : 'rgba(40,40,40,0.2)';
+      g.fillRect(rng.int(0, 63), rng.int(20, 63), rng.int(1, 3), rng.int(4, 18));
+    }
+    return canvasTexture(c, { repeat: true, mips: true });
+  });
+}
+
+/** A roller shutter: horizontal slats, darker at the bottom. One tile is one door. */
+export function shutterTexture() {
+  return cached('shutter', () => {
+    const c = makeCanvas(32, 32);
+    const g = c.getContext('2d');
+    g.fillStyle = '#8a8e92';
+    g.fillRect(0, 0, 32, 32);
+    for (let y = 0; y < 32; y += 2) {
+      g.fillStyle = '#6a6e72';
+      g.fillRect(0, y, 32, 1);
+    }
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.fillRect(0, 26, 32, 6);
+    g.fillStyle = '#3c3f42';
+    g.fillRect(0, 0, 1, 32);
+    g.fillRect(31, 0, 1, 32);
+    return canvasTexture(c, { repeat: true, mips: true });
+  });
+}
+
 /** Gravel and dirt for road skirts. */
 export function shoulderTexture() {
   return cached('shoulder', () => canvasTexture(noiseCanvas('shoulder', 32, '#57503f', [[90, 82, 66], [70, 62, 50], [110, 104, 92]], 0.6, 14), { repeat: true, mips: true }));

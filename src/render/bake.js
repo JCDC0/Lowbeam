@@ -5,6 +5,7 @@
  */
 
 import * as THREE from 'three';
+import { psxUniforms } from './psx.js';
 
 /** @typedef {import('../world/scatter.js').BakeLight} BakeLight */
 
@@ -53,6 +54,8 @@ const EMPTY = [];
  */
 export function bakeGeometry(geo, grid, { wrap = 0.35, gain = 1, matrix } = {}) {
   if (!geo.attributes.normal) geo.computeVertexNormals();
+  // Once the per-pixel pools are on, baked materials ignore the attribute: skip the work.
+  if (psxUniforms.uPoolsOn.value > 0.5) return noBake(geo);
   const pos = geo.attributes.position;
   const nrm = geo.attributes.normal;
   const n = pos.count;

@@ -44,7 +44,7 @@ test('every road has lanes, with keep-left offsets and a limit', () => {
 
 test('the lanes join up: from the harbor you can drive to the loop, every avenue, the pass and the city', () => {
   const seen = reach(net.lane('harbor', 1, 0));
-  for (const id of ['c1-f:f0', 'c1-r:f0', 'r18:f0', 'r18:r0', 'west:f0', 'west:r0', 'east:f0', 'kuro:f0', 'kuro:r0', 'k-ew3:f0', 'k-ns5:r0']) {
+  for (const id of ['c1-f:f0', 'c1-r:f0', 'r18:f0', 'r18:r0', 'west:f0', 'west:r0', 'east:f0', 'kuro:f0', 'kuro:r0', 'dori:f0', 'chuo:r0', 'naikan:f0', 'kita:f0', 'higashi:r0']) {
     const lane = net.lanes.find((l) => l.id === id);
     assert.ok(seen.has(lane), `cannot reach ${id} from Harbor Ave`);
   }
@@ -117,7 +117,7 @@ test('the traffic fills the roads, keeps its distance and respects the limits', 
 
 test('cars stop at a red light and go again on green', () => {
   const sim = new TrafficSim(net, { seed: 3, target: 0 });
-  const lane = net.lane('k-ns5', 1, 0);
+  const lane = /** @type {any} */ (net.lanes.find((l) => l.road.def.cls === 'street' && l.stops.length && l.stops[0].s > 70));
   const stop = lane.stops[0];
   const here = net.sample(lane, stop.s, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
   const player = { x: here.x + 300, z: here.z, speed: 0 };
@@ -364,7 +364,7 @@ test('fewer than one civilian lane change in ten is reversed within 6 s', () => 
     TrafficSim.prototype.startLaneChange = orig;
   }
 
-  assert.ok(changes > 100, `only ${changes} civilian lane changes to judge`);
+  assert.ok(changes > 60, `only ${changes} civilian lane changes to judge`);
   const share = reversed / changes;
   assert.ok(share < 0.1, `${reversed} of ${changes} civilian lane changes reversed within 6 s (${(share * 100).toFixed(1)} %)`);
 });

@@ -8,8 +8,8 @@ import { LAKE, TOWN } from '../src/world/layout.js';
 const w = scatterWorld(new Ground());
 const env = new EnvMap(w.trees);
 
-test('the edge forest is thick and the middle of town has none', () => {
-  const belt = env.at(0, -930).forest;
+test('the forest valley is thick and the middle of town has none', () => {
+  const belt = env.at(-600, -1700).forest;
   const town = env.at((TOWN.x0 + TOWN.x1) / 2, (TOWN.z0 + TOWN.z1) / 2);
   assert.ok(belt > 0.8, `belt forest ${belt}`);
   assert.ok(town.forest < 0.2, `town forest ${town.forest}`);

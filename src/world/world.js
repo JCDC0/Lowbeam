@@ -55,7 +55,9 @@ export class World {
     w.groundChunks.push(...highway.userData.chunks);
     await step('BUILDING THE CITY');
     w.add(buildLamps(w.scatter.lamps, w.grid));
-    w.add(buildTown(w.scatter.buildings, w.grid));
+    const town = buildTown(w.scatter.buildings, w.grid);
+    w.add(town);
+    w.groundChunks.push(...town.userData.chunks);
     w.add(buildStations(w.scatter.stations, w.grid));
     await step('GROWING THE FOREST');
     const trees = buildTrees(w.scatter.trees);

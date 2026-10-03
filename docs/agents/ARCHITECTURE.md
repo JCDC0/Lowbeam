@@ -82,7 +82,10 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
 | `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
 | `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
-| `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, street grid, diamond interchange ramps |
+| `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, diamond interchange ramps |
+| `src/world/citygen.js` | Pure: the city's local streets, district by district (`cityStreets`), and `polygonMask` for fast inside tests |
+| `src/world/junctions.js` | Pure: crossings and T junctions found from road geometry (`findJunctions`), and the stretches of road inside them |
+| `src/world/buildings.js` | Pure: building placement along every town road by district style (`placeBuildings`), with a 2 m road mask (`RoadMask`) |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
 | `src/world/island.js` | Pure: `inland(x, z)`, meters inside the coast (`COAST` in layout.js), from a precomputed grid with a noisy shore |
@@ -145,7 +148,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.2)
+## Current state (0.6.3)
 
 Done and tested:
 
@@ -178,15 +181,26 @@ Done and tested:
   3 %, a concrete median barrier, guard rails on both outer edges (open at ramps, forecourts
   and plazas), three toll plazas with speed-trap gates. Four avenues (Route 18 north, Harbor Ave
   south, West Ave, East Ave) pass over it on overpasses with a diamond interchange each
-  (four ground-level ramps). Every ramp is a slip road (see Slip roads below). Avenues taper
-  width to meet the street grid with zero lip; city intersections have continuous crossing patches
-  and rounded corner curbs with sidewalks. Kuro Pass: 6.4 km of 2-lane
-  asphalt from the forest village along the northern ridge and down the western mountain, climbing
-  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. The street grid (`GRID` in
-  layout.js): 9 east-west streets by 19 north-south ones, 140 m apart, x -1260 to 1260 and z 840
-  to 1800, filling the `CITY` rect. Towers in the middle, lower and sparser blocks toward the
-  edges (scatter.js measures from the middle). West Ave and East Ave arrive at the two ends of
-  the middle street `k-ew3`, Route 18 and Harbor Ave at the ends of `k-ns9` (x = 0).
+  (four ground-level ramps). Every ramp is a slip road (see Slip roads below). Kuro Pass: 6.4 km of
+  2-lane asphalt from the forest village along the northern ridge and down the western mountain,
+  climbing to 254 m at up to 8.5 %, on a ledge the terrain is cut around.
+  Kurogane City (0.6.3) is a street network, not a grid. Frame roads in layout.js: Chuo-dori
+  (`chuo`, Route 18 to Harbor Ave), Kurogane-dori (`dori`, West Ave to East Ave), the inner ring
+  Naikan (`naikan`, an ellipse round downtown) and the outer ring Sotokan (`sotokan`), all with 3 m
+  sidewalks. Between them `citygen.js` fills each district with its own streets: two families at
+  the district's angle and spacing, each street bent by a slow wave, some broken off a block early,
+  clipped to the district, carried on to the frame road it stops beside so it meets it at a T, and
+  kept clear of the expressway, the ramps, lifted road and the pass. Districts: Ginza-machi
+  (downtown, inside Naikan), Shinmachi and Minatomachi (midtown, inside Sotokan), Kitamachi and
+  Higashimachi (residential, out to Route 1), Hamacho (south of Sotokan), and outside the loop
+  Higashi Kogyo (industrial east coast), Kurogane Futo (the port behind the Bayshore Line) and
+  Nishimachi (the west side under the mountains). About 400 streets, 2.4 m sidewalks (1.6 m
+  residential, 1.2 m industrial). `junctions.js` finds every crossing and T junction from the road
+  geometry (about 900); each is paved as one patch and the ribbons drop their skirts and sidewalks
+  inside it. Road heights at junctions blend from one junction's correction to the next (so each is
+  met exactly), fading out with distance. `cityStyle(x, z)` in layout.js says what a place is built
+  like (downtown, midtown, residential, port, industrial); town ground is paved (`TERRAIN.paved`,
+  surface `concrete`), all of it in the dense districts and the front yards in residential ones.
   Route 2, the Bayshore Line (`c2-f`, `c2-r`): 1.65 km of 2-lane dual carriageway along the bay
   (x -850 to 800, z 2420), with its own toll plaza (BAYSHORE TOLL) and a 7.4 m viaduct over the end
   of Harbor Ave, joined to Route 1 at both south corners by the Bayshore junctions: westbound it
@@ -292,8 +306,12 @@ Done and tested:
   with vertex colors per surface and a detail texture, road ribbons cut into 180 m chunks
   (7 columns: skirt, edge, three across, edge, skirt; higher priority roads sit 12 mm per
   priority higher so junctions never z-fight), bridges, concrete pads with curbs, about
-  1,100 sodium street lamps, about 1,700 buildings (towers up to 100 m toward the middle
-  of downtown, four konbini, vertical neon signs), about 250k instanced trees in 250 m
+  5,400 two-armed sodium lamps, about 13,000 buildings (`buildings.js`: a row along each side of
+  every town road and a second row behind it in the denser districts; towers to 130 m in the middle
+  of downtown, offices, apartment blocks with balconies, houses with pitched roofs, warehouses and
+  factories in corrugated metal with roller doors and saw-tooth roofs, garages with lit shutters,
+  konbini, vertical neon signs), merged per 320 m cell and hidden past the fog like the ground,
+  road ribbons merged per 256 m cell and material, about 120k instanced trees in 250 m
   chunks (see Forest), four gas stations, a lake, the bay, sky and moon. Terrain and road
   chunks past the fog (`GROUND_DRAW` 620 m) are hidden like the trees. Views measured:
   downtown 90 to 100 calls and 150k triangles, the expressway about 140 and 255k, the
@@ -484,9 +502,10 @@ Done and tested:
   one and traffic keeps left) and links them: a lane's end joins whatever road starts, ends
   or passes within 12 m (a bend, a T, the village where Route 18 meets the pass), exit
   ramps leave the left lane of their carriageway part-way along, entry ramps merge at the
-  end, avenues turn into entry ramps, and the 99 city crossings have traffic lights (13 s
-  green, 2.2 s yellow, axes alternate) and left and right turns. 80 lanes. `TrafficSim`
-  keeps about 38 agents alive around the player (spawn 190 to 460 m out, forget beyond
+  end, avenues turn into entry ramps, and city crossings have traffic lights (13 s
+  green, 2.2 s yellow, axes alternate) and left and right turns. `TrafficSim`
+  keeps about 38 agents alive around the player (spawn 190 to 460 m out, picked from the lanes
+  near the player through a grid of 40 m lane pieces since 0.6.3, forget beyond
   620 m, heavier on the expressway): each follows its lane with the Intelligent Driver
   Model, brakes for the car ahead (also across a link), the player, red lights and bends,
   changes lanes diagonally with smoothstep easing and actual motion steering (heading difference between
@@ -628,10 +647,12 @@ rates.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
-- Between the street grid and Route 1 the land is empty: no farmland or rail line yet. The grid's
-  outer streets stop a block past the last crossing.
-- `build-roads.js` still finds city crossings from `GRID` rather than from the network, and the
-  ribbon code turns skirts off at those crossings by coordinates; fine for one grid.
+- Hillside streets (the west side, the industrial coast) can reach 20 % where a junction pulls them
+  to another street's height; the test allows it for streets only.
+- The world build is about 6 s in the browser with the city (layout 0.35 s, ground 2 s, scatter
+  0.5 s, meshes); `buildings.js` and `citygen.js` are the next places to make faster.
+- The ridge between the loop and the forest valley is left wooded; the city stops at Route 1 in
+  the north.
 - A 2-lane Bayshore ramp merges into Route 1 as one 7.4 m wide added lane that tapers away; a real
   junction would drop to one lane first. Fine at this scale, revisit with lane markings.
 - The Route 18 ramps climb about 17 m to the avenue, peaking at 7.6 to 8.8 % (limit 10 %), because

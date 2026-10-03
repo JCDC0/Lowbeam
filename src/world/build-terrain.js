@@ -17,7 +17,7 @@ const CHUNK = 32;
 /** Meters per repeat of the detail texture. */
 const DETAIL = 10;
 
-const SURFACE_COLORS = [0x34431f, 0x5a4a34, 0x5a5955, 0x8a7d5e].map((h) => new THREE.Color(h));
+const SURFACE_COLORS = [0x34431f, 0x5a4a34, 0x5a5955, 0x8a7d5e, 0x6e6d6a].map((h) => new THREE.Color(h));
 
 /**
  * @param {import('./ground.js').Ground} ground

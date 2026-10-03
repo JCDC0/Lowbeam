@@ -1,14 +1,29 @@
 /**
- * The shape of Kurogane Island: how far a point is inside the coast (`COAST` in layout.js).
- * Pure. The distance to the polygon is precomputed on a coarse grid when the module loads and
- * read back bilinearly, because the terrain asks for it hundreds of thousands of times.
+ * The shape of Kurogane Island: the coast, and how far a point is inside it. Pure, and imports
+ * nothing from layout.js (which re-exports `COAST`), so the layout can use it. The distance to
+ * the polygon is precomputed on a coarse grid when the module loads and read back bilinearly,
+ * because the terrain asks for it hundreds of thousands of times.
  */
 
 import { fbm } from '../core/rng.js';
-import { COAST, WORLD_HALF } from './layout.js';
+
+/**
+ * The island's coast, clockwise from the north-west: everything outside it is sea. The bay
+ * cuts into the south between the two southern headlands. island.js adds a little noise so the
+ * shore is not made of straight lines, and heightfield.js drops the land into the water along it:
+ * cliffs under the western mountains, a low shelf everywhere else.
+ */
+export const COAST = [
+  [-2780, -2780], [-1900, -2900], [-900, -2860], [100, -2840], [900, -2640], [1500, -2700], [2050, -2840],
+  [2560, -2760], [2860, -2420], [2820, -1800], [2700, -1100], [2780, -300], [2840, 500], [2760, 1300],
+  [2700, 1900], [2760, 2500], [2620, 2880], [2330, 2860], [2240, 2560], [2050, 2470], [-2050, 2470],
+  [-2240, 2560], [-2330, 2860], [-2620, 2880], [-2800, 2300], [-2860, 1400], [-2790, 400], [-2880, -700],
+  [-2850, -1800],
+];
 
 const CELL = 24;
-const OFF = WORLD_HALF + 200;
+/** The grid covers the 6 km map and 200 m of sea round it. */
+const OFF = 3200;
 const N = Math.ceil((OFF * 2) / CELL) + 1;
 
 /** Signed distance to the coast polygon: positive inside (on land), negative at sea. @param {number} x @param {number} z */

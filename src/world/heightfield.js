@@ -91,7 +91,8 @@ export function baseHeight(x, z) {
   // it comes down onto a low shelf a few hundred meters wide. Out at sea the bed drops away.
   const shore = inland(x, z);
   const cliff = 1 - smoothstep(-2350, -1750, x);
-  const shelf = lerp(360, 110, cliff);
+  // The industrial east coast comes down to the water over a wider, gentler shelf.
+  const shelf = lerp(lerp(360, 620, smoothstep(1700, 2200, x)), 110, cliff);
   if (shore < shelf) {
     const low = shore > 0 ? 1.6 + shore * 0.018 : lerp(1.6, -14, smoothstep(0, 140, -shore));
     h = lerp(low, h, smoothstep(0, shelf, shore));
