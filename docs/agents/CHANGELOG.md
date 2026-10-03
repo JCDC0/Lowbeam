@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.4 (2026-10-03)
+
+Rounder cars: the modeler upgrade.
+
+- `vehicles/loft.js` (new, pure): monotone cubic station curves, wheel arches with 13 rings
+  per axle, the 19-point ring with a crowned roof and Catmull-Rom side curves, the end bevel.
+- `models.js`: `Kit` lofts from it (rings at most 26 cm apart), bevels the nose and tail, and
+  `top` follows the crown (`roofY`). Bodies go from about 600 to about 1,900 triangles.
+- `builder.js`: `smoothNormals` (crease-limited, area-weighted) and `buildWheel` (16 sides,
+  tread shoulders, sidewall, rim lip, dished textured face).
+- Tests: `loft.test.mjs` (no overshoot, ring symmetry and bands, ring spacing, arches, bevel).
+
 ## 0.4.3 (2026-10-03)
 
 Tachometer scale fix: the tach never shows the blow rpm.

@@ -110,7 +110,8 @@ captures such as rendered audio.
 | `src/vehicles/physics.js` | 120 Hz bicycle model, R N 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
 | `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
 | `src/render/psx.js` | Material factory with vertex snapping and baked light |
-| `src/render/builder.js` | `MeshBuilder`: flat-shaded quads, boxes, cylinders into grouped geometry |
+| `src/render/builder.js` | `MeshBuilder`: quads, boxes, cylinders into grouped geometry; `smoothNormals` (crease-limited), `buildWheel` |
+| `src/vehicles/loft.js` | Pure: monotone station curves, wheel arches, the 19-point crowned body ring with its bands, end bevel |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
 | `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
@@ -128,7 +129,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.2)
+## Current state (0.4.4)
 
 Done and tested:
 
@@ -194,16 +195,22 @@ Done and tested:
   scene root by `Drive.start`). Pipe tips for each car are the `TIPS` table in
   `exhaust-fx.js`; a body with its own `exhaust: [[x, y, z]]` list wins.
 - Render plumbing runs in the browser: `stage.js`, `psx.js`, `builder.js`.
-- Car models (`src/vehicles/models.js`), seen in `tools/models.html`. Each body is
-  lofted from 9 to 11 cross sections plus 7 arch stations per axle. A station is
-  `[z, y0, w0, y1, w1, y2, w2, y3, w3]`: rocker bottom, shoulder, belt line, roof edge
-  (half widths). The ring runs right side bottom to roof, then left side roof to bottom
-  (local +X is the car's LEFT). Bands: lower side, upper side, greenhouse side (glass by
-  z range), roof (glass for windshield and rear window by z range), underside. Arch
-  stations raise y0 on a circle of radius `wheelRadius + 0.08` and flare the fender.
-  `Kit` has helpers that put parts on the surface: `face` (end faces), `top` (follows the
-  roof band), `side`, `stripes`, `ducktail`. Bodies come out at 520 to 630 triangles
-  plus 40 per wheel. Wheels: pivot (steer about Y) > spin (rotation.x = wheelAngle) >
+- Car models (`src/vehicles/models.js`, `loft.js`), seen in `tools/models.html`. A body
+  is authored as 9 to 11 cross sections. A station is `[z, y0, w0, y1, w1, y2, w2, y3, w3]`:
+  rocker bottom, shoulder, belt line, roof edge (half widths). Since 0.4.4 the loft
+  interpolates the stations with a monotone cubic (no overshoot past the nose or tail),
+  adds 13 arch rings per axle (rocker raised on a circle of radius `wheelRadius + 0.08`,
+  fender flared) and fills so no gap is over 26 cm. Each ring has 19 points (`ringOf`):
+  Catmull-Rom mid points on the lower side, upper side and greenhouse, and a parabolic
+  roof crown (`crownOf`, 4.5 cm on a full-width roof). The ring runs right side bottom to
+  roof, then left side roof to bottom (local +X is the car's LEFT). Bands: lower side,
+  upper side, greenhouse (glass by z range), roof (glass for windshield and rear window by
+  z range), underside. The nose and tail get a 3 cm bevel ring before the cap. Normals are
+  smoothed under a 38 degree crease (`smoothNormals`), so panels shade round and real edges
+  stay sharp. `Kit` has helpers that put parts on the surface: `face` (end faces), `top`
+  (follows the crowned roof band, `roofY(z, x)`), `side`, `stripes`, `ducktail`. Bodies
+  come out at 1,700 to 2,000 triangles. Wheels (`buildWheel`): 16 sides, rounded tread
+  shoulders, a sidewall, a rim lip and a dished face with the rim texture, 224 triangles. Wheels: pivot (steer about Y) > spin (rotation.x = wheelAngle) >
   mesh (rotated PI for right-side wheels). `CarModel.pose(state, dt)` places the car
   from a physics state and adds body roll and pitch. Material keys: paint, accent,
   glass, trim, under, chrome, lamp, tail, plate, tire, rim.

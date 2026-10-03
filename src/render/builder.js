@@ -194,3 +194,113 @@ export class MeshBuilder {
     return new THREE.Mesh(geometry, mats);
   }
 }
+
+/**
+ * Replaces the flat normals of a builder geometry with averaged ones wherever faces meet at
+ * less than `crease` degrees, so curved panels shade smoothly and real edges stay sharp.
+ * Faces are weighted by area. Works on the non-indexed geometry MeshBuilder makes.
+ * @param {THREE.BufferGeometry} geo @param {number} [crease]
+ */
+export function smoothNormals(geo, crease = 40) {
+  const pos = geo.getAttribute('position');
+  const n = pos.count;
+  const p = pos.array;
+  const face = new Float32Array(n);
+  const fn = new Float32Array((n / 3) * 3);
+  for (let f = 0; f < n / 3; f++) {
+    const a = f * 9;
+    const ux = p[a + 3] - p[a], uy = p[a + 4] - p[a + 1], uz = p[a + 5] - p[a + 2];
+    const vx = p[a + 6] - p[a], vy = p[a + 7] - p[a + 1], vz = p[a + 8] - p[a + 2];
+    fn[f * 3] = uy * vz - uz * vy;
+    fn[f * 3 + 1] = uz * vx - ux * vz;
+    fn[f * 3 + 2] = ux * vy - uy * vx;
+  }
+  const unit = (f) => {
+    const x = fn[f * 3], y = fn[f * 3 + 1], z = fn[f * 3 + 2];
+    const l = Math.hypot(x, y, z) || 1;
+    return [x / l, y / l, z / l];
+  };
+  /** @type {Map<string, number[]>} */
+  const buckets = new Map();
+  for (let i = 0; i < n; i++) {
+    face[i] = Math.floor(i / 3);
+    const key = `${Math.round(p[i * 3] * 2000)},${Math.round(p[i * 3 + 1] * 2000)},${Math.round(p[i * 3 + 2] * 2000)}`;
+    let list = buckets.get(key);
+    if (!list) buckets.set(key, (list = []));
+    list.push(i);
+  }
+  const cos = Math.cos((crease * Math.PI) / 180);
+  const out = new Float32Array(n * 3);
+  for (const list of buckets.values()) {
+    const units = list.map((i) => unit(face[i]));
+    for (let a = 0; a < list.length; a++) {
+      let x = 0, y = 0, z = 0;
+      for (let b = 0; b < list.length; b++) {
+        if (units[a][0] * units[b][0] + units[a][1] * units[b][1] + units[a][2] * units[b][2] < cos) continue;
+        const f = face[list[b]];
+        x += fn[f * 3];
+        y += fn[f * 3 + 1];
+        z += fn[f * 3 + 2];
+      }
+      const l = Math.hypot(x, y, z) || 1;
+      const i = list[a];
+      out[i * 3] = x / l;
+      out[i * 3 + 1] = y / l;
+      out[i * 3 + 2] = z / l;
+    }
+  }
+  geo.setAttribute('normal', new THREE.BufferAttribute(out, 3));
+  return geo;
+}
+
+/**
+ * A road wheel along X, outer face at +X: a rounded tread, a sidewall down to the rim, a
+ * rim lip and a dished face that carries the rim texture. Parts 'tire' and 'rim'.
+ * @param {MeshBuilder} b @param {number} r @param {number} width @param {number} [sides]
+ */
+export function buildWheel(b, r, width, sides = 16) {
+  const h = width / 2;
+  const rimR = r * 0.7;
+  const shoulder = Math.min(0.03, width * 0.15);
+  const ring = (x, rad) => {
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      pts.push([x, Math.sin(a) * rad, Math.cos(a) * rad]);
+    }
+    return pts;
+  };
+  /** Joins two rings with outward-facing quads (outward when ring a is toward -X of b). */
+  const band = (key, A, B, uvOf) => {
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      if (uvOf) b.tri(key, A[i], B[i], B[j], uvOf(A[i]), uvOf(B[i]), uvOf(B[j])).tri(key, A[i], B[j], A[j], uvOf(A[i]), uvOf(B[j]), uvOf(A[j]));
+      else b.quad(key, A[i], B[i], B[j], A[j]);
+    }
+  };
+  const tex = (scale) => (p) => [0.5 + (p[2] / rimR) * scale, 0.5 + (p[1] / rimR) * scale];
+  const inSide = ring(-h, r - shoulder);
+  const inTread = ring(-h + shoulder, r);
+  const outTread = ring(h - shoulder, r);
+  const outSide = ring(h, r - shoulder);
+  const lip = ring(h, rimR);
+  const seat = ring(h - 0.025, rimR);
+  const inner = ring(-h, rimR * 0.6);
+  band('tire', inSide, inTread);
+  band('tire', inTread, outTread);
+  band('tire', outTread, outSide);
+  band('tire', outSide, lip);
+  band('rim', lip, seat, tex(0.36));
+  const hub = [h - 0.06, 0, 0];
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    b.tri('rim', hub, seat[j], seat[i], [0.5, 0.5], tex(0.36)(seat[j]), tex(0.36)(seat[i]));
+  }
+  band('tire', inner, inSide);
+  const back = [-h, 0, 0];
+  for (let i = 0; i < sides; i++) {
+    const j = (i + 1) % sides;
+    b.tri('tire', back, inner[i], inner[j]);
+  }
+  return b;
+}

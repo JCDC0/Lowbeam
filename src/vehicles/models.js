@@ -8,11 +8,12 @@
  */
 
 import * as THREE from 'three';
-import { MeshBuilder } from '../render/builder.js';
+import { MeshBuilder, buildWheel, smoothNormals } from '../render/builder.js';
 import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
 import { glassTexture, plateTexture, rimTexture, shadowTexture } from '../render/textures.js';
 import { bakeGeometry } from '../render/bake.js';
 import { clamp, damp } from '../core/mathx.js';
+import { BAND, RING_POINTS, archStation, insetRing, loftZs, ringOf, roofHeight, stationCurve } from './loft.js';
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 /** @typedef {[number, number, number]} V3 */
@@ -35,7 +36,11 @@ import { clamp, damp } from '../core/mathx.js';
  */
 
 /** Offsets from each axle where extra stations are inserted to cut the wheel arch. */
-const ARCH = [-0.46, -0.36, -0.2, 0, 0.2, 0.36, 0.46];
+const ARCH = [-0.46, -0.415, -0.38, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.38, 0.415, 0.46];
+/** Widest gap between two rings along the body. */
+const MAX_GAP = 0.26;
+/** How far the nose and tail are rounded in. */
+const BEVEL = 0.03;
 const ORDER = ['paint', 'accent', 'glass', 'trim', 'under', 'chrome', 'lamp', 'tail', 'plate'];
 const TAIL_DIM = new THREE.Color(0.32, 0.015, 0.01);
 const TAIL_LIT = new THREE.Color(1, 0.08, 0.05);
@@ -226,14 +231,6 @@ function interp(list, z) {
   return list[list.length - 1].slice();
 }
 
-/** The 8-point ring of a station, right side bottom to roof, then left side roof to bottom. */
-function ring(st) {
-  return [
-    [-st[2], st[1]], [-st[4], st[3]], [-st[6], st[5]], [-st[8], st[7]],
-    [st[8], st[7]], [st[6], st[5]], [st[4], st[3]], [st[2], st[1]],
-  ];
-}
-
 const inRange = (z, r) => z >= r[0] && z <= r[1];
 
 /**
@@ -247,28 +244,16 @@ export class Kit {
     this.b = new MeshBuilder();
     this.frontAxle = spec.cgToFront;
     this.rearAxle = spec.cgToFront - spec.wheelbase;
-    const base = def.stations;
-    const arches = [];
-    for (const axle of [this.rearAxle, this.frontAxle]) for (const off of ARCH) arches.push(this.archStation(base, axle, off));
-    const kept = base.filter((st) => !arches.some((a) => Math.abs(a[0] - st[0]) < 0.03));
+    const curve = stationCurve(def.stations);
+    const axles = [this.rearAxle, this.frontAxle];
     /** @type {Station[]} */
-    this.stations = [...kept, ...arches].sort((a, b) => a[0] - b[0]);
-    this.zMin = this.stations[0][0];
-    this.zMax = this.stations[this.stations.length - 1][0];
-  }
-
-  /** A station at axle + off with the rocker raised into a wheel arch and the fender flared. */
-  archStation(base, axle, off) {
-    const st = interp(base, axle + off);
-    const r = this.spec.wheelRadius;
-    const R = r + 0.08;
-    if (Math.abs(off) < R) st[1] = Math.max(st[1], r + Math.sqrt(R * R - off * off));
-    if (st[3] < st[1] + 0.05) st[3] = st[1] + 0.05;
-    if (st[5] < st[3] + 0.04) st[5] = st[3] + 0.04;
-    const f = this.def.flare * Math.max(0, 1 - (off / 0.55) ** 2);
-    st[2] += f;
-    st[4] += f;
-    return st;
+    this.stations = loftZs(def.stations, axles, ARCH, MAX_GAP).map((z) => {
+      let st = curve(z);
+      for (const a of axles) if (Math.abs(z - a) < 0.55) st = archStation(st, z - a, spec.wheelRadius, def.flare);
+      return st;
+    });
+    this.zMin = this.stations[0][0] - BEVEL;
+    this.zMax = this.stations[this.stations.length - 1][0] + BEVEL;
   }
 
   /** The body section at z, from the final station list. @param {number} z */
@@ -276,9 +261,14 @@ export class Kit {
     return interp(this.stations, z);
   }
 
-  /** Height of the roof band (hood, roof, deck) at z. @param {number} z */
+  /** Height of the roof band (hood, roof, deck) at z, on the center line. @param {number} z */
   topY(z) {
-    return this.at(z)[7];
+    return roofHeight(this.at(z), 0);
+  }
+
+  /** Height of the roof band at z and x, following the crown. @param {number} z @param {number} x */
+  roofY(z, x) {
+    return roofHeight(this.at(z), x);
   }
 
   /** Half width of the body side at height y and length z. @param {number} z @param {number} y */
@@ -300,50 +290,68 @@ export class Kit {
     fn(-1);
   }
 
-  /** Lofts the shell and closes both ends. */
+  /** Lofts the shell, bevels and closes both ends. */
   loft() {
     const b = this.b;
     const g = this.def.glass;
-    const st = this.stations;
-    for (let i = 0; i < st.length - 1; i++) {
-      const za = st[i][0];
-      const zb = st[i + 1][0];
+    const rings = this.stations.map((st) => ({ z: st[0], st, pts: ringOf(st) }));
+    rings.unshift({ z: this.zMin, st: rings[0].st, pts: insetRing(rings[0].pts, BEVEL) });
+    const last = rings[rings.length - 1];
+    rings.push({ z: this.zMax, st: last.st, pts: insetRing(last.pts, BEVEL) });
+    const n = RING_POINTS;
+    for (let i = 0; i < rings.length - 1; i++) {
+      const A = rings[i];
+      const B = rings[i + 1];
+      const za = A.z;
+      const zb = B.z;
       const zm = (za + zb) / 2;
-      const ra = ring(st[i]);
-      const rb = ring(st[i + 1]);
-      for (let k = 0; k < 8; k++) {
-        const k1 = (k + 1) % 8;
-        let key = 'paint';
+      for (let k = 0; k < n; k++) {
+        const k1 = (k + 1) % n;
+        const band = A.pts[k].band;
+        let key = band === BAND.UNDER ? 'under' : 'paint';
+        /** @type {number[][] | undefined} */
         let uv;
-        if (k === 7) key = 'under';
-        else if ((k === 2 || k === 4) && inRange(zm, g.side)) {
+        if (band === BAND.GREEN && inRange(zm, g.side)) {
           key = 'glass';
           const t = (z) => (z - g.side[0]) / (g.side[1] - g.side[0]);
-          uv = k === 2 ? [t(za), 0, t(zb), 1] : [t(za), 1, t(zb), 0];
-        } else if (k === 3 && (inRange(zm, g.front) || inRange(zm, g.rear))) {
+          uv = [[t(za), A.pts[k].g], [t(zb), B.pts[k].g], [t(zb), B.pts[k1].g], [t(za), A.pts[k1].g]];
+        } else if (band === BAND.ROOF && (inRange(zm, g.front) || inRange(zm, g.rear))) {
           key = 'glass';
           const r = inRange(zm, g.front) ? g.front : g.rear;
-          uv = [(za - r[0]) / (r[1] - r[0]), 0, (zb - r[0]) / (r[1] - r[0]), 1];
+          const t = (z) => (z - r[0]) / (r[1] - r[0]);
+          const v = (R, p) => (R.st[8] > 0 ? (p.x + R.st[8]) / (2 * R.st[8]) : 0.5);
+          uv = [[t(za), v(A, A.pts[k])], [t(zb), v(B, B.pts[k])], [t(zb), v(B, B.pts[k1])], [t(za), v(A, A.pts[k1])]];
         }
-        this.quad(key, [ra[k][0], ra[k][1], za], [rb[k][0], rb[k][1], zb], [rb[k1][0], rb[k1][1], zb], [ra[k1][0], ra[k1][1], za], uv);
+        const P = (R, p) => /** @type {V3} */ ([R.pts[p].x, R.pts[p].y, R.z]);
+        this.quadUV(key, P(A, k), P(B, k), P(B, k1), P(A, k1), uv);
       }
     }
-    const cap = (s, front) => {
-      const r = ring(s);
-      const cy = r.reduce((sum, p) => sum + p[1], 0) / 8;
-      const c = /** @type {V3} */ ([0, cy, s[0]]);
-      for (let k = 0; k < 8; k++) {
-        const p = r[k];
-        const q = r[(k + 1) % 8];
-        const P = /** @type {V3} */ ([p[0], p[1], s[0]]);
-        const Q = /** @type {V3} */ ([q[0], q[1], s[0]]);
+    const cap = (pts, z, front) => {
+      const cx = pts.reduce((sum, p) => sum + p.x, 0) / n;
+      const cy = pts.reduce((sum, p) => sum + p.y, 0) / n;
+      const c = /** @type {V3} */ ([cx, cy, z]);
+      for (let k = 0; k < n; k++) {
+        const p = pts[k];
+        const q = pts[(k + 1) % n];
+        const P = /** @type {V3} */ ([p.x, p.y, z]);
+        const Q = /** @type {V3} */ ([q.x, q.y, z]);
         if (front) b.tri('paint', c, Q, P);
         else b.tri('paint', c, P, Q);
       }
     };
-    cap(st[st.length - 1], true);
-    cap(st[0], false);
+    cap(rings[rings.length - 1].pts, this.zMax, true);
+    cap(rings[0].pts, this.zMin, false);
     this.wheelWells();
+  }
+
+  /** A quad with one uv per corner, skipped when it has no area. */
+  quadUV(key, a, b, c, d, uv) {
+    if (!uv) return this.quad(key, a, b, c, d);
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    if (Math.hypot(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx) < 1e-6) return;
+    this.b.tri(key, a, b, c, uv[0], uv[1], uv[2]);
+    this.b.tri(key, a, c, d, uv[0], uv[2], uv[3]);
   }
 
   /** Dark liners inside each arch, so you cannot see through the car past the wheel. */
@@ -402,9 +410,8 @@ export class Kit {
         const zb = zs[i + 1];
         const zm = (za + zb) / 2;
         if (skipGlass && (inRange(zm, g.front) || inRange(zm, g.rear))) continue;
-        const ya = this.topY(za) + lift;
-        const yb = this.topY(zb) + lift;
-        this.b.quad(key, [c, ya, za], [a, ya, za], [a, yb, zb], [c, yb, zb]);
+        const h = (z, x) => this.roofY(z, x) + lift;
+        this.b.quad(key, [c, h(za, c), za], [a, h(za, a), za], [a, h(zb, a), zb], [c, h(zb, c), zb]);
       }
     };
     put(x0, x1);
@@ -435,7 +442,7 @@ export class Kit {
   }
 
   /** A rectangle on both body sides, following the side surface. */
-  side(key, z0, z1, y0, y1, lift = 0.008) {
+  side(key, z0, z1, y0, y1, lift = 0.016) {
     const zs = [z0, ...this.stations.map((s) => s[0]).filter((z) => z > z0 && z < z1), z1];
     for (let i = 0; i < zs.length - 1; i++) {
       const za = zs[i];
@@ -501,11 +508,12 @@ export class CarModel {
     this.kit.loft();
     this.def.parts(this.kit);
     this.body = this.kit.b.mesh(this.mats, ORDER);
+    smoothNormals(this.body.geometry, 38);
     bodyRoot.add(this.body);
 
     const wb = new MeshBuilder();
-    wb.cylinder('tire', 0, 0, 0, spec.wheelRadius, this.def.tireWidth, 10, 'x', { capKey: 'rim' });
-    const wheelGeo = wb.geometry(['tire', 'rim']).geometry;
+    buildWheel(wb, spec.wheelRadius, this.def.tireWidth);
+    const wheelGeo = smoothNormals(wb.geometry(['tire', 'rim']).geometry, 30);
     this.wheelGeo = wheelGeo;
     /** @type {{ pivot: THREE.Group, spin: THREE.Group, front: boolean }[]} */
     this.wheels = [];
