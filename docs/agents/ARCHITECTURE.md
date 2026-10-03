@@ -11,7 +11,8 @@ street racer in the line of Night-Runners Prologue and Need for Speed: Most Want
 (2005). The current milestone is one level, Kurogane: a 6 km square map with a city on
 a bay, Route 1 (an expressway loop with toll plazas) round it, avenues that pass over the
 loop on overpasses, a mountain pass in the west, a forest and a lake in the north, four
-gas stations, and three cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic).
+gas stations, and four cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic,
+Tsurugi GT-X grand tourer).
 Traffic and the street racers are in; challenging a rival and the rally come next.
 
 ## Commands
@@ -104,7 +105,7 @@ captures such as rendered audio.
 | `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
 | `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
 | `src/render/sky.js` | Gradient dome, stars, moon; `MOON_DIR` |
-| `src/vehicles/specs.js` | The three cars: bars, mass, engine, gears, tires, steering, fuel, paints |
+| `src/vehicles/specs.js` | The four cars: bars, mass, engine, gears, tires, steering, fuel, paints |
 | `src/vehicles/surfaces.js` | Grip, slip peak, slide falloff and rolling resistance per surface |
 | `src/vehicles/physics.js` | 120 Hz bicycle model, R N 1..n gearbox, driven-wheel slip and engine rpm, traction control, jumps, fuel |
 | `src/render/stage.js` | Renderer, 240-line target, dither and 15-bit quantize post pass, `shot()` |
@@ -113,7 +114,7 @@ captures such as rendered audio.
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
 | `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
-| `tools/models.html` | Dev model viewer: the three cars on a floor, orbit, views, `shot()` |
+| `tools/models.html` | Dev model viewer: every car on a floor (keys 1 to 9 solo one), orbit, views, `shot()` |
 | `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
 | `tools/mapview.html` | Dev top-down map: hillshade, roads by class, overpasses, stations, tolls, zones; `__map.shot(name)` |
 | `tools/mapcheck.mjs` | Node: every road's length, height range, steepest grade, cut and fill, and where roads cross |
@@ -127,7 +128,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.1)
+## Current state (0.4.2)
 
 Done and tested:
 
@@ -143,7 +144,7 @@ Done and tested:
   valley rises gently to the north, a second valley holds the forest and Kami-ike, the
   rest climbs to 300 m and more, the bay is open sea. Ground build about 1 s.
   `node tools/mapcheck.mjs` prints the road numbers; `tools/mapview.html` draws the map.
-- Vehicle physics for all three cars, tuned so the garage bars are honest. Bench
+- Vehicle physics for all four cars, tuned so the garage bars are honest. Bench
   output (`node tools/sim.mjs`):
 
   | Car | 0-100 | 1/4 mile | Top | 100-0 | Grip tarmac / gravel |
@@ -151,6 +152,7 @@ Done and tested:
   | Hayate RS-4 | 4.64 s | 13.10 s | 203 km/h | 34.7 m | 1.35 g / 0.80 g |
   | Rampart 440 | 3.74 s | 11.67 s | 245 km/h | 37.2 m | 1.20 g / 0.61 g |
   | Vespera GT | 4.20 s | 12.13 s | 293 km/h | 31.7 m | 1.46 g / 0.59 g |
+  | Tsurugi GT-X | 4.37 s | 11.78 s | 323 km/h | 34.2 m | 1.43 g / 0.69 g |
 
   Tarmac grip was raised in 0.2.0 (`SURFACES.asphalt.mu` 1.0 to 1.28, concrete 1.24, brakes
   stronger) and 0.2.3 added downforce (`spec.aero`, N per (m/s)^2 per axle, hard surfaces
@@ -159,7 +161,7 @@ Done and tested:
   player hold full lock at 1.1 to 1.3 g, and a sharper falloff only made that feel slipperier.
   Gravel, dirt, grass, sand are unchanged and a test guards gravel within 3 %.
 - Drivetrain (`physics.js`). `gear` is -1 (R), 0 (N) or 1 to the top gear (Hayate and
-  Rampart 5, Vespera 6). The engine is tied to the driven wheels, which can turn faster
+  Rampart 5, Vespera 6, Tsurugi 7). The engine is tied to the driven wheels, which can turn faster
   than the road passes under them: `s.slip` (m/s) is that extra wheel surface speed.
   When the engine pushes more than the tires can pass on (`tc` times grip, then a
   slip-ratio curve per surface in `surfaces.js`: `slipPeak`, `slipEnd`, `slide`), the
@@ -252,8 +254,9 @@ Done and tested:
     place in the 720 degree cycle, through a throttle-controlled low pass and two exhaust
     resonances, plus intake noise. Flat-four (Hayate): unequal pairs, the burble, plus a
     turbo whistle that follows boost and a blow-off hiss on lift. V8 (Rampart): uneven
-    banks, heavy low end, loud pops. V12 (Vespera): even and high, with gear whine. All
-    three crackle off throttle, cut on the limiter and dip on shifts.
+    banks, heavy low end, loud pops. V12 (Vespera): even and high, with gear whine. Straight-six (Tsurugi, `i6`): six even
+    firings, a hard rasp, the whistle of two turbos and a little whine. All
+    four crackle off throttle, cut on the limiter and dip on shifts.
   - Effects: tire squeal on tarmac (two narrow resonances that rise with speed and slip),
     gravel crunch and scrub on loose surfaces, road rumble, wind, impacts (thump, noise
     and a metallic ring scaled by closing speed), landing thumps, pump hum and clicks.
@@ -343,7 +346,7 @@ Done and tested:
   The values come from `src/vehicles/gauges.js` (pure), stepped once per frame from the physics state:
   temperature and exhaust come from the physics (`thermal.js`), boost spools
   above `engine.turbo.spoolRpm` with `engine.turbo.lag` and dumps on shifts, vacuum
-  follows the throttle, exhaust follows load and rpm. Only the Hayate spec has a
+  follows the throttle, exhaust follows load and rpm. The Hayate and the Tsurugi have a
   `turbo` block. `drawCluster` applies uniform aspect ratio scaling (`Math.min(w/W, h/H)`).
   In the cockpit view the HUD cluster hides and the same `drawCluster` function paints a bold
   cockpit layout onto the binnacle texture (400 by 300, 4:3), updated every frame with fat needle

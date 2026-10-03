@@ -52,7 +52,7 @@ test('every car spec has an engine voice with the right cylinder count', () => {
 });
 
 test('the note is locked to the rpm: the spectrum sits on the cycle harmonics', () => {
-  for (const [voice, rpm] of [['boxer', 3200], ['v8', 2400], ['v12', 3600]]) {
+  for (const [voice, rpm] of [['boxer', 3200], ['v8', 2400], ['v12', 3600], ['i6', 3000]]) {
     const a = render(voice, { rpm, load: 0.8 });
     const ratio = lockRatio(a, rpm);
     assert.ok(ratio > 2.5, `${voice} at ${rpm} rpm: harmonics only ${ratio.toFixed(2)}x the gaps`);
@@ -61,7 +61,7 @@ test('the note is locked to the rpm: the spectrum sits on the cycle harmonics', 
   }
 });
 
-test('the smooth V12 fires evenly and the V8 and flat-four do not', () => {
+test('the smooth V12 and straight-six fire evenly and the V8 and flat-four do not', () => {
   // Energy halfway between firing-rate harmonics: nothing for an even engine, a lot for a lumpy one.
   const lumpiness = (voice, rpm) => {
     const a = render(voice, { rpm, load: 0.9 });
@@ -73,6 +73,8 @@ test('the smooth V12 fires evenly and the V8 and flat-four do not', () => {
   const v12 = lumpiness('v12', 3000);
   const v8 = lumpiness('v8', 3000);
   const boxer = lumpiness('boxer', 3000);
+  const i6 = lumpiness('i6', 3000);
+  assert.ok(i6 < 0.08 && boxer > i6 * 3, `i6 lumpiness ${i6.toFixed(3)}`);
   assert.ok(v12 < 0.05, `v12 lumpiness ${v12.toFixed(3)}`);
   assert.ok(v8 > v12 * 4, `v8 ${v8.toFixed(3)} vs v12 ${v12.toFixed(3)}`);
   assert.ok(boxer > v12 * 4, `boxer ${boxer.toFixed(3)} vs v12 ${v12.toFixed(3)}`);
@@ -131,6 +133,9 @@ test('the turbo whistle appears as a sharp tone under boost', () => {
   const boosted = sharpest(render('boxer', { rpm: 5000, load: 1, boost: 1.2 }));
   const dry = sharpest(render('boxer', { rpm: 5000, load: 1, boost: 0 }));
   assert.ok(boosted > dry * 3, `whistle peak ${boosted.toFixed(4)} vs ${dry.toFixed(4)} without boost`);
+  const six = sharpest(render('i6', { rpm: 5000, load: 1, boost: 1.4 }));
+  const sixDry = sharpest(render('i6', { rpm: 5000, load: 1, boost: 0 }));
+  assert.ok(six > sixDry * 3, `straight-six whistle ${six.toFixed(4)} vs ${sixDry.toFixed(4)}`);
   const v8 = sharpest(render('v8', { rpm: 5000, load: 1, boost: 1.2 }));
   assert.ok(boosted > v8 * 3, `the V8 has no turbo, but its peak is ${v8.toFixed(4)}`);
 });
@@ -164,7 +169,7 @@ function firingSpread(a, voice, rpm) {
 }
 
 test('a damaged engine misfires: the firings get uneven and it is quieter', () => {
-  for (const voice of ['boxer', 'v8', 'v12']) {
+  for (const voice of ['boxer', 'v8', 'v12', 'i6']) {
     const healthy = render(voice, { rpm: 3000, load: 0.8, damage: 0 }, 2.5, 1);
     const hurt = render(voice, { rpm: 3000, load: 0.8, damage: 1 }, 2.5, 1);
     assert.ok(firingSpread(hurt, voice, 3000) > firingSpread(healthy, voice, 3000) * 1.4, `${voice} spread ${firingSpread(hurt, voice, 3000)} vs ${firingSpread(healthy, voice, 3000)}`);

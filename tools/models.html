@@ -13,7 +13,7 @@
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="info">1 2 3 car, P paint, V view, F psx filter, drag to orbit</div>
+<div id="info">1 to 9 car, P paint, V view, F psx filter, drag to orbit</div>
 <script type="module">
 // Dev tool: looks at the car models without the game around them.
 // window.__lowbeam.view('side') and .shot('name') write tools/shots/name.png.
@@ -36,7 +36,7 @@ scene.add(floor);
 
 const models = CARS.map((spec, i) => {
   const m = new CarModel(spec, 0);
-  m.group.position.x = (1 - i) * 2.6;
+  m.group.position.x = ((CARS.length - 1) / 2 - i) * 2.6;
   scene.add(m.group);
   return m;
 });
@@ -64,7 +64,7 @@ function show(i) {
   solo = i;
   models.forEach((m, k) => {
     m.group.visible = i < 0 || k === i;
-    m.group.position.x = i < 0 ? (1 - k) * 2.6 : 0;
+    m.group.position.x = i < 0 ? ((CARS.length - 1) / 2 - k) * 2.6 : 0;
   });
   frame();
 }
@@ -79,7 +79,7 @@ addEventListener('pointermove', (e) => {
 });
 addEventListener('wheel', (e) => (dist = Math.max(3, Math.min(30, dist + e.deltaY * 0.01))));
 addEventListener('keydown', (e) => {
-  if (e.key >= '1' && e.key <= '3') show(solo === +e.key - 1 ? -1 : +e.key - 1);
+  if (e.key >= '1' && e.key <= '9' && +e.key <= models.length) show(solo === +e.key - 1 ? -1 : +e.key - 1);
   if (e.key === 'p') models.forEach((m) => m.setPaint((m.paintIndex + 1) % m.spec.paints.length));
   if (e.key === 'v') view(viewNames[(vi = (vi + 1) % viewNames.length)]);
   if (e.key === 'f') stage.configure({ psx: !stage.settings.psx });

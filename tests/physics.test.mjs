@@ -155,7 +155,7 @@ test('the manual selector runs R, N, 1 to the top gear for every car, at any spe
     run(0.15);
     assert.equal(s.gear, 0, `${spec.id} passes through N`);
   }
-  assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6]);
+  assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6, 7]);
 });
 
 test('manual: W is always throttle and the gear sets the direction', () => {

@@ -58,6 +58,24 @@ export const VOICES = {
     width: [0.95, 0.4],
     gain: 1.05,
   },
+  // Twin-turbo straight-six: six even firings, a smooth hard rasp with the whistle of two turbos.
+  i6: {
+    cyl: 6,
+    pattern: Array.from({ length: 6 }, (_, i) => i / 6),
+    amps: [1, 0.94, 0.98, 0.92, 1, 0.95],
+    pipeHz: 118,
+    pipeQ: 3.0,
+    cutLow: 640,
+    cutHigh: 4200,
+    body: 0.5,
+    noise: 0.18,
+    whistle: 0.8,
+    whine: 0.2,
+    pops: 0.5,
+    rough: 0.008,
+    width: [0.88, 0.38],
+    gain: 0.95,
+  },
   // V12: twelve even firings, high and smooth, with a cam and gear whir.
   v12: {
     cyl: 12,

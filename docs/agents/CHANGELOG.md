@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.2 (2026-10-03)
+
+The fourth car.
+
+- `specs.js`: TSURUGI GT-X, a 3.0 L twin-turbo straight-six grand tourer, rear-wheel drive,
+  seven gears, bars 10 / 7 / 8. Bench: 0-100 4.37 s, quarter mile 11.78 s, 323 km/h, 34.2 m
+  from 100, 1.43 g tarmac and 0.69 g gravel.
+- `engine-dsp.js`: the `i6` voice (six even firings, turbo whistle, a little whine); the engine
+  tests cover it for evenness, the whistle and damage.
+- `models.js`: a provisional fastback body (`BODIES.tsurugi`), right-hand drive, four tailpipes
+  (`TIPS` in `exhaust-fx.js`). It will be rebuilt with the new modeler.
+- `tools/models.html` shows any number of cars.
+
 ## 0.4.1 (2026-10-03)
 
 Street racers.
