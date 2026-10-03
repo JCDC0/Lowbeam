@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.3 (2026-10-03)
+
+Tachometer scale fix: the tach never shows the blow rpm.
+
+- `src/ui/cluster.js`: `maxRpmOf(spec)` is the redline plus 1,000, rounded up to the next
+  1,000 (Hayate 9,000, Rampart 8,000, Vespera 10,000, Tsurugi 9,000).
+- The blow rpm (`engine.blowRpm`, 11,000) stays in the logic but is never drawn on the dial.
+- Replaced the two-part red and danger band with a single red band running from redline to
+  the end of the scale, flashing on limiter or over-rev.
+- The needle pins at the end stop (`TACH_END`) when rpm exceeds the scale, never wrapping.
+- Tests: `tests/cluster.test.mjs` verifies scale bounds for all cars, absence of blow rpm
+  numerals, and end-stop needle pinning.
+
 ## 0.4.2 (2026-10-03)
 
 The fourth car.

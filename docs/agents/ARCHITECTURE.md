@@ -335,8 +335,9 @@ Done and tested:
 - HUD: area name (fades), money, prompts, the minimap (rotates with the car, zooms
   out with speed, north marker, station and rally start icons) and the gauge cluster.
 - Gauge cluster (`src/ui/cluster.js`, bottom right, canvas, Michroma): a round tach
-  sweeping 240 degrees with scale running to 11 (11,000 rpm) for every car, a normal red
-  band from the car's redline, a darker danger band from redline+1000 to 11, a lit arc behind
+  sweeping 240 degrees with scale running to redline plus 1,000 rounded up to the next 1,000 for each
+  car (Hayate 9,000, Rampart 8,000, Vespera 10,000, Tsurugi 9,000; blowRpm 11,000 is never drawn), a red
+  band from the car's redline to the end of the scale flashing on limiter or over-rev, a lit arc behind
   the needle, five shift lights that fill toward the upshift point and flash at it, a flashing
   red zone on the limiter, digital speed and a gear box (handling R, N, and gears 1..7) in the open
   bottom of the dial, and four small dials around it: FUEL (liters, red under 15 %), TEMP (80 to

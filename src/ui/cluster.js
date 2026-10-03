@@ -29,9 +29,23 @@ const W = 400;
 const H = 300;
 const TACH = { x: 290, y: 190, r: 102 };
 
-/** The tachometer scale runs to 11 (11,000 rpm) for every car. */
-export const maxRpmOf = (_spec) => 11000;
-const MAX_RPM = 11000;
+/**
+ * End of the tach scale: the redline plus 1,000 rpm, rounded up to the next 1,000. The blow
+ * rpm (`engine.blowRpm`) stays in the engine logic and is never drawn, so the scale does not
+ * read as a target.
+ * @param {CarSpec} spec
+ */
+export const maxRpmOf = (spec) => Math.ceil((spec.engine.redline + 1000) / 1000) * 1000;
+
+/**
+ * Needle angle for an rpm on a car's tach. Past the end of the scale the needle pins at the
+ * end stop; it never wraps round.
+ * @param {number} rpm @param {CarSpec} spec
+ */
+export const tachAngle = (rpm, spec) => T0 + TSWEEP * clamp(rpm / maxRpmOf(spec), 0, 1);
+
+/** Angle of the tach's end stop. */
+export const TACH_END = T0 + TSWEEP;
 
 /**
  * One small dial: a 270 degree scale, a warning band, a needle and a value/label.
@@ -150,24 +164,21 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   if (ox !== 0 || oy !== 0) g.translate(ox, oy);
   if (s !== 1) g.scale(s, s);
 
-  const max = MAX_RPM;
+  const max = maxRpmOf(spec);
   const red = spec.engine.redline;
   const { x: cx, y: cy, r: R } = TACH;
-  const rpmA = (rpm) => T0 + TSWEEP * clamp(rpm / max, 0, 1);
+  const rpmA = (rpm) => tachAngle(rpm, spec);
   const flash = Math.floor(t * 12) % 2 === 0;
 
-  // Defensive reads for gauges
   const temp = gs.temp ?? gs.water ?? 84;
   const exh = gs.exh ?? 360;
   const overrev = gs.overrev ?? 0;
   const damage = gs.damage ?? 0;
   const blown = Boolean(gs.blown);
 
-  // Sub-dial 0: FUEL
   const fuelFrac = gs.tank > 0 ? gs.fuel / gs.tank : 0;
   subDial(g, SUBS[0].x, SUBS[0].y, SUBS[0].r, fuelFrac, 'FUEL', `${gs.fuel.toFixed(0)}L`, fuelFrac < 0.15 && flash, 0.15, false, cockpit);
 
-  // Sub-dial 1: TEMP (replaces WATER: red from 110 C, HOT lamp from 115 C)
   const tMin = TEMP_MIN ?? 80;
   const tMax = TEMP_MAX ?? 120;
   const tRed = TEMP_RED ?? 110;
@@ -175,9 +186,8 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   const hot = temp >= 115;
   const tempWarn = temp >= tRed;
   const tempWarnFrom = (tRed - tMin) / (tMax - tMin);
-  subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, tf, 'TEMP', `${Math.round(temp)}°C`, tempWarn, tempWarnFrom, true, cockpit, hot);
+  subDial(g, SUBS[1].x, SUBS[1].y, SUBS[1].r, tf, 'TEMP', `${Math.round(temp)}Â°C`, tempWarn, tempWarnFrom, true, cockpit, hot);
 
-  // Sub-dial 2: BOOST or VAC
   if (gs.turbo) {
     const top = spec.engine.turbo?.boost ?? 1.2;
     const bf = (gs.boost - BOOST_MIN) / (top - BOOST_MIN);
@@ -188,11 +198,9 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     subDial(g, SUBS[2].x, SUBS[2].y, SUBS[2].r, vf, 'VAC', gs.intake.toFixed(2), false, 1.01, true, cockpit);
   }
 
-  // Sub-dial 3: EXH
   const ef = (exh - EXH_MIN) / (EXH_MAX - EXH_MIN);
-  subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(exh)}°C`, exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN), true, cockpit);
+  subDial(g, SUBS[3].x, SUBS[3].y, SUBS[3].r, ef, 'EXH', `${Math.round(exh)}Â°C`, exh > 820, (820 - EXH_MIN) / (EXH_MAX - EXH_MIN), true, cockpit);
 
-  // Tachometer main dial
   const bg = g.createRadialGradient(cx, cy, R * 0.2, cx, cy, R);
   bg.addColorStop(0, 'rgba(14, 18, 28, 0.9)');
   bg.addColorStop(1, 'rgba(4, 6, 10, 0.92)');
@@ -210,33 +218,22 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   g.arc(cx, cy, R - 5, 0, Math.PI * 2);
   g.stroke();
 
-  // Darker danger band from redline+1000 (or limiter) to 11000
-  const dangerStart = Math.min(red + 1000, max);
-  const dangerArcR = R - (cockpit ? 15 : 13);
+  const bandR = R - (cockpit ? 15 : 13);
   g.lineWidth = cockpit ? 14 : 9;
-  g.strokeStyle = (overrev > 0 && flash) ? '#ff4040' : 'rgba(138, 16, 16, 0.9)';
+  g.strokeStyle = ((gs.limiter || overrev > 0) && flash) ? '#ff8070' : 'rgba(255, 59, 47, 0.85)';
   g.beginPath();
-  g.arc(cx, cy, dangerArcR, rpmA(dangerStart), T0 + TSWEEP);
+  g.arc(cx, cy, bandR, rpmA(red), T0 + TSWEEP);
   g.stroke();
 
-  // Normal red band from car's redline to dangerStart
-  g.strokeStyle = (gs.limiter && flash) ? '#ff8070' : 'rgba(255, 59, 47, 0.85)';
-  g.beginPath();
-  g.arc(cx, cy, dangerArcR, rpmA(red), rpmA(dangerStart));
-  g.stroke();
-
-  // Active RPM illuminated sweep
   g.lineWidth = cockpit ? 6 : 3;
   g.strokeStyle = 'rgba(255, 180, 60, 0.85)';
   g.beginPath();
   g.arc(cx, cy, R - (cockpit ? 15 : 10), T0, rpmA(Math.min(gs.rpm, max)));
   g.stroke();
 
-  // Tick marks and numerals
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   if (cockpit) {
-    // Bold cockpit ticks only every 1000 rpm
     for (let rpm = 0; rpm <= max; rpm += 1000) {
       const a = rpmA(rpm);
       const isRed = rpm >= red;
@@ -251,7 +248,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
       g.fillText(String(rpm / 1000), cx + Math.cos(a) * (R - 38), cy + Math.sin(a) * (R - 38));
     }
   } else {
-    // Detailed HUD ticks every 250 rpm
     for (let rpm = 0; rpm <= max; rpm += 250) {
       const a = rpmA(rpm);
       const major = rpm % 1000 === 0;
@@ -274,7 +270,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     g.fillText('x1000 r/min', cx, cy - R * 0.2);
   }
 
-  // Shift LEDs
   const leds = 5;
   const from = spec.engine.shiftUp * 0.8;
   const ledSpacing = cockpit ? 16 : 13;
@@ -293,7 +288,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   }
   g.shadowBlur = 0;
 
-  // Warning lamps: CHECK ENGINE (flashing on blown), DMG (> 0.3), OVERREV (> 0), ENGINE OFF
   if (blown) {
     g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.2)';
     g.font = cockpit ? `bold 24px ${FONT}` : `11px ${FONT}`;
@@ -308,7 +302,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     g.fillText('DMG', cx, cy - R * (cockpit ? 0.18 : 0.05));
   }
 
-  // Digital speed & gear
   const kmh = String(Math.round(gs.kmh));
   if (cockpit) {
     g.fillStyle = INK;
@@ -318,7 +311,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     g.font = `bold 22px ${FONT}`;
     g.fillText('KM/H', cx - 18, cy + R * 0.84);
 
-    // Bold gear box (handles R, N, 1..7)
     const gx = cx + R * 0.16;
     const gy = cy + R * 0.16;
     const gw = 40;
@@ -337,7 +329,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     g.font = `8px ${FONT}`;
     g.fillText('KM/H', cx, cy + R * 0.87);
 
-    // Detailed gear box
     g.strokeStyle = 'rgba(255, 180, 60, 0.6)';
     g.lineWidth = 1.5;
     g.strokeRect(cx + R * 0.18, cy + R * 0.02, 30, 32);
@@ -346,7 +337,6 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     g.fillText(gs.gear, cx + R * 0.18 + 15, cy + R * 0.02 + 17);
   }
 
-  // Needle
   const a = rpmA(gs.rpm);
   g.strokeStyle = '#fff4e0';
   g.shadowColor = AMBER;

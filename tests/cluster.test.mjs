@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/vehicles/specs.js';
 import { createGauges } from '../src/vehicles/gauges.js';
-import { drawCluster, maxRpmOf } from '../src/ui/cluster.js';
+import { blowRpmOf } from '../src/vehicles/thermal.js';
+import { drawCluster, maxRpmOf, tachAngle, TACH_END } from '../src/ui/cluster.js';
 
 /** Mock 2D canvas context for pure Node testing. */
 function createMockContext() {
@@ -36,9 +37,41 @@ function createMockContext() {
   };
 }
 
-test('tachometer scale runs to 11 (11,000 rpm) for every car', () => {
+test('the tach scale is the redline plus 1,000 rounded up, and never reaches the blow rpm', () => {
+  const expected = { hayate: 9000, rampart: 8000, vespera: 10000, tsurugi: 9000 };
   for (const car of CARS) {
-    assert.equal(maxRpmOf(car), 11000, `Car ${car.id} tach scale should run to 11000`);
+    const max = maxRpmOf(car);
+    const red = car.engine.redline;
+    if (expected[car.id]) assert.equal(max, expected[car.id], car.id);
+    assert.equal(max % 1000, 0, `${car.id} scale ends on a whole 1,000`);
+    assert.ok(max >= red + 1000 && max < red + 2000, `${car.id} scale ${max} for redline ${red}`);
+    assert.ok(max < blowRpmOf(car), `${car.id} scale ${max} reaches the blow rpm`);
+  }
+});
+
+test('no tach numeral or band is drawn at or past the blow rpm', () => {
+  for (const spec of CARS) {
+    const gs = createGauges(spec);
+    for (const cockpit of [false, true]) {
+      const ctx = createMockContext();
+      drawCluster(/** @type {*} */ (ctx), gs, spec, 0, 400, 300, cockpit);
+      const top = maxRpmOf(spec) / 1000;
+      const numerals = ctx.calls.filter((c) => c.fn === 'fillText' && /^\d+$/.test(c.args[0])).map((c) => Number(c.args[0]));
+      assert.ok(numerals.includes(top), `${spec.id} shows its top numeral ${top}`);
+      assert.ok(!numerals.includes(blowRpmOf(spec) / 1000), `${spec.id} draws the blow rpm numeral`);
+      assert.ok(numerals.every((n) => n <= top), `${spec.id} numeral past the scale`);
+    }
+  }
+});
+
+test('the needle pins at the end stop past the scale and never wraps', () => {
+  for (const spec of CARS) {
+    const max = maxRpmOf(spec);
+    assert.equal(tachAngle(max, spec), TACH_END);
+    assert.equal(tachAngle(max + 500, spec), TACH_END);
+    assert.equal(tachAngle(blowRpmOf(spec) + 4000, spec), TACH_END);
+    assert.ok(tachAngle(max - 100, spec) < TACH_END);
+    assert.ok(tachAngle(-300, spec) === tachAngle(0, spec));
   }
 });
 
