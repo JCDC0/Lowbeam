@@ -77,6 +77,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
 | `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
+| `src/ui/stats.js` | DOM: F3 corner readout of FPS, draw calls, triangles and traffic count |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
 | `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
@@ -101,6 +102,10 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/build-highway.js` | Barrier and rail chunks, plaza canopy, booths, islands, lane lights and name board |
 | `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
+| `src/race/event.js` | Pure: the `RaceEvent` interface every race kind shares: state, `update(dt, world)`, `result()` |
+| `src/race/duel.js` | Pure: `Duel`, the one-on-one race with a street racer; gauge drains for whoever is behind, prize and challenge rules |
+| `src/race/pacenotes.js` | Pure: walks a stage every 5 m and grades each corner (`1` tightest to `6` flat) with hairpin, long, tightens, opens, crest and into |
+| `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
 | `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
 | `src/traffic/bodies.js` | Geometry per kind: the lofted body (`vehicleGeometry`) from the civilian models by kind id or from the kind's `model`; the old boxy stand-ins are the fallback |
@@ -148,10 +153,13 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.3)
+## Current state (0.6.5)
 
 Done and tested:
 
+- F3 performance and scene stats overlay (0.6.4, A10 part 3). `src/ui/stats.js`: F3 toggles a corner
+  readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent
+  count with inline styles and zero `style.css` edits.
 - Island tactical map and elevated viaducts (0.6.2, A10 part 2). `MapScreen` draws the sea outside
   the `water.coast` polygon with evenodd fill and fallback to `water.sea`. Elevated road runs are
   drawn above ground ribbons with dark outlines. New POI icons (`police` shield, `garage` wrench,
@@ -576,6 +584,15 @@ Done and tested:
   whether a rival can be challenged at all: ahead, within 60 m, on Route 1 or the Bayshore Line.
   The racer agent gets a `duel` flag and races at its top speed while it lasts. Wins are saved per
   rival kind id under `duelWins`.
+  `race/pacenotes.js` (since 0.6.5) reads a stage ahead of time: it walks the path every 5 m
+  (`NOTE_STEP`), takes the radius from the heading change over that step, and grades each corner
+  from 1 (tightest) to 6 (nearly flat) at `gradeFor`. It also names the mods the HUD shows:
+  `hairpin` under `HAIRPIN_R` 20 m, `long` past `LONG_M` 60 m, `tightens` and `opens` when the
+  radius changes by half (`CHANGE_R`) across the corner, `crest` where a climb tops out, and
+  `into` when the next corner starts inside `INTO_S` 30 m. A note is `{ s, dir, grade, mods }`,
+  with `dir` left or right read from the sign of the yaw change, matching the convention in
+  `vehicles/physics.js` (yaw 0 faces +Z). A crest is a mod on the nearest corner rather than a
+  note of its own.
 - Cockpit (`cockpit.js`, since 0.4.9). The interior is lofted from the body (dash top, a
   rounded lip and face, firewall, floor, console, vents, A-pillars, header, liner, door
   panels and sills, mirror, passenger seat) and each car has its own real instruments, not a
@@ -611,7 +628,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 153 passing for this milestone (`npm test`), including `tests/race.test.mjs` for the duel
+- Tests: 179 passing for this milestone (`npm test`), including `tests/pacenotes.test.mjs` for the
+  rally pace notes and `tests/race.test.mjs` for the duel
   rules, `tests/devserver.test.mjs` for the dev server's range
   requests, `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.

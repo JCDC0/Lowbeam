@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.6.5 (2026-10-04)
+
+Pace notes for the Kuro Pass rally (A11 part 1).
+
+- New pure `src/race/pacenotes.js`: `paceNotes(path, heightAt?)` walks a stage every 5 m
+  (`NOTE_STEP`) and returns one note per corner, `{ s, dir, grade, mods }`. The radius comes from
+  the heading change over that step and `gradeFor` maps it to 1 (tightest) through 6 (nearly
+  flat). `dir` is left or right from the sign of the yaw change, the same convention as
+  `vehicles/physics.js`. Mods: `hairpin` under `HAIRPIN_R` 20 m, `long` past `LONG_M` 60 m,
+  `tightens` and `opens` when the radius changes by half (`CHANGE_R`) across the corner, `crest`
+  where a climb tops out, and `into` when the next corner starts within `INTO_S` 30 m. A crest is
+  a mod on the nearest corner rather than a note of its own. `path` only needs `length` and
+  `sample(s)`, which `world/spline.js` `Path` already provides; `heightAt(s)` is optional and is
+  what turns crests on.
+- Tests: new `tests/pacenotes.test.mjs`, ten cases on synthetic paths: radius 15 is a hairpin,
+  radius 150 grades 5 or 6, a left bend reads left and a right bend reads right, an S calls the
+  second corner `into`, a corner over 60 m is `long`, a changing radius is `tightens` or `opens`,
+  a climb topping out is a `crest`, every note carries an `s` inside the path with a valid grade
+  and dir, a straight road produces nothing, and `HAIRPIN_R` is 20.
+
+## 0.6.4 (2026-10-04)
+
+F3 stats overlay displays performance and scene metrics.
+
+- New `src/ui/stats.js`: F3 toggles a corner readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent count.
+- Hooked into `src/main.js` with inline styles and zero `style.css` edits.
+
 ## 0.6.3 (2026-10-04)
 
 Kurogane City becomes a real street network, built up from the waterfront to the expressway.
