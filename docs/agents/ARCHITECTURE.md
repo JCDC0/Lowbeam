@@ -153,11 +153,11 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.5)
+## Current state (0.6.6)
 
 Done and tested:
 
-- F3 performance and scene stats overlay (0.6.4, A10 part 3). `src/ui/stats.js`: F3 toggles a corner
+- F3 performance and scene stats overlay (0.6.6, A10 part 3). `src/ui/stats.js`: F3 toggles a corner
   readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent
   count with inline styles and zero `style.css` edits.
 - Island tactical map and elevated viaducts (0.6.2, A10 part 2). `MapScreen` draws the sea outside

@@ -11,6 +11,7 @@ import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
 import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
 import { mapScreen } from './ui/map.js';
+import { statsOverlay } from './ui/stats.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
@@ -44,6 +45,7 @@ const hud = new Hud(ui);
 const pause = pauseScreen(ui);
 const map = mapScreen(ui);
 const toast = toaster(ui);
+const stats = statsOverlay(ui, stage, () => drive?.traffic?.agents?.length ?? 0);
 audio.onTrack = (t) => {
   if (state === 'drive') toast(`NOW PLAYING   ${t.title.toUpperCase()}`, 3);
 };

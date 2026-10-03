@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.6 (2026-10-04)
+
+F3 stats overlay displays performance and scene metrics.
+
+- New `src/ui/stats.js`: F3 toggles a corner readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent count.
+- Hooked into `src/main.js` with inline styles and zero `style.css` edits.
+
 ## 0.6.5 (2026-10-04)
 
 Pace notes for the Kuro Pass rally (A11 part 1).
@@ -19,13 +26,6 @@ Pace notes for the Kuro Pass rally (A11 part 1).
   second corner `into`, a corner over 60 m is `long`, a changing radius is `tightens` or `opens`,
   a climb topping out is a `crest`, every note carries an `s` inside the path with a valid grade
   and dir, a straight road produces nothing, and `HAIRPIN_R` is 20.
-
-## 0.6.4 (2026-10-04)
-
-F3 stats overlay displays performance and scene metrics.
-
-- New `src/ui/stats.js`: F3 toggles a corner readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent count.
-- Hooked into `src/main.js` with inline styles and zero `style.css` edits.
 
 ## 0.6.3 (2026-10-04)
 

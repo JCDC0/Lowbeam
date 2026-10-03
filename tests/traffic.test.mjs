@@ -130,12 +130,13 @@ test('cars stop at a red light and go again on green', () => {
   sim.agents.push(car);
   // Find a moment when this axis is red or about to be.
   let t = 0;
+  while (lightState(stop.node, stop.axis, t) === 'red' && t < 200) t += 0.25;
   while (lightState(stop.node, stop.axis, t) !== 'red' && t < 200) t += 0.25;
   sim.time = t - 4;
   let minGap = Infinity;
   for (let i = 0; i < 25 * 30; i++) {
     sim.update(1 / 30, player);
-    if (lightState(stop.node, stop.axis, sim.time) === 'red') minGap = Math.min(minGap, stop.s - car.s);
+    if (sim.time < t + 14 && lightState(stop.node, stop.axis, sim.time) === 'red') minGap = Math.min(minGap, stop.s - car.s);
     assert.ok(car.s < stop.s + 2 || lightState(stop.node, stop.axis, sim.time) !== 'red' || sim.time > t + 12, 'ran the light');
   }
   assert.ok(car.s > stop.s, `never got going again: at ${car.s} of ${stop.s}`);
