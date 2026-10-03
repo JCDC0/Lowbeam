@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.6 (2026-10-03)
+
+Street racers drive real cars.
+
+- `vehicles/bodies/profile.js` (new, pure): a body from a profile (nose, hood, deck and tail
+  heights, cabin positions, roof, tapers) plus detail helpers.
+- `vehicles/bodies/racers.js` (new, pure): twelve racer cars with their own shapes and details.
+- `kinds.js`: `RIVALS` is the twelve racers plus the four player cars, sixteen kinds, each with a
+  `model`; speeds raised to 1.8 to 2.7 times the limit.
+- `models.js`: `vehicleGeometry` bakes a lofted car with wheels into one instancing geometry.
+  `psx.js`: a `paint` option so the instance color only tints the paint. The traffic material is
+  Phong now.
+- `tools/bodies.html`: catalog of every racer and traffic kind.
+
 ## 0.4.5 (2026-10-03)
 
 Blown engine idle: rough idle at 1,000 to 2,000 rpm in gear or neutral.

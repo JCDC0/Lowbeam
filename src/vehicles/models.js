@@ -603,6 +603,65 @@ export class CarModel {
   }
 }
 
+/** Fixed colors for the parts of a body baked into one geometry; paint is tinted per instance. */
+const BAKED = {
+  paint: { color: [1, 1, 1], paint: 1 },
+  accent: { color: [0.07, 0.07, 0.08] },
+  glass: { color: [0.035, 0.045, 0.065] },
+  trim: { color: [0.1, 0.1, 0.11] },
+  under: { color: [0.03, 0.03, 0.035] },
+  chrome: { color: [0.68, 0.7, 0.73] },
+  lamp: { color: [1, 0.95, 0.8], lamp: [0.9, 0.8, 0.55] },
+  tail: { color: [0.5, 0.03, 0.02], lamp: [0.5, 0.02, 0.02] },
+  plate: { color: [0.82, 0.82, 0.78] },
+  tire: { color: [0.05, 0.05, 0.06] },
+  rim: { color: [0.62, 0.64, 0.67] },
+};
+
+/**
+ * A whole car (body and four wheels) baked into one vertex-colored geometry for instancing:
+ * `color` per part, `aPaint` 1 where the instance color should tint (the paint), `lamp` for
+ * head and tail lights. Used for traffic and street racers.
+ * @param {{ cgToFront: number, wheelbase: number, wheelRadius: number, track: number }} spec
+ * @param {BodyDef} def @param {{ wheelSides?: number, accent?: number[] }} [opts]
+ */
+export function vehicleGeometry(spec, def, { wheelSides = 12, accent } = {}) {
+  const kit = new Kit(/** @type {CarSpec} */ (spec), def);
+  kit.loft();
+  def.parts(kit);
+  const b = kit.b;
+  for (const axle of [kit.frontAxle, kit.rearAxle]) {
+    for (const s of [1, -1]) {
+      b.push((s * spec.track) / 2, spec.wheelRadius, axle, s < 0 ? Math.PI : 0);
+      buildWheel(b, spec.wheelRadius, def.tireWidth, wheelSides);
+      b.pop();
+    }
+  }
+  const { geometry, keys } = b.geometry(ORDER);
+  smoothNormals(geometry, 38);
+  const n = geometry.getAttribute('position').count;
+  const col = new Float32Array(n * 3);
+  const paint = new Float32Array(n);
+  const lamp = new Float32Array(n * 3);
+  for (const g of geometry.groups) {
+    const look = BAKED[keys[g.materialIndex ?? 0]] || BAKED.trim;
+    const key = keys[g.materialIndex ?? 0];
+    let c = key === 'accent' && accent ? accent : look.color;
+    if (key === 'rim' && typeof def.rimColor === 'number') c = new THREE.Color(def.rimColor).toArray().map((v) => v * 0.85);
+    for (let i = g.start; i < g.start + g.count; i++) {
+      col.set(c, i * 3);
+      paint[i] = look.paint ?? 0;
+      if (look.lamp) lamp.set(look.lamp, i * 3);
+    }
+  }
+  geometry.clearGroups();
+  geometry.deleteAttribute('uv');
+  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geometry.setAttribute('aPaint', new THREE.BufferAttribute(paint, 1));
+  geometry.setAttribute('lamp', new THREE.BufferAttribute(lamp, 3));
+  return geometry;
+}
+
 /** Steering wheel turns per radian of front wheel angle. */
 export const STEER_RATIO = 4.5;
 

@@ -30,11 +30,12 @@ if (uSnapOn > 0.5 && gl_Position.w > 0.0) {
 
 /**
  * @param {THREE.Material} mat
- * @param {{ baked?: boolean, local?: boolean, lamp?: boolean }} opts
+ * @param {{ baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean }} opts
  *   `lamp` reads a `lamp` vertex color that is added as emissive light, scaled up on red
- *   lamps by an instanced `aBrake` attribute (brake lights).
+ *   lamps by an instanced `aBrake` attribute (brake lights). `paint` limits the instance
+ *   color to the vertices whose `aPaint` attribute is 1, so glass and trim keep their color.
  */
-export function patchPsx(mat, { baked = false, local = false, lamp = false } = {}) {
+export function patchPsx(mat, { baked = false, local = false, lamp = false, paint = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapOn = psxUniforms.uSnapOn;
@@ -54,6 +55,10 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false } = {
       fs = 'varying vec3 vLamp;\n' + fs;
       extra += '\ntotalEmissiveRadiance += vLamp;';
     }
+    if (paint) {
+      vs = 'attribute float aPaint;\n' + vs;
+      vs = vs.replace('#include <color_vertex>', '#include <color_vertex>\n#ifdef USE_INSTANCING_COLOR\nvColor.rgb = color * mix(vec3(1.0), instanceColor.rgb, aPaint);\n#endif');
+    }
     if (local) {
       shader.uniforms.uLocalColor = psxUniforms.uLocalColor;
       shader.uniforms.uLocalDir = psxUniforms.uLocalDir;
@@ -64,26 +69,26 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false } = {
     shader.vertexShader = vs;
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}`;
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}`;
   return mat;
 }
 
 /**
  * Lambert material with the PSX patch.
- * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean }} params
+ * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean }} params
  */
 export function psxLambert(params = {}) {
-  const { baked, local, lamp, ...rest } = params;
-  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local, lamp });
+  const { baked, local, lamp, paint, ...rest } = params;
+  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local, lamp, paint });
 }
 
 /**
  * Phong material with the PSX patch, for car paint, glass and chrome.
- * @param {THREE.MeshPhongMaterialParameters & { baked?: boolean, local?: boolean }} params
+ * @param {THREE.MeshPhongMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean }} params
  */
 export function psxPhong(params = {}) {
-  const { baked, local, ...rest } = params;
-  return patchPsx(new THREE.MeshPhongMaterial(rest), { baked, local });
+  const { baked, local, lamp, paint, ...rest } = params;
+  return patchPsx(new THREE.MeshPhongMaterial(rest), { baked, local, lamp, paint });
 }
 
 /**

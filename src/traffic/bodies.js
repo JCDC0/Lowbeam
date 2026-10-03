@@ -1,11 +1,16 @@
 /**
- * Boxy stand-in bodies for the traffic, one geometry per kind: flat-shaded, with a white
- * `paint` color the instance tint multiplies, dark glass and wheels, and a `lamp` attribute
- * for the head and tail lights. The proper models (tasks A3 and A4) replace these by kind id.
+ * Bodies for the traffic, one geometry per kind. A kind with a `model` (the street racers,
+ * and the player cars when they race) is the real lofted car baked by `vehicleGeometry`.
+ * The rest are boxy stand-ins until their lofted bodies land: flat-shaded, a white `paint`
+ * color the instance tint multiplies (`aPaint` marks it), dark glass and wheels, and a
+ * `lamp` attribute for the head and tail lights.
  * Local axes: +Z forward, +X to the left, the origin on the ground at the center.
  */
 
 import * as THREE from 'three';
+import { BODIES, vehicleGeometry } from '../vehicles/models.js';
+import { RACER_MODEL_BY_ID } from '../vehicles/bodies/racers.js';
+import { carById } from '../vehicles/specs.js';
 
 const PAINT = [1, 1, 1];
 const GLASS = [0.1, 0.13, 0.18];
@@ -95,6 +100,9 @@ class Parts {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(this.nor, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
     g.setAttribute('lamp', new THREE.Float32BufferAttribute(this.lamp, 3));
+    const paint = new Float32Array(this.col.length / 3);
+    for (let i = 0; i < paint.length; i++) paint[i] = this.col[i * 3] === 1 && this.col[i * 3 + 1] === 1 && this.col[i * 3 + 2] === 1 ? 1 : 0;
+    g.setAttribute('aPaint', new THREE.BufferAttribute(paint, 1));
     g.computeBoundingSphere();
     return g;
   }
@@ -121,6 +129,12 @@ function lights(p, W, y, L, size = 0.28) {
  * @param {import('./kinds.js').Kind} k
  */
 export function buildKindGeometry(k) {
+  if (k.model) {
+    const racer = RACER_MODEL_BY_ID.get(k.model);
+    if (racer) return vehicleGeometry(racer, racer.body, { wheelSides: 10 });
+    const spec = carById(k.model);
+    return vehicleGeometry(spec, BODIES[spec.id], { wheelSides: 10 });
+  }
   const p = new Parts();
   const { length: L, width: W, height: H } = k;
   const r = k.id === 'bus' || k.id === 'semi' || k.id === 'truck' || k.id === 'tanker' ? 0.5 : 0.31;

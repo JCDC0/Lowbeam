@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam body catalog</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #info { position: fixed; left: 8px; top: 6px; color: #9ab; font: 12px monospace; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info">racers and traffic as the game draws them. P paint, V view, drag to orbit, wheel zoom</div>
+<script type="module">
+// Dev tool: every traffic and racer kind through the same instanced material the game uses.
+// window.__bodies.show('rv-wedge'), .grid('rivals' | 'traffic'), .view(name), .shot(name).
+import * as THREE from 'three';
+import { createStage } from '/src/render/stage.js';
+import { psxPhong } from '/src/render/psx.js';
+import { KINDS, RIVALS } from '/src/traffic/kinds.js';
+import { buildKindGeometry } from '/src/traffic/bodies.js';
+
+const stage = createStage(document.getElementById('c'));
+stage.configure({ lines: 480 });
+const { scene, camera } = stage;
+scene.background = new THREE.Color(0x202630);
+scene.add(new THREE.HemisphereLight(0xb0c0d8, 0x202020, 1.4));
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(4, 6, 5);
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshLambertMaterial({ color: 0x3a3d42 }));
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+const material = psxPhong({ vertexColors: true, local: true, lamp: true, paint: true, specular: 0x303030, shininess: 34, side: THREE.DoubleSide });
+
+const entries = [...RIVALS, ...KINDS].map((kind, i) => {
+  const geo = buildKindGeometry(kind);
+  geo.setAttribute('aBrake', new THREE.InstancedBufferAttribute(new Float32Array([0]), 1));
+  const mesh = new THREE.InstancedMesh(geo, material, 1);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(3), 3);
+  mesh.setColorAt(0, new THREE.Color(kind.paint[i % kind.paint.length]));
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+  const tris = (geo.index ? geo.index.count : geo.getAttribute('position').count) / 3;
+  return { kind, mesh, tris, paint: i };
+});
+
+let focus = new THREE.Vector3();
+let yaw = 0.7, pitch = 0.3, dist = 30;
+const VIEWS = { front3: [0.7, 0.25], side: [Math.PI / 2, 0.06], front: [0, 0.08], rear: [Math.PI, 0.1], rear3: [2.4, 0.3], top: [Math.PI / 2, 1.4] };
+let vi = 0;
+function place(list, cols, gap) {
+  for (const e of entries) e.mesh.visible = false;
+  list.forEach((e, i) => {
+    const x = ((i % cols) - (cols - 1) / 2) * gap;
+    const z = -Math.floor(i / cols) * gap * 1.6;
+    e.mesh.setMatrixAt(0, new THREE.Matrix4().makeTranslation(x, 0, z));
+    e.mesh.instanceMatrix.needsUpdate = true;
+    e.mesh.visible = true;
+  });
+}
+function grid(which = 'rivals') {
+  const list = entries.filter((e) => (which === 'rivals') === e.kind.id.startsWith('rv-'));
+  place(list, 4, 3.4);
+  const rows = Math.ceil(list.length / 4);
+  focus.set(0, 0.6, -((rows - 1) * 3.4 * 1.6) / 2);
+  dist = 10 + rows * 4;
+}
+function show(...ids) {
+  const list = ids.map((id) => entries.find((x) => x.kind.id === id));
+  place(list, list.length, 2.6);
+  focus.set(0, 0.6, 0);
+  dist = Math.max(6, list.length * 2.6 + 3);
+  return list.map((e) => `${e.kind.id} ${e.tris}`);
+}
+function frame() {
+  camera.position.set(focus.x + Math.sin(yaw) * Math.cos(pitch) * dist, focus.y + Math.sin(pitch) * dist, focus.z + Math.cos(yaw) * Math.cos(pitch) * dist);
+  camera.lookAt(focus);
+  stage.render();
+}
+function loop() { frame(); requestAnimationFrame(loop); }
+grid('rivals');
+loop();
+
+let drag = null;
+addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY]));
+addEventListener('pointerup', () => (drag = null));
+addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01;
+  pitch = Math.max(-0.1, Math.min(1.5, pitch + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('wheel', (e) => (dist = Math.max(3, Math.min(80, dist + e.deltaY * 0.02))));
+addEventListener('keydown', (e) => {
+  if (e.key === 'p') for (const x of entries) x.mesh.setColorAt(0, new THREE.Color(x.kind.paint[++x.paint % x.kind.paint.length])), (x.mesh.instanceColor.needsUpdate = true);
+  if (e.key === 'v') [yaw, pitch] = VIEWS[Object.keys(VIEWS)[(vi = (vi + 1) % Object.keys(VIEWS).length)]];
+});
+window.__bodies = {
+  stage, entries, grid, show,
+  view: (name, d) => { [yaw, pitch] = VIEWS[name]; if (d) dist = d; frame(); },
+  tris: () => entries.map((e) => `${e.kind.id} ${e.tris}`),
+  shot: (name) => { frame(); return stage.shot(name); },
+};
+</script>
+</body>
+</html>

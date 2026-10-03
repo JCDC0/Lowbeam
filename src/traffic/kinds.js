@@ -7,11 +7,14 @@
  * speed: how the driver's wanted speed relates to the limit, as [min, max].
  */
 
+import { RACER_MODELS } from '../vehicles/bodies/racers.js';
+import { CARS } from '../vehicles/specs.js';
+
 /**
  * @typedef {{
  *   id: string, name: string, length: number, width: number, height: number, mass: number,
  *   accel: number, speed: [number, number], weights: Record<string, number>,
- *   paint: number[], wheels?: number
+ *   paint: number[], wheels?: number, model?: string
  * }} Kind
  */
 
@@ -42,21 +45,24 @@ export const KIND_BY_ID = new Map(KINDS.map((k) => [k.id, k]));
 const HOT = [0xc23a2a, 0x2f6fd0, 0xf2d23a, 0xe8e8e6, 0x111317, 0x6a2fa8, 0x1f9a6a, 0xff7a1a];
 
 /**
- * The street racers that cruise Route 1 fast. They are drawn as low, wide stand-ins until
- * their bodies arrive. `speed` is relative to the limit of the road they are on.
+ * The street racers that cruise Route 1 fast: the twelve racer models, and the four player
+ * cars driven by rivals. `model` names the body that `traffic/bodies.js` lofts; `speed` is
+ * relative to the limit of the road they are on.
  * @type {Kind[]}
  */
 export const RIVALS = [
-  { id: 'rv-kei', name: 'HOSHI KEI-S', length: 3.4, width: 1.48, height: 1.2, mass: 760, accel: 3.4, speed: [1.5, 1.8], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-rotary', name: 'MAZUMA RX-COUPE', length: 4.3, width: 1.78, height: 1.25, mass: 1250, accel: 4.4, speed: [1.7, 2.0], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-hothatch', name: 'KAGERO HOT-GT', length: 3.95, width: 1.74, height: 1.38, mass: 1150, accel: 4.0, speed: [1.55, 1.85], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-boxer', name: 'KAGERO LANCER-X', length: 4.5, width: 1.78, height: 1.42, mass: 1400, accel: 4.6, speed: [1.7, 2.0], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-v8drift', name: 'HALDEN DRIFTER', length: 4.7, width: 1.82, height: 1.35, mass: 1500, accel: 4.8, speed: [1.8, 2.1], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-wedge', name: 'TSURUGI WEDGE', length: 4.4, width: 1.85, height: 1.15, mass: 1350, accel: 5.4, speed: [2.0, 2.3], paint: HOT, weights: { expressway: 2, ramp: 1 } },
-  { id: 'rv-hardtop', name: 'KENRO HARDTOP', length: 4.55, width: 1.72, height: 1.38, mass: 1250, accel: 4.2, speed: [1.6, 1.9], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-roadster', name: 'HOSHI BEAT', length: 3.5, width: 1.64, height: 1.15, mass: 780, accel: 3.6, speed: [1.5, 1.8], paint: HOT, weights: { expressway: 3, ramp: 1 } },
-  { id: 'rv-wide', name: 'KAGERO RS-WIDE', length: 4.4, width: 1.95, height: 1.3, mass: 1450, accel: 5.0, speed: [1.9, 2.2], paint: HOT, weights: { expressway: 2, ramp: 1 } },
-  { id: 'rv-hyper', name: 'VESPERA ZERO', length: 4.5, width: 2.0, height: 1.1, mass: 1400, accel: 6.2, speed: [2.2, 2.6], paint: HOT, weights: { expressway: 1, ramp: 0.5 } },
+  ...RACER_MODELS.map((m) => ({
+    id: m.id, name: m.name, model: m.id, length: m.length, width: m.width, height: m.height, mass: m.mass,
+    accel: m.accel, speed: m.speed, paint: HOT, weights: { expressway: 3, ramp: 1 },
+  })),
+  ...CARS.map((c) => {
+    const top = Math.min(2.7, 1.5 + c.bars.topSpeed * 0.11);
+    return {
+      id: `rv-${c.id}`, name: c.name, model: c.id, length: c.length, width: c.width, height: 1.35, mass: c.mass,
+      accel: 3.8 + c.bars.accel * 0.25, speed: /** @type {[number, number]} */ ([top - 0.25, top]), paint: c.paints.map((p) => p.color),
+      weights: { expressway: 2, ramp: 1 },
+    };
+  }),
 ];
 
 /** Every kind a renderer has to draw. */

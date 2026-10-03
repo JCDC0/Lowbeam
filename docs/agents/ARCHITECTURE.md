@@ -93,8 +93,10 @@ captures such as rendered audio.
 | `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
-| `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the ten street racers (`RIVALS`), sizes, speeds and where each is common |
-| `src/traffic/bodies.js` | Boxy stand-in geometry per kind (to be replaced by the A3/A4 bodies) |
+| `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
+| `src/traffic/bodies.js` | Geometry per kind: a kind with a `model` is the lofted car (`vehicleGeometry`), the rest are boxy stand-ins until their bodies land |
+| `src/vehicles/bodies/profile.js` | Pure: parametric body profiles (stations from a few dimensions) and detail helpers: lamps, grille, plates, mirrors, wing, pipes, scoop, skirts |
+| `src/vehicles/bodies/racers.js` | Pure: the twelve street racer cars (`RACER_MODELS`): dimensions, speed, body profile and details |
 | `src/traffic/render.js` | `TrafficRenderer`: one InstancedMesh per kind, tint per instance, brake lights |
 | `src/vehicles/contact.js` | Pure: car against car contact with impulse and friction |
 | `src/world/build-bridges.js` | Slab sides, underside, parapets and piers for roads that are lifted onto a deck |
@@ -116,6 +118,7 @@ captures such as rendered audio.
 | `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `buildCockpit` |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: every car on a floor (keys 1 to 9 solo one), orbit, views, `shot()` |
+| `tools/bodies.html` | Dev catalog: every racer and traffic kind through the game's instanced material; `__bodies.show(...ids)`, `grid`, `shot` |
 | `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
 | `tools/mapview.html` | Dev top-down map: hillshade, roads by class, overpasses, stations, tolls, zones; `__map.shot(name)` |
 | `tools/mapcheck.mjs` | Node: every road's length, height range, steepest grade, cut and fill, and where roads cross |
@@ -129,7 +132,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.5)
+## Current state (0.4.6)
 
 Done and tested:
 
@@ -386,8 +389,16 @@ Done and tested:
   when blocked within 120 m and never drops back to relax; the bench is about 155 km/h on
   average with a top of 240. `nearestRival(player, range)` gives the agent, distance and
   whether it is ahead; `Drive` shows it as the prompt `RIVAL <name> AHEAD <m> M` when no
-  other prompt is up. Bodies are the same stand-ins (a wing and big wheels) until the
-  A3/A4 bodies arrive. Challenging a rival is not built yet.
+  other prompt is up. Challenging a rival is not built yet.
+  Since 0.4.6 the racers are real cars: twelve racer models in `vehicles/bodies/racers.js`
+  (Hoshi Kei-S, Mazuma RX-Coupe, Kagero Hot-GT, Lancer-X, RS-Wide and Aristo VIP, Halden
+  Drifter, Tsurugi Wedge, Kenro Hardtop and Sakura S, Hoshi Beat open roadster, Vespera
+  Zero), each a `profileStations` profile plus detail calls, and the four player cars
+  (`rv-hayate`, `rv-rampart`, `rv-vespera`, `rv-tsurugi`) with their own bodies and paints.
+  `vehicleGeometry(spec, def)` lofts a body with its four wheels into one geometry with a
+  color per part, `aPaint` where the instance color tints (`psx.js` option `paint`), and
+  `lamp` for head and tail lights; about 2,000 to 2,500 triangles a car. Racer speeds are
+  1.8 to 2.7 times the limit (the player cars from their top speed bar).
 - Toll plazas (`highway.js`, `build-highway.js`, `toll.js`). KITA, HIGASHI and MINATO
   TOLL straddle both carriageways: a 31 m canopy 5.9 m up on columns, a booth on every lane
   divider (two per carriageway), a long median island, amber lights over the outer (cash)

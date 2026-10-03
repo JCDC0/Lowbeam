@@ -5,7 +5,7 @@
  */
 
 import * as THREE from 'three';
-import { psxLambert } from '../render/psx.js';
+import { psxPhong } from '../render/psx.js';
 import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
 
@@ -22,7 +22,7 @@ export class TrafficRenderer {
     this.root = new THREE.Group();
     this.root.name = 'traffic';
     parent.add(this.root);
-    this.material = psxLambert({ vertexColors: true, local: true, lamp: true, side: THREE.DoubleSide });
+    this.material = psxPhong({ vertexColors: true, local: true, lamp: true, paint: true, specular: 0x303030, shininess: 34, side: THREE.DoubleSide });
     /** @type {Map<string, { mesh: THREE.InstancedMesh, brake: THREE.InstancedBufferAttribute, max: number, n: number }>} */
     this.meshes = new Map();
     for (const kind of ALL_KINDS) {
