@@ -13,6 +13,9 @@ import { store } from './core/store.js';
 import { ECONOMY, WATER_LEVEL } from './world/layout.js';
 import { zoneAt } from './world/zones.js';
 import { TollMeter } from './world/toll.js';
+import { TrafficNet } from './traffic/net.js';
+import { TrafficSim } from './traffic/sim.js';
+import { TrafficRenderer } from './traffic/render.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
@@ -68,6 +71,9 @@ export class Drive {
     this.time = 0;
     this.env = new EnvMap(world.scatter.trees);
     this.tolls = new TollMeter(world.scatter.highway.plazas, store.get('tollBest', {}));
+    this.trafficNet = new TrafficNet(world.ground.roads);
+    this.traffic = new TrafficSim(this.trafficNet);
+    this.trafficView = new TrafficRenderer(world.root);
   }
 
   /**
@@ -90,6 +96,8 @@ export class Drive {
     this.car.cockpit.gaugeMat.color.set(0xffffff);
     this.car.cockpit.gaugeMat.needsUpdate = true;
     this.toPump(this.world.scatter.stations[0]);
+    this.traffic.agents.length = 0;
+    this.traffic.populate(this.car.state);
     this.acc = 0;
     this.blowsSeen = 0;
     this.hotWarned = false;
@@ -256,6 +264,13 @@ export class Drive {
       steps++;
     }
     if (steps === MAX_STEPS) this.acc = 0;
+    this.traffic.update(dt, s);
+    const crash = this.traffic.collideWithPlayer(s, spec);
+    if (crash > 2.5) {
+      this.rig.bump(crash);
+      audio.impact(crash);
+    }
+    this.trafficView.update(this.traffic.agents);
     const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
     if (gate) {
       const paid = Math.min(this.money, gate.fee);

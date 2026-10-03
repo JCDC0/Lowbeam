@@ -30,7 +30,8 @@ export const CITY = { x0: -850, x1: 850, z0: 740, z1: 1870 };
  *   priority: number, smooth: number, lamps?: LampRun[],
  *   lines?: 'center' | 'lanes' | 'none', bumps?: Bump[], lifts?: Lift[], maxGrade?: number, points: number[][],
  *   cls?: 'expressway' | 'arterial' | 'street' | 'ramp' | 'mountain' | 'forest', lanes?: number, limit?: number,
- *   oneway?: boolean, median?: number, twin?: string
+ *   oneway?: boolean, median?: number, twin?: string,
+ *   link?: { from: { id: string, s: number }, to: { id: string, s: number } }
  * }} RoadDef
  */
 
@@ -62,7 +63,7 @@ const C1 = dualCarriageway(LOOP, {
 C1[0].lamps = [{ all: true, every: 44, side: -1, offset: C1_HW + C1_MEDIAN / 2 }];
 
 const ARTERIAL = {
-  surface: 'asphalt', hw: 7, priority: 2.8, smooth: 90, cls: /** @type {const} */ ('arterial'), lanes: 2, limit: 60,
+  surface: 'asphalt', hw: 7, priority: 2.8, smooth: 90, cls: /** @type {const} */ ('arterial'), lanes: 4, limit: 60,
   lines: /** @type {const} */ ('center'), maxGrade: 0.055,
 };
 const LIFT = { height: 7.4, half: 230, flat: 60 };
@@ -143,6 +144,7 @@ const interchanges = OVERPASSES.flatMap(({ road, cross, reach }) =>
     hw: 3.7,
     carriageHw: C1_HW,
     reach,
+    ids: { arterial: road.id, fwd: 'c1-f', rev: 'c1-r' },
     base: { surface: 'asphalt', hw: 3.7, priority: 2.9, smooth: 80, maxGrade: 0.06, cls: 'ramp', lanes: 1, limit: 50, lines: 'none', name: 'ROUTE 1 RAMP' },
   })
 );

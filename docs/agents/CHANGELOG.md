@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0 (2026-10-03)
+
+Traffic.
+
+- `traffic/net.js`: the road network as 80 directed lanes with keep-left offsets, links for
+  continuing roads, exits, entries and turns, and traffic lights at the 99 city crossings.
+  Ramps carry `link` data (the arc lengths on the roads they join) from `roadgen.diamond`.
+  Arterials are four lanes now (two each way).
+- `traffic/sim.js`: about 38 agents with IDM following, red lights, bends, overtaking,
+  chance exits and turns, spawn out of sight and despawn behind, wrecks.
+- `traffic/kinds.js`, `bodies.js`, `render.js`: fourteen kinds drawn as boxy stand-ins, one
+  InstancedMesh per kind with paint tint, lit like the player's car, head and tail lights
+  with brake boost (`psx.js` gets a `lamp` option).
+- `vehicles/contact.js`: car against car, used when the player hits traffic.
+- `Drive` runs the traffic each frame, collides it with the player (camera shake and an
+  impact sound) and fills the roads when a drive starts.
+- Verified: headless runs of the network and the sim in three places, a lit downtown street
+  and Route 1 in the browser.
+- Tests: 100 passing (`traffic.test.mjs`: lanes, connectivity, lane geometry, lights, the sim over
+  two minutes in three places, a red light, a collision, momentum).
+
 ## 0.3.3 (2026-10-03)
 
 Route 1 gets its furniture, and the toll plazas work.

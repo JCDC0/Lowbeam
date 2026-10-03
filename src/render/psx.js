@@ -30,9 +30,11 @@ if (uSnapOn > 0.5 && gl_Position.w > 0.0) {
 
 /**
  * @param {THREE.Material} mat
- * @param {{ baked?: boolean, local?: boolean }} opts
+ * @param {{ baked?: boolean, local?: boolean, lamp?: boolean }} opts
+ *   `lamp` reads a `lamp` vertex color that is added as emissive light, scaled up on red
+ *   lamps by an instanced `aBrake` attribute (brake lights).
  */
-export function patchPsx(mat, { baked = false, local = false } = {}) {
+export function patchPsx(mat, { baked = false, local = false, lamp = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapOn = psxUniforms.uSnapOn;
@@ -46,6 +48,12 @@ export function patchPsx(mat, { baked = false, local = false } = {}) {
       fs = 'varying vec3 vBake;\n' + fs;
       extra += '\ntotalEmissiveRadiance += vBake * diffuseColor.rgb;';
     }
+    if (lamp) {
+      vs = 'attribute vec3 lamp;\nattribute float aBrake;\nvarying vec3 vLamp;\n' + vs;
+      vs = vs.replace('#include <begin_vertex>', '#include <begin_vertex>\nfloat tailLamp = step(0.2, lamp.r - lamp.g - lamp.b);\nvLamp = lamp * (1.0 + tailLamp * 2.6 * aBrake);');
+      fs = 'varying vec3 vLamp;\n' + fs;
+      extra += '\ntotalEmissiveRadiance += vLamp;';
+    }
     if (local) {
       shader.uniforms.uLocalColor = psxUniforms.uLocalColor;
       shader.uniforms.uLocalDir = psxUniforms.uLocalDir;
@@ -56,17 +64,17 @@ export function patchPsx(mat, { baked = false, local = false } = {}) {
     shader.vertexShader = vs;
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}`;
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}`;
   return mat;
 }
 
 /**
  * Lambert material with the PSX patch.
- * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean }} params
+ * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean }} params
  */
 export function psxLambert(params = {}) {
-  const { baked, local, ...rest } = params;
-  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local });
+  const { baked, local, lamp, ...rest } = params;
+  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local, lamp });
 }
 
 /**

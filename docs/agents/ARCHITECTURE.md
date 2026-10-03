@@ -12,7 +12,7 @@ street racer in the line of Night-Runners Prologue and Need for Speed: Most Want
 a bay, Route 1 (an expressway loop with toll plazas) round it, avenues that pass over the
 loop on overpasses, a mountain pass in the west, a forest and a lake in the north, four
 gas stations, and three cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic).
-Traffic, rivals, the toll gameplay and the rally come next.
+Traffic is in; rivals and the rally come next.
 
 ## Commands
 
@@ -90,6 +90,12 @@ captures such as rendered audio.
 | `src/world/highway.js` | Pure: Route 1's median barrier, guard rails, toll plazas and their colliders |
 | `src/world/build-highway.js` | Barrier and rail chunks, plaza canopy, booths, islands, lane lights and name board |
 | `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
+| `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
+| `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
+| `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds, sizes, speeds and where each is common |
+| `src/traffic/bodies.js` | Boxy stand-in geometry per kind (to be replaced by the A3/A4 bodies) |
+| `src/traffic/render.js` | `TrafficRenderer`: one InstancedMesh per kind, tint per instance, brake lights |
+| `src/vehicles/contact.js` | Pure: car against car contact with impulse and friction |
 | `src/world/build-bridges.js` | Slab sides, underside, parapets and piers for roads that are lifted onto a deck |
 | `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
 | `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
@@ -121,7 +127,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.3.3)
+## Current state (0.4.0)
 
 Done and tested:
 
@@ -342,6 +348,23 @@ Done and tested:
   In the cockpit view the HUD cluster hides and the same `drawCluster` function paints a bold
   cockpit layout onto the binnacle texture (400 by 300, 4:3), updated every frame with fat needle
   (lineWidth: 7), bold glyphs (>= 22px), ticks only every 1000 rpm, bold speed (50px), and enlarged gear box (34px).
+- Traffic (`src/traffic/`). `TrafficNet` turns every road into lanes (`lanes` is the total
+  across the road: a two-way road gives half in each direction; lane 0 is the outer, slow
+  one and traffic keeps left) and links them: a lane's end joins whatever road starts, ends
+  or passes within 12 m (a bend, a T, the village where Route 18 meets the pass), exit
+  ramps leave the left lane of their carriageway part-way along, entry ramps merge at the
+  end, avenues turn into entry ramps, and the 99 city crossings have traffic lights (13 s
+  green, 2.2 s yellow, axes alternate) and left and right turns. 80 lanes. `TrafficSim`
+  keeps about 38 agents alive around the player (spawn 190 to 460 m out, forget beyond
+  620 m, heavier on the expressway): each follows its lane with the Intelligent Driver
+  Model, brakes for the car ahead (also across a link), the player, red lights and bends,
+  overtakes on multi-lane roads, takes exits and turns by chance, and blends smoothly
+  into a new lane. Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
+  pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
+  player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
+  friction, heavy vehicles barely move) that slides to a stop and fades after 24 s.
+  Agents are drawn by `TrafficRenderer` as boxy stand-ins until the real bodies arrive.
+  The tick is about 0.02 ms; with traffic a downtown view is about 130 draw calls.
 - Toll plazas (`highway.js`, `build-highway.js`, `toll.js`). KITA, HIGASHI and MINATO
   TOLL straddle both carriageways: a 31 m canopy 5.9 m up on columns, a booth on every lane
   divider (two per carriageway), a long median island, amber lights over the outer (cash)
@@ -378,7 +401,7 @@ Done and tested:
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
 - Tests: added `tests/map.test.mjs` and `tests/garage.test.mjs`. Pure unit test suites pass cleanly.
-  All suites together: 92 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
+  All suites together: 100 tests passing (`npm test`), including `tests/layout.test.mjs` for the Kurogane layout.
   `npm run check` is clean for all project UI, input, and main modules.
 
 Not started: the rally event and everything after it in the build order in

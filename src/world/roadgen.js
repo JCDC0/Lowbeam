@@ -126,12 +126,13 @@ export function hermite(p0, t0, p1, t1, n = 8) {
  * side traffic leaves and joins when it keeps left); the ramps stay on the ground and meet
  * the arterial at T junctions `reach` meters either side of the crossing, outside the
  * stretch where the arterial is lifted.
+ * Each ramp carries `link`, the arc lengths on the roads it joins, for the traffic network.
  * @param {{ id: string, arterial: Path, cross: number[], fwd: Path, rev: Path,
  *   hw: number, carriageHw: number, reach?: number, run?: number, before?: number,
- *   base: Partial<RoadDef> }} o
+ *   ids: { arterial: string, fwd: string, rev: string }, base: Partial<RoadDef> }} o
  * @returns {RoadDef[]}
  */
-export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach = 205, run = 150, before = 330, base }) {
+export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach = 205, run = 150, before = 330, ids, base }) {
   const out = [];
   const aHit = arterial.nearest(cross[0], cross[1]);
   const at = arterial.sample(aHit.s);
@@ -162,7 +163,12 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
     const eEnd = exitPts[exitPts.length - 1];
     const arrive = [-sideOf(eEnd) * nA[0], -sideOf(eEnd) * nA[1]];
     const exitTail = hermite(eEnd, tan(exitS0 + run), [T.x, T.z], arrive, 8);
-    out.push(/** @type {RoadDef} */ ({ ...base, id: `${id}-${tag}x`, name: base.name, hw, oneway: true, points: [...exitPts, ...exitTail, [T.x, T.z]] }));
+    const carriageId = tag === 'f' ? ids.fwd : ids.rev;
+    const joinsAt = { id: ids.arterial, s: arterial.wrapS(aHit.s + towardLeft * reach) };
+    out.push(/** @type {RoadDef} */ ({
+      ...base, id: `${id}-${tag}x`, name: base.name, hw, oneway: true, points: [...exitPts, ...exitTail, [T.x, T.z]],
+      link: { from: { id: carriageId, s: C.wrapS(exitS0) }, to: joinsAt },
+    }));
 
     const entryS1 = cHit.s + before;
     const entryPts = [];
@@ -173,7 +179,10 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
     const nStart = entryPts[0];
     const depart = [sideOf(nStart) * nA[0], sideOf(nStart) * nA[1]];
     const entryHead = hermite([T.x, T.z], depart, nStart, tan(entryS1 - run), 8);
-    out.push(/** @type {RoadDef} */ ({ ...base, id: `${id}-${tag}n`, name: base.name, hw, oneway: true, points: [[T.x, T.z], ...entryHead, ...entryPts] }));
+    out.push(/** @type {RoadDef} */ ({
+      ...base, id: `${id}-${tag}n`, name: base.name, hw, oneway: true, points: [[T.x, T.z], ...entryHead, ...entryPts],
+      link: { from: joinsAt, to: { id: carriageId, s: C.wrapS(entryS1) } },
+    }));
   }
   return out;
 }
