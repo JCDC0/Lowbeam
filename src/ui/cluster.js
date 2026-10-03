@@ -170,7 +170,7 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   const rpmA = (rpm) => tachAngle(rpm, spec);
   const flash = Math.floor(t * 12) % 2 === 0;
 
-  const temp = gs.temp ?? gs.water ?? 84;
+  const temp = gs.temp ?? 84;
   const exh = gs.exh ?? 360;
   const overrev = gs.overrev ?? 0;
   const damage = gs.damage ?? 0;

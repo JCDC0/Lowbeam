@@ -3,8 +3,22 @@ import assert from 'node:assert/strict';
 import { CARS, carById } from '../src/vehicles/specs.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from '../src/vehicles/physics.js';
 import { createGauges, stepGauges, TEMP_MIN, TEMP_MAX, EXH_MIN, EXH_MAX, INTAKE_MIN } from '../src/vehicles/gauges.js';
+import * as gauges from '../src/vehicles/gauges.js';
 
 const flat = (surface = 'asphalt') => () => ({ h: 0, surface });
+
+test('the gauges expose no deprecated water aliases', () => {
+  assert.ok(!('WATER_MIN' in gauges), 'WATER_MIN is gone');
+  assert.ok(!('WATER_MAX' in gauges), 'WATER_MAX is gone');
+  const spec = carById('hayate');
+  const g = createGauges(spec);
+  assert.ok(!('water' in g), 'a fresh gauge set has no water field');
+  const s = createVehicleState(spec);
+  placeVehicle(s, spec, 0, 0, 0, flat());
+  stepGauges(g, spec, s, DT);
+  assert.ok(!('water' in g), 'stepGauges does not set water');
+  assert.equal(typeof g.temp, 'number');
+});
 
 /** Drives a car with a scripted input and returns the gauge history. */
 function drive(spec, seconds, inputAt, surface = 'asphalt') {

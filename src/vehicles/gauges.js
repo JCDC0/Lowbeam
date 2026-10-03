@@ -22,9 +22,6 @@ export { TEMP_MAX, TEMP_MIN, TEMP_RED, EXH_MAX, EXH_MIN };
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 /** @typedef {ReturnType<typeof import('./physics.js').createVehicleState>} VehicleState */
 
-/** Deprecated names from before the rename, kept until the cluster reads `temp`. */
-export const WATER_MIN = TEMP_MIN;
-export const WATER_MAX = TEMP_MAX;
 export const BOOST_MIN = -0.7;
 export const INTAKE_MIN = -0.8;
 
@@ -39,7 +36,6 @@ export function createGauges(spec) {
     fuel: spec.fuel.tank,
     tank: spec.fuel.tank,
     temp: 84,
-    water: 84,
     boost: -0.6,
     intake: -0.65,
     exh: 360,
@@ -79,7 +75,6 @@ export function stepGauges(g, spec, s, dt) {
   g.limiter = s.limiter > 0;
   g.load = s.load;
   g.temp = s.temp;
-  g.water = s.temp;
   g.exh = s.exh;
   g.overrev = s.overrev;
   g.damage = s.damage;

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.22 (2026-10-03)
+
+Remove the deprecated gauge aliases (A9 part 2).
+
+- `src/vehicles/gauges.js`: the `WATER_MIN` and `WATER_MAX` exports are gone, along with the
+  `water` field in `createGauges` and the `g.water = s.temp` line in `stepGauges`. The module now
+  speaks only `temp`, `TEMP_MIN` and `TEMP_MAX`.
+- `src/ui/cluster.js`: the cluster reads `gs.temp ?? 84` instead of `gs.temp ?? gs.water ?? 84`.
+  The HUD cluster has read `temp` first since the rename, so no gauge changes.
+- `docs/agents/ARCHITECTURE.md`: the "Open work and known issues" line about the aliases is deleted.
+- Tests: `the gauges expose no deprecated water aliases` asserts the two constants are not exported
+  and that neither `createGauges` nor `stepGauges` sets a `water` field.
+- The `water` in `audio/env.js`, `world/surfaces.js` and the lake tests is the lake and sea amount,
+  a different thing, and is untouched.
+
 ## 0.4.21 (2026-10-03)
 
 The dev server answers range requests (A9 part 1).

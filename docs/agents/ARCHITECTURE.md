@@ -141,7 +141,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.21)
+## Current state (0.4.22)
 
 Done and tested:
 
@@ -528,7 +528,7 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 138 passing (`npm test`), including `tests/devserver.test.mjs` for the dev server's range
+- Tests: 139 passing (`npm test`), including `tests/devserver.test.mjs` for the dev server's range
   requests, `tests/map.test.mjs` for the tactical map and
   `tests/garage.test.mjs` for the garage card. Pure unit test suites pass cleanly.
   `npm run check` is clean for all project UI, input, and main modules.
@@ -561,8 +561,6 @@ rates.
   90 degrees of slide in the bench). Intended character; the keyboard throttle ramp
   exists now (`RAMP` in input.js). Needs a real drive with hands on the keys to judge.
 - The Hayate shows a light yaw oscillation in a high-speed step steer. Watch it in play.
-- Gauge fields `water`, `WATER_MIN` and `WATER_MAX` are deprecated aliases of `temp`,
-  `TEMP_MIN`, `TEMP_MAX`; remove them once the cluster reads `temp` (task A1).
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
 - Between the street grid and Route 1 the land is empty: no farmland or rail line yet. The grid's
