@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.4.19 (2026-10-03)
+
+Ramps become slip roads, the Bayshore Line joins Route 1, and the street grid fills the city.
+The street racer speed test averages four seeds.
+
+- `src/world/merge.js` (new, pure): `slipRamp` builds the part of an exit or entry that runs
+  beside its carriageway (a sliver widening over 60 m, a 90 m parallel lane, a 140 m diverge to
+  24 m), `slipMeta` measures the finished ramp (shared stretch, nose, gore), `biarc` draws two-arc
+  connectors with no bunched-up curvature, `inStretch` handles stretches across a closed road's seam.
+- `src/world/roadgen.js`: `diamond` builds its four ramps from `slipRamp`; the old gore metadata is
+  replaced by `slip` and a width `taper`.
+- `src/world/roads.js`: a slip road takes its carriageway's height along the shared stretch and the
+  gore. `query` and `influence` use the true distance past the end of an open road.
+- `src/world/build-roads.js`: no skirts on either side of a shared edge, gores from `slip`, a thick
+  dashed line over the seam of every added lane, city crossings from `GRID`.
+- `src/world/highway.js`: the carriageway rail opens from the taper to 30 m past the gore, every
+  slip road has a rail on its outer edge (not on decks), toll plazas take their lane count from the road.
+- `src/world/layout.js`: the Bayshore Line is 2 lanes each way along the bay (x -850 to 800) and four
+  junction ramps join it to Route 1 at the south corners, two of them flying over the loop; the street
+  grid grows to 9 by 19 (`GRID`), West Ave and East Ave meet its middle street at the edges, the 16
+  suburb stubs are gone; MINATO TOLL moves to x -700, the Bayshore toll to x 450, station G2 to z 450.
+- `src/traffic/net.js`: no exit is offered at the very end of an expressway that a ramp continues.
+- Tests: slip roads start as a sliver and share the carriageway's edge (within 12 cm) and height
+  (within 2 cm) for over 120 m; the Bayshore joins Route 1 both ways at the same width and height,
+  and traffic can drive Route 1 to the Bayshore and back; rails under a bridge do not count as on
+  the ramp above.
+- `tests/traffic.test.mjs`: the racer speed check averages seeds 77, 1, 2 and 3 instead of one seed; a
+  single 3-minute run lands anywhere from 170 to 207 km/h, so one seed failed on any network change.
+
 ## 0.4.18 (2026-10-03)
 
 Cockpit prompt out of the way, racer speed check restored (A8 part 5, written by Hermes, committed

@@ -5,6 +5,7 @@ import { ROADS, STATIONS, TOLLS, WORLD_HALF, ZONES, CITY } from '../src/world/la
 import { insideLoop, zoneAt, cityAmount, waterAmount } from '../src/world/zones.js';
 import { buildMapData } from '../src/world/mapdata.js';
 import { baseHeight } from '../src/world/heightfield.js';
+import { TrafficNet } from '../src/traffic/net.js';
 
 const g = new Ground();
 const byId = (id) => g.roads.byId.get(id);
@@ -107,10 +108,10 @@ test('no grade breaks or lips at road joins', () => {
     }
   }
   for (const [aId, sA, bId, sB] of [
-    ['r18', 0, 'k-ns5', 0],
-    ['west', g.roads.byId.get('west').path.length, 'k-ew3', 140],
-    ['east', 0, 'k-ew3', g.roads.byId.get('k-ew3').path.length - 140],
-    ['harbor', 0, 'k-ns5', g.roads.byId.get('k-ns5').path.length],
+    ['r18', 0, 'k-ns9', 0],
+    ['west', g.roads.byId.get('west').path.length, 'k-ew3', 0],
+    ['east', 0, 'k-ew3', g.roads.byId.get('k-ew3').path.length],
+    ['harbor', 0, 'k-ns9', g.roads.byId.get('k-ns9').path.length],
   ]) {
     const a = g.roads.byId.get(aId), b = g.roads.byId.get(bId);
     maxLip = Math.max(maxLip, Math.abs(a.heightAt(sA) - b.heightAt(sB)));
@@ -119,22 +120,31 @@ test('no grade breaks or lips at road joins', () => {
   assert.ok(maxGradeBreak < 0.06, `grade break exceeds 6%: ${(maxGradeBreak * 100).toFixed(1)}%`);
 });
 
-test('ramps taper into Route 1 with gores and matching heights', () => {
+test('slip roads grow out of Route 1 from a sliver and share its edge and height up to the nose', () => {
   const ramps = g.roads.roads.filter((r) => r.def.cls === 'ramp');
-  assert.equal(ramps.length, 16);
+  assert.equal(ramps.length, 20);
   for (const ramp of ramps) {
-    assert.ok(ramp.def.gore, `ramp ${ramp.id} missing gore definition`);
-    const carriage = g.roads.byId.get(ramp.def.gore.carriageId);
+    const sl = ramp.def.slip;
+    assert.ok(sl, `ramp ${ramp.id} has no slip data`);
+    const carriage = g.roads.byId.get(sl.carriageId);
     assert.ok(carriage, `carriageway missing for ${ramp.id}`);
-    const exit = ramp.def.gore.kind === 'exit';
-    const sRamp = exit ? 0 : ramp.path.length;
-    const sCarriage = ramp.def.gore.carriageS;
-    const diffH = Math.abs(ramp.heightAt(sRamp) - carriage.heightAt(sCarriage));
-    assert.ok(diffH < 0.02, `${ramp.id} height diff at gore is ${(diffH * 100).toFixed(1)} cm`);
-    const pRamp = ramp.path.sample(sRamp);
-    const hit = carriage.path.nearest(pRamp.x, pRamp.z);
-    const innerDist = Math.abs(hit.d) - ramp.hw;
-    assert.ok(Math.abs(innerDist - carriage.hw) < 0.1, `${ramp.id} inner edge offset ${innerDist.toFixed(2)} m does not touch carriageway ${carriage.hw} m`);
+    const tip = sl.kind === 'exit' ? 0 : ramp.path.length;
+    assert.ok(ramp.hwAt(tip) < 0.3, `${ramp.id} starts ${ramp.hwAt(tip).toFixed(2)} m wide, not as a sliver`);
+    const [a, b] = sl.rampAttach;
+    let worstEdge = 0;
+    let worstH = 0;
+    for (let s = a; s <= b; s += 4) {
+      const q = ramp.path.sample(s);
+      const hit = carriage.path.nearest(q.x, q.z);
+      worstEdge = Math.max(worstEdge, Math.abs(Math.abs(hit.d) - ramp.hwAt(s) - carriage.hw));
+      worstH = Math.max(worstH, Math.abs(ramp.heightAt(s) - carriage.heightAt(hit.s)));
+    }
+    assert.ok(worstEdge < 0.12, `${ramp.id} inner edge strays ${worstEdge.toFixed(2)} m from the carriageway's edge`);
+    assert.ok(worstH < 0.02, `${ramp.id} is ${(worstH * 100).toFixed(1)} cm off the carriageway's height`);
+    assert.ok(b - a > 120, `${ramp.id} runs beside the carriageway for only ${(b - a).toFixed(0)} m`);
+    const onRamp = sl.kind === 'exit' ? ramp.path.sample(sl.rampNose + 2) : ramp.path.sample(sl.rampNose - 2);
+    const ground = g.at(onRamp.x, onRamp.z, carriage.heightAt(sl.nose) + 0.5);
+    assert.equal(ground.road?.id, ramp.id, `${ramp.id}: the ground beside the nose is not the ramp`);
   }
 });
 
@@ -149,16 +159,48 @@ test('the toll plazas sit on both carriageways of their expressways', () => {
   }
 });
 
-test('Bayshore Line is a second expressway of about 4 to 6 km along the bay', () => {
+test('the Bayshore Line runs along the bay and joins Route 1 at both ends, at the same width', () => {
   const f = byId('c2-f');
   const r = byId('c2-r');
   assert.ok(f && r, 'c2 carriageways exist');
-  assert.ok(f.def.oneway && r.def.oneway);
-  assert.ok(!f.path.closed && !r.path.closed, 'c2 is open');
-  assert.ok(f.path.length >= 4000 && f.path.length <= 6000, `c2 length is ${(f.path.length / 1000).toFixed(2)} km`);
+  assert.ok(f.def.oneway && r.def.oneway && !f.path.closed && !r.path.closed);
   assert.equal(f.def.cls, 'expressway');
-  const toll = TOLLS.find((t) => t.road === 'c2');
-  assert.ok(toll, 'c2 has its own toll plaza');
+  assert.ok(TOLLS.find((t) => t.road === 'c2'), 'c2 has its own toll plaza');
+  // Each way: Route 1, a ramp, the Bayshore, a ramp, Route 1 again.
+  for (const [into, bay, outOf, from, to] of [['bay-ramp-wf', f, 'bay-ramp-ef', 'c1-r', 'c1-r'], ['bay-ramp-er', r, 'bay-ramp-wr', 'c1-f', 'c1-f']]) {
+    const a = byId(into);
+    const b = byId(outOf);
+    assert.equal(a.def.slip.carriageId, from);
+    assert.equal(b.def.slip.carriageId, to);
+    const aEnd = a.path.sample(a.path.length);
+    const bayStart = bay.path.sample(0);
+    const bayEnd = bay.path.sample(bay.path.length);
+    const bStart = b.path.sample(0);
+    assert.ok(Math.hypot(aEnd.x - bayStart.x, aEnd.z - bayStart.z) < 0.5, `${into} does not meet ${bay.id}`);
+    assert.ok(Math.hypot(bayEnd.x - bStart.x, bayEnd.z - bStart.z) < 0.5, `${bay.id} does not meet ${outOf}`);
+    assert.equal(a.hwAt(a.path.length), bay.hw);
+    assert.equal(b.hwAt(0), bay.hw);
+    assert.ok(Math.abs(a.heightAt(a.path.length) - bay.heightAt(0)) < 0.05, `${into} steps onto ${bay.id}`);
+    assert.ok(Math.abs(b.heightAt(0) - bay.heightAt(bay.path.length)) < 0.05, `${bay.id} steps onto ${outOf}`);
+    const route = a.path.length + bay.path.length + b.path.length;
+    assert.ok(route > 3000 && route < 6000, `the Bayshore route is ${(route / 1000).toFixed(2)} km`);
+  }
+  for (const id of ['bay-ramp-wf', 'bay-ramp-ef']) assert.ok(byId(id).lifted, `${id} should fly over Route 1`);
+  // Traffic can take the Bayshore both ways and come back onto Route 1.
+  const net = new TrafficNet(g.roads);
+  const reach = (from) => {
+    const seen = new Set([from]);
+    const queue = [from];
+    while (queue.length) {
+      const lane = queue.shift();
+      for (const link of [...lane.ends, ...lane.mids]) if (!seen.has(link.lane)) { seen.add(link.lane); queue.push(link.lane); }
+    }
+    return seen;
+  };
+  for (const [carriage, bay, back] of [['c1-f', 'c2-r', 'c1-f'], ['c1-r', 'c2-f', 'c1-r']]) {
+    assert.ok(reach(net.lane(carriage, 1, 0)).has(net.lane(bay, 1, 0)), `${carriage} does not lead onto ${bay}`);
+    assert.ok(reach(net.lane(bay, 1, 0)).has(net.lane(back, 1, 0)), `${bay} does not lead back onto ${back}`);
+  }
 });
 
 test('the zones answer where things are', () => {

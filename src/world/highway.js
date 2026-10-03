@@ -8,6 +8,7 @@
 import { SKIRT } from './roads.js';
 import { padDistance } from './ground.js';
 import { CITY, TOLLS } from './layout.js';
+import { inStretch } from './merge.js';
 
 /** Meters of barrier or rail per segment (and per collider box). */
 export const SEGMENT = 6;
@@ -17,6 +18,10 @@ export const BARRIER = { halfBase: 0.31, halfTop: 0.12, height: 0.82 };
 export const RAIL = { offset: 0.9, low: 0.55, high: 0.86 };
 /** Lane width on Route 1 and the lanes in a carriageway. */
 const LANES = 3;
+/** Meters past the painted gore before the carriageway's rail starts again. */
+const RAIL_GAP = 30;
+/** A ramp's outer rail stops this far from the end where it meets an avenue. */
+const RAMP_RAIL_END = 26;
 
 /**
  * @typedef {{ x: number, z: number, y: number, yaw: number, len: number, chunk: number }} Segment
@@ -35,22 +40,17 @@ const LANES = 3;
 export function placeHighway(ground, boxes, circles, lights) {
   const q = { x: 0, z: 0, tx: 0, tz: 1 };
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
+  // The carriageway's rail stops where a slip road runs along its edge and stays open past
+  // the painted gore, until the ramp is far enough away for a rail to fit between them.
   const rampOpen = (roadId, s) => {
     const road = ground.roads.byId.get(roadId);
     if (!road) return false;
     const p = road.path;
-    const ws = p.wrapS(s);
     for (const r of ground.roads.roads) {
-      if (!r.def.gore || r.def.gore.carriageId !== roadId) continue;
-      const g = r.def.gore;
-      const noseDist = 60;
-      if (g.kind === 'exit') {
-        const d = p.wrapS(ws - g.carriageS);
-        if (d >= 0 && d <= noseDist) return true;
-      } else {
-        const d = p.wrapS(g.carriageS - ws);
-        if (d >= 0 && d <= noseDist) return true;
-      }
+      const g = r.def.slip;
+      if (!g || g.carriageId !== roadId) continue;
+      const range = g.kind === 'exit' ? [g.attach[0] - 6, g.nose + g.gore + RAIL_GAP] : [g.nose - g.gore - RAIL_GAP, g.attach[1] + 6];
+      if (inStretch(p.wrapS(s), range, p.length, p.closed)) return true;
     }
     return false;
   };
@@ -61,19 +61,20 @@ export function placeHighway(ground, boxes, circles, lights) {
     const targetFwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(roadId));
     const tHw = targetFwd.hw;
     const tHalf = /** @type {number} */ (targetFwd.def.median ?? 3.2) / 2 + tHw;
-    const tLaneWidth = (tHw * 2) / LANES;
+    const nLanes = targetFwd.def.lanes || LANES;
+    const tLaneWidth = (tHw * 2) / nLanes;
     const h = targetFwd.path.nearest(toll.x, toll.z);
     targetFwd.path.sample(h.s, q);
     const x = q.x - q.tz * tHalf;
     const z = q.z + q.tx * tHalf;
     const lanes = [];
     for (const side of [1, -1]) {
-      for (let i = 0; i < LANES; i++) {
-        lanes.push({ u: side * tHalf + (i - (LANES - 1) / 2) * tLaneWidth, cash: i === LANES - 1 });
+      for (let i = 0; i < nLanes; i++) {
+        lanes.push({ u: side * tHalf + (i - (nLanes - 1) / 2) * tLaneWidth, cash: i === nLanes - 1 });
       }
     }
     const dividers = [];
-    for (const side of [1, -1]) for (const k of [-1, 1]) dividers.push(side * tHalf + (k * tLaneWidth) / 2);
+    for (const side of [1, -1]) for (let k = 1; k < nLanes; k++) dividers.push(side * tHalf + (k - nLanes / 2) * tLaneWidth);
     return {
       toll, x, z, y: targetFwd.heightAt(h.s), yaw: Math.atan2(q.tx, q.tz), carriageway: tHalf, laneWidth: tLaneWidth, lanes, dividers,
       s: h.s,
@@ -159,6 +160,26 @@ export function placeHighway(ground, boxes, circles, lights) {
     }
   }
 
+  // Slip roads carry a rail on their outer edge, carrying on the carriageway's rail line as the
+  // ramp widens out of it, up to where the ramp meets the avenue.
+  let rampIndex = 0;
+  for (const road of ground.roads.roads) {
+    const g = road.def.slip;
+    if (!g) continue;
+    const p = road.path;
+    const chunkBase = 40000 + rampIndex++ * 200;
+    const [s0, s1] = g.kind === 'exit' ? [0, p.length - RAMP_RAIL_END] : [RAMP_RAIL_END, p.length];
+    for (let s = s0; s < s1 - SEGMENT / 2; s += SEGMENT) {
+      const mid = s + SEGMENT / 2;
+      if (road.lifted && road.liftAt(mid) > 1.2) continue;
+      p.sample(mid, q);
+      const edge = road.hwAt(mid) + RAIL.offset;
+      const rx = q.x + q.tz * edge;
+      const rz = q.z - q.tx * edge;
+      railSegment(rails, boxes, ground, hit, rx, rz, road.heightAt(mid), Math.atan2(q.tx, q.tz), chunkBase + chunkOf(mid), false, road);
+    }
+  }
+
   for (const pl of plazas) {
     const c = Math.cos(pl.yaw);
     const sn = Math.sin(pl.yaw);
@@ -184,12 +205,16 @@ export function placeHighway(ground, boxes, circles, lights) {
   return { barrier, rails, plazas };
 }
 
-/** A rail segment, unless something is in the way. */
-function railSegment(rails, boxes, ground, hit, x, z, y, yaw, chunk, open) {
+/**
+ * A rail segment, unless something is in the way: a forecourt, or another road's surface
+ * (an expressway's own skirt, or the skirt of the road the rail belongs to, is fine).
+ * @param {import('./roads.js').Road} [own]
+ */
+function railSegment(rails, boxes, ground, hit, x, z, y, yaw, chunk, open, own) {
   if (open) return;
   for (const pad of ground.pads) if (padDistance(pad, x, z) < 7) return;
   const nz = ground.roads.query(x, z, hit, SKIRT);
-  if (nz && hit.road.def.cls !== 'expressway') return;
+  if (nz && hit.road !== own && hit.road.def.cls !== 'expressway') return;
   rails.push({ x, z, y, yaw, len: SEGMENT, chunk });
   boxes.push({ x, z, hx: 0.16, hz: SEGMENT / 2, yaw, y0: y - 0.4, y1: y + RAIL.high });
 }

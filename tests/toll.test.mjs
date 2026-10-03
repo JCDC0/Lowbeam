@@ -57,7 +57,12 @@ test('the median has a barrier everywhere but at the plazas and the guard rails 
   for (const road of g.roads.roads.filter((r) => r.def.cls === 'ramp')) {
     for (let s = 20; s < road.path.length - 20; s += 25) {
       const q = road.path.sample(s);
-      for (const r of highway.rails) assert.ok(Math.hypot(r.x - q.x, r.z - q.z) > 3.2, `rail on ${road.id}`);
+      const clear = road.hwAt(s) + 0.5;
+      const y = road.heightAt(s);
+      for (const r of highway.rails) {
+        if (Math.abs(r.y - y) > 2) continue;
+        assert.ok(Math.hypot(r.x - q.x, r.z - q.z) > clear, `rail on ${road.id} at s=${s}`);
+      }
     }
   }
   assert.equal(SEGMENT, 6);

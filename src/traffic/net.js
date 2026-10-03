@@ -169,8 +169,10 @@ export class TrafficNet {
     const to = this.network.byId.get(link.to.id);
     if (!from || !to) return;
     if (from.def.cls === 'expressway') {
+      // A ramp that carries on from the end of an expressway is joined by linkRoadEnds instead.
       const cl = this.lane(from.id, 1, 0);
-      if (cl) cl.mids.push({ lane: rl, at: this.laneS(cl, link.from.s), toS: 0, kind: 'exit', weight: 0.22 });
+      const atEnd = !from.path.closed && link.from.s >= from.path.length - 1;
+      if (cl && !atEnd) cl.mids.push({ lane: rl, at: this.laneS(cl, link.from.s), toS: 0, kind: 'exit', weight: 0.22 });
     } else {
       // An entry ramp starts on the avenue: cars turn in from either direction.
       for (const dir of /** @type {const} */ ([1, -1])) {

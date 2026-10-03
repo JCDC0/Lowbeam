@@ -5,6 +5,7 @@
  */
 
 import { Path } from './spline.js';
+import { slipRamp, slipMeta, heading } from './merge.js';
 
 /** @typedef {import('./layout.js').RoadDef} RoadDef */
 
@@ -123,20 +124,22 @@ export function hermite(p0, t0, p1, t1, n = 8) {
 /**
  * The four ramps of a diamond interchange where `arterial` passes over the dual
  * carriageway `fwd`/`rev`. Each carriageway gets an exit and an entry on its left (the
- * side traffic leaves and joins when it keeps left); the ramps stay on the ground and meet
- * the arterial at T junctions `reach` meters either side of the crossing, outside the
+ * side traffic leaves and joins when it keeps left), built as slip roads (merge.js): the
+ * exit grows out of the carriageway's edge and its nose is `before` meters ahead of the
+ * crossing, the entry's nose is `before` meters past it. The ramps stay on the ground and
+ * meet the arterial at T junctions `reach` meters either side of the crossing, outside the
  * stretch where the arterial is lifted.
- * Each ramp carries `link`, the arc lengths on the roads it joins, for the traffic network.
+ * Each ramp carries `link`, the arc lengths on the roads it joins, for the traffic network,
+ * and `slip`, the stretch it shares with its carriageway.
  * @param {{ id: string, arterial: Path, cross: number[], fwd: Path, rev: Path,
- *   hw: number, carriageHw: number, reach?: number, run?: number, before?: number,
+ *   hw: number, carriageHw: number, reach?: number, before?: number,
  *   ids: { arterial: string, fwd: string, rev: string }, base: Partial<RoadDef> }} o
  * @returns {RoadDef[]}
  */
-export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach = 205, run = 150, before = 330, ids, base }) {
+export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach = 205, before = 290, ids, base }) {
   const out = [];
   const aHit = arterial.nearest(cross[0], cross[1]);
   const at = arterial.sample(aHit.s);
-  const d0 = carriageHw + hw;
   for (const [tag, C] of /** @type {const} */ ([['f', fwd], ['r', rev]])) {
     const cHit = C.nearest(cross[0], cross[1]);
     const ct = C.sample(cHit.s);
@@ -144,46 +147,34 @@ export function diamond({ id, arterial, cross, fwd, rev, hw, carriageHw, reach =
     const towardLeft = at.tx * left[0] + at.tz * left[1] > 0 ? 1 : -1;
     const T = arterial.sample(aHit.s + towardLeft * reach);
     const nT = [T.tz, -T.tx];
-    const off = (s, d) => {
-      const p = C.sample(C.wrapS(s));
-      return [p.x + p.tz * d, p.z - p.tx * d];
-    };
-    const tan = (s) => {
-      const p = C.sample(C.wrapS(s));
-      return [p.tx, p.tz];
-    };
     const sideOf = (pt) => Math.sign((pt[0] - T.x) * nT[0] + (pt[1] - T.z) * nT[1]) || 1;
-
-    const exitS0 = cHit.s - before;
-    const exitPts = [];
-    for (let i = 0; i <= 4; i++) {
-      const t = i / 4;
-      exitPts.push(off(exitS0 + run * t, d0 + (24 - d0) * t * t));
-    }
-    const eEnd = exitPts[exitPts.length - 1];
-    const arrive = [-sideOf(eEnd) * nT[0], -sideOf(eEnd) * nT[1]];
-    const exitTail = hermite(eEnd, tan(exitS0 + run), [T.x, T.z], arrive, 8);
     const carriageId = tag === 'f' ? ids.fwd : ids.rev;
     const joinsAt = { id: ids.arterial, s: arterial.wrapS(aHit.s + towardLeft * reach) };
+
+    const exitOpts = /** @type {import('./merge.js').SlipOptions} */ ({ kind: 'exit', nose: cHit.s - before, carriageHw, hw });
+    const exitPts = slipRamp(C, exitOpts);
+    const eEnd = exitPts[exitPts.length - 1];
+    const arrive = [-sideOf(eEnd) * nT[0], -sideOf(eEnd) * nT[1]];
+    const exitTail = hermite(eEnd, heading(exitPts[exitPts.length - 2], eEnd), [T.x, T.z], arrive, 8);
+    const exitAll = [...exitPts, ...exitTail, [T.x, T.z]];
+    const exitMeta = slipMeta(exitAll, C, carriageId, exitOpts);
     out.push(/** @type {RoadDef} */ ({
-      ...base, id: `${id}-${tag}x`, name: base.name, hw, oneway: true, points: [...exitPts, ...exitTail, [T.x, T.z]],
-      link: { from: { id: carriageId, s: C.wrapS(exitS0) }, to: joinsAt },
-      gore: { carriageId, carriageS: exitS0, run, kind: 'exit', carriageHw, rampHw: hw },
+      ...base, id: `${id}-${tag}x`, name: base.name, hw, oneway: true, points: exitAll,
+      link: { from: { id: carriageId, s: exitMeta.slip.attach[0] }, to: joinsAt },
+      taper: exitMeta.taper, slip: exitMeta.slip,
     }));
 
-    const entryS1 = cHit.s + before;
-    const entryPts = [];
-    for (let i = 4; i >= 0; i--) {
-      const t = i / 4;
-      entryPts.push(off(entryS1 - run * t, d0 + (24 - d0) * t * t));
-    }
+    const entryOpts = /** @type {import('./merge.js').SlipOptions} */ ({ kind: 'entry', nose: cHit.s + before, carriageHw, hw });
+    const entryPts = slipRamp(C, entryOpts);
     const nStart = entryPts[0];
     const depart = [sideOf(nStart) * nT[0], sideOf(nStart) * nT[1]];
-    const entryHead = hermite([T.x, T.z], depart, nStart, tan(entryS1 - run), 8);
+    const entryHead = hermite([T.x, T.z], depart, nStart, heading(nStart, entryPts[1]), 8);
+    const entryAll = [[T.x, T.z], ...entryHead, ...entryPts];
+    const entryMeta = slipMeta(entryAll, C, carriageId, entryOpts);
     out.push(/** @type {RoadDef} */ ({
-      ...base, id: `${id}-${tag}n`, name: base.name, hw, oneway: true, points: [[T.x, T.z], ...entryHead, ...entryPts],
-      link: { from: joinsAt, to: { id: carriageId, s: C.wrapS(entryS1) } },
-      gore: { carriageId, carriageS: entryS1, run, kind: 'entry', carriageHw, rampHw: hw },
+      ...base, id: `${id}-${tag}n`, name: base.name, hw, oneway: true, points: entryAll,
+      link: { from: joinsAt, to: { id: carriageId, s: entryMeta.slip.attach[1] } },
+      taper: entryMeta.taper, slip: entryMeta.slip,
     }));
   }
   return out;

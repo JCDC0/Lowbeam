@@ -8,6 +8,7 @@
 
 import { Path } from './spline.js';
 import { dualCarriageway, streetGrid, pathCrossing, diamond } from './roadgen.js';
+import { slipRamp, slipMeta, heading, biarc } from './merge.js';
 
 export const SEED = 0x10eb3a;
 export const WORLD_HALF = 3000;
@@ -32,7 +33,7 @@ export const CITY = { x0: -1280, x1: 1280, z0: 520, z1: 2020 };
  *   oneway?: boolean, median?: number, twin?: string,
  *   link?: { from: { id: string, s: number }, to: { id: string, s: number } },
  *   taper?: { from: number, to: number, s0: number, s1: number },
- *   gore?: { carriageId: string, carriageS: number, run: number, kind: 'exit' | 'entry', carriageHw?: number, rampHw?: number }
+ *   slip?: import('./merge.js').SlipMeta
  * }} RoadDef
  */
 
@@ -63,18 +64,21 @@ const C1 = dualCarriageway(LOOP, {
 });
 C1[0].lamps = [{ all: true, every: 44, side: -1, offset: C1_HW + C1_MEDIAN / 2 }];
 
-const C2_POINTS = [
-  [-2300, 2450], [-1700, 2435], [-1100, 2425], [-500, 2420], [0, 2420], [500, 2420], [1100, 2425], [1700, 2435], [2300, 2450],
-];
+/**
+ * Route 2, the Bayshore Line: two lanes each way along the bay between the loop's south
+ * corners, joined to Route 1 at both ends (see BAYSHORE_JCT below).
+ */
+const C2_POINTS = [[-850, 2420], [-500, 2420], [0, 2420], [500, 2420], [800, 2420]];
 const c2Center = new Path(C2_POINTS, { closed: false, step: 2 });
-const crossC2Toll = pathCrossing(c2Center, 'x', 800);
+const crossC2Toll = pathCrossing(c2Center, 'x', 450);
+const C2_HW = 3.7;
 
 const C2 = dualCarriageway(C2_POINTS, {
-  id: 'c2', name: 'BAYSHORE LINE', surface: 'asphalt', hw: C1_HW, median: C1_MEDIAN, closed: false,
-  priority: 3.2, smooth: 90, cls: 'expressway', lanes: 3, limit: 100, lines: 'lanes', maxGrade: 0.055,
+  id: 'c2', name: 'BAYSHORE LINE', surface: 'asphalt', hw: C2_HW, median: C1_MEDIAN, closed: false,
+  priority: 3.2, smooth: 90, cls: 'expressway', lanes: 2, limit: 100, lines: 'lanes', maxGrade: 0.055,
   lifts: [{ at: [26.4, 2420], height: 7.4, half: 230, flat: 60 }],
 });
-C2[0].lamps = [{ all: true, every: 44, side: -1, offset: C1_HW + C1_MEDIAN / 2 }];
+C2[0].lamps = [{ all: true, every: 44, side: -1, offset: C2_HW + C1_MEDIAN / 2 }];
 
 
 const ARTERIAL = {
@@ -102,22 +106,25 @@ const HARBOR = [{
   points: [[0, 1860], [0, 2000], [crossSouth.x, crossSouth.z], [10, 2330], [30, 2440]],
 }];
 
+const WEST_POINTS = [[-2300, 500], [-2200, 800], [crossWest.x, crossWest.z], [-1600, 1140], [-1430, 1197], [-1330, 1200]];
+const WEST_LENGTH = new Path(WEST_POINTS, { step: 2 }).length;
+
 /** @type {RoadDef[]} */
 const WEST = [{
   ...ARTERIAL, id: 'west', name: 'WEST AVE',
   lifts: [{ at: [crossWest.x, crossWest.z], ...LIFT }],
-  lamps: [{ from: [-1500, 1130], to: [-700, 1200], every: 36 }],
-  taper: { from: 7, to: 4.6, s0: 1890, s1: 1925 },
-  points: [[-2300, 500], [-2200, 800], [crossWest.x, crossWest.z], [-1500, 1130], [-1100, 1180], [-700, 1200]],
+  lamps: [{ from: [-1600, 1140], to: [-1330, 1200], every: 36 }],
+  taper: { from: 7, to: 4.6, s0: WEST_LENGTH - 35, s1: WEST_LENGTH },
+  points: WEST_POINTS,
 }];
 
 /** @type {RoadDef[]} */
 const EAST = [{
   ...ARTERIAL, id: 'east', name: 'EAST AVE',
   lifts: [{ at: [crossEast.x, crossEast.z], ...LIFT }],
-  lamps: [{ from: [700, 1200], to: [1500, 1160], every: 36 }],
+  lamps: [{ from: [1330, 1200], to: [1600, 1150], every: 36 }],
   taper: { from: 4.6, to: 7, s0: 0, s1: 35 },
-  points: [[700, 1200], [1100, 1170], [1500, 1150], [crossEast.x, crossEast.z], [2200, 1150], [2390, 1130]],
+  points: [[1330, 1200], [1430, 1197], [1600, 1155], [crossEast.x, crossEast.z], [2200, 1150], [2390, 1130]],
 }];
 
 /**
@@ -143,35 +150,15 @@ const CITY_STREET = {
   surface: 'asphalt', hw: 4.6, priority: 2.5, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40, lines: /** @type {const} */ ('center'),
 };
 const GRID_EW = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
-const GRID_NS = [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700];
-const STREETS = streetGrid({ x0: -840, x1: 840, z0: 760, z1: 1860 }, GRID_EW, GRID_NS, { ...CITY_STREET, prefix: 'k', nsPriority: 2.6 });
-
-const SUBURB_STREET = {
-  surface: 'asphalt', hw: 4.0, priority: 2.4, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40, lines: /** @type {const} */ ('center'),
-};
-const SUBURB_DEFS = [
-  { id: 'k-sub-nwns', name: 'SUBURB NW AVE', points: [[-1050, 840], [-1050, 1100]] },
-  { id: 'k-sub-nwew', name: 'SUBURB NW ST', points: [[-1260, 960], [-840, 960]] },
-  { id: 'k-sub-swns', name: 'SUBURB SW AVE', points: [[-1050, 1300], [-1050, 1700]] },
-  { id: 'k-sub-swew', name: 'SUBURB SW ST', points: [[-1260, 1500], [-840, 1500]] },
-  { id: 'k-sub-nens', name: 'SUBURB NE AVE', points: [[1050, 840], [1050, 1100]] },
-  { id: 'k-sub-neew', name: 'SUBURB NE ST', points: [[840, 960], [1260, 960]] },
-  { id: 'k-sub-sens', name: 'SUBURB SE AVE', points: [[1050, 1300], [1050, 1700]] },
-  { id: 'k-sub-seew', name: 'SUBURB SE ST', points: [[840, 1500], [1260, 1500]] },
-  { id: 'k-sub-nnew', name: 'SUBURB N NW ST', points: [[-840, 640], [-160, 640]] },
-  { id: 'k-sub-nnew2', name: 'SUBURB N NE ST', points: [[160, 640], [840, 640]] },
-  { id: 'k-sub-nnns1', name: 'SUBURB N NW AVE', points: [[-560, 580], [-560, 760]] },
-  { id: 'k-sub-nnns2', name: 'SUBURB N NE AVE', points: [[560, 580], [560, 760]] },
-  { id: 'k-sub-ssew1', name: 'SUBURB S SW ST', points: [[-840, 1960], [-100, 1960]] },
-  { id: 'k-sub-ssew2', name: 'SUBURB S SE ST', points: [[100, 1960], [840, 1960]] },
-  { id: 'k-sub-ssns1', name: 'SUBURB S SW AVE', points: [[-560, 1860], [-560, 2020]] },
-  { id: 'k-sub-ssns2', name: 'SUBURB S SE AVE', points: [[560, 1860], [560, 2020]] },
-];
-const SUBURBS = SUBURB_DEFS.map((d) => ({
-  ...SUBURB_STREET,
-  ...d,
-  lamps: [{ from: d.points[0], to: d.points[d.points.length - 1], every: 36 }],
-}));
+const GRID_NS = Array.from({ length: 19 }, (_, i) => -1260 + i * 140);
+/**
+ * The street grid: east-west streets at `ew` (z), north-south streets at `ns` (x), each street
+ * running a block's stub past the last crossing to the edge of `rect`. Downtown is the middle;
+ * scatter.js thins the buildings out toward the edges. West Ave and East Ave arrive at the ends
+ * of the middle east-west street (`k-ew3`), Route 18 and Harbor Ave at the ends of `x = 0`.
+ */
+export const GRID = { ew: GRID_EW, ns: GRID_NS, rect: { x0: -1330, x1: 1330, z0: 760, z1: 1860 } };
+const STREETS = streetGrid(GRID.rect, GRID_EW, GRID_NS, { ...CITY_STREET, prefix: 'k', nsPriority: 2.6 });
 
 /** Four ramps for each place an avenue passes over Route 1. */
 const OVERPASSES = [
@@ -195,8 +182,90 @@ const interchanges = OVERPASSES.flatMap(({ road, cross, reach }) =>
   })
 );
 
+/**
+ * The Bayshore junctions at the loop's south corners. Westbound, the Bayshore is a branch of
+ * Route 1's outer carriageway: it leaves it at the south-east corner and rejoins it at the
+ * south-west one, never crossing the loop. Eastbound traffic is on the inner carriageway, so
+ * those two ramps fly over Route 1. Every ramp meets Route 1 as a slip road (merge.js) and
+ * meets the Bayshore end to end, at the same width.
+ * @returns {RoadDef[]}
+ */
+function bayshoreJunctions() {
+  const C1F = new Path(C1[0].points, { closed: true, step: 2 });
+  const C1R = new Path(C1[1].points, { closed: true, step: 2 });
+  const south = (p) => p.z > 1500;
+  const at = (C, x) => pathCrossing(C, 'x', x, south).s;
+  const fStart = C2[0].points[0];
+  const fEnd = C2[0].points[C2[0].points.length - 1];
+  const rStart = C2[1].points[0];
+  const rEnd = C2[1].points[C2[1].points.length - 1];
+  /**
+   * Where a ramp passes over the loop: straight across it (out of the loop or into it), turned
+   * by `skew` radians toward the loop's direction of travel so the ramp's curves stay wide.
+   */
+  const over = (x, out, skew) => {
+    const c = pathCrossing(loopCenter, 'x', x, south);
+    const k = out ? 1 : -1;
+    const n = [k * c.tz, -k * c.tx];
+    const t = [-c.tx, -c.tz];
+    const dir = [n[0] * Math.cos(skew) + t[0] * Math.sin(skew), n[1] * Math.cos(skew) + t[1] * Math.sin(skew)];
+    return { p: [c.x, c.z], dir };
+  };
+  const base = {
+    surface: 'asphalt', hw: C2_HW, priority: 2.9, smooth: 80, maxGrade: 0.06, cls: /** @type {const} */ ('ramp'),
+    lanes: 2, limit: 70, lines: /** @type {const} */ ('lanes'), name: 'BAYSHORE JCT', oneway: true,
+  };
+  const lift = (p) => [{ at: p, height: 7.4, half: 200, flat: 50 }];
+  const slip = (C, id, opts) => ({ C, id, opts: /** @type {import('./merge.js').SlipOptions} */ ({ carriageHw: C1_HW, hw: C2_HW, ...opts }) });
+  /** @type {RoadDef[]} */
+  const out = [];
+
+  // West: inner carriageway out over the loop onto the eastbound Bayshore.
+  {
+    const s = slip(C1R, 'c1-r', { kind: 'exit', nose: at(C1R, -1450) });
+    const pts = slipRamp(s.C, s.opts);
+    const end = pts[pts.length - 1];
+    const x = over(-1000, true, 0.5);
+    const points = [...pts, ...biarc(end, heading(pts[pts.length - 2], end), x.p, x.dir), ...biarc(x.p, x.dir, fStart, [1, 0])];
+    const m = slipMeta(points, s.C, s.id, s.opts);
+    out.push({ ...base, id: 'bay-ramp-wf', points, lifts: lift(x.p), taper: m.taper, slip: m.slip,
+      link: { from: { id: s.id, s: m.slip.attach[0] }, to: { id: 'c2-f', s: 0 } } });
+  }
+  // West: the westbound Bayshore merges into the outer carriageway at the corner.
+  {
+    const s = slip(C1F, 'c1-f', { kind: 'entry', nose: at(C1F, -1500) });
+    const pts = slipRamp(s.C, s.opts);
+    const points = [rEnd, ...biarc(rEnd, [-1, 0], pts[0], heading(pts[0], pts[1])).slice(0, -1), ...pts];
+    const m = slipMeta(points, s.C, s.id, s.opts);
+    out.push({ ...base, id: 'bay-ramp-wr', points, taper: m.taper, slip: m.slip,
+      link: { from: { id: 'c2-r', s: new Path(C2[1].points, { step: 2 }).length }, to: { id: s.id, s: m.slip.attach[1] } } });
+  }
+  // East: the eastbound Bayshore climbs over the loop and merges into the inner carriageway.
+  {
+    const s = slip(C1R, 'c1-r', { kind: 'entry', nose: at(C1R, 1400) });
+    const pts = slipRamp(s.C, s.opts);
+    const x = over(950, false, 0.5);
+    const points = [fEnd, ...biarc(fEnd, [1, 0], x.p, x.dir), ...biarc(x.p, x.dir, pts[0], heading(pts[0], pts[1])).slice(0, -1), ...pts];
+    const m = slipMeta(points, s.C, s.id, s.opts);
+    out.push({ ...base, id: 'bay-ramp-ef', points, lifts: lift(x.p), taper: m.taper, slip: m.slip,
+      link: { from: { id: 'c2-f', s: new Path(C2[0].points, { step: 2 }).length }, to: { id: s.id, s: m.slip.attach[1] } } });
+  }
+  // East: the outer carriageway branches off down to the westbound Bayshore.
+  {
+    const s = slip(C1F, 'c1-f', { kind: 'exit', nose: at(C1F, 1250) });
+    const pts = slipRamp(s.C, s.opts);
+    const end = pts[pts.length - 1];
+    const points = [...pts, ...biarc(end, heading(pts[pts.length - 2], end), rStart, [-1, 0])];
+    const m = slipMeta(points, s.C, s.id, s.opts);
+    out.push({ ...base, id: 'bay-ramp-er', points, taper: m.taper, slip: m.slip,
+      link: { from: { id: s.id, s: m.slip.attach[0] }, to: { id: 'c2-r', s: 0 } } });
+  }
+  return out;
+}
+const BAYSHORE_JCT = bayshoreJunctions();
+
 /** @type {RoadDef[]} */
-export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...STREETS, ...SUBURBS, ...interchanges];
+export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
 
 /**
  * Gas stations. Each one sits beside a road: `near` is projected onto the road to find
@@ -205,7 +274,7 @@ export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO
  */
 export const STATIONS = [
   { id: 'g1', name: 'KITSUNE OIL HARBOR', brand: 'kitsune', road: 'harbor', near: [0, 1940], side: 'right', w: 54, d: 36 },
-  { id: 'g2', name: 'HOSHI GAS ROUTE 1 EAST', brand: 'hoshi', road: 'c1-f', near: [1960, 1000], side: 'left', w: 60, d: 40 },
+  { id: 'g2', name: 'HOSHI GAS ROUTE 1 EAST', brand: 'hoshi', road: 'c1-f', near: [1919, 449], side: 'left', w: 60, d: 40 },
   { id: 'g3', name: 'KITSUNE OIL MORI', brand: 'kitsune', road: 'r18', near: [231, -1926], side: 'right', w: 54, d: 36 },
   { id: 'g4', name: 'HOSHI GAS TOGE', brand: 'hoshi', road: 'kuro', near: [-2310, 330], side: 'right', w: 54, d: 36 },
 ];
@@ -214,7 +283,7 @@ export const STATIONS = [
 export const TOLLS = [
   { id: 'toll-n', name: 'KITA TOLL', ...onLoop('x', 450, (p) => p.z < 0), fee: 700, road: 'c1' },
   { id: 'toll-e', name: 'HIGASHI TOLL', ...onLoop('z', 1800, (p) => p.x > 0), fee: 700, road: 'c1' },
-  { id: 'toll-s', name: 'MINATO TOLL', ...onLoop('x', -450, (p) => p.z > 1000), fee: 700, road: 'c1' },
+  { id: 'toll-s', name: 'MINATO TOLL', ...onLoop('x', -700, (p) => p.z > 1000), fee: 700, road: 'c1' },
   { id: 'toll-bayshore', name: 'BAYSHORE TOLL', x: crossC2Toll.x, z: crossC2Toll.z, s: crossC2Toll.s, yaw: Math.atan2(crossC2Toll.tx, crossC2Toll.tz), fee: 600, road: 'c2' },
 ];
 

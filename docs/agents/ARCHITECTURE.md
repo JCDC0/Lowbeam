@@ -79,6 +79,7 @@ captures such as rendered audio.
 | `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
 | `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
 | `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, street grid, diamond interchange ramps |
+| `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
 | `src/world/mapdata.js` | Pure: roads, points of interest and zones as plain data for a full-screen map |
 | `src/world/heightfield.js` | Natural terrain (`baseHeight`: two valleys, mountains, bay, lake, pass ledge, flat downtown), blur, the carved grid and triangle sampling |
@@ -135,7 +136,7 @@ captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.4.18)
+## Current state (0.4.19)
 
 Done and tested:
 
@@ -144,17 +145,27 @@ Done and tested:
   3 %, a concrete median barrier, guard rails on both outer edges (open at ramps, forecourts
   and plazas), three toll plazas with speed-trap gates. Four avenues (Route 18 north, Harbor Ave
   south, West Ave, East Ave) pass over it on overpasses with a diamond interchange each
-  (four ground-level ramps). Ramps taper flush into Route 1 with chevron gore meshes and matching
-  heights; avenues taper width to meet the downtown grid with zero lip; city intersections feature
-  continuous crossing patches and rounded corner curbs with sidewalks. Kuro Pass: 6.4 km of 2-lane
+  (four ground-level ramps). Every ramp is a slip road (see Slip roads below). Avenues taper
+  width to meet the street grid with zero lip; city intersections have continuous crossing patches
+  and rounded corner curbs with sidewalks. Kuro Pass: 6.4 km of 2-lane
   asphalt from the forest village along the northern ridge and down the western mountain, climbing
-  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. A 20 street downtown grid (9 by 11 blocks)
-  inside a larger `CITY` rect (2.56 by 1.5 km) whose outer band holds lower, sparser suburban blocks
-  and 16 suburb streets (`k-sub-*`, 40 km/h). Route 2, the Bayshore Line (`c2-f`, `c2-r`): a 4.6 km
-  3-lane dual carriageway along the bay at z 2415 to 2450 with its own toll plaza (BAYSHORE TOLL) and
-  a 7.4 m viaduct over the end of Harbor Ave. It has no ramps yet, so it cannot be reached from the
-  rest of the network. Guard rails also line steep drops and slopes outside town (over 1.5 m),
-  except on decks that have parapets. Four gas stations (Harbor, Route 1 east, Mori, Toge). Terrain: the loop
+  to 254 m at up to 8.5 %, on a ledge the terrain is cut around. The street grid (`GRID` in
+  layout.js): 9 east-west streets by 19 north-south ones, 140 m apart, x -1260 to 1260 and z 840
+  to 1800, filling the `CITY` rect. Towers in the middle, lower and sparser blocks toward the
+  edges (scatter.js measures from the middle). West Ave and East Ave arrive at the two ends of
+  the middle street `k-ew3`, Route 18 and Harbor Ave at the ends of `k-ns9` (x = 0).
+  Route 2, the Bayshore Line (`c2-f`, `c2-r`): 1.65 km of 2-lane dual carriageway along the bay
+  (x -850 to 800, z 2420), with its own toll plaza (BAYSHORE TOLL) and a 7.4 m viaduct over the end
+  of Harbor Ave, joined to Route 1 at both south corners by the Bayshore junctions: westbound it
+  is a branch of Route 1's outer carriageway (`bay-ramp-er` leaves it at the south-east corner,
+  `bay-ramp-wr` rejoins it at the south-west one, neither crosses the loop); eastbound
+  `bay-ramp-wf` leaves the inner carriageway and flies over Route 1 onto the Bayshore and
+  `bay-ramp-ef` flies back over it into the inner carriageway. The ramps are drawn as biarcs
+  (`biarc` in merge.js), no curve tighter than 100 m, and meet the Bayshore end to end at its
+  width. Each way Route 1 to Route 1 by the bay is about 3.6 km. Guard rails also line steep drops
+  and slopes outside town (over 1.5 m), except on decks that have parapets. Four gas stations
+  (Harbor, Route 1 east, Mori, Toge; Route 1 east moved north to z 450 in 0.4.19 to clear the
+  east exit). Terrain: the loop
   valley rises gently to the north, a second valley holds the forest and Kami-ike, the
   rest climbs to 300 m and more, the bay is open sea. Ground build about 1 s.
   `node tools/mapcheck.mjs` prints the road numbers; `tools/mapview.html` draws the map.
@@ -353,6 +364,21 @@ Done and tested:
   (scatter `bridges`) gets a pier under the middle of its lift and every 22 m wherever no
   road runs underneath. Approaches shorter than the grade cap allows are the author's
   problem: 7.5 m over `half` 150 with `flat` 50 peaks at 9.4 %.
+- Slip roads (0.4.19, `merge.js`). Every ramp onto or off an expressway is a lane the
+  carriageway gains or loses, never a road laid beside it. An exit starts as a 0.15 m sliver on
+  the carriageway's left edge, widens to full width over `taper` (60 m) with its inner edge on
+  that edge, runs beside it for `parallel` (90 m) as a deceleration lane, and pulls away from the
+  nose over `diverge` (140 m) to `spread` (24 m) off; an entry is the same in reverse. The road
+  def carries `taper` (its width, read by `Road.hwAt`) and `slip` (`slipMeta`): the stretch of the
+  carriageway it runs along (`attach`), the nose, the same stretch in the ramp's own arc length
+  and how long the painted gore is. Everything reads `slip`: `blendJunctions` holds the ramp at
+  the carriageway's height along the stretch and through the gore; the ribbons drop the skirt on
+  both sides of the shared edge; `buildGores` paints the chevron wedge past the nose and a thick
+  dashed line over the seam; `highway.js` opens the carriageway's rail from the taper to 30 m past
+  the gore and runs a rail along the ramp's outer edge (not on decks); the traffic exit leaves at
+  the start of the taper and the entry joins at its end. `RoadNetwork.query` and `influence` measure
+  the true distance past the end of an open road (before, a point beyond a road's end counted as
+  on it if it was in line with it, which carved trenches past road ends).
 - Cameras (`CameraRig`, C cycles, the choice is saved by name under `cameraView`): chase
   (damped, leans toward the direction of travel in a slide, FOV 62 to 78 with speed), car
   (the standard near view: 4.4 m back, 1.3 m up, straight behind the heading so the whole
@@ -422,7 +448,8 @@ Done and tested:
   (including the slow lane) in a swift 1.5 s diagonal move, and return to faster lanes when clear.
   Rivals spawn on Route 1 fast lanes between 250 and 460 m from the player, balanced half ahead and
   half behind at full cruising speed (200 to 260 km/h with bursts higher). Over 3 minutes headless
-  with traffic, racers average above 190 km/h with tops above 270 km/h. `nearestRival(player, range)`
+  with traffic, racers average about 188 km/h over six seeds (one run lands anywhere from 170 to
+  207) with tops above 270 km/h; the test asks for 180 over the six. `nearestRival(player, range)`
   gives the agent, distance and whether it is ahead; `Drive` shows it as the prompt
   `RIVAL <name> AHEAD <m> M` when no other prompt is up. Challenging a rival is not built yet.
   Since 0.4.6 the racers are real cars: twelve racer models in `vehicles/bodies/racers.js`
@@ -514,12 +541,14 @@ rates.
   `TEMP_MIN`, `TEMP_MAX`; remove them once the cluster reads `temp` (task A1).
 - Neither the HUD nor the cockpit has been seen at real frame rates on the gaming
   desktop yet; all checks so far used `__lowbeam.simulate` and canvas captures.
-- Between the city and Route 1 the land is mostly empty: the suburb streets are short stubs off
-  the grid edge, the street grid itself did not grow with `CITY`, and there is no farmland or rail line.
-- The Bayshore Line has no ramps and its ends stop in the open (Claude's merge component, then
-  ramps to Harbor Ave and Route 1).
-- Ramps still read as overlapping strips with square ends rather than a lane that is added and
-  tapers away (Claude's merge component replaces them).
+- Between the street grid and Route 1 the land is empty: no farmland or rail line yet. The grid's
+  outer streets stop a block past the last crossing.
+- `build-roads.js` still finds city crossings from `GRID` rather than from the network, and the
+  ribbon code turns skirts off at those crossings by coordinates; fine for one grid.
+- A 2-lane Bayshore ramp merges into Route 1 as one 7.4 m wide added lane that tapers away; a real
+  junction would drop to one lane first. Fine at this scale, revisit with lane markings.
+- The Route 18 ramps climb about 17 m to the avenue, peaking at 7.6 to 8.8 % (limit 10 %), because
+  the slip road holds the carriageway's height through the gore.
 - Route 1 has no overhead signs yet (task A5 builds the highway sign gantries).
 - `LAKE` and `TOWN` in layout.js are aliases for the first lake and the city rect, kept
   for the map screen until it moves to `world.mapData`; remove them then.

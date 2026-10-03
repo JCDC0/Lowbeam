@@ -100,10 +100,10 @@ for (const r of net.roads) {
   }
 }
 for (const [aId, sA, bId, sB] of [
-  ['r18', 0, 'k-ns5', 0],
-  ['west', net.byId.get('west').path.length, 'k-ew3', 140],
-  ['east', 0, 'k-ew3', net.byId.get('k-ew3').path.length - 140],
-  ['harbor', 0, 'k-ns5', net.byId.get('k-ns5').path.length],
+  ['r18', 0, 'k-ns9', 0],
+  ['west', net.byId.get('west').path.length, 'k-ew3', 0],
+  ['east', 0, 'k-ew3', net.byId.get('k-ew3').path.length],
+  ['harbor', 0, 'k-ns9', net.byId.get('k-ns9').path.length],
 ]) {
   const a = net.byId.get(aId), b = net.byId.get(bId);
   const lip = Math.abs(a.heightAt(sA) - b.heightAt(sB));

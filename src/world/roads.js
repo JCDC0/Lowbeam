@@ -227,19 +227,19 @@ export class RoadNetwork {
         }
       }
     }
-    if (r.def.gore) {
-      const carriage = this.byId.get(r.def.gore.carriageId);
-      if (carriage) {
-        for (let i = 0; i < n; i++) {
-          const s = i * p.step;
-          const hitC = carriage.path.nearest(p.x[i], p.z[i]);
-          const gap = Math.abs(hitC.d) - carriage.hw - r.hw;
-          if (gap < 4.0 && (r.def.gore.kind === 'exit' ? s < 60 : s > p.length - 60)) {
-            delta[i] = carriage.heightAt(hitC.s) - r.h[i];
-            fixed[i] = 1;
-            any = true;
-          }
-        }
+    // A slip road shares an edge with its carriageway, so it takes the carriageway's height
+    // all along that stretch and through the painted gore, where the two still look like one road.
+    const slip = r.def.slip;
+    const carriage = slip && this.byId.get(slip.carriageId);
+    if (slip && carriage) {
+      const [a, b] = slip.kind === 'exit' ? [0, slip.rampNose + slip.gore] : [slip.rampNose - slip.gore, p.length];
+      for (let i = 0; i < n; i++) {
+        const s = i * p.step;
+        if (s < a || s > b) continue;
+        const hitC = carriage.path.nearest(p.x[i], p.z[i]);
+        delta[i] = carriage.heightAt(hitC.s) - r.h[i];
+        fixed[i] = 1;
+        any = true;
       }
     }
     if (!any) return;
@@ -334,26 +334,29 @@ export class RoadNetwork {
     let foundD = 0;
     let foundS = 0;
     let foundDeck = false;
+    let foundAd = 0;
     for (const r of this.roads) {
       if (best[r.index] === Infinity) continue;
       const h = r.path.refine(bestI[r.index], x, z, this._hit);
-      const ad = Math.abs(h.d);
+      // Past the end of an open road only the true distance counts, not its sideways part.
+      const ad = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z));
       const hw = r.hwAt(h.s);
       if (ad > hw + SKIRT + extra) continue;
       const deck = r.lifted && r.liftAt(h.s) > ELEVATED;
       if (deck && r.heightAt(h.s) > y + DECK_REACH) continue;
       const onR = ad <= hw;
-      const onFound = found ? Math.abs(foundD) <= found.hwAt(foundS) : false;
-      const better = !found || (deck && !foundDeck) || (deck === foundDeck && (onR !== onFound ? onR : (r.priority > found.priority || (r.priority === found.priority && ad < Math.abs(foundD)))));
+      const onFound = found ? foundAd <= found.hwAt(foundS) : false;
+      const better = !found || (deck && !foundDeck) || (deck === foundDeck && (onR !== onFound ? onR : (r.priority > found.priority || (r.priority === found.priority && ad < foundAd))));
       if (better) {
         found = r;
         foundD = h.d;
         foundS = h.s;
         foundDeck = deck;
+        foundAd = ad;
       }
     }
     if (!found) return false;
-    const edge = Math.abs(foundD) - found.hwAt(foundS);
+    const edge = foundAd - found.hwAt(foundS);
     out.road = found;
     out.s = foundS;
     out.d = foundD;
@@ -401,7 +404,9 @@ export class RoadNetwork {
     for (const r of this.roads) {
       if (best[r.index] === Infinity) continue;
       const h = r.path.refine(bestI[r.index], x, z, this._hit);
-      const edge = Math.abs(h.d) - r.hw;
+      // Past the end of an open road `d` is only the sideways part of the distance, which would
+      // carve a trench at the end road's height straight on into the land beyond it.
+      const edge = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z)) - r.hw;
       if (edge > reach || edge >= bestEdge) continue;
       // Terrain is not shaped to a road that has left the ground; the road below is.
       const lift = r.liftAt(h.s);

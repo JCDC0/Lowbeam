@@ -12,6 +12,8 @@ import { bakeGeometry } from '../render/bake.js';
 import { MeshBuilder } from '../render/builder.js';
 import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture, makeCanvas, canvasTexture } from '../render/textures.js';
 import { SKIRT, SINK } from './roads.js';
+import { inStretch } from './merge.js';
+import { GRID } from './layout.js';
 
 export const TILE = 12;
 const CHUNK_ROWS = 90;
@@ -36,7 +38,47 @@ function goreTexture() {
   return canvasTexture(c, { repeat: true, mips: true });
 }
 
-function ribbon(road, r0, r1) {
+/** The thick dashed line between a carriageway and the lane a slip road adds beside it. */
+function laneAddTexture() {
+  const c = makeCanvas(32, 64);
+  const g = c.getContext('2d');
+  g.fillStyle = '#4e5056';
+  g.fillRect(0, 0, 32, 64);
+  g.fillStyle = '#e8e4d8';
+  g.fillRect(12, 0, 8, 32);
+  return canvasTexture(c, { repeat: true, mips: true });
+}
+
+/**
+ * Where each road shares an edge with a slip road: on the carriageway its left side along the
+ * attached stretch and the gore, on the slip road its right side over the same stretch. No
+ * skirt is drawn there, so the two surfaces meet at one seam.
+ * @param {import('./roads.js').RoadNetwork} roads
+ * @returns {Map<import('./roads.js').Road, { side: 1 | -1, a: number, b: number }[]>}
+ */
+function sharedEdges(roads) {
+  const out = new Map();
+  const add = (road, side, a, b) => {
+    if (!out.has(road)) out.set(road, []);
+    out.get(road).push({ side, a, b });
+  };
+  for (const ramp of roads.roads) {
+    const sl = ramp.def.slip;
+    const carriage = sl && roads.byId.get(sl.carriageId);
+    if (!sl || !carriage) continue;
+    if (sl.kind === 'exit') {
+      add(carriage, 1, sl.attach[0], sl.nose + sl.gore);
+      add(ramp, -1, 0, sl.rampNose + sl.gore);
+    } else {
+      add(carriage, 1, sl.nose - sl.gore, sl.attach[1]);
+      add(ramp, -1, sl.rampNose - sl.gore, ramp.path.length);
+    }
+  }
+  return out;
+}
+
+/** @param {import('./roads.js').Road} road @param {{ side: 1 | -1, a: number, b: number }[] | undefined} shared */
+function ribbon(road, r0, r1, shared) {
   const p = road.path;
   const lift = 0.012 * road.priority;
   const rows = r1 - r0 + 1;
@@ -44,7 +86,6 @@ function ribbon(road, r0, r1) {
   const pos = new Float32Array(rows * nc * 3);
   const uv = new Float32Array(rows * nc * 2);
   const isRamp = road.def.cls === 'ramp';
-  const hasGore = !!road.def.gore;
   for (let r = 0; r < rows; r++) {
     const i = (r0 + r) % p.n;
     const s = (r0 + r) * p.step;
@@ -58,10 +99,12 @@ function ribbon(road, r0, r1) {
     let skirtR = SKIRT;
     let dropL = SINK - 0.02;
     let dropR = SINK - 0.02;
-    if (hasGore) {
-      const g = road.def.gore;
-      const nearC1 = g.kind === 'exit' ? s < 58 : s > p.length - 58;
-      if (nearC1) {
+    for (const e of shared || []) {
+      if (!inStretch(p.wrapS(s), [e.a, e.b], p.length, p.closed)) continue;
+      if (e.side > 0) {
+        skirtR = 0;
+        dropR = 0;
+      } else {
         skirtL = 0;
         dropL = 0;
       }
@@ -75,10 +118,10 @@ function ribbon(road, r0, r1) {
       }
     }
     if (road.def.cls === 'street' || road.def.cls === 'arterial') {
-      if (x > -860 && x < 860 && z > 750 && z < 1870) {
-        for (const ew of [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800]) {
+      if (x > GRID.rect.x0 - 20 && x < GRID.rect.x1 + 20 && z > GRID.rect.z0 - 10 && z < GRID.rect.z1 + 10) {
+        for (const ew of GRID.ew) {
           if (Math.abs(z - ew) < hw + 0.5) {
-            for (const ns of [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700]) {
+            for (const ns of GRID.ns) {
               if (Math.abs(x - ns) < hw + 0.5) {
                 dropL = 0;
                 dropR = 0;
@@ -127,43 +170,65 @@ function ribbon(road, r0, r1) {
   return geo;
 }
 
+/**
+ * The painted gore of every slip road: the wedge between the carriageway's left edge and the
+ * ramp's right edge from the nose until the gap is about a lane wide.
+ */
 function buildGores(ground) {
   const b = new MeshBuilder();
-  const L = 52;
-  const N = 18;
+  const N = 16;
   for (const road of ground.roads.roads) {
-    if (!road.def.gore) continue;
-    const g = road.def.gore;
-    const carriage = ground.roads.byId.get(g.carriageId);
-    if (!carriage) continue;
+    const g = road.def.slip;
+    const carriage = g && ground.roads.byId.get(g.carriageId);
+    if (!g || !carriage) continue;
     const exit = g.kind === 'exit';
+    const dir = exit ? 1 : -1;
+    const far = carriage.path.sample(carriage.path.wrapS(g.nose + dir * g.gore));
+    const reach = carriage.hw + road.hw + 3.5;
+    const rFar = road.path.nearest(far.x + far.tz * reach, far.z - far.tx * reach).s;
     const ptsC = [];
     const ptsR = [];
     for (let k = 0; k <= N; k++) {
       const t = k / N;
-      const sC = exit ? carriage.path.wrapS(g.carriageS + t * L) : carriage.path.wrapS(g.carriageS - (1 - t) * L);
-      const sR = exit ? t * L : road.path.length - (1 - t) * L;
+      const sC = carriage.path.wrapS(g.nose + dir * t * g.gore);
+      const sR = g.rampNose + (rFar - g.rampNose) * t;
       const pC = carriage.path.sample(sC);
       const pR = road.path.sample(sR);
-      const hwC = carriage.hw;
-      const hwR = road.hw;
-      const xC = pC.x + pC.tz * hwC;
-      const zC = pC.z - pC.tx * hwC;
-      const yC = carriage.heightAt(sC) + 0.012 * carriage.priority;
-      const xR = pR.x - pR.tz * hwR;
-      const zR = pR.z + pR.tx * hwR;
-      const yR = road.heightAt(sR) + 0.012 * road.priority;
-      ptsC.push([xC, yC, zC]);
-      ptsR.push([xR, yR, zR]);
+      const hwC = carriage.hwAt(sC);
+      const hwR = road.hwAt(sR);
+      const yC = carriage.heightAt(sC) + 0.012 * carriage.priority + 0.004;
+      const yR = road.heightAt(sR) + 0.012 * road.priority + 0.004;
+      ptsC.push([pC.x + pC.tz * hwC, yC, pC.z - pC.tx * hwC]);
+      ptsR.push([pR.x - pR.tz * hwR, yR, pR.z + pR.tx * hwR]);
     }
     for (let k = 0; k < N; k++) {
-      const c0 = ptsC[k];
-      const c1 = ptsC[k + 1];
-      const r0 = ptsR[k];
-      const r1 = ptsR[k + 1];
-      const v0 = (k / N) * (L / 8);
-      const v1 = ((k + 1) / N) * (L / 8);
-      b.quad('gore', c0, r0, r1, c1, [0, v0, 1, v1]);
+      const [c0, c1, r0, r1] = exit ? [ptsC[k], ptsC[k + 1], ptsR[k], ptsR[k + 1]] : [ptsC[k + 1], ptsC[k], ptsR[k + 1], ptsR[k]];
+      const v0 = (k / N) * (g.gore / 8);
+      const v1 = ((k + 1) / N) * (g.gore / 8);
+      b.quad('gore', c0, r0, r1, c1, exit ? [0, v0, 1, v1] : [0, v1, 1, v0]);
+    }
+
+    // The dashed line over the seam where the slip road runs beside the carriageway. It covers
+    // both roads' solid edge lines, and narrows with the ramp so it never hangs over the grass.
+    const [a, z] = g.attach;
+    const len = carriage.path.closed ? carriage.path.wrapS(z - a) : z - a;
+    const steps = Math.ceil(len / 4);
+    let prev = null;
+    for (let k = 0; k <= steps; k++) {
+      const s = a + (k / steps) * len;
+      const sC = carriage.path.wrapS(s);
+      const pC = carriage.path.sample(sC);
+      const edge = carriage.hwAt(sC);
+      const on = road.path.nearest(pC.x + pC.tz * edge, pC.z - pC.tx * edge);
+      const outer = Math.max(0, Math.min(0.6, 2 * road.hwAt(on.s) - 0.1));
+      const y = carriage.heightAt(sC) + 0.012 * carriage.priority + 0.004;
+      const at = (d) => [pC.x + pC.tz * (edge + d), y, pC.z - pC.tx * (edge + d)];
+      const row = { i: at(-0.8), o: at(outer), v: s / 12, f: (0.8 + outer) / 1.4 };
+      if (prev) {
+        b.tri('dash', prev.i, prev.o, row.o, [0, prev.v], [prev.f, prev.v], [row.f, row.v]);
+        b.tri('dash', prev.i, row.o, row.i, [0, prev.v], [row.f, row.v], [0, row.v]);
+      }
+      prev = row;
     }
   }
   return b;
@@ -171,8 +236,8 @@ function buildGores(ground) {
 
 function buildCityCrossingsAndCurbs(ground) {
   const b = new MeshBuilder();
-  const GRID_EW = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
-  const GRID_NS = [-700, -560, -420, -280, -140, 0, 140, 280, 420, 560, 700];
+  const GRID_EW = GRID.ew;
+  const GRID_NS = GRID.ns;
   const crossings = [];
   for (const z of GRID_EW) {
     for (const x of GRID_NS) {
@@ -320,12 +385,13 @@ export function buildRoads(ground, grid) {
   group.name = 'roads';
   const chunks = [];
   group.userData.chunks = chunks;
+  const shared = sharedEdges(ground.roads);
   for (const road of ground.roads.roads) {
     const p = road.path;
     const last = p.closed ? p.n : p.n - 1;
     for (let r0 = 0; r0 < last; r0 += CHUNK_ROWS) {
       const r1 = Math.min(last, r0 + CHUNK_ROWS);
-      const geo = bakeGeometry(ribbon(road, r0, r1), grid, { wrap: 0.6 });
+      const geo = bakeGeometry(ribbon(road, r0, r1, shared.get(road)), grid, { wrap: 0.6 });
       const mesh = new THREE.Mesh(geo, [surfaceOf(road), shoulder]);
       mesh.name = road.id;
       group.add(mesh);
@@ -341,10 +407,11 @@ export function buildRoads(ground, grid) {
   }
 
   const goreMeshBuilder = buildGores(ground);
-  const goreData = goreMeshBuilder.geometry(['gore']);
+  const goreData = goreMeshBuilder.geometry(['gore', 'dash']);
   if (goreData.geometry.attributes.position && goreData.geometry.attributes.position.count > 0) {
     const goreMat = psxLambert({ map: goreTexture(), baked: true, side: THREE.DoubleSide });
-    const goreMesh = new THREE.Mesh(bakeGeometry(goreData.geometry, grid, { wrap: 0.6 }), goreMat);
+    const dashMat = psxLambert({ map: laneAddTexture(), baked: true, side: THREE.DoubleSide });
+    const goreMesh = new THREE.Mesh(bakeGeometry(goreData.geometry, grid, { wrap: 0.6 }), [goreMat, dashMat]);
     goreMesh.name = 'road-gores';
     group.add(goreMesh);
   }
