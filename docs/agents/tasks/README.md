@@ -15,10 +15,11 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 | [C1-kurogane-island.md](C1-kurogane-island.md) | now (Claude) | The map overhaul: island, built-up zones, real street network, viaduct, new buildings, lamps and light pools |
 | [A10-junction-traffic-map-icons.md](A10-junction-traffic-map-icons.md) | now (Antigravity) | Traffic lights and give-way at any crossing or T junction, the island and new POIs on the map, a stats overlay |
 | [A11-rally.md](A11-rally.md) | done (0.6.5, 0.6.8, 0.6.9) | Pace notes, the rally RaceEvent with gates, medals, penalties and a ghost, its HUD |
-| [A14-blinkers-passby.md](A14-blinkers-passby.md) | now (Hermes) | Blinkers on the civilian traffic, hazards on wrecks, the pass-by whoosh scaled by relative speed; then the police core |
+| [A14-blinkers-passby.md](A14-blinkers-passby.md) | part 1 done (0.7.15), part 2 now (Hermes) | Blinkers on the civilian traffic, hazards on wrecks, the pass-by whoosh scaled by relative speed; then the police core |
 | Claude (no brief) | now | The police helicopter (Blender model, HQ roof takeoff, flight, searchlight), the gas stations modeled after the toll plazas, smaller city buildings and housing |
+| [A17-police.md](A17-police.md) | after A14 part 2 (Hermes) | Patrols, heat, the pursuit RaceEvent, chasing and roadblocks, busts and escapes, sirens and the rotor sound |
 | [A16-cluster-styles.md](A16-cluster-styles.md) | after A15 (Antigravity) | HUD speedometer styles per car (classic, twin, sport, digital, vfd), the setting, the new fonts across the UI |
-| [A15-gps-waypoint.md](A15-gps-waypoint.md) | now (Antigravity) | GPS waypoint: set it on the Tab map, the route along the roads on both maps, re-plan on a wrong turn |
+| [A15-gps-waypoint.md](A15-gps-waypoint.md) | now (Antigravity, then A16) | GPS waypoint: set it on the Tab map, the route along the roads on both maps, re-plan on a wrong turn |
 | [A13-pursuit-hud.md](A13-pursuit-hud.md) | done (0.7.10, 0.7.11) | The pursuit HUD (heat, evade, cooldown, bust) and police and helicopter markers on both maps, against the pursuit contract |
 | A12 (prompt in chat) | done (0.6.10 to 0.6.12) | Landmark icons on the minimap, `tools/landmarks.html` model viewer, `tools/buildbench.mjs` world-build bench |
 | [A5-buildings.md](A5-buildings.md) | after A7 part 6 | Building kit, facade atlas, street furniture |
