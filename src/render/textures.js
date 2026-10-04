@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { makeRng } from '../core/rng.js';
+import { FONT } from './fonts.js';
 
 /** @type {Map<string, THREE.Texture>} */
 const cache = new Map();
@@ -402,7 +403,7 @@ export function signAtlas(colors) {
       g.fillStyle = '#fff6ee';
       const chars = [...word];
       const step = Math.min(28, 112 / chars.length);
-      g.font = `bold ${Math.round(step * 0.82)}px "Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif`;
+      g.font = `bold ${Math.round(step * 0.82)}px ${FONT.jp}`;
       chars.forEach((ch, k) => g.fillText(ch, x + 16, 64 + (k - (chars.length - 1) / 2) * step));
     });
     return canvasTexture(c);
@@ -445,7 +446,7 @@ export function brandTexture(brand) {
     g.fillText(kitsune ? 'KITSUNE' : 'HOSHI', 32, 68);
     g.fillStyle = '#101010';
     g.fillRect(6, 78, 52, 42);
-    g.font = 'bold 15px monospace';
+    g.font = `bold 14px ${FONT.seg7}`;
     g.fillStyle = '#ff5a2a';
     g.fillText('168', 32, 95);
     g.fillStyle = '#7dff6a';
@@ -494,7 +495,7 @@ export function shopSignAtlas() {
       g.fillStyle = 'rgba(255,255,255,0.35)';
       g.fillRect(2, i * 32 + 2, 124, 2);
       g.fillStyle = fg[i];
-      g.font = 'bold 22px "Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif';
+      g.font = `bold 22px ${FONT.jp}`;
       g.fillText(word, 64, i * 32 + 17);
     });
     g.fillStyle = '#1d4fa6';

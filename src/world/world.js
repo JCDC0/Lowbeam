@@ -19,6 +19,7 @@ import { buildLamps, buildTown } from './props.js';
 import { buildTrees } from './build-trees.js';
 import { buildLots, loadModels } from './build-lots.js';
 import { HELI_MODELS } from '../police/heli-view.js';
+import { loadFonts } from '../render/fonts.js';
 import { LOTS } from './layout.js';
 import { buildStations } from './gas-station.js';
 import { buildSky, MOON_DIR } from '../render/sky.js';
@@ -38,6 +39,7 @@ export class World {
     const w = new World();
     const t0 = performance.now();
     await step('SURVEYING KUROGANE');
+    await loadFonts();
     w.ground = new Ground();
     await step('PLACING LAMPS AND TREES');
     const models = await loadModels([...LOTS.map((l) => l.model), ...HELI_MODELS]);

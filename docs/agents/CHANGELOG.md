@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0 (2026-10-04)
+
+More typefaces: segment digits, a monospace, a heavy display face and a Japanese face.
+
+- New dev dependencies `dseg`, `@fontsource/share-tech-mono`, `@fontsource/dela-gothic-one`,
+  `@fontsource/m-plus-1p` (all OFL); `tools/vendor-fonts.mjs` copies them into `assets/fonts/` and
+  writes `fonts.css` (linked from index.html); `assets/fonts/LICENSES.md` lists every face.
+- New `src/render/fonts.js`: `FONT` stacks and `loadFonts`, awaited by `World.create` before any canvas.
+- Signs: M PLUS 1p for the Japanese, Dela Gothic One for plaza, brand and lot names, DSEG7 for prices,
+  pump displays and plates.
+- `concepts/` (reference images from the web) is git-ignored and out of the history.
+
 ## 0.7.11 (2026-10-04)
 
 Police and helicopter markers on the minimap and Tab tactical map.

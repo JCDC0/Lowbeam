@@ -6,6 +6,7 @@
  * lit glass, signs).
  */
 
+import { FONT } from '../render/fonts.js';
 import * as THREE from 'three';
 import { psxBasic, psxLambert } from '../render/psx.js';
 import { asphaltTexture, canvasTexture, concreteTexture, makeCanvas, metalTexture, shutterTexture, windowTextures } from '../render/textures.js';
@@ -51,7 +52,7 @@ function signTexture(text, kind) {
   g.lineWidth = 4;
   g.strokeRect(4, 4, 248, 56);
   g.fillStyle = ink;
-  g.font = `bold ${text.length > 14 ? 26 : 32}px "Lowbeam Display", Arial, sans-serif`;
+  g.font = `${text.length > 14 ? 26 : 32}px ${FONT.impact}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText(text, 128, 34, 236);

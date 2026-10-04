@@ -12,6 +12,7 @@ import { psxBasic, psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
 import { canvasTexture, concreteTexture, makeCanvas } from '../render/textures.js';
 import { BARRIER, PLAZA_PARTS, RAIL } from './highway.js';
+import { FONT } from '../render/fonts.js';
 
 const CANOPY_Y = 5.9;
 
@@ -91,7 +92,7 @@ function uvOf(name) {
 }
 /** @type {Record<string, string>} */
 const KANJI = { KITA: '北', HIGASHI: '東', MINATO: '港', BAYSHORE: '湾岸' };
-const JP = '"Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif';
+const JP = FONT.jp;
 
 /** Every sign, signal and stripe of one plaza on one canvas. @param {import('./highway.js').Plaza} pl */
 function plazaAtlas(pl) {
@@ -136,10 +137,10 @@ function plazaAtlas(pl) {
     g.fillRect(x, y, w, h);
     g.fillStyle = '#eef0f2';
     g.textAlign = 'left';
-    g.font = `bold 52px ${JP}`;
+    g.font = `52px ${FONT.impact}`;
     g.fillText(kanji, x + 18, y + h / 2 + 2);
     const kw = g.measureText(kanji).width;
-    g.font = 'bold 30px sans-serif';
+    g.font = `30px ${FONT.impact}`;
     g.fillText(base[0] + base.slice(1).toLowerCase(), x + 30 + kw, y + h / 2 + 6);
     g.textAlign = 'center';
   }

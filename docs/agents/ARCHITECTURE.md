@@ -83,7 +83,9 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
 | `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
-| `assets/fonts/` | Michroma (SIL OFL, `OFL.txt`), the Microgramma-style display face |
+| `assets/fonts/` | The vendored faces, all SIL OFL (`LICENSES.md`): Michroma (the display face), DSEG7 and DSEG14 Classic, Share Tech Mono, Dela Gothic One, M PLUS 1p; `fonts.css` is generated |
+| `src/render/fonts.js` | `FONT` (the CSS stacks: display, seg7, seg14, mono, impact, jp) and `loadFonts`, which `World.create` awaits before drawing any canvas |
+| `tools/vendor-fonts.mjs` | Copies the font packages from node_modules into assets/fonts/ and writes fonts.css (CJK faces stay split by unicode-range) |
 | `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
 | `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, diamond interchange ramps |
 | `src/world/citygen.js` | Pure: the city's local streets, district by district (`cityStreets`), and `polygonMask` for fast inside tests |
@@ -163,10 +165,20 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.11)
+## Current state (0.8.0)
 
 Done and tested:
 
+- Fonts (0.8.0). Beside Michroma (`Lowbeam Display`, still the menus and the HUD) the game bundles
+  DSEG7 and DSEG14 Classic (segment digits), Share Tech Mono, Dela Gothic One (heavy banners, with
+  kana and kanji) and M PLUS 1p (Japanese), all OFL, vendored from npm by `tools/vendor-fonts.mjs`
+  into `assets/fonts/` with `fonts.css` linked from index.html. The CJK faces are split into
+  unicode-range pieces, so a page fetches only the characters it uses (3.7 MB on disk). `FONT` in
+  `src/render/fonts.js` names the stacks; `loadFonts` (awaited by `World.create`, 4 s at most) fetches
+  every face and the kana and kanji the canvas textures draw, so signs never bake a fallback face.
+  Now in use: M PLUS 1p for every Japanese sign (neon, shop signs, toll plaza signs, station signs),
+  Dela Gothic One for the plaza names, the brand names and the lot signs (police HQ, garages), DSEG7
+  for the pylon prices, pump displays and plates. Reference images in `concepts/` are git-ignored.
 - Smaller buildings and housing (0.7.7, `buildings.js`, `props.js`). Between the towers and the
   houses the town now has five more kinds: `shop`, a narrow shophouse of two to four floors with a lit
   shop under a striped awning and a lit signboard (`SHOP_SIGNS` in textures.js: ラーメン, 居酒屋 with

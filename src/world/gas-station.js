@@ -17,6 +17,7 @@ import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
 import { canvasTexture, makeCanvas, shopTexture } from '../render/textures.js';
+import { FONT } from '../render/fonts.js';
 import { CarModel } from '../vehicles/models.js';
 import { CARS } from '../vehicles/specs.js';
 import { padPoint } from './scatter.js';
@@ -28,7 +29,7 @@ const BRAND = {
   hoshi: { color: 0x1f4fb8, css: '#1f4fb8', dark: '#0d2a66', name: 'HOSHI', jp: 'ほし石油' },
 };
 const TENT = [0xc8202a, 0xe8e8e8, 0x1d4fb0];
-const JP = '"Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif';
+const JP = FONT.jp;
 /** Pump prices in yen per liter: regular, high octane, diesel. */
 const PRICES = [168, 179, 148];
 
@@ -95,7 +96,7 @@ function brandTextures(brand) {
     g.fillRect(x + 4, y + 4, w - 8, 120);
     g.fillStyle = '#ffffff';
     emblem(g, brand, x + w / 2, y + 52, 70);
-    g.font = 'bold 22px sans-serif';
+    g.font = `20px ${FONT.impact}`;
     g.fillText(B.name, x + w / 2, y + 108);
     g.fillStyle = '#f4f4f0';
     g.fillRect(x + 4, y + 130, w - 8, 44);
@@ -111,7 +112,7 @@ function brandTextures(brand) {
       g.font = `bold 17px ${JP}`;
       g.fillText(label, x + w / 2, ry + 15);
       g.fillStyle = color;
-      g.font = 'bold 42px monospace';
+      g.font = `bold 34px ${FONT.seg7}`;
       g.fillText(String(PRICES[i]), x + w / 2, ry + 52);
     });
     g.fillStyle = B.css;
@@ -122,10 +123,10 @@ function brandTextures(brand) {
     g.fillStyle = '#0e1012';
     g.fillRect(x, y, w, h);
     g.fillStyle = '#3aff7a';
-    g.font = 'bold 22px monospace';
+    g.font = `bold 20px ${FONT.seg7}`;
     g.fillText(String(PRICES[0]), x + w / 2, y + 22);
     g.fillStyle = '#ff9a3a';
-    g.font = 'bold 14px monospace';
+    g.font = `13px ${FONT.seg7}`;
     g.fillText('0.00 L', x + w / 2, y + 48);
   }
   /** @type {[string, string, string[]][]} */
@@ -279,13 +280,13 @@ function brandTextures(brand) {
   fg.fillStyle = B.css;
   emblem(fg, brand, 34, 23, 36);
   fg.textBaseline = 'middle';
-  fg.font = 'bold 26px sans-serif';
+  fg.font = `22px ${FONT.impact}`;
   fg.textAlign = 'left';
   fg.fillText(B.name, 62, 24);
-  fg.textAlign = 'left';
+  const after = 62 + fg.measureText(B.name).width + 14;
   fg.font = `bold 18px ${JP}`;
   fg.fillStyle = '#2a2c30';
-  fg.fillText(B.jp, 172, 24);
+  fg.fillText(B.jp, after, 24);
   const fascia = canvasTexture(f, { repeat: true });
   const out = { atlas, fascia };
   textures.set(brand, out);
