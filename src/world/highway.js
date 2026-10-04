@@ -14,6 +14,13 @@ import { inStretch } from './merge.js';
 export const SEGMENT = 6;
 /** Half the width of a plaza's canopy and the length of the stretch it replaces, meters. */
 export const PLAZA = { half: 15.5, reach: 24, openRail: 52 };
+/**
+ * A plaza's islands, from the Shuto Expressway's: the island runs `island` meters each way from the
+ * canopy with an impact cushion (`cushion` deep) on its approach nose; the median island is longer.
+ * Light masts stand on the median `mast` meters out, `mastH` tall. ETC lanes are painted blue for
+ * `paint` meters before the island nose.
+ */
+export const PLAZA_PARTS = { island: 11, cushion: 1.2, median: 13, mast: 18, mastH: 19, paint: [10, 46] };
 export const BARRIER = { halfBase: 0.31, halfTop: 0.12, height: 0.82 };
 export const RAIL = { offset: 0.9, low: 0.55, high: 0.86 };
 /** Lane width on Route 1 and the lanes in a carriageway. */
@@ -27,9 +34,10 @@ const RAMP_RAIL_END = 26;
  * @typedef {{ x: number, z: number, y: number, yaw: number, len: number, chunk: number }} Segment
  * @typedef {{
  *   toll: typeof TOLLS[number], x: number, z: number, y: number, yaw: number,
- *   carriageway: number, laneWidth: number, lanes: { u: number, cash: boolean }[],
- *   dividers: number[]
+ *   carriageway: number, laneWidth: number, lanes: { u: number, cash: boolean, sign: 'etc' | 'mixed' | 'cash' }[],
+ *   dividers: number[], paint: PaintStrip[]
  * }} Plaza
+ * @typedef {{ hw: number, pts: { x: number, y: number, z: number, lx: number, lz: number, s: number }[] }} PaintStrip
  */
 
 /**
@@ -68,15 +76,24 @@ export function placeHighway(ground, boxes, circles, lights) {
     const x = q.x - q.tz * tHalf;
     const z = q.z + q.tx * tHalf;
     const lanes = [];
+    const paint = [];
+    const exp = toll.road || 'c1';
     for (const side of [1, -1]) {
+      const road = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-${side > 0 ? 'f' : 'r'}`));
       for (let i = 0; i < nLanes; i++) {
-        lanes.push({ u: side * tHalf + (i - (nLanes - 1) / 2) * tLaneWidth, cash: i === nLanes - 1 });
+        const u = side * tHalf + (i - (nLanes - 1) / 2) * tLaneWidth;
+        // k counts from the median out: the outer lane takes cash (一般), the one inside it both.
+        const k = side > 0 ? i : nLanes - 1 - i;
+        /** @type {'etc' | 'mixed' | 'cash'} */
+        const sign = k === nLanes - 1 ? (nLanes > 2 ? 'cash' : 'mixed') : k === nLanes - 2 && nLanes > 2 ? 'mixed' : 'etc';
+        lanes.push({ u, cash: k === nLanes - 1, sign });
+        if (sign === 'etc') paint.push(paintStrip(road, x + Math.cos(Math.atan2(q.tx, q.tz)) * u, z - Math.sin(Math.atan2(q.tx, q.tz)) * u, tLaneWidth / 2 - 0.35));
       }
     }
     const dividers = [];
     for (const side of [1, -1]) for (let k = 1; k < nLanes; k++) dividers.push(side * tHalf + (k - nLanes / 2) * tLaneWidth);
     return {
-      toll, x, z, y: targetFwd.heightAt(h.s), yaw: Math.atan2(q.tx, q.tz), carriageway: tHalf, laneWidth: tLaneWidth, lanes, dividers,
+      toll, x, z, y: targetFwd.heightAt(h.s), yaw: Math.atan2(q.tx, q.tz), carriageway: tHalf, laneWidth: tLaneWidth, lanes, dividers, paint,
       s: h.s,
     };
   });
@@ -185,24 +202,57 @@ export function placeHighway(ground, boxes, circles, lights) {
     const sn = Math.sin(pl.yaw);
     const at = (u, v) => ({ x: pl.x + c * u + sn * v, z: pl.z - sn * u + c * v });
     const y1 = pl.y + 5.4;
-    for (const u of [...pl.dividers, 0]) {
+    const P = PLAZA_PARTS;
+    const half = (pl.carriageway * 2 + pl.laneWidth * 3 + 3) / 2;
+    for (const u of [...pl.dividers, 0, -(half - 0.5), half - 0.5]) {
       const col = at(u, 0);
       circles.push({ x: col.x, z: col.z, r: 0.6, y1: y1 });
     }
     for (const u of pl.dividers) {
       const isl = at(u, 0);
-      boxes.push({ x: isl.x, z: isl.z, hx: 0.65, hz: 9, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
+      boxes.push({ x: isl.x, z: isl.z, hx: 0.65, hz: P.island + P.cushion, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
     }
     const med = at(0, 0);
-    boxes.push({ x: med.x, z: med.z, hx: 1.6, hz: 12, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
+    boxes.push({ x: med.x, z: med.z, hx: 1.5, hz: P.median + P.cushion, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
+    for (const v of [-P.mast, P.mast]) {
+      const m = at(0, v);
+      circles.push({ x: m.x, z: m.z, r: 0.55 });
+      const l = at(0, v * 0.86);
+      lights.push({ x: l.x, y: pl.y + P.mastH, z: l.z, c: [1.5, 1.42, 1.25], range: 40 });
+    }
     for (const v of [-4, 0, 4]) {
       for (let k = -3; k <= 3; k += 2) {
         const l = at((k * pl.carriageway) / 3.5 + 0, v);
-        lights.push({ x: l.x, y: pl.y + 5.2, z: l.z, c: [1.1, 1.15, 1.2], range: 22 });
+        lights.push({ x: l.x, y: pl.y + 5.2, z: l.z, c: [1.1, 1.15, 1.2], range: 22, spot: 1 });
       }
     }
   }
   return { barrier, rails, plazas };
+}
+
+/**
+ * The blue paint of an ETC lane on its approach to the plaza, as points along the lane's center.
+ * @param {import('./roads.js').Road} road the carriageway the lane is on
+ * @param {number} cx @param {number} cz the lane's center under the canopy
+ * @param {number} hw half the painted width
+ * @returns {PaintStrip}
+ */
+function paintStrip(road, cx, cz, hw) {
+  const p = road.path;
+  const h = p.nearest(cx, cz);
+  const q = { x: 0, z: 0, tx: 0, tz: 1 };
+  p.sample(h.s, q);
+  const d = (cx - q.x) * q.tz - (cz - q.z) * q.tx;
+  const [a, b] = PLAZA_PARTS.paint;
+  const pts = [];
+  for (let back = b; back >= a - 0.01; back -= 3) {
+    const s = p.wrapS(h.s - back);
+    p.sample(s, q);
+    const lx = q.tz;
+    const lz = -q.tx;
+    pts.push({ x: q.x + lx * d, y: road.heightAt(s) + 0.012 * road.priority + 0.006, z: q.z + lz * d, lx, lz, s: b - back });
+  }
+  return { hw, pts };
 }
 
 /**

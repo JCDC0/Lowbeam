@@ -102,8 +102,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, baked lights, colliders |
 | `src/world/build-terrain.js` | Chunked terrain mesh (same diagonal as `Heightfield.at`), lake surface |
 | `src/world/build-roads.js` | Road ribbons with skirts, forecourt pads with curbs |
-| `src/world/highway.js` | Pure: Route 1's median barrier, guard rails, toll plazas and their colliders |
-| `src/world/build-highway.js` | Barrier and rail chunks, plaza canopy, booths, islands, lane lights and name board |
+| `src/world/highway.js` | Pure: Route 1's median barrier, guard rails, toll plazas (lanes, signs, ETC paint, masts) and their colliders |
+| `src/world/build-highway.js` | Barrier and rail chunks; the toll plazas after the Shuto Expressway's: fascia, lane signs and signals from one atlas, booths, islands, masts, ETC lane paint |
 | `src/world/toll.js` | Pure: `TollMeter` reads the speed and charges the toll as the car crosses a plaza line |
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
 | `src/race/event.js` | Pure: the `RaceEvent` interface every race kind shares: state, `update(dt, world)`, `result()` |
@@ -157,7 +157,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.8)
+## Current state (0.7.0)
 
 Done and tested:
 
@@ -581,10 +581,22 @@ Done and tested:
   `lamp` for head and tail lights; about 2,000 to 2,500 triangles a car. Racer speeds are
   1.8 to 2.7 times the limit (the player cars from their top speed bar).
 - Toll plazas (`highway.js`, `build-highway.js`, `toll.js`). KITA, HIGASHI and MINATO
-  TOLL straddle both carriageways: a 31 m canopy 5.9 m up on columns, a booth on every lane
-  divider (two per carriageway), a long median island, amber lights over the outer (cash)
-  lane and green over the two ETC lanes, upright barrier arms and a green name board.
-  Islands and columns have colliders; the lanes between are 3.7 m wide. `TollMeter` watches
+  TOLL on Route 1 and BAYSHORE TOLL on Route 2 straddle both carriageways. Since 0.7.0 they are
+  built after the Shuto Expressway's Oi plaza (references in `concepts/`): a canopy 5.9 m up on
+  blue columns with a fascia on each face (a dark beam with a round green signal and two amber
+  lamps per lane, a gray band with a lit lane sign per lane, a glass and blue panel band, red
+  fins at every column), the plaza's name plate (北 Kita, 東 Higashi, 港 Minato, 湾岸 Bayshore),
+  three banners on top (ETC fee, ETC card, speed enforcement), red and white chevron boards over
+  the island noses, booths with lit windows on 22 m islands with a striped impact cushion, a
+  hazard pole, a fee board (普通 and 大型) and an orange カメラ稼働中 board at the approach end,
+  an upright striped barrier arm past the booth, two 19 m light masts on the median, and the ETC
+  only lanes painted blue with white bars for 36 m before the island noses. Each face signs only
+  the lanes coming up to it. Lanes are counted from the median out (`PLAZA_PARTS` and the lane's
+  `sign` in highway.js): on a three-lane carriageway the outer lane is 一般 (cash), the middle
+  ETC/一般 and the inner ETC専用; on two lanes ETC/一般 and ETC専用. Every sign, signal and stripe
+  of a plaza is one canvas atlas (`plazaAtlas`). The canopy lights are spot pools, the masts round
+  ones that light the fascia. Islands, cushions, columns and masts have colliders; the lanes
+  between are 3.7 m wide. `TollMeter` watches
   the line across the plaza between the road edges: on a crossing it returns the speed in
   km/h, the fee (700 yen), the lane and whether it is a new best; `Drive` charges what you
   can pay, saves `tollBest` per plaza and shows `KITA TOLL 161 KM/H 700 YEN NEW BEST`. Each gate

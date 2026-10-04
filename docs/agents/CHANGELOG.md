@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.7.0 (2026-10-04)
+
+Rebuild the toll plazas after the Shuto Expressway's Oi plaza.
+
+- `build-highway.js`: a new plaza: blue columns, a fascia on each face with lit lane signs (ETC専用,
+  ETC/一般, 一般), round signals and amber lamps, a glass and blue panel band and red fins, the name
+  plate in kanji and romaji, three banners on top, chevron boards over the islands, booths with lit
+  windows, striped impact cushions, hazard poles, fee and camera boards, barrier arms, light masts.
+  All signs of a plaza come from one canvas atlas. The mirrored green name board is gone.
+- `highway.js`: lanes carry a `sign` counted from the median out (the cash lane is now the outer
+  lane on both carriageways), the ETC only lanes get blue paint strips along the carriageway
+  (`paint`), `PLAZA_PARTS` sizes the islands, cushions and masts; colliders for the longer islands,
+  the outer columns and the masts; the canopy lights are spot pools and the masts light the fascia.
+
 ## 0.6.8 (2026-10-04)
 
 The Kuro Pass time attack, the second RaceEvent (A11 part 2).
