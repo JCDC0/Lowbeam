@@ -19,6 +19,13 @@ The pursuit HUD (NFS: Most Wanted 2005 style).
 - `src/main.js`: mounts `pursuitHud`, steps it in frame loop, exports `window.__lowbeam.pursuitDemo(state, markers)` and `getMarkers()`.
 - Tests: `tests/pursuit-hud.test.mjs` verifying heat calculation, state banner formatting, bar fills, bust bar activation and terminal states.
 
+## 0.7.8 (2026-10-04)
+
+Brief A15 for Antigravity: the GPS waypoint.
+
+- New `docs/agents/tasks/A15-gps-waypoint.md`: a pure route over the traffic lanes (`routeTo`,
+  `RouteTracker`), set from the Tab map and drawn on both maps with the distance left. A13 marked done.
+
 ## 0.7.7 (2026-10-04)
 
 Fill the town with smaller buildings and housing.
