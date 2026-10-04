@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
-import { metalTexture, shutterTexture, signAtlas, windowTextures } from '../render/textures.js';
+import { awningTexture, latticeTexture, metalTexture, parkingTexture, shopSignAtlas, shopTexture, shutterTexture, signAtlas, windowTextures } from '../render/textures.js';
 import { makeRng } from '../core/rng.js';
 import { LAMP_HEIGHT, LAMP_REACH, SIGN_COLORS } from './scatter.js';
 
@@ -62,7 +62,8 @@ const TOWN_CELL = 320;
  * each). Each building kind has its own shape: offices and apartment blocks with lit windows and
  * roof clutter, towers with a stepped crown and a mast, houses with a pitched roof, warehouses and
  * sheds in corrugated metal with roller doors, garages with lit shutters, factories with a
- * saw-tooth roof, konbini with their glowing fronts.
+ * saw-tooth roof, konbini with their glowing fronts, shophouses with an awning and a lit signboard,
+ * walk-up apartments with their open corridors, narrow townhouses, machiya and coin parking lots.
  * @param {Building[]} buildings
  * @param {import('../render/bake.js').LightGrid} grid
  * @returns {THREE.Group}
@@ -88,6 +89,11 @@ export function buildTown(buildings, grid) {
     shop: psxBasic({ color: 0xe8f4ff }),
     band: psxBasic({ vertexColors: true }),
     sign: psxBasic({ map: signAtlas(SIGN_COLORS) }),
+    shopfront: psxBasic({ map: shopTexture(), vertexColors: true }),
+    shopsign: psxBasic({ map: shopSignAtlas() }),
+    awning: psxLambert({ map: awningTexture(), vertexColors: true, baked: true, side: THREE.DoubleSide }),
+    timber: psxLambert({ map: latticeTexture(), vertexColors: true, baked: true }),
+    lot: psxLambert({ map: parkingTexture(), baked: true }),
   };
   const group = new THREE.Group();
   group.name = 'town';
@@ -126,6 +132,11 @@ function addBuilding(b, bd) {
   if (kind === 'warehouse' || kind === 'garage' || kind === 'factory') shed(b, rng, bd, hw, hd);
   else if (kind === 'house') house(b, rng, bd, hw, hd);
   else if (kind === 'konbini') konbiniBox(b, bd, hw, hd);
+  else if (kind === 'shop') shophouse(b, rng, bd, hw, hd);
+  else if (kind === 'walkup') walkup(b, rng, bd, hw, hd);
+  else if (kind === 'townhouse') townhouse(b, rng, bd, hw, hd);
+  else if (kind === 'machiya') machiya(b, rng, bd, hw, hd);
+  else if (kind === 'parking') parking(b, rng, bd, hw, hd);
   else office(b, rng, bd, hw, hd);
   b.pop();
 }
@@ -273,4 +284,179 @@ function sign(b, rng, bd, hw, hd, h) {
   b.setColor(0xffffff);
   b.quad('sign', [sx + 0.03, y0, z1], [sx + 0.03, y0, z0], [sx + 0.03, y1, z0], [sx + 0.03, y1, z1], r);
   b.quad('sign', [sx - 0.03, y0, z0], [sx - 0.03, y0, z1], [sx - 0.03, y1, z1], [sx - 0.03, y1, z0], r);
+}
+
+const AWNING_TINTS = [0xc0281e, 0x1f7a3e, 0x1d4fa6, 0xd8781e, 0x6a3a22, 0x2a2c30];
+const SHOP_TINTS = [0xfff4e0, 0xe6f2ff, 0xffe8d8, 0xf4ffe8];
+const CAR_TINTS = [0xe8e8e6, 0x1a1c20, 0x9aa0a6, 0xb01e1e, 0x1d3f8a, 0xd8d0b8, 0x3a5a3a, 0x5a5e66];
+
+/**
+ * A narrow shophouse: a lit shop on the ground floor under a striped awning and a lit signboard
+ * (ラーメン, 居酒屋 with red lanterns, 薬局 and the rest, `SHOP_SIGNS`), two or three floors of
+ * windows over it with air conditioners on the front, a water tank on the roof.
+ * @param {MeshBuilder} b @param {ReturnType<typeof makeRng>} rng @param {Building} bd @param {number} hw @param {number} hd
+ */
+function shophouse(b, rng, bd, hw, hd) {
+  const h = Math.max(6, Math.round(bd.h / 3) * 3) + 0.4;
+  b.setColor(rng.pick(WALL_TINTS));
+  const u0 = rng.int(0, 7) / 8;
+  const v0 = rng.int(0, 7) / 8;
+  walls(b, 'wall', hw, hd, h, (len, hh) => [u0, v0, u0 + len / FACADE, v0 + hh / FACADE]);
+  b.setColor(0x4a4c50);
+  b.quad('roof', [hw, h, -hd], [-hw, h, -hd], [-hw, h, hd], [hw, h, hd]);
+  const z = hd + 0.02;
+  b.setColor(rng.pick(SHOP_TINTS));
+  b.quad('shopfront', [-hw + 0.35, 0.1, z], [hw - 0.35, 0.1, z], [hw - 0.35, 2.75, z], [-hw + 0.35, 2.75, z], [0, 0, (bd.w - 0.7) / 4, 1]);
+  b.setColor(rng.pick(AWNING_TINTS));
+  b.quad('awning', [-hw + 0.2, 3.0, hd], [hw - 0.2, 3.0, hd], [hw - 0.2, 2.62, hd + 1.3], [-hw + 0.2, 2.62, hd + 1.3], [0, 0, bd.w / 2, 1]);
+  b.quad('awning', [-hw + 0.2, 2.62, hd + 1.3], [hw - 0.2, 2.62, hd + 1.3], [hw - 0.2, 2.32, hd + 1.3], [-hw + 0.2, 2.32, hd + 1.3], [0, 0, bd.w / 2, 0.4]);
+  const i = Math.max(0, bd.sign) % 8;
+  const sw = Math.min(bd.w - 0.6, 6.5) / 2;
+  b.setColor(0xffffff);
+  b.quad('shopsign', [-sw, 3.15, z + 0.04], [sw, 3.15, z + 0.04], [sw, 3.95, z + 0.04], [-sw, 3.95, z + 0.04], [0, 1 - (i + 1) / 9, 1, 1 - i / 9]);
+  if (i === 1) {
+    b.setColor(0xff3a1e);
+    for (const sx of [-hw + 0.7, hw - 0.7]) b.box('band', sx, 2.0, hd + 0.5, 0.4, 0.55, 0.4);
+  }
+  b.setColor(0xd8d8d0);
+  for (let y = 4.6; y < h - 1.5; y += 3) if (rng.chance(0.6)) b.box('roof', rng.range(-hw + 0.8, hw - 0.8), y, hd + 0.22, 0.8, 0.55, 0.4);
+  if (rng.chance(0.5)) {
+    b.setColor(0x9aa0a4);
+    b.cylinder('roof', rng.range(-hw + 1.2, hw - 1.2), h + 1.1, rng.range(-hd + 1.5, 0), 0.9, 1.6, 8, 'y', { caps: true });
+  }
+}
+
+/**
+ * A walk-up apartment block: an open corridor on every floor along the front with its rail, a
+ * row of doors, lamps under each corridor and a stair at one end; the flats sit behind it.
+ * @param {MeshBuilder} b @param {ReturnType<typeof makeRng>} rng @param {Building} bd @param {number} hw @param {number} hd
+ */
+function walkup(b, rng, bd, hw, hd) {
+  const floors = Math.max(2, Math.round(bd.h / 3));
+  const h = floors * 3 + 0.5;
+  const cd = 1.5;
+  const tint = rng.pick(HOUSE_TINTS);
+  b.setColor(tint);
+  const u0 = rng.int(0, 7) / 8;
+  b.push(0, 0, -cd / 2);
+  walls(b, 'wall', hw, hd - cd / 2, h, (len, hh) => [u0, 0, u0 + len / FACADE, hh / FACADE]);
+  b.setColor(0x4a4c50);
+  b.quad('roof', [hw, h, -hd + cd / 2], [-hw, h, -hd + cd / 2], [-hw, h, hd - cd / 2], [hw, h, hd - cd / 2]);
+  b.pop();
+  const fz = hd - cd;
+  const stair = -hw + 1.2;
+  b.setColor(tint);
+  b.box('roof', stair, h / 2, hd - cd / 2, 2.4, h, cd);
+  for (let k = 0; k < floors; k++) {
+    const y = k * 3;
+    if (k > 0) {
+      b.setColor(0xc8c4bc);
+      b.box('roof', 1.2, y - 0.1, hd - cd / 2, bd.w - 2.4, 0.2, cd);
+      b.setColor(0xe4e2dc);
+      b.box('roof', 1.2, y + 0.5, hd - 0.06, bd.w - 2.4, 1.0, 0.12);
+    }
+    for (let x = stair + 2.2; x < hw - 0.8; x += 3.2) {
+      b.setColor(0x3a3530);
+      b.quad('roof', [x - 0.45, y + 0.05, fz + 0.01], [x + 0.45, y + 0.05, fz + 0.01], [x + 0.45, y + 2.1, fz + 0.01], [x - 0.45, y + 2.1, fz + 0.01]);
+      if (rng.chance(0.7)) {
+        b.setColor(0xfff0c0);
+        b.box('band', x + 0.9, y + 2.65, fz + 0.3, 0.22, 0.08, 0.22);
+      }
+    }
+  }
+  b.setColor(0xe4e2dc);
+  b.box('roof', 1.2, h - 0.25, hd - 0.06, bd.w - 2.4, 0.5, 0.12);
+}
+
+/**
+ * A narrow two-storey townhouse with its gable to the street and a carport under the upper floor.
+ * @param {MeshBuilder} b @param {ReturnType<typeof makeRng>} rng @param {Building} bd @param {number} hw @param {number} hd
+ */
+function townhouse(b, rng, bd, hw, hd) {
+  const h = Math.max(5, bd.h - 1.8);
+  const tint = rng.pick(HOUSE_TINTS);
+  b.setColor(tint);
+  const u0 = rng.int(0, 7) / 8;
+  const v0 = rng.int(0, 7) / 8;
+  walls(b, 'wall', hw, hd, h, (len, hh) => [u0, v0, u0 + len / FACADE, v0 + hh / FACADE]);
+  const z = hd + 0.02;
+  b.setColor(0x1c1e22);
+  const left = rng.chance(0.5) ? 1 : -1;
+  b.quad('roof', [left > 0 ? -hw + 0.3 : 0.3, 0.02, z], [left > 0 ? 0.6 : hw - 0.3, 0.02, z], [left > 0 ? 0.6 : hw - 0.3, 2.3, z], [left > 0 ? -hw + 0.3 : 0.3, 2.3, z]);
+  b.setColor(0x6a4a30);
+  const dx = left > 0 ? hw - 0.9 : -hw + 0.9;
+  b.quad('roof', [dx - 0.45, 0.02, z], [dx + 0.45, 0.02, z], [dx + 0.45, 2.1, z], [dx - 0.45, 2.1, z]);
+  b.setColor(0xfff0c8);
+  b.box('band', dx, 2.35, hd + 0.12, 0.2, 0.2, 0.15);
+  const ridge = h + hw * 0.75;
+  const o = 0.35;
+  b.setColor(rng.pick(ROOF_TINTS));
+  b.quad('roof', [-hw - o, h - 0.15, -hd - o], [-hw - o, h - 0.15, hd + o], [0, ridge, hd + o], [0, ridge, -hd - o]);
+  b.quad('roof', [hw + o, h - 0.15, hd + o], [hw + o, h - 0.15, -hd - o], [0, ridge, -hd - o], [0, ridge, hd + o]);
+  b.setColor(tint);
+  b.tri('roof', [-hw, h, hd], [hw, h, hd], [0, ridge, hd]);
+  b.tri('roof', [hw, h, -hd], [-hw, h, -hd], [0, ridge, -hd]);
+}
+
+/**
+ * A machiya: a wooden townhouse with a dark timber front, a lattice over the ground floor, a
+ * lean-to roof over it, a slatted upper window, a tiled roof along the street and, at some, a red
+ * lantern by a noren curtain at the door.
+ * @param {MeshBuilder} b @param {ReturnType<typeof makeRng>} rng @param {Building} bd @param {number} hw @param {number} hd
+ */
+function machiya(b, rng, bd, hw, hd) {
+  const h = Math.max(5.5, bd.h - 1.6);
+  b.setColor(0xe2dacb);
+  walls(b, 'wall', hw, hd, h, (len, hh) => [0, 0.5, len / FACADE, 0.5 + hh / FACADE]);
+  const z = hd + 0.02;
+  b.setColor(0x5a3e2a);
+  b.quad('timber', [-hw, 0, z], [hw, 0, z], [hw, h, z], [-hw, h, z], [0.015, 0.5, 0.016, 0.501]);
+  b.setColor(0x9a7a58);
+  b.quad('timber', [-hw + 0.3, 0.15, z + 0.02], [hw - 1.5, 0.15, z + 0.02], [hw - 1.5, 2.7, z + 0.02], [-hw + 0.3, 2.7, z + 0.02], [0, 0, (bd.w - 1.8) / 1.2, 2.55 / 1.2]);
+  b.quad('timber', [-hw * 0.7, 3.9, z + 0.02], [hw * 0.7, 3.9, z + 0.02], [hw * 0.7, 5.0, z + 0.02], [-hw * 0.7, 5.0, z + 0.02], [0, 0, (hw * 1.4) / 1.2, 1.1 / 1.2]);
+  b.setColor(0x3a3d44);
+  b.quad('roof', [-hw - 0.2, 3.45, hd], [hw + 0.2, 3.45, hd], [hw + 0.2, 2.95, hd + 1.05], [-hw - 0.2, 2.95, hd + 1.05]);
+  const ridge = h + Math.min(hd, 4) * 0.55;
+  const o = 0.6;
+  b.quad('roof', [-hw - o, h - 0.2, hd + o], [hw + o, h - 0.2, hd + o], [hw + o, ridge, 0], [-hw - o, ridge, 0]);
+  b.quad('roof', [hw + o, h - 0.2, -hd - o], [-hw - o, h - 0.2, -hd - o], [-hw - o, ridge, 0], [hw + o, ridge, 0]);
+  b.setColor(0xe2dacb);
+  b.tri('roof', [hw, h, hd], [hw, h, -hd], [hw, ridge, 0]);
+  b.tri('roof', [-hw, h, -hd], [-hw, h, hd], [-hw, ridge, 0]);
+  const door = hw - 0.75;
+  b.setColor(0x1d2a4a);
+  b.quad('awning', [door - 0.6, 1.5, z + 0.12], [door + 0.6, 1.5, z + 0.12], [door + 0.6, 2.5, z + 0.12], [door - 0.6, 2.5, z + 0.12], [0, 0, 0.3, 1]);
+  if (bd.seed % 3 === 0) {
+    b.setColor(0xff3a1e);
+    b.box('band', door + 0.9, 2.0, hd + 0.4, 0.42, 0.6, 0.42);
+  }
+}
+
+/**
+ * A coin parking lot: marked bays, a low curb round three sides, the cars parked in it
+ * (`Building.cars`, placed by buildings.js with their colliders) and the lit P sign by the street.
+ * @param {MeshBuilder} b @param {ReturnType<typeof makeRng>} rng @param {Building} bd @param {number} hw @param {number} hd
+ */
+function parking(b, rng, bd, hw, hd) {
+  b.setColor(0xffffff);
+  b.quad('lot', [-hw, 0.32, hd], [hw, 0.32, hd], [hw, 0.32, -hd], [-hw, 0.32, -hd], [0, 0, bd.w / 2.5, bd.d / 5]);
+  b.setColor(0xb8b4a8);
+  b.box('roof', 0, 0.35, -hd + 0.1, bd.w, 0.18, 0.2);
+  b.box('roof', -hw + 0.1, 0.35, 0, 0.2, 0.18, bd.d);
+  b.box('roof', hw - 0.1, 0.35, 0, 0.2, 0.18, bd.d);
+  for (const car of bd.cars || []) {
+    b.push(car.u, 0.3, car.v);
+    b.setColor(CAR_TINTS[car.color % CAR_TINTS.length]);
+    b.box('roof', 0, 0.62, 0, 1.72, 0.72, 4.3);
+    b.setColor(0x22272e);
+    b.box('roof', 0, 1.26, -0.2, 1.5, 0.56, 2.2);
+    b.pop();
+  }
+  const px = hw - 0.5;
+  const pz = hd - 0.5;
+  b.setColor(0x8a8e94);
+  b.box('roof', px, 2.3, pz, 0.14, 4.6, 0.14);
+  b.setColor(0xffffff);
+  b.quad('shopsign', [px - 0.62, 3.6, pz + 0.09], [px + 0.62, 3.6, pz + 0.09], [px + 0.62, 4.6, pz + 0.09], [px - 0.62, 4.6, pz + 0.09], [0, 0, 1, 1 / 9]);
+  b.quad('shopsign', [px + 0.62, 3.6, pz - 0.09], [px - 0.62, 3.6, pz - 0.09], [px - 0.62, 4.6, pz - 0.09], [px + 0.62, 4.6, pz - 0.09], [0, 0, 1, 1 / 9]);
 }

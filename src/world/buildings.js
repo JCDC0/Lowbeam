@@ -2,9 +2,11 @@
  * Where the town's buildings go. Pure. Every street and avenue gets a row of buildings along each
  * side, set back to the sidewalk, and in the denser districts a second row behind it, so the
  * blocks read as built up from the street and from the expressway. What is built depends on the
- * district (`cityStyle` in layout.js): towers and offices downtown, offices and apartment blocks
- * in midtown, houses and small apartment blocks in the residential districts, warehouses, garages
- * and sheds in the port and the industrial east, a house here and there along country roads.
+ * district (`cityStyle` in layout.js): towers, offices and narrow shophouses downtown; offices,
+ * shophouses, walk-up apartments, the odd machiya and coin parking in midtown; houses, narrow
+ * townhouses, walk-ups, apartment blocks and a corner shop or a machiya in the residential districts;
+ * warehouses, garages and sheds in the port and the industrial east, a house here and there along
+ * country roads. A coin parking lot is a flat lot with its parked cars (`cars`, colliders each).
  *
  * Two grids keep it fast with tens of thousands of lots: a 2 m mask of every road surface,
  * sidewalk and forecourt (a footprint is tested cell by cell, not by asking the road network), and
@@ -28,6 +30,8 @@ const SETBACK = 0.8;
 /** Gap between neighboring buildings. */
 const GAP = 1.2;
 const HASH = 48;
+/** Kinds that only stand on the street front, never in the row behind it. */
+const FRONT_ONLY = new Set(['konbini', 'shop', 'parking', 'machiya']);
 
 /**
  * Lot rules per district style: a pick of building types with weights, and whether a second row
@@ -40,29 +44,40 @@ const STYLES = {
     back: 0.85,
     skip: 0.04,
     types: [
-      { kind: 'tower', w: [18, 30], d: [18, 28], h: [45, 130], weight: 0.34 },
-      { kind: 'block', w: [14, 26], d: [14, 24], h: [16, 42], weight: 0.6 },
-      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.06 },
+      { kind: 'tower', w: [18, 30], d: [18, 28], h: [45, 130], weight: 0.3 },
+      { kind: 'block', w: [14, 26], d: [14, 24], h: [16, 42], weight: 0.44 },
+      { kind: 'shop', w: [6, 10], d: [10, 14], h: [8, 14], weight: 0.18 },
+      { kind: 'parking', w: [12, 18], d: [11, 15], h: [0.2, 0.2], weight: 0.03 },
+      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.05 },
     ],
   },
   midtown: {
     back: 0.75,
     skip: 0.06,
     types: [
-      { kind: 'tower', w: [16, 24], d: [16, 22], h: [32, 60], weight: 0.1 },
-      { kind: 'block', w: [12, 24], d: [12, 20], h: [10, 30], weight: 0.62 },
-      { kind: 'apartment', w: [20, 34], d: [10, 13], h: [12, 24], weight: 0.22 },
-      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.06 },
+      { kind: 'tower', w: [16, 24], d: [16, 22], h: [32, 60], weight: 0.08 },
+      { kind: 'block', w: [12, 24], d: [12, 20], h: [10, 30], weight: 0.34 },
+      { kind: 'apartment', w: [20, 34], d: [10, 13], h: [12, 24], weight: 0.14 },
+      { kind: 'shop', w: [6, 10], d: [10, 14], h: [7, 13], weight: 0.22 },
+      { kind: 'walkup', w: [12, 18], d: [9, 12], h: [9, 12], weight: 0.1 },
+      { kind: 'machiya', w: [6, 9], d: [10, 14], h: [6.5, 8], weight: 0.04 },
+      { kind: 'parking', w: [12, 20], d: [11, 16], h: [0.2, 0.2], weight: 0.04 },
+      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.04 },
     ],
   },
   residential: {
     back: 0.6,
     skip: 0.1,
     types: [
-      { kind: 'house', w: [8, 11], d: [8, 10], h: [5.5, 7.5], weight: 0.62, roof: 'pitched' },
-      { kind: 'apartment', w: [16, 26], d: [9, 12], h: [9, 16], weight: 0.27 },
-      { kind: 'block', w: [9, 14], d: [9, 12], h: [6, 10], weight: 0.08 },
-      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.03 },
+      { kind: 'house', w: [8, 11], d: [8, 10], h: [5.5, 7.5], weight: 0.38, roof: 'pitched' },
+      { kind: 'townhouse', w: [5, 7], d: [8, 11], h: [6.5, 8], weight: 0.18, roof: 'pitched' },
+      { kind: 'walkup', w: [12, 18], d: [9, 12], h: [6, 12], weight: 0.13 },
+      { kind: 'apartment', w: [16, 26], d: [9, 12], h: [9, 16], weight: 0.12 },
+      { kind: 'shop', w: [6, 9], d: [9, 12], h: [6, 9], weight: 0.07 },
+      { kind: 'machiya', w: [6, 9], d: [10, 14], h: [6.5, 8], weight: 0.05 },
+      { kind: 'parking', w: [12, 18], d: [11, 15], h: [0.2, 0.2], weight: 0.03 },
+      { kind: 'block', w: [9, 14], d: [9, 12], h: [6, 10], weight: 0.02 },
+      { kind: 'konbini', w: [16, 16], d: [12, 12], h: [4.2, 4.2], weight: 0.02 },
     ],
   },
   port: {
@@ -188,7 +203,7 @@ export function placeBuildings(ground, lights, boxes, signColors) {
         hi = Math.max(hi, h);
       }
     }
-    if (lo < WATER_LEVEL + 0.6 || hi - lo > 4) return false;
+    if (lo < WATER_LEVEL + 0.6 || hi - lo > (b.kind === 'parking' ? 0.6 : 4)) return false;
     const r = Math.hypot(b.w, b.d) / 2;
     for (const o of neighbors(b.x, b.z, r + 40)) if (overlap(o, b)) return false;
     b.y = lo - 0.3;
@@ -200,7 +215,17 @@ export function placeBuildings(ground, lights, boxes, signColors) {
     const k = hkey(Math.floor(b.x / HASH), Math.floor(b.z / HASH));
     if (!hash.has(k)) hash.set(k, []);
     /** @type {Building[]} */ (hash.get(k)).push(b);
-    boxes.push({ x: b.x, z: b.z, hx: b.w / 2, hz: b.d / 2, yaw: b.yaw });
+    if (b.kind !== 'parking') {
+      boxes.push({ x: b.x, z: b.z, hx: b.w / 2, hz: b.d / 2, yaw: b.yaw });
+      return;
+    }
+    // A coin parking lot is open ground: only its parked cars and the sign's pole are solid.
+    const c = Math.cos(b.yaw);
+    const s = Math.sin(b.yaw);
+    for (const car of b.cars || []) boxes.push({ x: b.x + car.u * c + car.v * s, z: b.z - car.u * s + car.v * c, hx: 0.9, hz: 2.2, yaw: b.yaw });
+    const pu = b.w / 2 - 0.5;
+    const pv = b.d / 2 - 0.5;
+    boxes.push({ x: b.x + pu * c + pv * s, z: b.z - pu * s + pv * c, hx: 0.15, hz: 0.15, yaw: b.yaw });
   };
 
   for (const road of ground.roads.roads) {
@@ -243,7 +268,8 @@ export function placeBuildings(ground, lights, boxes, signColors) {
           if (front.kind === 'konbini') konbini++;
           light(front, ax, az, lights, signColors);
           if (rng.chance(rules.back)) {
-            const back = rng.pick(rules.types.filter((t) => t.kind !== 'konbini'));
+            // Behind the street front: the same mix by weight, without what only makes sense on a street.
+            const back = pickType(rng, rules.types.filter((t) => !FRONT_ONLY.has(t.kind)), false);
             const d2 = rng.range(back.d[0], back.d[1]);
             const w2 = Math.min(w + rng.range(-4, 6), back.w[1]);
             const off = edge + d + GAP + d2 / 2 + rng.range(0, 3);
@@ -283,13 +309,28 @@ function heightFor(rng, t, core) {
  */
 function makeBuilding(rng, t, x, z, yaw, w, d, h) {
   const signs = t.kind === 'block' || t.kind === 'tower' || t.kind === 'apartment';
-  return {
+  /** @type {Building} */
+  const b = {
     x, z, y: 0, yaw, w, d, h,
     kind: t.kind,
     roof: t.roof || 'flat',
     seed: rng.int(0, 1e6),
     sign: signs && rng.chance(t.kind === 'apartment' ? 0.15 : 0.45) ? rng.int(0, 7) : -1,
   };
+  if (t.kind === 'shop') b.sign = rng.int(0, 7);
+  if (t.kind === 'parking') {
+    // Bays 2.5 m wide in rows 5 m deep from the back of the lot; a few of them taken.
+    b.cars = [];
+    const bays = Math.floor((w - 1) / 2.5);
+    const rows = Math.min(2, Math.floor((d - 5) / 5));
+    for (let r = 0; r < rows; r++) {
+      for (let i = 0; i < bays; i++) {
+        if (!rng.chance(0.45)) continue;
+        b.cars.push({ u: -w / 2 + 0.5 + 2.5 * (i + 0.5), v: -d / 2 + 2.5 + r * 5.5, color: rng.int(0, 7) });
+      }
+    }
+  }
+  return b;
 }
 
 /** The light a building throws on the street: a konbini's front, a sign's glow, a garage's lamp. */
@@ -298,6 +339,10 @@ function light(b, ax, az, lights, signColors) {
   const fz = b.z - az * (b.d / 2 + 1.2);
   if (b.kind === 'konbini') lights.push({ x: fx, y: b.y + 2.5, z: fz, c: [1.8, 2.0, 2.0], range: 15 });
   else if (b.kind === 'garage') lights.push({ x: fx, y: b.y + 4.2, z: fz, c: [1.5, 1.45, 1.2], range: 11 });
+  else if (b.kind === 'shop') lights.push({ x: fx, y: b.y + 2.6, z: fz, c: [1.6, 1.4, 1.05], range: 9 });
+  else if (b.kind === 'walkup') lights.push({ x: fx + ax * 0.6, y: b.y + 3.4, z: fz + az * 0.6, c: [1.1, 1.05, 0.85], range: 8 });
+  else if (b.kind === 'parking') lights.push({ x: b.x, y: b.y + 5, z: b.z, c: [1.3, 1.4, 1.6], range: 12 });
+  else if (b.kind === 'machiya' && b.seed % 3 === 0) lights.push({ x: fx, y: b.y + 2.2, z: fz, c: [1.0, 0.36, 0.22], range: 4.5 });
   else if (b.sign >= 0) lights.push({ x: fx, y: b.y + 4, z: fz, c: signColors[b.sign % signColors.length], range: 7 });
 }
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.7 (2026-10-04)
+
+Fill the town with smaller buildings and housing.
+
+- New kinds in `buildings.js` and `props.js`: shophouses (lit shop, awning, signboard), walk-up
+  apartments (open corridors, doors, lamps, stair core), narrow townhouses (street gable, carport),
+  machiya (timber lattice front, lean-to roof, noren, red lantern) and coin parking lots (bays, parked
+  cars with colliders, P sign). New district mixes in `STYLES`; street-front-only kinds; the back row
+  picks by weight; parking only on flat ground.
+- `textures.js`: `shopTexture`, `shopSignAtlas` (`SHOP_SIGNS` and the P sign), `awningTexture`,
+  `latticeTexture`, `parkingTexture`; the gas stations use the shared shop texture.
+- Lights for shop fronts, walk-up corridors, parking lots and machiya lanterns.
+
 ## 0.7.6 (2026-10-04)
 
 Rebuild the gas stations the Japanese way, to match the toll plazas.

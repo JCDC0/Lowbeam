@@ -453,3 +453,114 @@ export function brandTexture(brand) {
     return canvasTexture(c);
   });
 }
+
+/** A lit shop front seen through the glass: shelves of goods and a frame, repeating every 4 m. */
+export function shopTexture() {
+  return cached('shopfront', () => {
+    const c = makeCanvas(64, 64);
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff2d6';
+    g.fillRect(0, 0, 64, 64);
+    for (let y = 16; y < 56; y += 13) {
+      g.fillStyle = '#c8b89a';
+      g.fillRect(2, y, 60, 3);
+      for (let x = 4; x < 60; x += 7) {
+        g.fillStyle = ['#d84a3a', '#3a7ad8', '#e8c040', '#5ab05a'][(x + y) % 4];
+        g.fillRect(x, y - 7, 5, 7);
+      }
+    }
+    g.fillStyle = '#3a3e44';
+    g.fillRect(0, 0, 2, 64);
+    g.fillRect(0, 0, 64, 4);
+    return canvasTexture(c, { repeat: true });
+  });
+}
+
+/** Words on the shop signboards, one per row of `shopSignAtlas`; the last row is the parking sign. */
+export const SHOP_SIGNS = ['ラーメン', '居酒屋', '薬局', '書店', '喫茶', '理容', '酒', '寿司'];
+
+/** Nine horizontal signboards, 128 by 32 px each, one per row: the shops, then a coin parking sign. */
+export function shopSignAtlas() {
+  return cached('shop-signs', () => {
+    const c = makeCanvas(128, 288);
+    const g = c.getContext('2d');
+    const bg = ['#c81e1e', '#7a1414', '#1d7a3a', '#1d4fa6', '#5a3a22', '#2a2a2e', '#f2e8d0', '#f4f4f0'];
+    const fg = ['#fff4d0', '#ffe08a', '#ffffff', '#ffffff', '#ffd9a0', '#ff5a5a', '#8a1414', '#c81e1e'];
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    SHOP_SIGNS.forEach((word, i) => {
+      g.fillStyle = bg[i];
+      g.fillRect(0, i * 32, 128, 32);
+      g.fillStyle = 'rgba(255,255,255,0.35)';
+      g.fillRect(2, i * 32 + 2, 124, 2);
+      g.fillStyle = fg[i];
+      g.font = 'bold 22px "Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif';
+      g.fillText(word, 64, i * 32 + 17);
+    });
+    g.fillStyle = '#1d4fa6';
+    g.fillRect(0, 256, 128, 32);
+    g.fillStyle = '#ffffff';
+    g.fillRect(4, 259, 26, 26);
+    g.fillStyle = '#1d4fa6';
+    g.font = 'bold 24px sans-serif';
+    g.fillText('P', 17, 273);
+    g.fillStyle = '#ffd23a';
+    g.font = 'bold 16px sans-serif';
+    g.fillText('24H  ¥300', 80, 273);
+    return canvasTexture(c);
+  });
+}
+
+/** Awning cloth: stripes that the vertex color tints, with a darker hem. */
+export function awningTexture() {
+  return cached('awning', () => {
+    const c = makeCanvas(32, 16);
+    const g = c.getContext('2d');
+    for (let x = 0; x < 32; x += 8) {
+      g.fillStyle = '#ffffff';
+      g.fillRect(x, 0, 4, 16);
+      g.fillStyle = '#b8b8b8';
+      g.fillRect(x + 4, 0, 4, 16);
+    }
+    g.fillStyle = 'rgba(0,0,0,0.35)';
+    g.fillRect(0, 13, 32, 3);
+    return canvasTexture(c, { repeat: true });
+  });
+}
+
+/** Dark timber lattice (koshi) for a machiya's front: close vertical slats over a dark gap. */
+export function latticeTexture() {
+  return cached('lattice', () => {
+    const c = makeCanvas(32, 32);
+    const g = c.getContext('2d');
+    g.fillStyle = '#1a120c';
+    g.fillRect(0, 0, 32, 32);
+    for (let x = 0; x < 32; x += 4) {
+      g.fillStyle = '#c8b090';
+      g.fillRect(x, 0, 2, 32);
+    }
+    g.fillStyle = '#c8b090';
+    g.fillRect(0, 0, 32, 2);
+    return canvasTexture(c, { repeat: true });
+  });
+}
+
+/** One parking bay, 2.5 m by 5 m: asphalt, a white line down its left side and a wheel stop. */
+export function parkingTexture() {
+  return cached('parking', () => {
+    const c = makeCanvas(32, 64);
+    const g = c.getContext('2d');
+    g.fillStyle = '#3e3f43';
+    g.fillRect(0, 0, 32, 64);
+    const rng = makeRng(7);
+    for (let i = 0; i < 160; i++) {
+      g.fillStyle = rng.chance(0.5) ? '#46474b' : '#36373a';
+      g.fillRect(rng.int(0, 31), rng.int(0, 63), 1, 1);
+    }
+    g.fillStyle = '#e8e8e2';
+    g.fillRect(0, 0, 2, 64);
+    g.fillStyle = '#d8b030';
+    g.fillRect(8, 6, 16, 3);
+    return canvasTexture(c, { repeat: true });
+  });
+}

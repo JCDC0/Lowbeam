@@ -35,7 +35,8 @@ import { SKIRT, ELEVATED } from './roads.js';
  * street, w runs along the street and d away from it.
  * `kind` is block, tower, apartment, house, konbini, warehouse, garage or factory; `roof` is flat,
  * pitched, shed or saw.
- * @typedef {{ x: number, z: number, y: number, yaw: number, w: number, d: number, h: number, kind: string, roof: string, seed: number, sign: number }} Building
+ * @typedef {{ x: number, z: number, y: number, yaw: number, w: number, d: number, h: number, kind: string, roof: string, seed: number, sign: number,
+ *   cars?: { u: number, v: number, color: number }[] }} Building
  */
 /** @typedef {{ x: number, z: number, r: number, y0?: number, y1?: number }} Circle */
 /**

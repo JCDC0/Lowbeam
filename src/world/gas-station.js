@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
-import { canvasTexture, makeCanvas } from '../render/textures.js';
+import { canvasTexture, makeCanvas, shopTexture } from '../render/textures.js';
 import { CarModel } from '../vehicles/models.js';
 import { CARS } from '../vehicles/specs.js';
 import { padPoint } from './scatter.js';
@@ -191,26 +191,6 @@ function brandTextures(brand) {
   const out = { atlas, fascia };
   textures.set(brand, out);
   return out;
-}
-
-/** The lit shop front: glass with shelves and a counter behind it, repeating every 4 m. */
-function shopTexture() {
-  const c = makeCanvas(64, 64);
-  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
-  g.fillStyle = '#fff2d6';
-  g.fillRect(0, 0, 64, 64);
-  for (let y = 16; y < 56; y += 13) {
-    g.fillStyle = '#c8b89a';
-    g.fillRect(2, y, 60, 3);
-    for (let x = 4; x < 60; x += 7) {
-      g.fillStyle = ['#d84a3a', '#3a7ad8', '#e8c040', '#5ab05a'][(x + y) % 4];
-      g.fillRect(x, y - 7, 5, 7);
-    }
-  }
-  g.fillStyle = '#3a3e44';
-  g.fillRect(0, 0, 2, 64);
-  g.fillRect(0, 0, 64, 4);
-  return canvasTexture(c, { repeat: true });
 }
 
 /**

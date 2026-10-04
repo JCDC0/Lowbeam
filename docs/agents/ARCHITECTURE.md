@@ -124,7 +124,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/build-bridges.js` | Slab sides, underside, parapets and piers for roads that are lifted onto a deck |
 | `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
 | `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
-| `src/world/props.js` | Street lamps, town buildings with windows, konbini, neon |
+| `src/world/props.js` | Street lamps and the town: towers, offices, apartment blocks, houses, sheds, konbini, neon, and the small buildings: shophouses, walk-ups, townhouses, machiya, coin parking |
 | `src/world/gas-station.js` | The stations, Japanese style: lit fascia canopy with a lamp grid, two-tone pillars, striped islands and bollards, self-service dispensers and hanging hose reels, the price pylon, a glass-fronted kiosk, vending machines, IN and OUT boards; service park tents, floods, rival cars |
 | `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
 | `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
@@ -162,10 +162,26 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.6)
+## Current state (0.7.7)
 
 Done and tested:
 
+- Smaller buildings and housing (0.7.7, `buildings.js`, `props.js`). Between the towers and the
+  houses the town now has five more kinds: `shop`, a narrow shophouse of two to four floors with a lit
+  shop under a striped awning and a lit signboard (`SHOP_SIGNS` in textures.js: ラーメン, 居酒屋 with
+  red lanterns, 薬局, 書店, 喫茶, 理容, 酒, 寿司), air conditioners on its front and a water tank on its
+  roof; `walkup`, a walk-up apartment block with an open corridor on every floor along the front, its
+  rail, a row of doors, corridor lamps and a stair core at one end; `townhouse`, a narrow two-storey
+  house with its gable to the street and a carport under the upper floor; `machiya`, a timber
+  townhouse with a lattice front, a lean-to roof over the ground floor, a tiled roof along the street,
+  a noren at the door and at some a red lantern; `parking`, a coin parking lot with marked bays, its
+  parked cars (`Building.cars`, a collider each, the lot itself is open ground) and a lit P sign. The
+  mix per district is in `STYLES`: downtown gains shophouses and a little parking; midtown is about a
+  third offices, a fifth shophouses, then apartments, walk-ups, parking and the odd machiya;
+  residential is houses and townhouses first, then walk-ups, apartments, a corner shop or a machiya.
+  Shops, machiya, konbini and parking only stand on the street front; the row behind picks by weight
+  from the rest. Parking only goes on ground flat to 0.6 m. About 10,700 buildings and 12,450 lights;
+  a downtown view measured 124 draw calls and 503k triangles, residential 142 and 528k.
 - Gas stations rebuilt (0.7.6, `gas-station.js`), in the same hand as the toll plazas: a canopy 1.4 m
   deep with a lit fascia band in the brand's colors (the emblem and the name every 9 m, a brand-lit
   trim under it) and a ceiling of square lamps, pillars clad in the brand color to 1.3 m, islands with
@@ -363,7 +379,7 @@ Done and tested:
   with vertex colors per surface and a detail texture, road ribbons cut into 180 m chunks
   (7 columns: skirt, edge, three across, edge, skirt; higher priority roads sit 12 mm per
   priority higher so junctions never z-fight), bridges, concrete pads with curbs, about
-  4,600 two-armed sodium lamps, about 8,900 buildings (`buildings.js`: a row along each side of
+  4,600 two-armed sodium lamps, about 10,700 buildings (`buildings.js`: a row along each side of
   every town road and a second row behind it in the denser districts; towers to 130 m in the middle
   of downtown, offices, apartment blocks with balconies, houses with pitched roofs, warehouses and
   factories in corrugated metal with roller doors and saw-tooth roofs, garages with lit shutters,
