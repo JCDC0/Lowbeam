@@ -143,6 +143,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/models.html` | Dev model viewer: every car on a floor (keys 1 to 9 solo one), orbit, views, `shot()` |
 | `tools/bodies.html` | Dev catalog: every racer and traffic kind through the game's instanced material; `__bodies.show(...ids)`, `grid`, `shot` |
 | `tools/trees.html` | Dev tree viewer: the nine species in a 3 by 3 grid, orbit, `shot()` |
+| `tools/landmarks.html` | Dev landmark viewer: police HQ, garage and hideout at night through `loadModels` and `buildLots`, light markers, collider wireframes (C), keys 1 to 3 solo, vertex counts, `__landmarks.shot(name)` |
 | `tools/mapview.html` | Dev top-down map: hillshade, roads by class, overpasses, stations, tolls, zones; `__map.shot(name)` |
 | `tools/mapcheck.mjs` | Node: every road's length, height range, steepest grade, cut and fill, and where roads cross |
 | `src/audio/audio.js` | The `audio` singleton: graph, channels and settings, engine voice, tires, wind, ambience, impacts, pump, menu chirps |

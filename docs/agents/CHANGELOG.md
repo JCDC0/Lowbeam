@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.11 (2026-10-04)
+
+Landmark model viewer (A12 part 2).
+
+- `tools/landmarks.html`: the police HQ, a garage and a hideout side by side on a floor at night, loaded
+  through `loadModels` and built by `buildLots` with its materials, lit by the models' own lights through
+  `installPools`. Each light is a small marker (L toggles them), each collider a green wireframe box (C
+  toggles them). Keys 1 to 3 solo a model, 0 shows all, drag orbits, the wheel zooms. The readout lists
+  vertices, triangles, colliders and lights per model. `window.__landmarks.shot(name)` writes
+  `tools/shots/<name>.png`. The page sets `<base href="/">` because `loadModels` fetches a relative URL.
+
 ## 0.6.10 (2026-10-04)
 
 Landmarks on the minimap (A12 part 1).

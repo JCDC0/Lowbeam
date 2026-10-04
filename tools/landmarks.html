@@ -1,0 +1,170 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam landmark viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #info { position: fixed; left: 8px; top: 6px; color: #9ab; font: 12px monospace; white-space: pre; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info"></div>
+<script type="module">
+// Dev tool: the three landmark models (police HQ, garage, hideout) side by side on a floor at night,
+// built by the game's own loadModels and materials. Drag to orbit, wheel to zoom, 1 to 3 solo one
+// model, 0 shows all, C toggles the collider boxes, L the light markers.
+// window.__landmarks.shot('name') saves tools/shots/<name>.png.
+import * as THREE from 'three';
+import { createStage } from '/src/render/stage.js';
+import { psxBasic } from '/src/render/psx.js';
+import { installPools } from '/src/render/pools.js';
+import { buildLots, loadModels } from '/src/world/build-lots.js';
+import { lotContents } from '/src/world/lots.js';
+import { LOTS } from '/src/world/layout.js';
+
+const stage = createStage(document.getElementById('c'));
+stage.configure({ lines: 540 });
+const { scene, camera } = stage;
+scene.background = new THREE.Color(0x0a0f22);
+scene.add(new THREE.HemisphereLight(0x6a7aa2, 0x202226, 1.8));
+const moon = new THREE.DirectionalLight(0xa4b6e0, 1.4);
+moon.position.set(-30, 60, -40);
+scene.add(moon);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), new THREE.MeshLambertMaterial({ color: 0x3a3f48 }));
+floor.rotation.x = -Math.PI / 2;
+floor.position.y = -0.02;
+scene.add(floor);
+
+const KINDS = ['police', 'garage', 'hideout'];
+const lots = KINDS.map((k) => LOTS.find((l) => l.kind === k));
+const models = await loadModels(lots.map((l) => l.model));
+
+const GAP = 14;
+let cursor = 0;
+const entries = [];
+for (const lot of lots) {
+  const m = models[lot.model];
+  if (!m) continue;
+  const width = m.size[0];
+  const cx = cursor + width / 2;
+  cursor += width + GAP;
+  const pad = { cx, cz: 0, h: 0, vx: 0, vz: -1, lot };
+  entries.push({ lot, m, pad, width, cx });
+}
+for (const e of entries) e.pad.cx -= cursor / 2 - GAP / 2, e.cx = e.pad.cx;
+
+/** @type {THREE.Object3D[]} */
+const meshes = [];
+const markerMat = (c) => psxBasic({ color: new THREE.Color(c[0], c[1], c[2]).multiplyScalar(1 / Math.max(c[0], c[1], c[2], 1)) });
+const marker = new THREE.SphereGeometry(0.7, 6, 4);
+const allLights = [];
+for (const e of entries) {
+  const built = buildLots([e.pad], models);
+  const mesh = built.children[0];
+  const { boxes, lights } = lotContents([e.pad], models);
+  const colliders = new THREE.Group();
+  for (const b of boxes) {
+    const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(b.hx * 2, b.y1 - b.y0, b.hz * 2));
+    const line = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x40ff60, depthTest: false }));
+    line.position.set(b.x, (b.y0 + b.y1) / 2, b.z);
+    line.rotation.y = b.yaw;
+    line.renderOrder = 10;
+    colliders.add(line);
+  }
+  const marks = new THREE.Group();
+  for (const l of lights) {
+    const s = new THREE.Mesh(marker, markerMat(l.c));
+    s.position.set(l.x, l.y, l.z);
+    marks.add(s);
+    allLights.push(l);
+  }
+  const group = new THREE.Group();
+  group.add(mesh, colliders, marks);
+  scene.add(group);
+  Object.assign(e, { group, colliders, marks, verts: e.m.position.length / 3, boxes: boxes.length, lightCount: lights.length });
+  meshes.push(group);
+}
+installPools(allLights, 300);
+
+let showColliders = false;
+let showLights = true;
+let solo = -1;
+let yaw = 0.35, pitch = 0.4, dist = 120;
+const target = new THREE.Vector3(0, 6, 0);
+
+function apply() {
+  entries.forEach((e, i) => {
+    e.group.visible = solo < 0 || solo === i;
+    e.colliders.visible = showColliders;
+    e.marks.visible = showLights;
+  });
+  const sel = solo < 0 ? entries : [entries[solo]];
+  const x0 = Math.min(...sel.map((e) => e.cx - e.width / 2));
+  const x1 = Math.max(...sel.map((e) => e.cx + e.width / 2));
+  const depth = Math.max(...sel.map((e) => e.m.size[2]));
+  const height = Math.max(...sel.map((e) => e.m.size[1]));
+  target.set((x0 + x1) / 2, height * 0.35, 0);
+  dist = Math.max(x1 - x0, depth, height) * 0.85;
+  info();
+}
+
+function info() {
+  const rows = entries.map((e, i) => `${i + 1} ${e.lot.model.padEnd(10)} ${String(e.verts).padStart(6)} vertices, ${String(e.verts / 3).padStart(6)} triangles, ${e.boxes} colliders, ${e.lightCount} lights${solo === i ? '  <' : ''}`);
+  document.getElementById('info').textContent = [
+    'drag orbit, wheel zoom, 1 to 3 solo, 0 all, C colliders ' + (showColliders ? 'ON' : 'off') + ', L lights ' + (showLights ? 'ON' : 'off'),
+    ...rows,
+  ].join('\n');
+}
+
+function frame() {
+  camera.position.set(
+    target.x + Math.sin(yaw) * Math.cos(pitch) * dist,
+    target.y + Math.sin(pitch) * dist,
+    target.z + Math.cos(yaw) * Math.cos(pitch) * dist,
+  );
+  camera.lookAt(target);
+  stage.render();
+}
+apply();
+(function loop() { frame(); requestAnimationFrame(loop); })();
+
+let drag = null;
+addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY]));
+addEventListener('pointerup', () => (drag = null));
+addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01;
+  pitch = Math.max(-0.05, Math.min(1.45, pitch + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('wheel', (e) => (dist = Math.max(8, Math.min(400, dist + e.deltaY * 0.05))));
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k >= '1' && k <= '3' && entries[+k - 1]) solo = +k - 1;
+  else if (k === '0') solo = -1;
+  else if (k === 'c') showColliders = !showColliders;
+  else if (k === 'l') showLights = !showLights;
+  else return;
+  apply();
+});
+
+window.__landmarks = {
+  stage,
+  entries,
+  /** @param {number} i 0 to 2, or -1 for all */
+  show(i) { solo = i; apply(); frame(); },
+  colliders(on) { showColliders = on; apply(); frame(); },
+  lights(on) { showLights = on; apply(); frame(); },
+  view(y, p, d) { yaw = y; pitch = p; if (d) dist = d; frame(); },
+  /** @param {string} name */
+  shot(name) { frame(); return stage.shot(name); },
+};
+</script>
+</body>
+</html>
