@@ -13,6 +13,8 @@ import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
 import { canvasTexture, makeCanvas } from '../render/textures.js';
 import { DASHES, gaugeScale, needleAngle } from './dash.js';
+import { makeScreen } from './screens.js';
+import { FONT } from '../render/fonts.js';
 
 export { DASHES, gaugeScale, needleAngle };
 
@@ -46,12 +48,21 @@ export function cockpitCamera(eye, cowlY, cowlZ, roofY) {
 
 /** @typedef {import('./dash.js').GaugeSpot} GaugeSpot */
 
+/** How each face is painted: dial, ticks, red zone, numerals (only on the big dials), needle. */
+const FACES = {
+  classic: { inner: '#1a1c22', outer: '#0b0c0f', tick: '#e8e4da', red: '#d0201a', numerals: false, needle: 0xff5a1e },
+  white: { inner: '#f2eee2', outer: '#d8d2c0', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
+  yellow: { inner: '#f2cc2a', outer: '#d8a814', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
+};
+
 /**
- * Draws a gauge face onto a canvas: dark dial, ticks and the red zone. No numerals: at 240
- * lines they cannot be read, so the needle against the ticks tells the story.
+ * Draws a gauge face onto a canvas: the dial, ticks, the red zone, and on the white and yellow
+ * faces the numerals (the classic black face has none: the needle against the ticks is enough).
+ * @param {import('./dash.js').GaugeType} type @param {import('./specs.js').CarSpec} spec @param {keyof typeof FACES} face
  */
-function drawFace(type, spec) {
-  const S = 128;
+function drawFace(type, spec, face = 'classic') {
+  const F = FACES[face];
+  const S = F.numerals ? 192 : 128;
   const c = makeCanvas(S, S);
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
   const m = S / 2;
@@ -59,8 +70,8 @@ function drawFace(type, spec) {
   g.fillStyle = '#07080a';
   g.fillRect(0, 0, S, S);
   const grad = g.createRadialGradient(m, m * 0.85, 4, m, m, m);
-  grad.addColorStop(0, '#1a1c22');
-  grad.addColorStop(1, '#0b0c0f');
+  grad.addColorStop(0, F.inner);
+  grad.addColorStop(1, F.outer);
   g.fillStyle = grad;
   g.beginPath();
   g.arc(m, m, m - 1, 0, Math.PI * 2);
@@ -68,25 +79,42 @@ function drawFace(type, spec) {
   const toXY = (a, rr) => [m + Math.sin(a) * rr, m - Math.cos(a) * rr];
   const R = m - 6;
   if (sc.red < sc.max) {
-    g.strokeStyle = '#d0201a';
-    g.lineWidth = sc.small ? 7 : 6;
+    g.strokeStyle = F.red;
+    g.lineWidth = (sc.small ? 7 : 6) * (S / 128);
     g.beginPath();
     const a0 = needleAngle(sc, sc.red) - Math.PI / 2;
     const a1 = needleAngle(sc, sc.max) - Math.PI / 2;
     g.arc(m, m, R - 3, a0, a1);
     g.stroke();
   }
-  g.strokeStyle = '#e8e4da';
+  g.strokeStyle = F.tick;
+  const k = S / 128;
   for (let v = sc.min; v <= sc.max + 1e-6; v += sc.minor) {
     const major = Math.abs(((v - sc.min) / sc.major) - Math.round((v - sc.min) / sc.major)) < 1e-6;
     const a = needleAngle(sc, v);
     const [x0, y0] = toXY(a, R);
-    const [x1, y1] = toXY(a, R - (major ? 13 : 7));
-    g.lineWidth = major ? 4 : 2;
+    const [x1, y1] = toXY(a, R - (major ? 13 : 7) * k);
+    g.lineWidth = (major ? 4 : 2) * k;
     g.beginPath();
     g.moveTo(x0, y0);
     g.lineTo(x1, y1);
     g.stroke();
+    // Numerals on every major tick of the tach, every other one on the speedometer (three digits).
+    const step = Math.round((v - sc.min) / sc.major);
+    if (major && F.numerals && !sc.small && (type === 'tach' || (type === 'speed' && step % 2 === 0))) {
+      const [tx, ty] = toXY(a, R - 24 * k);
+      g.fillStyle = F.tick;
+      g.font = `bold ${Math.round((type === 'tach' ? 17 : 13) * k)}px ${FONT.mono}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(String(Math.round(v / sc.div)), tx, ty);
+    }
+  }
+  if (F.numerals && !sc.small) {
+    g.fillStyle = F.tick;
+    g.font = `${Math.round(11 * k)}px ${FONT.mono}`;
+    g.textAlign = 'center';
+    g.fillText(sc.label, m, type === 'tach' ? m - R * 0.3 : m + R * 0.42);
   }
   return canvasTexture(c);
 }
@@ -169,7 +197,7 @@ function makeGauge(spot, spec, mats) {
   can.position.z = -0.012;
   const bezel = new THREE.Mesh(new THREE.TorusGeometry(spot.r * 1.04, Math.max(0.003, spot.r * 0.07), 4, 24), mats.bezel);
   bezel.position.z = 0.004;
-  const faceMat = psxBasic({ map: drawFace(spot.type, spec), color: 0xd8d8d8 });
+  const faceMat = psxBasic({ map: drawFace(spot.type, spec, spot.face), color: 0xd8d8d8 });
   const face = new THREE.Mesh(new THREE.CircleGeometry(spot.r, 24), faceMat);
   const pivot = new THREE.Group();
   pivot.position.z = 0.006;
@@ -177,7 +205,7 @@ function makeGauge(spot, spec, mats) {
   const w = Math.max(0.0022, spot.r * 0.06);
   const ng = new THREE.BufferGeometry();
   ng.setAttribute('position', new THREE.Float32BufferAttribute([-w, -spot.r * 0.18, 0, w, -spot.r * 0.18, 0, w * 0.35, len, 0, -w, -spot.r * 0.18, 0, w * 0.35, len, 0, -w * 0.35, len, 0], 3));
-  const needle = new THREE.Mesh(ng, mats.needle);
+  const needle = new THREE.Mesh(ng, spot.face && spot.face !== 'classic' ? mats.needleRed : mats.needle);
   pivot.add(needle);
   const cap = new THREE.Mesh(new THREE.CircleGeometry(spot.r * 0.13, 10), mats.can);
   cap.position.z = 0.009;
@@ -263,6 +291,7 @@ export function buildCockpit(model) {
     can: psxBasic({ color: 0x050506, ...dbl }),
     bezel: psxPhong({ color: 0x9a9ea6, specular: 0xffffff, shininess: 80, ...o }),
     needle: psxBasic({ color: 0xff5a1e, ...dbl }),
+    needleRed: psxBasic({ color: 0xd01010, ...dbl }),
     rim: psxPhong({ color: 0x4a4a52, specular: 0x666666, shininess: 30, ...o }),
     marker: psxBasic({ color: 0xf2c51c }),
     lampOff: psxBasic({ color: 0x1a0c08 }),
@@ -281,6 +310,8 @@ export function buildCockpit(model) {
   let shiftLamp = null;
   let gear = null;
   let warn = null;
+  /** @type {ReturnType<typeof makeScreen> | null} */
+  let screen = null;
   for (const pod of DASHES[spec.id] || DASHES.hayate) {
     let center;
     let hood = 0;
@@ -301,6 +332,19 @@ export function buildCockpit(model) {
     const pm = pb.mesh({ pod: mats.pod });
     geos.push(pm.geometry);
     frame.add(pm);
+    if (pod.screen) {
+      // One display instead of dials: it draws the gear, the shift light and the warnings itself.
+      screen = makeScreen(pod.screen, spec, pod.w / pod.h);
+      const sm = psxBasic({ map: screen.tex });
+      const sq = new THREE.Mesh(new THREE.PlaneGeometry(pod.w, pod.h), sm);
+      sq.position.z = 0.004;
+      frame.add(sq);
+      extras.push(sm, screen.tex, sq.geometry);
+      frame.updateMatrixWorld(true);
+      group.add(frame);
+      pods.push(frame);
+      continue;
+    }
     for (const spot of pod.gauges) {
       const gg = makeGauge(spot, spec, mats);
       frame.add(gg.grp);
@@ -338,7 +382,7 @@ export function buildCockpit(model) {
   // The tilt brings the rim's top 0.18 sin 0.4 toward the driver and 0.18 cos 0.4 above the hub.
   const tilt = -0.4;
   const topZ = cam.z + 0.2;
-  const topY = cam.y - (topZ - cam.z) * Math.tan(COCKPIT_VIEW.gauges + 0.3);
+  const topY = cam.y - (topZ - cam.z) * Math.tan(COCKPIT_VIEW.gauges + 0.36);
   wheel.position.set(dx, topY - 0.18 * Math.cos(tilt), topZ - 0.18 * Math.sin(tilt));
   wheel.rotation.x = tilt;
   const spin = new THREE.Group();
@@ -350,7 +394,7 @@ export function buildCockpit(model) {
   wb.box('s', 0.1, -0.01, 0, 0.16, 0.035, 0.02);
   wb.box('s', 0, -0.01, -0.012, 0.1, 0.075, 0.035);
   // The racing marker at twelve o'clock, so the wheel reads against the dark dash and shows its turn.
-  wb.box('m', 0, 0.18, 0.004, 0.026, 0.05, 0.045);
+  wb.box('m', 0, 0.178, 0.006, 0.01, 0.022, 0.04);
   const spokes = wb.mesh({ s: mats.trim, m: mats.marker });
   spin.add(rim, spokes);
   group.add(wheel);
@@ -383,6 +427,12 @@ export function buildCockpit(model) {
         const rate = gg.type === 'tach' || gg.type === 'boost' ? 30 : 10;
         gg.value += (target - gg.value) * Math.min(1, rate * dt);
         gg.pivot.rotation.z = -needleAngle(gg.scale, gg.value);
+      }
+      if (screen) {
+        screen.draw({
+          kmh: g.kmh, rpm: g.rpm, gear: g.gear, boost: g.engineOn ? g.boost ?? 0 : 0, fuel: g.fuel / spec.fuel.tank, temp: g.temp,
+          shift: !!g.shift, limiter: !!g.limiter, blown: !!g.blown, warn: g.damage > 0.3 || g.temp > 115 || !g.engineOn, time,
+        });
       }
       if (gear) gear.set(g.gear, g.blown ? '#ff3020' : '#ffb020');
       if (shiftLamp) /** @type {THREE.MeshBasicMaterial} */ (shiftLamp.material).color.set(g.limiter && Math.floor(time * 12) % 2 ? 0x101010 : g.shift || g.limiter ? 0xff2a10 : 0x1a0c08);

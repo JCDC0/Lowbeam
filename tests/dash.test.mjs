@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DASHES, gaugeScale, needleAngle } from '../src/vehicles/dash.js';
+import { DASHES, gaugeScale, needleAngle, segmentsLit, tachZone } from '../src/vehicles/dash.js';
 import { CARS } from '../src/vehicles/specs.js';
 
 const types = (id) => DASHES[id].flatMap((p) => p.gauges.map((g) => g.type));
@@ -60,4 +60,28 @@ test('needles sweep clockwise and stop at the ends of the scale', () => {
   assert.equal(needleAngle(s, -50), needleAngle(s, s.min));
   const f = gaugeScale('fuel', CARS[0]);
   assert.ok(Math.abs(needleAngle(f, 0.5)) < 1e-9, 'a half tank points straight up');
+});
+
+test('each car has its own kind of instruments: dials in three faces, an LCD and a VFD', () => {
+  const cluster = (id) => DASHES[id].find((p) => p.pod === 'cluster');
+  assert.ok(cluster('hayate').gauges.every((g) => !g.face || g.face === 'classic') && !cluster('hayate').screen);
+  assert.ok(cluster('rampart').gauges.every((g) => g.face === 'white'));
+  assert.equal(cluster('vespera').gauges.find((g) => g.type === 'tach').face, 'yellow');
+  assert.equal(cluster('tsurugi').screen, 'lcd');
+  assert.equal(cluster('hikari').screen, 'vfd');
+  for (const car of CARS) assert.ok(car.dash && car.dash.hud, `${car.id} names its HUD cluster style`);
+  assert.equal(new Set(CARS.map((c) => c.dash.hud)).size, CARS.length, 'every car has its own HUD style');
+});
+
+test('the bar graph tach lights segments in proportion and colors the redline red', () => {
+  assert.equal(segmentsLit(0, 8000, 40), 0);
+  assert.equal(segmentsLit(4000, 8000, 40), 20);
+  assert.equal(segmentsLit(12000, 8000, 40), 40);
+  const car = CARS.find((c) => c.id === 'hikari');
+  const max = gaugeScale('tach', car).max;
+  const zones = Array.from({ length: 40 }, (_, i) => tachZone(i, 40, max, car.engine.redline));
+  assert.equal(zones[0], 'green');
+  assert.equal(zones[39], 'red');
+  assert.ok(zones.includes('amber'));
+  assert.ok(zones.indexOf('amber') < zones.indexOf('red'));
 });

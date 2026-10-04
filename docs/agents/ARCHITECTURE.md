@@ -11,8 +11,8 @@ street racer in the line of Night-Runners Prologue and Need for Speed: Most Want
 (2005). The current milestone is one level, Kurogane: a 6 km square map with a city on
 a bay, Route 1 (an expressway loop with toll plazas) round it, avenues that pass over the
 loop on overpasses, a mountain pass in the west, a forest and a lake in the north, four
-gas stations, and four cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic,
-Tsurugi GT-X grand tourer).
+gas stations, and five cars (Hayate RS-4 tuner, Rampart 440 muscle, Vespera GT exotic,
+Tsurugi GT-X grand tourer, Hikari 300ZR, a 1984 turbo coupe).
 Traffic and the street racers are in; challenging a rival and the rally come next.
 
 ## Commands
@@ -144,6 +144,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shadow, noise |
 | `src/vehicles/models.js` | Loft modeler (`Kit`), body data per car (`BODIES`), `CarModel`, `vehicleGeometry` |
 | `src/vehicles/cockpit.js` | `buildCockpit`: the interior and each car's modeled instruments (pods, bezels, faces, needles), `update(gauges, dt, time)` |
+| `src/vehicles/screens.js` | The digital clusters drawn on a canvas when a reading changes: `lcd` (Tsurugi, modern) and `vfd` (Hikari, 1984 fluorescent) |
 | `src/vehicles/dash.js` | Pure: each car's instruments (`DASHES`), gauge scales and needle angles |
 | `tools/sim.mjs` | Headless tuning bench for the cars |
 | `tools/models.html` | Dev model viewer: every car on a floor (keys 1 to 9 solo one), orbit, views, `shot()` |
@@ -165,10 +166,28 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.1)
+## Current state (0.8.2)
 
 Done and tested:
 
+- Every car its own instruments, and a fifth car (0.8.2). `DASHES` in dash.js gives each gauge a
+  `face` and a pod a `screen`: the Hayate keeps the classic black dials (the original, still the
+  reference), the Rampart has cream dials with black numerals and a red needle, the Vespera yellow
+  dials with numerals, the Tsurugi a modern LCD (`lcd`: an arc of 44 segments for the tach that turns
+  red at the redline and flashes at the shift point, the speed in DSEG7 with its unlit segments
+  ghosting, the gear in DSEG14 in a box, boost, fuel and temperature as bars, labels in Share Tech
+  Mono), and the new Hikari a vacuum fluorescent display (`vfd`: a straight bar-graph tach in green,
+  amber and red, the speed in DSEG14 in cyan, the gear in amber, a TURBO lamp, segment bars for boost,
+  fuel and temperature, glow on the lit elements and the phosphor of the unlit ones showing). Screens
+  are drawn by `screens.js` only when a reading changes (`segmentsLit`, `tachZone` in dash.js are the
+  pure parts). Numerals on the white and yellow faces in Share Tech Mono. Each spec names its HUD
+  cluster style (`dash.hud`: classic, twin, sport, digital, vfd) for task A16.
+  The Hikari 300ZR (`hikari`, Hikari Motor Works, 1984): a 3.0 L turbo straight-six with lazy boost
+  (0.8 bar from 3,400 rpm, 0.95 s of lag), five gears, rear drive, 1,440 kg; a long-hooded wedge with
+  pop-up lamps shown up, a raked windshield, a long fastback rear glass, a full-width tail lamp bar,
+  hood louvers and twin pipes. Bars 8 top speed, 5 handling, 5 acceleration, between the others as the
+  bench measures. It is not among the street racers yet: a new kind reshuffles every seeded pick and
+  the traffic tests' racer speed and lane change samples sit close to their limits (Hermes to widen).
 - Fonts (0.8.0). Beside Michroma (`Lowbeam Display`, still the menus and the HUD) the game bundles
   DSEG7 and DSEG14 Classic (segment digits), Share Tech Mono, Dela Gothic One (heavy banners, with
   kana and kanji) and M PLUS 1p (Japanese), all OFL, vendored from npm by `tools/vendor-fonts.mjs`
@@ -316,6 +335,7 @@ Done and tested:
   | Rampart 440 | 3.74 s | 11.67 s | 245 km/h | 37.2 m | 1.20 g / 0.61 g |
   | Vespera GT | 4.20 s | 12.13 s | 293 km/h | 31.7 m | 1.46 g / 0.59 g |
   | Tsurugi GT-X | 4.37 s | 11.78 s | 323 km/h | 34.2 m | 1.43 g / 0.69 g |
+  | Hikari 300ZR | 5.20 s | 13.52 s | 269 km/h | 38.2 m | 1.32 g / 0.72 g |
 
   Tarmac grip was raised in 0.2.0 (`SURFACES.asphalt.mu` 1.0 to 1.28, concrete 1.24, brakes
   stronger) and 0.2.3 added downforce (`spec.aero`, N per (m/s)^2 per axle, hard surfaces

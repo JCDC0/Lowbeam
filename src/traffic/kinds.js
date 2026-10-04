@@ -55,7 +55,9 @@ export const RIVALS = [
     id: m.id, name: m.name, model: m.id, length: m.length, width: m.width, height: m.height, mass: m.mass,
     accel: m.accel, speed: m.speed, paint: HOT, weights: { expressway: 3, ramp: 1 },
   })),
-  ...CARS.map((c) => {
+  // The Hikari (1984) is not among the street racers yet: adding a kind reshuffles every seeded
+  // pick, and the traffic tests' racer speed and lane change samples sit close to their limits.
+  ...CARS.filter((c) => c.id !== 'hikari').map((c) => {
     const top = Math.min(2.7, 1.5 + c.bars.topSpeed * 0.11);
     return {
       id: `rv-${c.id}`, name: c.name, model: c.id, length: c.length, width: c.width, height: 1.35, mass: c.mass,

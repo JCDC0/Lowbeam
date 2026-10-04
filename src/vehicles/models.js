@@ -31,7 +31,7 @@ import { BAND, RING_POINTS, archStation, insetRing, loftZs, ringOf, roofHeight, 
  *   flare: number, tireWidth: number,
  *   rim: 'rally' | 'muscle' | 'exotic', rimColor: number | 'accent',
  *   plate: string, widePlate?: boolean, driver: number,
- *   parts: (k: Kit) => void, axles?: number[], accent?: number[]
+ *   parts: (k: Kit) => void, axles?: number[], accent?: number[], exhaust?: number[][]
  * }} BodyDef
  * `axles` adds wheels at more z positions (trucks, buses); `accent` fixes the accent color of
  * a baked body (a cargo box) instead of near black.
@@ -215,6 +215,50 @@ export const BODIES = {
         for (const x of [0.3, 0.54]) k.b.cylinder('chrome', s * x, 0.34, -2.44, 0.05, 0.2, 8, 'z', { capKey: 'under' });
       });
       k.ducktail(-2.2, 0.82, 0.06);
+    },
+  },
+  hikari: {
+    // A 1984 wedge: long low hood, pop-up lamps (shown up, it is always night), a raked windshield,
+    // a long fastback rear glass and a full-width tail lamp bar.
+    stations: [
+      [-2.26, 0.33, 0.78, 0.56, 0.82, 0.86, 0.8, 0.9, 0.74],
+      [-2.18, 0.25, 0.84, 0.6, 0.86, 0.9, 0.84, 0.93, 0.78],
+      [-1.75, 0.23, 0.86, 0.62, 0.87, 0.92, 0.85, 0.96, 0.8],
+      [-0.62, 0.23, 0.87, 0.63, 0.87, 0.92, 0.85, 1.27, 0.62],
+      [0.08, 0.23, 0.87, 0.63, 0.87, 0.91, 0.85, 1.28, 0.62],
+      [0.95, 0.23, 0.87, 0.61, 0.87, 0.86, 0.85, 0.89, 0.8],
+      [1.8, 0.24, 0.86, 0.57, 0.86, 0.73, 0.83, 0.75, 0.78],
+      [2.15, 0.27, 0.82, 0.5, 0.83, 0.63, 0.8, 0.64, 0.74],
+      [2.27, 0.3, 0.76, 0.45, 0.78, 0.57, 0.74, 0.58, 0.68],
+    ],
+    glass: { side: [-1.7, 0.95], front: [0.08, 0.95], rear: [-1.75, -0.62] },
+    flare: 0.028,
+    tireWidth: 0.22,
+    rim: 'rally',
+    rimColor: 0xc8ccd2,
+    plate: 'HK 300-84',
+    driver: -1,
+    exhaust: [[0.42, 0.29, -2.33], [-0.42, 0.29, -2.33]],
+    parts(k) {
+      k.face('under', 'front', -0.62, 0.62, 0.36, 0.44);
+      k.face('lamp', 'front', 0.46, 0.7, 0.47, 0.52, true);
+      k.face('plate', 'front', -0.19, 0.19, 0.37, 0.45);
+      k.face('tail', 'rear', -0.8, 0.8, 0.7, 0.82);
+      k.face('trim', 'rear', -0.8, 0.8, 0.66, 0.7);
+      k.face('plate', 'rear', -0.2, 0.2, 0.5, 0.6);
+      k.face('under', 'rear', -0.7, 0.7, 0.34, 0.44);
+      k.side('trim', -1.8, 2.0, 0.42, 0.47);
+      const deck = k.topY(-2.05);
+      k.b.box('paint', 0, deck + 0.04, -2.05, 1.32, 0.03, 0.2);
+      k.mirror((s) => {
+        const z = 1.98;
+        const top = k.topY(z);
+        k.b.box('paint', s * 0.52, top + 0.06, z, 0.38, 0.13, 0.26);
+        k.b.box('lamp', s * 0.52, top + 0.07, z + 0.135, 0.32, 0.09, 0.01);
+        k.b.box('paint', s * 0.92, 0.97, 0.82, 0.1, 0.07, 0.07);
+        k.b.cylinder('chrome', s * 0.42, 0.29, -2.3, 0.045, 0.18, 6, 'z', { capKey: 'under' });
+        for (let i = 0; i < 4; i++) k.b.box('trim', s * 0.3, k.topY(1.35 - i * 0.12) + 0.006, 1.35 - i * 0.12, 0.34, 0.012, 0.05);
+      });
     },
   },
 };

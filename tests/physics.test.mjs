@@ -156,7 +156,7 @@ test('the manual selector runs N, R, 1 to the top gear for every car, at any spe
     assert.ok(down.includes(-1), `${spec.id} passes through R on the way down`);
     assert.ok(down.includes(1), `${spec.id} passes through 1st on the way down`);
   }
-  assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6, 7]);
+  assert.deepEqual(CARS.map((c) => c.gears.length), [5, 5, 6, 7, 5]);
 });
 
 test('the manual selector steps N, R, 1 with a single tap, in both directions', () => {

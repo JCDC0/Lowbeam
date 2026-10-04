@@ -5,14 +5,23 @@
 
 /**
  * @typedef {'tach' | 'speed' | 'fuel' | 'temp' | 'boost' | 'oil' | 'volt'} GaugeType
- * @typedef {{ type: GaugeType, u: number, v: number, r: number }} GaugeSpot
- * @typedef {{ pod: 'cluster' | 'top' | 'center', w: number, h: number, gauges: GaugeSpot[], shift?: boolean }} DashPod
+ * @typedef {'classic' | 'white' | 'yellow'} GaugeFace
+ * @typedef {{ type: GaugeType, u: number, v: number, r: number, face?: GaugeFace }} GaugeSpot
+ * @typedef {{ pod: 'cluster' | 'top' | 'center', w: number, h: number, gauges: GaugeSpot[], shift?: boolean,
+ *   screen?: 'lcd' | 'vfd' }} DashPod
+ *
+ * A gauge's `face` is how its dial is painted: `classic` black with white ticks (the Hayate's, the
+ * original), `white` cream with black ticks and numerals (a 60s and 70s muscle car), `yellow` with
+ * black ticks and numerals (an Italian exotic's tach). A pod with a `screen` is not dials but one
+ * display drawn every frame (screens.js): `lcd` a modern digital cluster, `vfd` an 80s vacuum
+ * fluorescent one; its `gauges` list what the screen shows, laid out as a strip.
  */
 
 /**
- * Each car's instruments: the Hayate has a boost pod on the dash top, the Rampart only a
- * speedometer and a tach, the Vespera no boost or exhaust gauge, the Tsurugi a three-gauge
- * center stack.
+ * Each car's instruments: the Hayate the classic black dials and a boost pod on the dash top, the
+ * Rampart only a big white speedometer and tach, the Vespera yellow dials with no boost or exhaust
+ * gauge, the Tsurugi a digital LCD cluster and a three-gauge center stack, the Hikari a green and
+ * amber fluorescent display.
  * @type {Record<string, DashPod[]>}
  */
 export const DASHES = {
@@ -27,20 +36,20 @@ export const DASHES = {
   ],
   rampart: [
     { pod: 'cluster', w: 0.32, h: 0.16, gauges: [
-      { type: 'speed', u: -0.078, v: 0, r: 0.072 },
-      { type: 'tach', u: 0.078, v: 0, r: 0.072 },
+      { type: 'speed', u: -0.078, v: 0, r: 0.072, face: 'white' },
+      { type: 'tach', u: 0.078, v: 0, r: 0.072, face: 'white' },
     ] },
   ],
   vespera: [
     { pod: 'cluster', w: 0.38, h: 0.17, shift: true, gauges: [
-      { type: 'speed', u: -0.14, v: -0.005, r: 0.058 },
-      { type: 'tach', u: 0, v: 0, r: 0.076 },
-      { type: 'temp', u: 0.13, v: 0.032, r: 0.031 },
-      { type: 'fuel', u: 0.13, v: -0.036, r: 0.031 },
+      { type: 'speed', u: -0.14, v: -0.005, r: 0.058, face: 'yellow' },
+      { type: 'tach', u: 0, v: 0, r: 0.076, face: 'yellow' },
+      { type: 'temp', u: 0.13, v: 0.032, r: 0.031, face: 'yellow' },
+      { type: 'fuel', u: 0.13, v: -0.036, r: 0.031, face: 'yellow' },
     ] },
   ],
   tsurugi: [
-    { pod: 'cluster', w: 0.38, h: 0.16, shift: true, gauges: [
+    { pod: 'cluster', w: 0.38, h: 0.16, shift: true, screen: 'lcd', gauges: [
       { type: 'speed', u: -0.135, v: 0, r: 0.058 },
       { type: 'tach', u: 0, v: 0, r: 0.072 },
       { type: 'fuel', u: 0.128, v: 0.032, r: 0.03 },
@@ -52,7 +61,35 @@ export const DASHES = {
       { type: 'volt', u: 0.075, v: 0, r: 0.03 },
     ] },
   ],
+  hikari: [
+    { pod: 'cluster', w: 0.4, h: 0.15, shift: true, screen: 'vfd', gauges: [
+      { type: 'tach', u: -0.16, v: 0, r: 0.03 },
+      { type: 'speed', u: -0.08, v: 0, r: 0.03 },
+      { type: 'boost', u: 0, v: 0, r: 0.03 },
+      { type: 'fuel', u: 0.08, v: 0, r: 0.03 },
+      { type: 'temp', u: 0.16, v: 0, r: 0.03 },
+    ] },
+  ],
 };
+
+/**
+ * How many of `n` segments a bar graph lights for a value from 0 to `max`.
+ * @param {number} value @param {number} max @param {number} n
+ */
+export function segmentsLit(value, max, n) {
+  return Math.max(0, Math.min(n, Math.round((value / max) * n)));
+}
+
+/**
+ * The color zone of segment `i` of an `n` segment tach that runs to `max` rpm: red from the
+ * redline, amber for the 1,500 rpm before it, green below.
+ * @param {number} i @param {number} n @param {number} max @param {number} redline
+ * @returns {'green' | 'amber' | 'red'}
+ */
+export function tachZone(i, n, max, redline) {
+  const rpm = ((i + 0.5) / n) * max;
+  return rpm >= redline ? 'red' : rpm >= redline - 1500 ? 'amber' : 'green';
+}
 
 /** Needle sweep: from 225 degrees (lower left) clockwise through the top to -45 (lower right). */
 const SWEEP = (270 * Math.PI) / 180;

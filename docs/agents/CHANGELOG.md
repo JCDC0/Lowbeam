@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.2 (2026-10-04)
+
+Give every car its own instruments, and add the Hikari 300ZR with a fluorescent dash.
+
+- `dash.js`: gauge faces (`classic`, `white`, `yellow`) and screen pods (`lcd`, `vfd`); the Rampart's
+  dials are cream, the Vespera's yellow, the Tsurugi's cluster an LCD, the Hikari's a VFD;
+  `segmentsLit` and `tachZone`.
+- New `screens.js`: the LCD and VFD drawn with DSEG7, DSEG14 and Share Tech Mono.
+- `cockpit.js`: faces with numerals and red needles; screen pods; the wheel marker smaller and the rim
+  lower so it never covers a display.
+- New car `hikari` in specs.js and models.js (1984 turbo coupe, pop-up lamps, fastback); every spec
+  names its HUD cluster style (`dash.hud`) for A16. Not a street racer yet (traffic test samples).
+- Tests: faces and screens per car, the bar graph tach; the gear count list has five cars.
+
 ## 0.8.1 (2026-10-04)
 
 Fix the cockpit view: see the road, the gauges and the wheel in every car.
