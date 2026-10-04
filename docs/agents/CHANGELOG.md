@@ -1,39 +1,16 @@
 # Changelog
 
-## 0.6.9 (2026-10-04)
+## 0.7.4 (2026-10-04)
 
-Starting the Kuro Pass run, the rally HUD, and the T-junction give-way (A11 part 3).
+Brief A14 for Hermes, the next plan, and the changelog back in version order.
 
-- `src/drive.js`: the run, marked like the duel. Stopped within 15 m of the start line the prompt
-  reads `F  KURO PASS TIME ATTACK` and F begins a run: `placeOnRallyStart` puts the car on the line
-  facing down the stage, `audio.music.hold('ridge')` runs, `audio.beep('count')` and
-  `audio.beep('go')` come from the race events, and R during a run puts the car back on the stage
-  with the 5 s penalty. A new best and its ghost are saved per car under `rallyBest` and
-  `rallyGhost`. The stage road comes from `ground.roads.byId.get(RALLY.road)` every time, never a
-  cached position.
-- `src/traffic/sim.js`: `rallyRoad` stops spawning on that road and fades out any agent still on it,
-  so the stage belongs to the player while a run is going.
-- `src/traffic/sim.js`: the T-junction give-way Antigravity's net.js left as data is now read. A
-  stop carrying `yield: { lanes, at }` holds a side-road car while anything on the through road could
-  reach the junction in less than `YIELD_TIME` 4.5 s (`yieldClear`, looking `YIELD_LOOK` 45 m up the
-  road), and lets it go once the road is clear. Every yield line sits about 11 m short of the lane
-  end, so a car waiting there waits `YIELD_LINE` 0.4 m short of it rather than on top of it, which
-  would creep it to a standstill and never let it turn in.
-- `src/ui/hud.js` and `style.css`: the rally panel, the clock, the split at each gate (green ahead,
-  red behind), the next two pace notes as big text, the off-course countdown and the result card for
-  4 s. It sits at the top, so it stays clear of the gauges in the cockpit view.
-- `src/audio/soundtrack.js`: a `rally` flag on the swell scene, like `rival`, holding the level at
-  `SWELL.rallyFloor` 0.7 so a run is never silent below 50 km/h. Threading it to the swell needed
-  one extra line in `music.js` (`setScene`) and one in `audio.js`, which were outside the part's
-  stated file list; both were authorized as one-line edits.
-- Tests: new `tests/rally-traffic.test.mjs` (five cases: the network has yield stops, an agent
-  stops at one while traffic approaches, the same agent goes once it is clear, a rally road clears
-  traffic and keeps it from spawning and gives it back afterwards, and other roads are unaffected)
-  and two more in `tests/rally.test.mjs` (gates count in order and only then does the finish count,
-  and a run that cannot pass a gate never finishes however far it drives).
-- Verified in the browser at 480 lines: the prompt reads `F  KURO PASS TIME ATTACK`, F starts the
-  countdown, the panel shows the clock and both pace notes on the pass, and a full run through every
-  gate finishes gold with the splits alternating behind and ahead of a stored best.
+- New `docs/agents/tasks/A14-blinkers-passby.md`: blinkers on the civilian traffic (signal before a
+  lane change, a turn, an exit or a merge; hazards on wrecks) and the pass-by whoosh scaled by the
+  relative speed (a pure `PassBy` and its voice).
+- Task index: A11 and A12 done, A13 (Antigravity) and A14 (Hermes) running, and Claude's next work:
+  the helicopter, the gas stations modeled after the toll plazas, smaller buildings and housing.
+- The changelog is sorted by version again (the agents' version ranges interleave in time).
+- ARCHITECTURE's current state header follows the highest version, not the latest commit.
 
 ## 0.7.3 (2026-10-04)
 
@@ -64,6 +41,20 @@ Put Route 1 on two viaducts across the north corners.
   edge, the median is decked over, no median parapets or wall colliders (`scatter.js`).
 - Median lamps stand on the deck (pole colliders only at deck height); the guard rails stop where the
   parapets start (`highway.js`); the underside is a separate material outside the light pools.
+
+## 0.7.0 (2026-10-04)
+
+Rebuild the toll plazas after the Shuto Expressway's Oi plaza.
+
+- `build-highway.js`: a new plaza: blue columns, a fascia on each face with lit lane signs (ETC専用,
+  ETC/一般, 一般), round signals and amber lamps, a glass and blue panel band and red fins, the name
+  plate in kanji and romaji, three banners on top, chevron boards over the islands, booths with lit
+  windows, striped impact cushions, hazard poles, fee and camera boards, barrier arms, light masts.
+  All signs of a plaza come from one canvas atlas. The mirrored green name board is gone.
+- `highway.js`: lanes carry a `sign` counted from the median out (the cash lane is now the outer
+  lane on both carriageways), the ETC only lanes get blue paint strips along the carriageway
+  (`paint`), `PLAZA_PARTS` sizes the islands, cushions and masts; colliders for the longer islands,
+  the outer columns and the masts; the canopy lights are spot pools and the masts light the fascia.
 
 ## 0.6.12 (2026-10-04)
 
@@ -98,19 +89,40 @@ Landmarks on the minimap (A12 part 1).
 - `tests/map.test.mjs`: the minimap draws a lot's icon inside the clip when it is near the car and
   skips a far one.
 
-## 0.7.0 (2026-10-04)
+## 0.6.9 (2026-10-04)
 
-Rebuild the toll plazas after the Shuto Expressway's Oi plaza.
+Starting the Kuro Pass run, the rally HUD, and the T-junction give-way (A11 part 3).
 
-- `build-highway.js`: a new plaza: blue columns, a fascia on each face with lit lane signs (ETC専用,
-  ETC/一般, 一般), round signals and amber lamps, a glass and blue panel band and red fins, the name
-  plate in kanji and romaji, three banners on top, chevron boards over the islands, booths with lit
-  windows, striped impact cushions, hazard poles, fee and camera boards, barrier arms, light masts.
-  All signs of a plaza come from one canvas atlas. The mirrored green name board is gone.
-- `highway.js`: lanes carry a `sign` counted from the median out (the cash lane is now the outer
-  lane on both carriageways), the ETC only lanes get blue paint strips along the carriageway
-  (`paint`), `PLAZA_PARTS` sizes the islands, cushions and masts; colliders for the longer islands,
-  the outer columns and the masts; the canopy lights are spot pools and the masts light the fascia.
+- `src/drive.js`: the run, marked like the duel. Stopped within 15 m of the start line the prompt
+  reads `F  KURO PASS TIME ATTACK` and F begins a run: `placeOnRallyStart` puts the car on the line
+  facing down the stage, `audio.music.hold('ridge')` runs, `audio.beep('count')` and
+  `audio.beep('go')` come from the race events, and R during a run puts the car back on the stage
+  with the 5 s penalty. A new best and its ghost are saved per car under `rallyBest` and
+  `rallyGhost`. The stage road comes from `ground.roads.byId.get(RALLY.road)` every time, never a
+  cached position.
+- `src/traffic/sim.js`: `rallyRoad` stops spawning on that road and fades out any agent still on it,
+  so the stage belongs to the player while a run is going.
+- `src/traffic/sim.js`: the T-junction give-way Antigravity's net.js left as data is now read. A
+  stop carrying `yield: { lanes, at }` holds a side-road car while anything on the through road could
+  reach the junction in less than `YIELD_TIME` 4.5 s (`yieldClear`, looking `YIELD_LOOK` 45 m up the
+  road), and lets it go once the road is clear. Every yield line sits about 11 m short of the lane
+  end, so a car waiting there waits `YIELD_LINE` 0.4 m short of it rather than on top of it, which
+  would creep it to a standstill and never let it turn in.
+- `src/ui/hud.js` and `style.css`: the rally panel, the clock, the split at each gate (green ahead,
+  red behind), the next two pace notes as big text, the off-course countdown and the result card for
+  4 s. It sits at the top, so it stays clear of the gauges in the cockpit view.
+- `src/audio/soundtrack.js`: a `rally` flag on the swell scene, like `rival`, holding the level at
+  `SWELL.rallyFloor` 0.7 so a run is never silent below 50 km/h. Threading it to the swell needed
+  one extra line in `music.js` (`setScene`) and one in `audio.js`, which were outside the part's
+  stated file list; both were authorized as one-line edits.
+- Tests: new `tests/rally-traffic.test.mjs` (five cases: the network has yield stops, an agent
+  stops at one while traffic approaches, the same agent goes once it is clear, a rally road clears
+  traffic and keeps it from spawning and gives it back afterwards, and other roads are unaffected)
+  and two more in `tests/rally.test.mjs` (gates count in order and only then does the finish count,
+  and a run that cannot pass a gate never finishes however far it drives).
+- Verified in the browser at 480 lines: the prompt reads `F  KURO PASS TIME ATTACK`, F starts the
+  countdown, the panel shows the clock and both pace notes on the pass, and a full run through every
+  gate finishes gold with the splits alternating behind and ahead of a stored best.
 
 ## 0.6.8 (2026-10-04)
 
