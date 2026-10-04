@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3 (2026-10-04)
+
+Brief A13 for the pursuit HUD, ahead of the helicopter and the police.
+
+- New `docs/agents/tasks/A13-pursuit-hud.md`: the contract the helicopter, the police core and the HUD
+  share (`drive.pursuitView()`, `drive.policeMarkers()`), the pursuit HUD and the police markers on
+  both maps for Antigravity. New version ranges per agent in the task index.
+- ARCHITECTURE: lamp and building counts corrected from `npm run bench` (4,600 lamps, 8,900 buildings).
+
 ## 0.7.2 (2026-10-04)
 
 Even out the steep spots where overpasses and slip roads meet the ground.

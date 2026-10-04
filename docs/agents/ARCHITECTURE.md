@@ -160,7 +160,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.2)
+## Current state (0.7.3)
 
 Done and tested:
 
@@ -334,7 +334,7 @@ Done and tested:
   with vertex colors per surface and a detail texture, road ribbons cut into 180 m chunks
   (7 columns: skirt, edge, three across, edge, skirt; higher priority roads sit 12 mm per
   priority higher so junctions never z-fight), bridges, concrete pads with curbs, about
-  5,400 two-armed sodium lamps, about 13,000 buildings (`buildings.js`: a row along each side of
+  4,600 two-armed sodium lamps, about 8,900 buildings (`buildings.js`: a row along each side of
   every town road and a second row behind it in the denser districts; towers to 130 m in the middle
   of downtown, offices, apartment blocks with balconies, houses with pitched roofs, warehouses and
   factories in corrugated metal with roller doors and saw-tooth roofs, garages with lit shutters,
