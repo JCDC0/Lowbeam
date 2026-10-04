@@ -21,6 +21,17 @@ Put Route 1 on two viaducts across the north corners.
 - Median lamps stand on the deck (pole colliders only at deck height); the guard rails stop where the
   parapets start (`highway.js`); the underside is a separate material outside the light pools.
 
+## 0.6.12 (2026-10-04)
+
+World-build bench (A12 part 3).
+
+- `tools/buildbench.mjs`: Node benchmark timing each world-build stage (`layout import`, `citygen streets`,
+  `Ground` construction and carve, the junction finder, `placeBuildings`, `scatterWorld`, `forest`)
+  over 3 runs using pure modules only.
+- Prints a table of median ms, percentage share, and element counts (roads, streets, junctions,
+  buildings, lamps, trees, lights).
+- Added `npm run bench` script to `package.json`.
+
 ## 0.6.11 (2026-10-04)
 
 Landmark model viewer (A12 part 2).

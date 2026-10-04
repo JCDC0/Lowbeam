@@ -24,6 +24,7 @@ Traffic and the street racers are in; challenging a rival and the rally come nex
 | Test | `npm test` (`node --test tests/*.test.mjs`) |
 | Type-check (the lint step) | `npm run check` (`tsc`, JSDoc types, no emit) |
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
+| World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 
 No build step and no bundler. The browser loads `src/` directly through the import map
 in `index.html`. Three.js r185 is vendored in `vendor/` (copied from
@@ -146,6 +147,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/landmarks.html` | Dev landmark viewer: police HQ, garage and hideout at night through `loadModels` and `buildLots`, light markers, collider wireframes (C), keys 1 to 3 solo, vertex counts, `__landmarks.shot(name)` |
 | `tools/mapview.html` | Dev top-down map: hillshade, roads by class, overpasses, stations, tolls, zones; `__map.shot(name)` |
 | `tools/mapcheck.mjs` | Node: every road's length, height range, steepest grade, cut and fill, and where roads cross |
+| `tools/buildbench.mjs` | Node: world-build stage timings (median of 3 runs) and feature counts |
 | `src/audio/audio.js` | The `audio` singleton: graph, channels and settings, engine voice, tires, wind, ambience, impacts, pump, menu chirps |
 | `src/audio/engine-dsp.js` | Pure: per-sample engine synthesis (`EngineVoice`, `VOICES`) |
 | `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
