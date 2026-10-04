@@ -17,6 +17,7 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 | [A11-rally.md](A11-rally.md) | done (0.6.5, 0.6.8, 0.6.9) | Pace notes, the rally RaceEvent with gates, medals, penalties and a ghost, its HUD |
 | [A14-blinkers-passby.md](A14-blinkers-passby.md) | now (Hermes) | Blinkers on the civilian traffic, hazards on wrecks, the pass-by whoosh scaled by relative speed; then the police core |
 | Claude (no brief) | now | The police helicopter (Blender model, HQ roof takeoff, flight, searchlight), the gas stations modeled after the toll plazas, smaller city buildings and housing |
+| [A16-cluster-styles.md](A16-cluster-styles.md) | after A15 (Antigravity) | HUD speedometer styles per car (classic, twin, sport, digital, vfd), the setting, the new fonts across the UI |
 | [A15-gps-waypoint.md](A15-gps-waypoint.md) | now (Antigravity) | GPS waypoint: set it on the Tab map, the route along the roads on both maps, re-plan on a wrong turn |
 | [A13-pursuit-hud.md](A13-pursuit-hud.md) | done (0.7.10, 0.7.11) | The pursuit HUD (heat, evade, cooldown, bust) and police and helicopter markers on both maps, against the pursuit contract |
 | A12 (prompt in chat) | done (0.6.10 to 0.6.12) | Landmark icons on the minimap, `tools/landmarks.html` model viewer, `tools/buildbench.mjs` world-build bench |
@@ -30,7 +31,8 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 - `## Current state` in ARCHITECTURE.md names the highest version, and the changelog stays sorted
   by version (insert your entry in its place, not at the top, when a higher one exists).
 - Use only your own version range: Hermes 0.6.9 (A11 part 3), then Claude 0.7.3 to 0.7.9,
-  Antigravity 0.7.10 to 0.7.14, Hermes 0.7.15 to 0.7.19, then Claude 0.8.x. Ask for a new range when it runs out. Bump `package.json`, `package-lock.json` and `docs/agents/CHANGELOG.md` together.
+  Antigravity 0.7.10 to 0.7.14, Hermes 0.7.15 to 0.7.19, then Claude 0.8.0 to 0.8.9,
+  Antigravity 0.8.10 to 0.8.14, Hermes 0.8.15 to 0.8.19. Ask for a new range when it runs out. Bump `package.json`, `package-lock.json` and `docs/agents/CHANGELOG.md` together.
 - Stage your own files by name. Never `git add -A`.
 - Prefer new files. In a shared file make small exact-string edits, re-read it right
   before editing, never rewrite it whole.
