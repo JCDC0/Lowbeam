@@ -133,13 +133,15 @@ export function placeHighway(ground, boxes, circles, lights) {
       const lz = -q.tx;
       const rx = q.x + lx * edge;
       const rz = q.z + lz * edge;
-      railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, inPlaza(rx, rz, PLAZA.openRail) || rampOpen(`${exp}-f`, mid));
+      // On a viaduct the deck's parapet takes the rail's place.
+      const onDeck = fwd.lifted && fwd.liftAt(mid) > 1.2;
+      railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, onDeck || inPlaza(rx, rz, PLAZA.openRail) || rampOpen(`${exp}-f`, mid));
       const rp = rev.path.nearest(mx - q.tz * half, mz + q.tx * half);
       rev.path.sample(rp.s, q);
       const rEdge = hw + RAIL.offset;
       const ox = q.x + q.tz * rEdge;
       const oz = q.z - q.tx * rEdge;
-      railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, inPlaza(ox, oz, PLAZA.openRail) || rampOpen(`${exp}-r`, rp.s));
+      railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, (rev.lifted && rev.liftAt(rp.s) > 1.2) || inPlaza(ox, oz, PLAZA.openRail) || rampOpen(`${exp}-r`, rp.s));
     }
   }
 

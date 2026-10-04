@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 (2026-10-04)
+
+Put Route 1 on two viaducts across the north corners.
+
+- `C1_VIADUCTS` in layout.js: Route 1 rises 12 m across the north-east corner (KITA TOLL to the Route 1
+  east gas station) and the north-west corner (West Ave to Route 18), clear of every ramp, plaza and pad.
+- One deck for both carriageways (`build-bridges.js`): the forward slab spans the median to the far
+  edge, the median is decked over, no median parapets or wall colliders (`scatter.js`).
+- Median lamps stand on the deck (pole colliders only at deck height); the guard rails stop where the
+  parapets start (`highway.js`); the underside is a separate material outside the light pools.
+
 ## 0.6.11 (2026-10-04)
 
 Landmark model viewer (A12 part 2).

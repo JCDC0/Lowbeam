@@ -166,6 +166,8 @@ function placeBridges(ground, circles, boxes) {
       const top = road.heightAt(mid);
       const yaw = Math.atan2(q.tx, q.tz);
       for (const side of [1, -1]) {
+        // A carriageway's median side is decked over to the other carriageway, with the barrier.
+        if (side < 0 && road.def.median) continue;
         const off = road.hw + 0.35;
         boxes.push({ x: q.x + q.tz * off * side, z: q.z - q.tx * off * side, hx: 0.3, hz: WALL_SEGMENT / 2, yaw, y0: top - 0.3, y1: top + 1.0 });
       }
@@ -217,8 +219,11 @@ function placeLamps(ground, lights, circles) {
       let k = 0;
       const spans = ground.junctionSpans.get(road) || [];
       for (let s = s0; s <= s1 + 0.1; s += run.every, k++) {
-        // Poles stand on the ground, so none under or on an overpass, and none in a junction.
-        if (road.liftAt(s) > 0.6) continue;
+        // Poles stand on the ground, so none under or on an overpass, and none in a junction; only
+        // a median on a viaduct (decked over between the carriageways) carries its lamps up.
+        const median = run.offset !== undefined;
+        const onDeck = road.liftAt(s) > 0.6;
+        if (onDeck && !(median && road.def.median)) continue;
         const sw = p.wrapS(s);
         if (spans.some(([a, b]) => sw > a - 6 && sw < b + 6)) continue;
         const q = p.sample(s);
@@ -231,20 +236,19 @@ function placeLamps(ground, lights, circles) {
         const z = q.z + lz * off;
         // A pole placed exactly (in a median, on a sidewalk) is allowed closer to the roads than a roadside one.
         const margin = run.offset !== undefined ? -0.2 : road.walk ? 0.4 - road.walk - SKIRT : 0.5;
-        if (!clearOfRoads(ground, x, z, margin)) continue;
-        const y = ground.at(x, z).h;
+        if (!onDeck && !clearOfRoads(ground, x, z, margin)) continue;
+        const y = onDeck ? road.heightAt(s) : ground.at(x, z).h;
         const yaw = Math.atan2(-lx, -lz);
         const hx = x - lx * LAMP_REACH;
         const hz = z - lz * LAMP_REACH;
         // A pole in a median lights both carriageways; a roadside one also lights the sidewalk.
-        const median = run.offset !== undefined;
         const reach = median ? LAMP_REACH : LAMP_BACK;
         const hy = y + LAMP_HEIGHT;
         const back = { hx: x + lx * reach, hy: median ? hy : hy - LAMP_BACK_DROP, hz: z + lz * reach, reach };
         lamps.push({ x, y, z, yaw, hx, hy, hz, back });
         lights.push({ x: hx, y: hy, z: hz, c: SODIUM, range: LAMP_RANGE, spot: 1 });
         lights.push({ x: back.hx, y: back.hy, z: back.hz, c: median ? SODIUM : SODIUM_BACK, range: median ? LAMP_RANGE : 15, spot: 1 });
-        circles.push({ x, z, r: 0.22 });
+        circles.push(onDeck ? { x, z, r: 0.22, y0: y - 0.5, y1: y + LAMP_HEIGHT } : { x, z, r: 0.22 });
       }
     }
   }

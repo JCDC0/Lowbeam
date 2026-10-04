@@ -158,7 +158,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.0)
+## Current state (0.7.1)
 
 Done and tested:
 
@@ -475,6 +475,16 @@ Done and tested:
   (scatter `bridges`) gets a pier under the middle of its lift and every 22 m wherever no
   road runs underneath. Approaches shorter than the grade cap allows are the author's
   problem: 7.5 m over `half` 150 with `flat` 50 peaks at 9.4 %.
+  Since 0.7.1 Route 1 itself rides on two viaducts 12 m up (`C1_VIADUCTS` in layout.js, lifts on
+  both carriageways): across the north-east corner between KITA TOLL and the Route 1 east gas
+  station (about 1.5 km) and across the north-west corner between the West Ave and Route 18
+  interchanges (about 1.5 km), climbing at under 4.5 %. Both stretches are clear of slip roads,
+  plazas, pads and crossings, so nothing has to climb with them (a forecourt beside a lifted road
+  would be raised with it). The two carriageways share one deck: the forward carriageway's slab
+  runs on under the median to the far edge of the reverse one, the median is decked over and keeps
+  its concrete barrier and its lamps (the only lamps that stand on a deck), there are no parapets or
+  wall colliders on the median sides, and the guard rails give way to the outer parapets. The
+  underside takes no light pools.
 - Slip roads (0.4.19, `merge.js`). Every ramp onto or off an expressway is a lane the
   carriageway gains or loses, never a road laid beside it. An exit starts as a 0.15 m sliver on
   the carriageway's left edge, widens to full width over `taper` (60 m) with its inner edge on

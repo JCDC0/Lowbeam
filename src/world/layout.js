@@ -67,6 +67,20 @@ const C1 = dualCarriageway(LOOP, {
   priority: 3.2, smooth: 90, cls: 'expressway', lanes: 3, limit: 100, lines: 'lanes', maxGrade: 0.045,
 });
 C1[0].lamps = [{ all: true, every: 44, side: -1, offset: C1_HW + C1_MEDIAN / 2 }];
+/**
+ * Where Route 1 rides on a viaduct 12 m up, like the Shuto Expressway: across the north-east corner
+ * between KITA TOLL and the Route 1 east gas station (about 1.5 km, 0.6 km of it at full height), and
+ * across the north-west corner between the West Ave and Route 18 interchanges (about 1.5 km). Both
+ * stretches are clear of slip roads, plazas and crossings, so no ramp has to climb with them, and
+ * the climbs stay under 4.5 %. Both carriageways share one deck: the median is decked over and keeps
+ * its barrier and lamps (scatter.js, build-bridges.js).
+ */
+const C1_VIADUCTS = [
+  { at: [1360, -215], height: 12, half: 760, flat: 640 },
+  { at: [-1544, -141], height: 12, half: 740, flat: 640 },
+];
+C1[0].lifts = C1_VIADUCTS;
+C1[1].lifts = C1_VIADUCTS;
 
 /**
  * Route 2, the Bayshore Line: two lanes each way along the bay between the loop's south
