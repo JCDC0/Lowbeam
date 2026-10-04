@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.8.15 (2026-10-04)
+
+Police patrols and heat (A17 part 1).
+
+- New pure `src/police/units.js`: the four police unit kinds and the Most Wanted roster that decides
+  which are on the road at each heat. `police` (the cruiser, the black and white sedan) from heat 1,
+  `police-fast` (an unmarked sports car in dark paint with hidden lights, `hidden`) at 3,
+  `police-heavy` (the Rhino SUV, `headOn` because it drives at you from ahead) at 4, and
+  `police-int` (a supercar in police paint) at 5. Until Claude's police models land, every unit
+  borrows an existing body through its `model` id, so the swap later is one line per kind.
+  `buildKindGeometry` now resolves a civilian `model` id too and threads the kind's `accent`
+  (the black of the two-tone) into `vehicleGeometry`.
+- The units live outside the weighted civilian `KINDS` pool so the traffic weights never pick one
+  by accident; `kinds.js` registers them in `ALL_KINDS` so the renderer builds their meshes.
+- `src/traffic/render.js`: a police light bar is drawn as two extra roof flares, alternating left
+  and right at 2 Hz while the unit is chasing, on the same flare mesh (no new draw call). The flare
+  budget is now `FLARES_PER_CAR` 6 rather than 4.
+- `src/traffic/sim.js`: `spawnUnit` sends one unit out of the motor pool onto a lane near the
+  player, `units()`, `countUnits()` and `unitsNear(player, range)` let the police core and the HUD
+  find them. Agents carry a `pursuit` flag the renderer reads.
+- New pure `src/police/heat.js`: what the police notice. `noticesSpeeding` (a patrol within 60 m
+  sees a car more than 40 km/h over the limit), `noticesTrap` (a toll speed trap above 160 km/h),
+  and `Heat`, which rises with what they see and with every second of a pursuit (a full five in
+  about a minute) and cools after a quiet spell.
+- Tests: new `tests/police-heat.test.mjs`, ten cases covering the unit kinds, the roster, the heat
+  model and spawning a unit on the network.
+
 ## 0.8.11 (2026-10-04)
 
 Speedometer settings and garage style readout (A16 part 2).

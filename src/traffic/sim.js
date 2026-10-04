@@ -9,7 +9,7 @@
 
 import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
-import { KINDS, RIVALS } from './kinds.js';
+import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
 import { lightState } from './net.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 
@@ -26,7 +26,7 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   mode: 'drive' | 'wreck', age: number, wreckAge: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
- *   brake: number, fade: number
+ *   brake: number, fade: number, pursuit?: boolean
  * }} Agent
  */
 
@@ -74,15 +74,17 @@ const PIECE_CELL = 160;
 export class TrafficSim {
   /**
    * @param {import('./net.js').TrafficNet} net
-   * @param {{ seed?: number, target?: number, rivals?: number }} [opts]
+   * @param {{ seed?: number, target?: number, rivals?: number, patrols?: number }} [opts]
    */
-  constructor(net, { seed = 77, target = 38, rivals = 5 } = {}) {
+  constructor(net, { seed = 77, target = 38, rivals = 5, patrols = 2 } = {}) {
     this.net = net;
     this.rng = makeRng(seed);
     /** @type {Agent[]} */
     this.agents = [];
     this.target = target;
     this.rivalTarget = rivals;
+    /** How many patrol cars cruise among the traffic when nothing is happening. */
+    this.patrolTarget = patrols;
     /** Road id the player is racing on, so traffic stays off it. Null outside a rally. */
     this.rallyRoad = /** @type {string | null} */ (null);
     this.time = 0;
@@ -316,6 +318,60 @@ export class TrafficSim {
   populate(player) {
     for (let i = 0; i < this.target * 8 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
     for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 250, 460);
+  }
+
+  /**
+   * Spawns one police unit of `kindId` on a lane between `min` and `max` meters from the player,
+   * the way the motor pool sends one out. Returns the agent, or null if there was no room.
+   * @param {{ x: number, z: number }} player @param {string} kindId @param {number} min @param {number} max
+   * @returns {Agent | null}
+   */
+  spawnUnit(player, kindId, min, max) {
+    const kind = UNIT_BY_ID.get(kindId) || UNIT_BY_ID.get('police');
+    for (let tries = 0; tries < 16; tries++) {
+      const pick = this.pickNear(player, min, max);
+      const lane = pick ? pick.lane : this.pickLane();
+      const s = pick ? pick.s : this.rng.next() * lane.length;
+      if (this.rallyRoad && lane.road.id === this.rallyRoad) continue;
+      const q = this.net.sample(lane, s, this._q);
+      const d = Math.hypot(q.x - player.x, q.z - player.z);
+      if (d < min || d > max) continue;
+      if (this.crowded(lane, s, 30)) continue;
+      const factor = this.rng.range(kind.speed[0], kind.speed[1]);
+      const a = /** @type {Agent} */ ({
+        id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.9, factor,
+        x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), vx: 0, vz: 0, yawRate: 0,
+        ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+        changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
+        mode: 'drive', age: 0, wreckAge: 0, laneHold: 0, duel: false, signal: 0, signalTimer: 0, signalTarget: null,
+        nextChange: this.rng.range(0, CHANGE_EVERY), inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+        brake: 0, fade: 1, pursuit: false,
+      });
+      this.choose(a);
+      this.agents.push(a);
+      return a;
+    }
+    return null;
+  }
+
+  /** Every live police unit. @returns {Agent[]} */
+  units() {
+    return this.agents.filter((a) => isUnit(a.kind));
+  }
+
+  /** How many police units are alive. */
+  countUnits() {
+    let n = 0;
+    for (const a of this.agents) if (isUnit(a.kind)) n++;
+    return n;
+  }
+
+  /** The police units within `range` of the player, nearest first. @param {{ x: number, z: number }} player @param {number} range */
+  unitsNear(player, range) {
+    return this.units()
+      .map((a) => ({ agent: a, d: Math.hypot(a.x - player.x, a.z - player.z) }))
+      .filter((u) => u.d < range)
+      .sort((p, q) => p.d - q.d);
   }
 
   /** Picks this agent's turn off the lane and what happens at its end. @param {Agent} a */

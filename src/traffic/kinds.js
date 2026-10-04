@@ -9,12 +9,14 @@
 
 import { RACER_MODELS } from '../vehicles/bodies/racers.js';
 import { CARS } from '../vehicles/specs.js';
+import { UNIT_KINDS, isUnit } from '../police/units.js';
 
 /**
  * @typedef {{
  *   id: string, name: string, length: number, width: number, height: number, mass: number,
  *   accel: number, speed: [number, number], weights: Record<string, number>,
- *   paint: number[], wheels?: number, model?: string
+ *   paint: number[], wheels?: number, model?: string, accent?: number, lightBar?: boolean,
+ *   hidden?: boolean, headOn?: boolean
  * }} Kind
  */
 
@@ -42,6 +44,12 @@ export const KINDS = [
 /** @type {Map<string, Kind>} */
 export const KIND_BY_ID = new Map(KINDS.map((k) => [k.id, k]));
 
+for (const k of UNIT_KINDS) KIND_BY_ID.set(k.id, k);
+export const POLICE = UNIT_KINDS[0];
+export const isPolice = isUnit;
+export { UNIT_KINDS, isUnit };
+export { UNIT_BY_ID } from '../police/units.js';
+
 const HOT = [0xc23a2a, 0x2f6fd0, 0xf2d23a, 0xe8e8e6, 0x111317, 0x6a2fa8, 0x1f9a6a, 0xff7a1a];
 
 /**
@@ -68,5 +76,5 @@ export const RIVALS = [
 ];
 
 /** Every kind a renderer has to draw. */
-export const ALL_KINDS = [...KINDS, ...RIVALS];
+export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
 for (const k of RIVALS) KIND_BY_ID.set(k.id, k);

@@ -131,12 +131,15 @@ function lights(p, W, y, L, size = 0.28) {
  */
 export function buildKindGeometry(k) {
   const civilian = CIVILIAN_MODEL_BY_ID.get(k.id);
-  if (civilian) return vehicleGeometry(civilian, civilian.body, { wheelSides: 10 });
+  const accent = k.accent != null ? new THREE.Color(k.accent).toArray() : undefined;
+  if (civilian) return vehicleGeometry(civilian, civilian.body, { wheelSides: 10, accent });
   if (k.model) {
     const racer = RACER_MODEL_BY_ID.get(k.model);
-    if (racer) return vehicleGeometry(racer, racer.body, { wheelSides: 10 });
+    if (racer) return vehicleGeometry(racer, racer.body, { wheelSides: 10, accent });
+    const civ = CIVILIAN_MODEL_BY_ID.get(k.model);
+    if (civ) return vehicleGeometry(civ, civ.body, { wheelSides: 10, accent });
     const spec = carById(k.model);
-    return vehicleGeometry(spec, BODIES[spec.id], { wheelSides: 10 });
+    return vehicleGeometry(spec, BODIES[spec.id], { wheelSides: 10, accent });
   }
   const p = new Parts();
   const { length: L, width: W, height: H } = k;

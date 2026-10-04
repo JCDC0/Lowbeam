@@ -25,11 +25,17 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** Cars this close to the player show their lamp flares, meters. */
 const FLARE_RANGE = 420;
 const MAX_FLARE_CARS = 60;
+/** Flares per car: four lamps, plus two on the roof of a police car with a light bar. */
+const FLARES_PER_CAR = 6;
 const HEAD = new THREE.Color(1.0, 0.92, 0.72);
 const TAIL = new THREE.Color(0.85, 0.06, 0.04);
 const TAIL_BRAKE = new THREE.Color(1.6, 0.12, 0.06);
 /** An indicator: amber, at the same brightness as a head lamp flare. */
 const SIGNAL = new THREE.Color(1.5, 0.62, 0.06);
+/** A police light bar: a bright red flash on the roof, left then right. */
+const BAR = new THREE.Color(2.2, 0.16, 0.1);
+/** The unlit half of a light bar: the flare mesh is still there, so it is scaled to nothing. */
+const BAR_OFF = new THREE.Color(0, 0, 0);
 /** Seconds on and off for an indicator, so a queue does not blink in unison. */
 const BLINK = 0.33;
 /** A headlight beam: range (m), where its cone ends (cosine) and how far down it aims. */
@@ -90,10 +96,10 @@ export class TrafficRenderer {
       this.meshes.set(kind.id, { mesh, brake, max, n: 0, lamps: lampSpots(geo, kind) });
     }
     const quad = new THREE.PlaneGeometry(1, 1);
-    this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * 4 * 3), 3);
+    this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * FLARES_PER_CAR * 3), 3);
     quad.setAttribute('aDir', this.flareDir);
-    this.flares = new THREE.InstancedMesh(quad, psxFlare(flareTexture(), FLARE_RANGE), MAX_FLARE_CARS * 4);
-    this.flares.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * 4 * 3), 3);
+    this.flares = new THREE.InstancedMesh(quad, psxFlare(flareTexture(), FLARE_RANGE), MAX_FLARE_CARS * FLARES_PER_CAR);
+    this.flares.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * FLARES_PER_CAR * 3), 3);
     this.flares.frustumCulled = false;
     this.flares.renderOrder = 2;
     this.flares.count = 0;
@@ -148,7 +154,7 @@ export class TrafficRenderer {
     let beams = 0;
     for (const { a } of this.near) {
       const m = this.meshes.get(a.kind.id);
-      if (!m || f + 4 > MAX_FLARE_CARS * 4) break;
+      if (!m || f + FLARES_PER_CAR > MAX_FLARE_CARS * FLARES_PER_CAR) break;
       const c = Math.cos(a.yaw);
       const s = Math.sin(a.yaw);
       const world = (p) => _p.set(a.x + p[0] * c + p[2] * s, a.y + p[1], a.z - p[0] * s + p[2] * c);
@@ -169,6 +175,21 @@ export class TrafficRenderer {
           this.flares.setMatrixAt(f, _m);
           this.flares.setColorAt(f, amber ? SIGNAL : color);
           this.flareDir.setXYZ(f, s * dir, 0, c * dir);
+          f++;
+        }
+      }
+      // A police light bar: two flares on the roof, alternating left and right at 2 Hz while
+      // the unit is chasing. A standstill patrol carries no bar until a pursuit starts.
+      if (a.kind.lightBar && a.pursuit) {
+        const beat = (this.time * 2 + a.id * 0.21) % 1;
+        for (let i = 0; i < 2; i++) {
+          const lit = (beat < 0.5) === (i === 0);
+          world([(i === 0 ? 1 : -1) * 0.42, a.kind.height + 0.06, 0.1]);
+          _s.set(size * 0.8, size * 0.8, size * 0.8);
+          _m.compose(_p, _q.identity(), _s);
+          this.flares.setMatrixAt(f, _m);
+          this.flares.setColorAt(f, lit ? BAR : BAR_OFF);
+          this.flareDir.setXYZ(f, 0, 0.25, 0);
           f++;
         }
       }

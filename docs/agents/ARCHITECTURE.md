@@ -46,7 +46,7 @@ wav, json, txt, png) for other captures such as rendered audio.
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
   `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
-  `src/render/pool-grid.js`, `src/police/heli.js`, `src/ui/pursuit.js` (`layoutPursuit`),
+  `src/render/pool-grid.js`, `src/police/{heli,units,heat}.js`, `src/ui/pursuit.js` (`layoutPursuit`),
   `src/ui/route.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
@@ -101,6 +101,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `assets/models/` | Landmark models exported from Blender as JSON (positions, normals, UVs, material groups, colliders, lights): `police_hq`, `garage`, `hideout` |
 | `src/police/heli.js` | Pure: the police helicopter (`Heli`): spin up on the HQ roof pad, lift off, chase from behind and above, bank and pitch, return and land; the searchlight and whether it sees the target; `Skyline`, the highest ground or roof per 32 m cell |
 | `src/police/heli-view.js` | Draws the helicopter from the Blender models (body, spinning main and tail rotors), the fading shaft of light, and the searchlight in a free headlight beam slot |
+| `src/police/units.js` | Pure: the four police unit kinds (`police`, `police-fast`, `police-heavy`, `police-int`) and `roster(heat)`, the Most Wanted table of which units are on the road at each heat |
+| `src/police/heat.js` | Pure: `Heat` (what the police notice, 0 to 5), `noticesSpeeding`, `noticesTrap` |
 | `tools/blender/` | Blender scripts for the landmarks: `kit.py` (helpers and the JSON exporter), one script per model; run through the Blender MCP |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
@@ -173,10 +175,18 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.11)
+## Current state (0.8.15)
 
 Done and tested:
 
+- Police patrols and heat (0.8.15, A17 part 1, `src/police/units.js`, `heat.js`). Four unit kinds,
+  each borrowing an existing car body through its `model` id until Claude's police models land: the
+  cruiser `police` from heat 1, the unmarked `police-fast` at 3, the Rhino `police-heavy` (drives
+  head-on) at 4, and the interceptor `police-int` at 5; `roster(heat)` is the Most Wanted table of
+  who is on the road at each level. They stay out of the weighted civilian pool. The renderer draws
+  a light bar as two roof flares alternating at 2 Hz while chasing. `Heat` rises with what the
+  police see and with the pursuit clock and cools after a quiet spell. `spawnUnit`, `units`,
+  `countUnits` and `unitsNear` let the police core find them.
 - Speedometer choice and garage display (0.8.11, A16 part 2). Settings features a `SPEEDOMETER` row
   configured to `PER CAR` (default) or locked to any specific style (`classic`, `twin`, `sport`,
   `digital`, `vfd`), stored in local storage under `clusterStyle`. Drive applies the stored setting upon
