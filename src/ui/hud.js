@@ -3,6 +3,8 @@
  * gauge cluster draws into. DOM text only changes when its value does.
  */
 
+import { AREA_JP } from '../world/layout.js';
+
 export class Hud {
   /** @param {HTMLElement} ui */
   constructor(ui) {
@@ -69,7 +71,13 @@ export class Hud {
   /** @param {string} name */
   area(name) {
     if (this.last.area === name) return;
-    this.text(this.areaEl, 'area', name);
+    this.last.area = name;
+    const jp = AREA_JP[name];
+    if (jp) {
+      this.areaEl.innerHTML = `<span class="area-main">${name}</span><span class="area-jp">${jp}</span>`;
+    } else {
+      this.areaEl.textContent = name;
+    }
     this.areaEl.classList.remove('fade');
     void this.areaEl.offsetWidth;
     this.areaEl.classList.add('fade');

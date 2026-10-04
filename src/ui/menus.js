@@ -28,7 +28,7 @@ export function titleScreen(ui, version) {
   return screen(
     ui,
     'title',
-    `<div class="logo"><h1>LOWBEAM</h1><h2>KIRIGAOKA NIGHT RALLY</h2></div>
+    `<div class="logo"><h1>LOWBEAM</h1><div class="sub-jp">黒鉄ナイトラン</div><h2>KIRIGAOKA NIGHT RALLY</h2></div>
      <div class="press">PRESS ENTER</div>
      <div class="foot">v${version} &nbsp; ALL MODELS, TEXTURES AND SOUNDS MADE IN CODE</div>`
   );
@@ -67,10 +67,10 @@ export function toaster(ui) {
 }
 
 const MAIN_OPTIONS = /** @type {const} */ ([
-  ['drive', '01', 'DRIVE', 'ENTRY TO VALLEY STAGE'],
-  ['garage', '02', 'GARAGE', 'MACHINE SELECT & COLOR'],
-  ['settings', '03', 'SETTINGS', 'AUDIO & TRANSMISSION CONFIG'],
-  ['controls', '04', 'CONTROLS', 'PILOT INPUT ASSIGNMENT'],
+  ['drive', '01', 'DRIVE', 'ドライブ', 'ENTRY TO VALLEY STAGE'],
+  ['garage', '02', 'GARAGE', 'ガレージ', 'MACHINE SELECT & COLOR'],
+  ['settings', '03', 'SETTINGS', '設定', 'AUDIO & TRANSMISSION CONFIG'],
+  ['controls', '04', 'CONTROLS', '操作設定', 'PILOT INPUT ASSIGNMENT'],
 ]);
 
 /**
@@ -89,10 +89,13 @@ export function mainMenuScreen(ui) {
       </div>
       <div class="ac-body">
         <div class="ac-menu-list">
-          ${MAIN_OPTIONS.map(([id, num, label, sub]) => `
+          ${MAIN_OPTIONS.map(([id, num, label, jp, sub]) => `
             <div class="ac-opt click" data-id="${id}">
               <span class="ac-num">${num}</span>
-              <span class="ac-label">${label}</span>
+              <div class="ac-label-col">
+                <span class="ac-label">${label}</span>
+                <span class="ac-label-jp">${jp}</span>
+              </div>
               <span class="ac-sub">${sub}</span>
               <span class="ac-arrow">▶</span>
             </div>

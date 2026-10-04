@@ -15,6 +15,13 @@ import { clusterStyleOf } from './cluster-styles.js';
 
 const BAR_LABELS = { topSpeed: 'TOP SPEED', handling: 'HANDLING', accel: 'ACCELERATION' };
 const CLUSTER_NAMES = { classic: 'CLASSIC', tuner: 'RACING TACH', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
+const CAR_JP = {
+  hayate: 'ハヤテ',
+  rampart: 'ランパート',
+  vespera: 'ヴェスペラ',
+  tsurugi: 'ツルギ',
+  hikari: 'ヒカリ',
+};
 
 function buildRoom() {
   const b = new MeshBuilder();
@@ -96,6 +103,7 @@ export class Garage {
       <div class="card">
         <div class="maker"></div>
         <div class="name"></div>
+        <div class="name-jp"></div>
         <div class="klass"></div>
         <div class="blurb"></div>
         <div class="bars"></div>
@@ -152,6 +160,8 @@ export class Garage {
     q('.count').textContent = `${this.index + 1} / ${CARS.length}`;
     q('.maker').textContent = s.maker;
     q('.name').textContent = s.name;
+    const jpEl = q('.name-jp');
+    if (jpEl) jpEl.textContent = CAR_JP[s.id] || '';
     q('.klass').textContent = s.klass;
     q('.blurb').textContent = s.blurb;
     q('.bars').innerHTML = Object.entries(BAR_LABELS)

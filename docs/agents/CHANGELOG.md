@@ -50,6 +50,18 @@ Police patrols and heat (A17 part 1).
 - Tests: new `tests/police-heat.test.mjs`, ten cases covering the unit kinds, the roster, the heat
   model and spawning a unit on the network.
 
+## 0.8.12 (2026-10-04)
+
+Typography update across the UI with Orbitron, Teko, Dela Gothic One, Share Tech Mono and M PLUS 1p (A16 part 3).
+
+- `style.css`: added all eight font variables to `:root` (`--font-display`, `--font-tech`, `--font-race`, `--font-mono`, `--font-seg7`, `--font-seg14`, `--font-impact`, `--font-jp`). Replaced direct font usages across UI screens.
+- Title screen: LOWBEAM in Orbitron 900 with wide tracking, Japanese subtitle 黒鉄ナイトラン in Dela Gothic One, and footer/prompt in Share Tech Mono.
+- Main menu: item labels in Orbitron 700 with small Japanese subtitles in M PLUS 1p (ドライブ, ガレージ, 設定, 操作設定), telemetry numbers in Share Tech Mono.
+- Settings and Controls: section headings in Orbitron 700, row labels in Michroma, values and keys in Share Tech Mono, audio segment bar readouts in DSEG14.
+- Garage: car name in Orbitron 900 with katakana subtitle in M PLUS 1p (ハヤテ, ランパート, ヴェスペラ, ツルギ, ヒカリ), specifications in Share Tech Mono.
+- Drive HUD: area name in Michroma with Japanese subtitle in M PLUS 1p from `AREA_JP` in `src/world/layout.js`, money and rally time/splits in Share Tech Mono, rally countdown and toast numbers in Teko 700, headings in Dela Gothic One.
+- Pursuit HUD: state banners (PURSUIT, EVADING, BUSTED, ESCAPED) in Dela Gothic One, heat, bounty and timer in Teko.
+
 ## 0.8.11 (2026-10-04)
 
 Speedometer settings and garage style readout (A16 part 2).

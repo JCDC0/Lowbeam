@@ -208,6 +208,14 @@ Done and tested:
   over 3 s. Infractions (speeding, reckless, hit and run, ramming, resisting arrest at 30 s,
   offroad, property, a toll run) each fire once and add bounty, which also grows with time, heat
   and the cost to state. `view()` is the A13 `PursuitView` plus the grown MW fields.
+- Typography update across the UI (0.8.12, A16 part 3). `:root` defines eight font variables
+  matching `src/render/fonts.js`: `--font-display`, `--font-tech`, `--font-race`, `--font-mono`,
+  `--font-seg7`, `--font-seg14`, `--font-impact`, `--font-jp`. Orbitron 900 on LOWBEAM title with Dela Gothic One
+  subtitle 黒鉄ナイトラン; Orbitron 700 on menu and section headings with M PLUS 1p Japanese subtitles;
+  Share Tech Mono on telemetry readouts, values and key labels; DSEG14 on audio segment levels;
+  Orbitron 900 and M PLUS 1p katakana car subtitles in Garage; area name with M PLUS 1p subtitle
+  from `AREA_JP`; Teko 700 on speed trap toasts, duel/rally countdowns, and pursuit HUD readouts; Dela Gothic One
+  on duel, rally and pursuit state banners.
 - Speedometer choice and garage display (0.8.11, A16 part 2). Settings features a `SPEEDOMETER` row
   configured to `PER CAR` (default) or locked to any specific style (`classic`, `twin`, `sport`,
   `digital`, `vfd`), stored in local storage under `clusterStyle`. Drive applies the stored setting upon
