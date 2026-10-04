@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.2 (2026-10-04)
+
+Even out the steep spots where overpasses and slip roads meet the ground.
+
+- `roads.js` `applyLifts`: a lifted road is raised (never lowered, so clearance holds) where the lift
+  eases onto ground that climbs on its own; Route 18 over the ridge goes from 11.1 % to 7.5 %, Harbor
+  Ave from 8.2 % to 7.5 %.
+- `roads.js` `easeSlip`: a slip road's climb is eased into the stretch held at the carriageway's height;
+  the Route 18 ramps go from 7.6 and 8.8 % to 6.5 %. Both ends of every ramp still meet exactly.
+
 ## 0.7.1 (2026-10-04)
 
 Put Route 1 on two viaducts across the north corners.

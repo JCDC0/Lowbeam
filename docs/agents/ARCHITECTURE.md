@@ -158,7 +158,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.1)
+## Current state (0.7.2)
 
 Done and tested:
 
@@ -485,6 +485,10 @@ Done and tested:
   its concrete barrier and its lamps (the only lamps that stand on a deck), there are no parapets or
   wall colliders on the median sides, and the guard rails give way to the outer parapets. The
   underside takes no light pools.
+  Since 0.7.2 a lifted road whose ground climbs on its own (Route 18 over the ridge north of the
+  loop, 11.1 % before) is raised, never lowered, until no step is steeper than its limit plus 2 %
+  (`raise` in `applyLifts`), and a slip road's climb is eased into the stretch held at the
+  carriageway's height (`easeSlip`), so the Route 18 ramps peak at 6.5 % instead of 8.8 %.
 - Slip roads (0.4.19, `merge.js`). Every ramp onto or off an expressway is a lane the
   carriageway gains or loses, never a road laid beside it. An exit starts as a 0.15 m sliver on
   the carriageway's left edge, widens to full width over `taper` (60 m) with its inner edge on
@@ -726,8 +730,8 @@ rates.
   the north.
 - A 2-lane Bayshore ramp merges into Route 1 as one 7.4 m wide added lane that tapers away; a real
   junction would drop to one lane first. Fine at this scale, revisit with lane markings.
-- The Route 18 ramps climb about 17 m to the avenue, peaking at 7.6 to 8.8 % (limit 10 %), because
-  the slip road holds the carriageway's height through the gore.
+- The Route 18 ramps climb about 17 m to the avenue at up to 6.5 % (since 0.7.2), because the slip
+  road holds the carriageway's height through the gore.
 - Route 1 has no overhead signs yet (task A5 builds the highway sign gantries).
 - `LAKE` and `TOWN` in layout.js are aliases for the first lake and the city rect, kept
   for the map screen until it moves to `world.mapData`; remove them then.

@@ -104,6 +104,7 @@ export class RoadNetwork {
     // Lower priority roads take the height of anything they cross, so junctions are flush.
     const order = [...this.roads].sort((a, b) => b.priority - a.priority);
     for (const r of order) this.blendJunctions(r);
+    for (const r of this.roads) if (r.def.slip && !r.def.lifts) this.easeSlip(r);
     // Lifts come last: junctions blend the natural profiles, then an overpass climbs from there.
     for (const r of this.roads) this.applyLifts(r);
   }
@@ -130,6 +131,51 @@ export class RoadNetwork {
     }
     for (let i = 0; i < p.n; i++) r.h[i] += r.lift[i];
     r.lifted = true;
+    // An overpass eased onto ground that climbs on its own (Route 18 over the ridge north of the
+    // loop) stacks the two into a short steep ramp. Raise the lifted stretch, never lower it so the
+    // clearance holds, until no step is steeper than the road's limit plus 2 %. Where the lift is
+    // gone (the interchange ramps meet the avenue there) nothing moves.
+    const step = ((r.def.maxGrade || 0.08) + 0.02) * p.step;
+    for (let pass = 0; pass < 2; pass++) {
+      for (let i = p.n - 2; i >= 0; i--) if (r.lift[i] > 0.5) this.raise(r, i, r.h[i + 1] - step);
+      for (let i = 1; i < p.n; i++) if (r.lift[i] > 0.5) this.raise(r, i, r.h[i - 1] - step);
+    }
+  }
+
+  /**
+   * Where a slip road's own climb meets the stretch held at the carriageway's height, the two can
+   * meet in a short kink steeper than the climb (the Route 18 ramps, 17 m up to the avenue). Even it
+   * out by averaging any point steeper than the limit on either side, outside the held stretch and
+   * clear of both ends, so the ramp still meets the carriageway and the road at its far end exactly.
+   * @param {Road} r
+   */
+  easeSlip(r) {
+    const p = r.path;
+    const n = p.n;
+    const slip = r.def.slip;
+    const [a, b] = slip.kind === 'exit' ? [0, slip.rampNose + slip.gore] : [slip.rampNose - slip.gore, p.length];
+    const lim = ((r.def.maxGrade || 0.06) + 0.005) * p.step;
+    for (let it = 0; it < 800; it++) {
+      let moved = false;
+      for (let i = 4; i < n - 4; i++) {
+        const s = i * p.step;
+        if (s >= a && s <= b) continue;
+        if (Math.abs(r.h[i] - r.h[i - 1]) > lim || Math.abs(r.h[i + 1] - r.h[i]) > lim) {
+          r.h[i] = (r.h[i - 1] + r.h[i + 1]) / 2;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+  }
+
+  /**
+   * Raises a road point to `h` if it is lower. The lift stays the authored one (where the overpass
+   * peaks over what it crosses); the raise is at most about a meter.
+   * @param {Road} r @param {number} i @param {number} h
+   */
+  raise(r, i, h) {
+    if (h > r.h[i]) r.h[i] = h;
   }
 
   cellKey(x, z) {
