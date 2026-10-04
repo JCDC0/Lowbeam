@@ -91,7 +91,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `assets/fonts/` | The vendored faces, all SIL OFL (`LICENSES.md`): Michroma (the display face), DSEG7 and DSEG14 Classic, Share Tech Mono, Dela Gothic One, M PLUS 1p, Orbitron, Teko; `fonts.css` is generated |
 | `src/render/fonts.js` | `FONT` (the CSS stacks: display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, which `World.create` awaits before drawing any canvas |
 | `tools/vendor-fonts.mjs` | Copies the font packages from node_modules into assets/fonts/ and writes fonts.css (CJK faces stay split by unicode-range) |
-| `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
+| `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy; `AREA_JP`, the Japanese name of every place the HUD names |
 | `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, diamond interchange ramps |
 | `src/world/citygen.js` | Pure: the city's local streets, district by district (`cityStreets`), and `polygonMask` for fast inside tests |
 | `src/world/junctions.js` | Pure: crossings and T junctions found from road geometry (`findJunctions`), and the stretches of road inside them |

@@ -14,6 +14,18 @@ Speedometer styles for the HUD cluster (A16 part 1).
 - `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
 - Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
 
+## 0.8.5 (2026-10-04)
+
+Japanese area names, and the briefs for Most Wanted style chases and the rest of the UI.
+
+- `AREA_JP` in layout.js: the Japanese name of every zone, named road, toll and fallback area name, for
+  the subtitle under the area name (A16 part 3).
+- Briefs: A16 parts 2 to 4 (the speedometer setting, every face across every screen, a controls
+  settings screen with key rebinding), A17 grows a Most Wanted section (unit tiers by heat, infractions
+  and cost to state, hiding spots and search, spike strips and roadblocks, pursuit breakers, radio
+  chatter, the report), new A18 for Antigravity (that HUD). Ranges: Hermes 0.8.15 to 0.8.24,
+  Antigravity 0.8.25 to 0.8.29.
+
 ## 0.8.4 (2026-10-04)
 
 Two more typefaces for the UI.

@@ -454,6 +454,42 @@ export const TOLLS = [
 ];
 
 /**
+ * The Japanese name of every place the HUD can name (zones, named roads, tolls, the fallbacks in
+ * `Drive.areaName`), for a subtitle under the area name. A name missing here simply has none.
+ * @type {Record<string, string>}
+ */
+export const AREA_JP = {
+  'KUROGANE CITY': '黒鉄市',
+  'KUROGANE HARBOR': '黒鉄港',
+  'KAMI-IKE': '上池',
+  'MORI FOREST': '森林地帯',
+  'KURO PASS': '黒峠',
+  'HANAZAKI CAPE': '花崎岬',
+  'KITA COAST': '北海岸',
+  'HIGASHI INDUSTRIAL': '東工業地帯',
+  'KURO MOUNTAINS': '黒山地',
+  'KUROGANE OUTSKIRTS': '黒鉄郊外',
+  'ROUTE 1 EXPRESSWAY': '黒鉄高速1号線',
+  'ROUTE 1 RAMP': '1号線ランプ',
+  'BAYSHORE LINE': '湾岸線',
+  'BAYSHORE JCT': '湾岸ジャンクション',
+  'ROUTE 18': '国道18号',
+  'HARBOR AVE': '港通り',
+  'WEST AVE': '西通り',
+  'EAST AVE': '東通り',
+  'CHUO-DORI': '中央通り',
+  'KUROGANE-DORI': '黒鉄通り',
+  'NAIKAN RING': '内環状線',
+  'SOTOKAN RING': '外環状線',
+  'HIGASHI COAST ROAD': '東海岸道路',
+  'KITA COAST ROAD': '北海岸道路',
+  'KITA TOLL': '北料金所',
+  'HIGASHI TOLL': '東料金所',
+  'MINATO TOLL': '港料金所',
+  'BAYSHORE TOLL': '湾岸料金所',
+};
+
+/**
  * Named places, for the area name, the ambience and where the trees thin out.
  * `kind` picks the habitat; a zone is a rectangle or a circle.
  * @typedef {{ id: string, name: string, kind: string, rect?: { x0: number, x1: number, z0: number, z1: number }, circle?: { x: number, z: number, r: number } }} Zone
