@@ -1,10 +1,13 @@
 /**
- * The gas stations, built like the Japanese ones (and in the same hand as the toll plazas): a deep
- * canopy with a lit fascia band in the brand's colors and a ceiling of square lamps, two-tone
- * pillars, islands with striped ends and bollards, tall self-service dispensers with a lit price
- * head and red, yellow and green nozzles, hose reels hanging from the canopy, a price pylon by the
- * road (the brand, then regular, high octane and diesel), a kiosk with a glass shop front and a lit
- * band, vending machines and the entrance and exit boards. The service park (G3) keeps its small
+ * The gas stations, built like the Japanese ones (and in the same hand as the toll plazas, after
+ * concepts/gasorinsutando.jpeg): a deep canopy with a lit fascia band in the brand's colors over a
+ * white slatted ceiling with boxy square lamps; the dispensers hang from it, a sign box over each
+ * pump with the brand's swoosh and its fuel in its color (ハイオク yellow, レギュラー red, 軽油 green)
+ * and a lane number, coiled hoses dropping to colored nozzles at the car's side; low islands with a
+ * payment post, striped ends and bollards; the lanes painted red-brown; a price pylon by the road
+ * (the brand, then regular, high octane and diesel); a kiosk with a glass shop front, a service bay
+ * under a yellow タイヤ オイル バッテリー sign with a tire rack beside it, a wash banner, a lit band,
+ * vending machines and the entrance and exit boards. The service park (G3) keeps its small
  * canopy, rally tents, floodlights and two rival cars. Built in pad-local coordinates: u along the
  * road, v away from it; positions come from `stationLayout` and `placeStation` in scatter.js.
  */
@@ -33,7 +36,11 @@ const PRICES = [168, 179, 148];
 const TILE = {
   pylon: [0, 0, 128, 448], pump: [128, 0, 64, 64], vendRed: [192, 0, 64, 128], vendBlue: [256, 0, 64, 128],
   in: [320, 0, 128, 64], out: [320, 64, 128, 64], hazard: [448, 0, 64, 64], logo: [128, 64, 64, 64],
+  hang0: [192, 192, 256, 48], hang1: [192, 240, 256, 48], hang2: [192, 288, 256, 48], hang3: [192, 336, 256, 48],
+  pit: [128, 400, 384, 48], banner: [128, 448, 384, 48], bay: [448, 64, 64, 64],
 };
+/** The fuels over the pumps in turn: name, panel color, text color, nozzle material. */
+const FUELS = [['ハイオク', '#f2c51c', '#2a1a0a', 'yel'], ['レギュラー', '#d42a24', '#ffffff', 'red'], ['軽油', '#1d7a3a', '#ffffff', 'grn']];
 const ATLAS = 512;
 /** @param {keyof typeof TILE} name */
 function uvOf(name) {
@@ -55,6 +62,18 @@ function emblem(g, brand, cx, cy, s) {
   }
   g.closePath();
   g.fill();
+}
+
+/** A white canopy ceiling of linear slats, one slat every 0.25 m. */
+function slatTexture() {
+  const c = makeCanvas(8, 16);
+  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+  g.fillStyle = '#eef0f0';
+  g.fillRect(0, 0, 8, 16);
+  g.fillStyle = '#b8bcbe';
+  g.fillRect(0, 0, 8, 1);
+  g.fillRect(0, 8, 8, 1);
+  return canvasTexture(c, { repeat: true });
 }
 
 /** @type {Map<string, { atlas: THREE.Texture, fascia: THREE.Texture }>} */
@@ -165,6 +184,86 @@ function brandTextures(brand) {
     g.fillRect(x, y, w, h);
     g.fillStyle = '#ffffff';
     emblem(g, brand, x + w / 2, y + h / 2, 44);
+  }
+  // The hanging dispensers' sign faces: the brand's swoosh, then the fuel in its color and a number.
+  for (let k = 0; k < 4; k++) {
+    const [x, y, w, h] = TILE[/** @type {keyof typeof TILE} */ (`hang${k}`)];
+    const [fuel, panel, ink] = FUELS[k % 3];
+    g.fillStyle = '#f4f4f2';
+    g.fillRect(x, y, w, h);
+    g.fillStyle = B.css;
+    g.beginPath();
+    g.moveTo(x, y);
+    g.lineTo(x + 120, y);
+    g.lineTo(x + 92, y + h);
+    g.lineTo(x, y + h);
+    g.closePath();
+    g.fill();
+    g.fillStyle = B.dark;
+    g.beginPath();
+    g.moveTo(x + 64, y + h);
+    g.quadraticCurveTo(x + 84, y + 10, x + 120, y);
+    g.lineTo(x + 104, y);
+    g.quadraticCurveTo(x + 72, y + 12, x + 52, y + h);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'left';
+    g.font = 'bold 15px sans-serif';
+    g.fillText(B.name, x + 8, y + 16);
+    g.fillStyle = panel;
+    g.fillRect(x + 126, y + 20, w - 130, h - 24);
+    g.fillStyle = '#141414';
+    g.fillRect(x + 104, y + 20, 22, h - 24);
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.font = 'bold 20px sans-serif';
+    g.fillText(String(k + 1), x + 115, y + 34);
+    g.fillStyle = ink;
+    g.font = `bold 20px ${JP}`;
+    g.fillText(fuel, x + 126 + (w - 130) / 2, y + 34);
+  }
+  {
+    const [x, y, w, h] = TILE.pit;
+    g.fillStyle = '#f2c51c';
+    g.fillRect(x, y, w, h);
+    g.fillStyle = '#141414';
+    g.textAlign = 'left';
+    g.font = `bold 30px ${JP}`;
+    g.fillText('タイヤ オイル バッテリー', x + 10, y + h / 2 + 1);
+    g.fillRect(x + 284, y + 4, w - 288, h - 8);
+    g.fillStyle = '#ffffff';
+    g.textAlign = 'center';
+    g.font = 'bold 18px sans-serif';
+    g.fillText('PRO PIT', x + 284 + (w - 288) / 2, y + h / 2 + 1);
+  }
+  {
+    const [x, y, w, h] = TILE.banner;
+    g.fillStyle = '#f2d21c';
+    g.fillRect(x, y, w, h);
+    g.fillStyle = '#1d4fa6';
+    g.fillRect(x + 6, y + 6, 96, h - 12);
+    g.fillStyle = '#ffffff';
+    g.font = `bold 20px ${JP}`;
+    g.fillText('洗車', x + 54, y + h / 2 + 1);
+    g.fillStyle = '#141414';
+    g.font = `bold 22px ${JP}`;
+    g.fillText('コーティング 受付中', x + 240, y + h / 2 + 1);
+  }
+  {
+    // The service bay seen from outside: a lit workshop with a lift and shelves at the back.
+    const [x, y, w, h] = TILE.bay;
+    g.fillStyle = '#d8dcd8';
+    g.fillRect(x, y, w, h);
+    g.fillStyle = '#9aa0a4';
+    g.fillRect(x, y + 46, w, 18);
+    g.fillStyle = '#c81e1e';
+    g.fillRect(x + 6, y + 12, 12, 10);
+    g.fillRect(x + 22, y + 12, 12, 10);
+    g.fillStyle = '#3a3e44';
+    g.fillRect(x + 40, y + 6, 20, 40);
+    g.fillStyle = '#f2c51c';
+    g.fillRect(x + 8, y + 40, 26, 4);
   }
   const atlas = canvasTexture(c);
 
@@ -289,22 +388,26 @@ function buildStation(st, grid) {
   band(b, 'fascia', cu0, cu1, c.v0, c.v1, c.h + 0.18, c.h + deep - 0.06);
   b.box('brandLit', cx, c.h + 0.09, cz, cw + 0.1, 0.18, cd + 0.1, { top: false });
   b.box('dark', cx, c.h + deep + 0.04, cz, cw + 0.12, 0.08, cd + 0.12);
-  under(b, 'ceiling', cu0 + 0.05, cu1 - 0.05, c.v0 + 0.05, c.v1 - 0.05, c.h - 0.01);
-  for (const l of st.canopyLights) under(b, 'lamp', U(l.u) - 0.7, U(l.u) + 0.7, l.v - 0.7, l.v + 0.7, c.h - 0.03);
-  for (let x = cu0 + 1.5; x < cu1 - 1; x += 3) {
-    for (let z = c.v0 + 1.25; z < c.v1 - 1; z += 2.5) {
-      if (st.canopyLights.some((l) => Math.abs(U(l.u) - x) < 1.2 && Math.abs(l.v - z) < 1.2)) continue;
-      under(b, 'lamp', x - 0.22, x + 0.22, z - 0.22, z + 0.22, c.h - 0.02);
-    }
+  b.quad('ceiling', [cu0 + 0.05, c.h - 0.01, c.v0 + 0.05], [cu1 - 0.05, c.h - 0.01, c.v0 + 0.05], [cu1 - 0.05, c.h - 0.01, c.v1 - 0.05], [cu0 + 0.05, c.h - 0.01, c.v1 - 0.05], [0, 0, cw / 1.0, cd / 0.5]);
+  // Boxy square fixtures, as in the reference: a steel housing with a lit lens under it.
+  for (const l of st.canopyLights) {
+    b.box('steel', U(l.u), c.h - 0.11, l.v, 1.0, 0.2, 1.0);
+    under(b, 'lamp', U(l.u) - 0.42, U(l.u) + 0.42, l.v - 0.42, l.v + 0.42, c.h - 0.22);
   }
   for (const p of st.pillars) {
     b.box('brand', U(p.u), 0.65, p.v, 0.62, 1.3, 0.62);
     b.box('white', U(p.u), (c.h + 1.3) / 2, p.v, 0.55, c.h - 1.3, 0.55);
   }
 
-  // Islands with striped ends and a bollard at each corner.
+  // Islands with striped ends and a bollard at each corner; the lanes either side painted red-brown.
   for (const isl of L.islands) {
     const ix = U(isl.u);
+    if (!L.tents.length) {
+      for (const side of [-1, 1]) {
+        const lz = isl.v + side * 2.25;
+        under(b, 'lane', ix - isl.len / 2 - 1.5, ix + isl.len / 2 + 1.5, lz + 1.45, lz - 1.45, 0.035);
+      }
+    }
     b.box('curb', ix, 0.12, isl.v, isl.len, 0.24, 1.4);
     for (const e of [-1, 1]) {
       tileBox(b, 'tex', ix + e * (isl.len / 2 - 0.25), 0.2, isl.v, 0.5, 0.4, 1.42, 'hazard');
@@ -312,27 +415,38 @@ function buildStation(st, grid) {
     }
   }
 
-  // Dispensers: a tall cabinet, a brand head with a lit display on each face, three nozzles a side
-  // (regular red, high octane yellow, diesel green) with their hoses; a hose reel over each from the
-  // canopy, the way Japanese stations hang them.
-  for (const p of st.pumps) {
+  // The dispensers hang from the canopy: a sign box across the island over each pump, its faces
+  // toward the cars coming in along the island, two coiled hoses dropping over each lane to a
+  // nozzle in the fuel's color. On the island under it only a payment post with a lit screen. The
+  // service park keeps standing pumps under its small canopy.
+  st.pumps.forEach((p, k) => {
     const px = U(p.u);
-    b.box('dark', px, 0.32, p.v, 0.95, 0.16, 0.7);
-    b.box('white', px, 1.25, p.v, 0.85, 1.7, 0.58);
-    b.box('brand', px, 2.33, p.v, 0.95, 0.5, 0.64);
+    const tile = /** @type {keyof typeof TILE} */ (`hang${k % 4}`);
+    const nozzle = FUELS[k % 3][3];
+    if (L.tents.length) {
+      b.box('white', px, 1.25, p.v, 0.85, 1.7, 0.58);
+      b.box('brand', px, 2.33, p.v, 0.95, 0.5, 0.64);
+      for (const f of [-1, 1]) facing(b, 'atlas', px, 1.82, 2.16, p.v + f * 0.3, 0.62, f, uvOf('pump'));
+      return;
+    }
+    const y0 = c.h - 1.25;
+    b.box('white', px, y0 + 0.3, p.v, 0.7, 0.6, 2.7);
     for (const f of [-1, 1]) {
-      facing(b, 'atlas', px, 1.82, 2.16, p.v + f * 0.3, 0.62, f, uvOf('pump'));
-      ['red', 'yel', 'grn'].forEach((k, i) => {
-        b.box(k, px - 0.26 + i * 0.26, 1.2, p.v + f * 0.32, 0.15, 0.24, 0.08);
-        b.box('hose', px - 0.26 + i * 0.26, 0.75, p.v + f * 0.36, 0.04, 0.8, 0.04);
-      });
+      sideways(b, 'atlas', px + f * 0.36, y0 + 0.04, y0 + 0.56, p.v - 1.32, p.v + 1.32, f, uvOf(tile));
+      b.box('steel', px, (c.h + y0 + 0.6) / 2, p.v + f * 0.9, 0.08, c.h - y0 - 0.6, 0.08);
+      // A coiled hose reads as a thick dark line with rings on it, then the nozzle.
+      for (const du of [-0.18, 0.18]) {
+        const hx = px + du;
+        const hz = p.v + f * 1.15;
+        b.box('hose', hx, (y0 + 1.25) / 2, hz, 0.05, y0 - 1.25, 0.05);
+        for (let ry = 1.6; ry < y0 - 0.2; ry += 0.28) b.box('hose', hx, ry, hz, 0.13, 0.05, 0.13);
+        b.box(nozzle, hx, 1.12, hz, 0.1, 0.28, 0.16);
+        b.box('steel', hx, 0.94, hz + f * 0.06, 0.04, 0.1, 0.16);
+      }
     }
-    if (!L.tents.length) {
-      b.box('white', px, c.h - 0.28, p.v, 1.0, 0.5, 0.75);
-      b.box('brandLit', px, c.h - 0.5, p.v, 1.02, 0.08, 0.77, { top: false });
-      for (const f of [-1, 1]) b.box('hose', px + 0.2 * f, (c.h - 0.55 + 2.7) / 2, p.v + f * 0.25, 0.04, c.h - 0.55 - 2.7, 0.04);
-    }
-  }
+    b.box('white', px, 0.85, p.v, 0.42, 1.2, 0.36);
+    for (const f of [-1, 1]) facing(b, 'atlas', px, 1.0, 1.35, p.v + f * 0.19, 0.34, f, uvOf('pump'));
+  });
 
   // The price pylon by the road.
   const sx = U(L.sign.u);
@@ -354,9 +468,35 @@ function buildStation(st, grid) {
   const kx = U(k.u);
   const fz = k.v - k.d / 2;
   b.box('white', kx, k.h / 2, k.v, k.w, k.h, k.d);
-  facing(b, 'shop', kx, 0.15, k.h - 1.0, fz - 0.03, k.w - 1.2, -1, [0, 0, (k.w - 1.2) / 4, 1]);
-  for (let x = -k.w / 2 + 0.6; x <= k.w / 2 - 0.55; x += (k.w - 1.2) / 5) b.box('dark', kx + x, (k.h - 0.85) / 2, fz - 0.05, 0.12, k.h - 0.85, 0.08);
-  b.box('dark', kx, k.h - 0.95, fz - 0.05, k.w - 1.1, 0.12, 0.1);
+  if (L.tires) {
+    // The service bay at the tire rack's end: a lit workshop through a wide opening, the yellow sign
+    // over it; the shop front fills the rest.
+    const bw = Math.min(6, k.w * 0.4);
+    const end = Math.sign(U(L.tires.u) - kx) || -1;
+    const bx = kx + end * (k.w / 2 - bw / 2 - 0.3);
+    const sw = k.w - bw - 1.2;
+    const sx = kx - end * (k.w / 2 - sw / 2 - 0.3);
+    facing(b, 'atlas', bx, 0.05, 3.1, fz - 0.03, bw, -1, uvOf('bay'));
+    b.box('dark', bx - bw / 2, 1.6, fz - 0.06, 0.14, 3.2, 0.12);
+    b.box('dark', bx + bw / 2, 1.6, fz - 0.06, 0.14, 3.2, 0.12);
+    b.box('dark', bx, 3.2, fz - 0.06, bw + 0.14, 0.14, 0.12);
+    facing(b, 'atlas', bx, k.h - 0.85, k.h - 0.15, fz - 0.06, bw + 0.6, -1, uvOf('pit'));
+    facing(b, 'shop', sx, 0.15, k.h - 1.0, fz - 0.03, sw, -1, [0, 0, sw / 4, 1]);
+    for (let x = -sw / 2; x <= sw / 2 + 0.01; x += sw / 4) b.box('dark', sx + x, (k.h - 0.85) / 2, fz - 0.05, 0.12, k.h - 0.85, 0.08);
+    b.box('dark', sx, k.h - 0.95, fz - 0.05, sw + 0.1, 0.12, 0.1);
+    facing(b, 'atlas', sx, k.h - 1.55, k.h - 1.1, fz - 0.09, Math.min(4.2, sw - 0.4), -1, uvOf('banner'));
+    const t = L.tires;
+    const tx = U(t.u);
+    b.box('steel', tx, 1.1, t.v, t.w, 0.06, t.d);
+    b.box('steel', tx, 0.02, t.v, t.w, 0.04, t.d);
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 4; j++) b.cylinder('hose', tx, 0.12 + j * 0.24, t.v - t.d / 2 + 0.45 + i * 0.85, 0.32, 0.22, 8, 'y', { caps: true });
+    }
+  } else {
+    facing(b, 'shop', kx, 0.15, k.h - 1.0, fz - 0.03, k.w - 1.2, -1, [0, 0, (k.w - 1.2) / 4, 1]);
+    for (let x = -k.w / 2 + 0.6; x <= k.w / 2 - 0.55; x += (k.w - 1.2) / 5) b.box('dark', kx + x, (k.h - 0.85) / 2, fz - 0.05, 0.12, k.h - 0.85, 0.08);
+    b.box('dark', kx, k.h - 0.95, fz - 0.05, k.w - 1.1, 0.12, 0.1);
+  }
   b.box('white', kx, k.h + 0.45, k.v, k.w + 0.3, 0.9, k.d + 0.3);
   band(b, 'fascia', kx - k.w / 2 - 0.15, kx + k.w / 2 + 0.15, k.v - k.d / 2 - 0.15, k.v + k.d / 2 + 0.15, k.h + 0.05, k.h + 0.85);
   b.box('steel', kx + k.w * 0.25, k.h + 1.25, k.v + 1, 2.2, 0.9, 1.4);
@@ -409,7 +549,8 @@ function buildStation(st, grid) {
     brandLit: psxBasic({ color: B.color }),
     fascia: psxBasic({ map: tex.fascia, color: 0xe4e6e8 }),
     lamp: psxBasic({ color: 0xf6f9ff }),
-    ceiling: psxLambert({ color: 0x4c5056, baked: true }),
+    ceiling: psxLambert({ map: slatTexture(), color: 0xd0d2d4, baked: true }),
+    lane: psxLambert({ color: 0x6a3a32, baked: true }),
     steel: psxLambert({ color: 0x8a8e94, baked: true }),
     dark: psxLambert({ color: 0x2c2f33, baked: true }),
     curb: psxLambert({ color: 0xc4c0b4, baked: true }),

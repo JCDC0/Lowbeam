@@ -87,6 +87,7 @@ export function stationLayout(pad) {
       floods: [[-hw + 1, hd - 1], [hw - 1, hd - 1], [hw - 1, -hd + 1], [6, -hd + 1]].map(([u, v]) => ({ u, v })),
       vending: [],
       gates: [],
+      tires: null,
     };
   }
   const kiosk = { u: hw * 0.45, v: hd - 6, w: 15, d: 9, h: 4.2 };
@@ -103,7 +104,9 @@ export function stationLayout(pad) {
     floods: [],
     // Two vending machines against the kiosk's front, by its left corner, and the entrance and exit
     // boards at the road edge.
-    vending: [0, 1].map((i) => ({ u: kiosk.u - kiosk.w / 2 + 0.7 + i * 1.05, v: kiosk.v - kiosk.d / 2 - 0.45, w: 0.95, d: 0.8, h: 1.85 })),
+    vending: [0, 1].map((i) => ({ u: kiosk.u + kiosk.w / 2 - 0.7 - i * 1.05, v: kiosk.v - kiosk.d / 2 - 0.45, w: 0.95, d: 0.8, h: 1.85 })),
+    // The tire rack beside the service bay at the kiosk's other end.
+    tires: { u: kiosk.u - kiosk.w / 2 - 1.0, v: kiosk.v - kiosk.d / 2 + 1.4, w: 1.4, d: 2.6 },
     gates: [{ u: -hw + 8, v: -hd + 0.9, text: 'in' }, { u: hw - 4, v: -hd + 0.9, text: 'out' }],
   };
 }
@@ -309,6 +312,10 @@ function placeStation(ground, pad, lights, circles, boxes) {
   for (const gt of L.gates) {
     const p = padPoint(pad, gt.u, gt.v);
     circles.push({ x: p.x, z: p.z, r: 0.12 });
+  }
+  if (L.tires) {
+    const p = padPoint(pad, L.tires.u, L.tires.v);
+    boxes.push({ x: p.x, z: p.z, hx: L.tires.w / 2, hz: L.tires.d / 2, yaw });
   }
   lights.push({ x: sp.x, y: pad.h + 7, z: sp.z, c: pad.station.brand === 'hoshi' ? [0.3, 0.5, 1.0] : [1.0, 0.45, 0.15], range: 10 });
   for (const t of L.tents) {

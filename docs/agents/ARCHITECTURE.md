@@ -185,12 +185,17 @@ Done and tested:
   a downtown view measured 124 draw calls and 503k triangles, residential 142 and 528k.
 - Gas stations rebuilt (0.7.6, `gas-station.js`), in the same hand as the toll plazas: a canopy 1.4 m
   deep with a lit fascia band in the brand's colors (the emblem and the name every 9 m, a brand-lit
-  trim under it) and a ceiling of square lamps, pillars clad in the brand color to 1.3 m, islands with
-  hazard-striped ends and yellow bollards, tall self-service dispensers with a lit price head and red,
-  yellow and green nozzles on both sides, a hose reel hanging over each from the canopy, a price
-  pylon by the road square to the traffic (the brand, セルフ, then レギュラー, ハイオク and 軽油 in
-  lit digits), a kiosk with a glass shop front, mullions and a lit band on its parapet, roof plant, two
-  vending machines against it and the 入口 IN and 出口 OUT boards at the road edge. Each brand's
+  trim under it), pillars clad in the brand color to 1.3 m, islands with hazard-striped ends and
+  yellow bollards, a price pylon by the road square to the traffic (the brand, セルフ, then レギュラー,
+  ハイオク and 軽油 in lit digits), a kiosk with a glass shop front, mullions and a lit band on its
+  parapet, roof plant, two vending machines against it and the 入口 IN and 出口 OUT boards at the road
+  edge. Since 0.7.9, after a reference photo the user supplied (kept locally in `concepts/`, which is git-ignored), the dispensers hang from
+  the canopy as in Japan: a sign box across the island over each pump with the brand's swoosh, a
+  lane number and its fuel in its color (ハイオク yellow, レギュラー red, 軽油 green), two coiled hoses
+  dropping over each lane to a nozzle in that color, and only a payment post on the island; the
+  ceiling is white linear slats with boxy square fixtures; the lanes are painted red-brown; the
+  kiosk has a service bay (a lit workshop under a yellow タイヤ オイル バッテリー PRO PIT sign) with a
+  tire rack beside it (`tires` in `stationLayout`, with a collider) and a yellow wash banner. Each brand's
   pictures are one canvas atlas plus a repeating fascia texture. `stationLayout` gains `vending` and
   `gates` (with colliders); the pylon's collider is 1 m.
 - Police helicopter (0.7.5, `src/police/`). Modeled in Blender (`tools/blender/heli.py`, a light

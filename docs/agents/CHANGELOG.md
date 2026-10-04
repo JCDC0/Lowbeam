@@ -19,6 +19,17 @@ The pursuit HUD (NFS: Most Wanted 2005 style).
 - `src/main.js`: mounts `pursuitHud`, steps it in frame loop, exports `window.__lowbeam.pursuitDemo(state, markers)` and `getMarkers()`.
 - Tests: `tests/pursuit-hud.test.mjs` verifying heat calculation, state banner formatting, bar fills, bust bar activation and terminal states.
 
+## 0.7.9 (2026-10-04)
+
+Hang the gas stations' dispensers from the canopy, after the user's photo.
+
+- `gas-station.js`: hanging sign boxes over the pumps (brand swoosh, lane number, fuel in its color),
+  coiled hoses to colored nozzles, payment posts on the islands, a white slatted ceiling with boxy
+  square fixtures, red-brown lanes, a PRO PIT service bay with its yellow sign, a tire rack and a wash
+  banner at the kiosk.
+- `scatter.js`: `stationLayout` places the tire rack (with a collider) and moves the vending machines to
+  the shop's end.
+
 ## 0.7.8 (2026-10-04)
 
 Brief A15 for Antigravity: the GPS waypoint.
