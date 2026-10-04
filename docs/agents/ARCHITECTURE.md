@@ -76,7 +76,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
 | `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
-| `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station and rally icons |
+| `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station, rally and landmark (police, garage, hideout) icons |
 | `src/ui/stats.js` | DOM: F3 corner readout of FPS, draw calls, triangles and traffic count |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |

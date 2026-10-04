@@ -4,9 +4,11 @@
  */
 
 import { RALLY } from '../world/layout.js';
+import { drawPoiIcon } from './map.js';
 
 const SIZE = 168;
 const R = SIZE / 2;
+const LOT_ICON = 0.8;
 
 export class Minimap {
   /**
@@ -33,6 +35,7 @@ export class Minimap {
       z: p.cz,
       brand: p.station.brand,
     }));
+    this.lots = (ground.lots ?? []).map((p) => ({ x: p.cx, z: p.cz, kind: p.lot.kind }));
     const ss1 = ground.roads.byId.get(RALLY.road);
     const start = ss1.path.sample(RALLY.startS);
     this.flag = { x: start.x, z: start.z };
@@ -85,6 +88,15 @@ export class Minimap {
       g.fillRect(sx - 5, sy - 5, 10, 10);
       g.fillStyle = '#fff';
       g.fillRect(sx - 2, sy - 3, 4, 6);
+    }
+    for (const lot of this.lots) {
+      const [sx, sy] = toScreen(lot.x, lot.z);
+      if (Math.hypot(sx - R, sy - R) > R + 12) continue;
+      g.save();
+      g.translate(sx, sy);
+      g.scale(LOT_ICON, LOT_ICON);
+      drawPoiIcon(g, lot.kind, 0, 0);
+      g.restore();
     }
     {
       const [sx, sy] = toScreen(this.flag.x, this.flag.z);

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.10 (2026-10-04)
+
+Landmarks on the minimap (A12 part 1).
+
+- `minimap.js`: the police HQ, garages and hideouts (`ground.lots`) are drawn with the tactical map's
+  icons (`drawPoiIcon`, shield, wrench, dashed square) at 0.8 scale. They are placed like the station
+  icons: positions turn with the map, the icons stay upright, all inside the minimap's circular clip.
+- The tactical map already labels every point of interest with its name, lots included.
+- `tests/map.test.mjs`: the minimap draws a lot's icon inside the clip when it is near the car and
+  skips a far one.
+
 ## 0.7.0 (2026-10-04)
 
 Rebuild the toll plazas after the Shuto Expressway's Oi plaza.

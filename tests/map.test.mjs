@@ -167,3 +167,31 @@ test('drawRoads draws lifted runs on top with dark outline', async () => {
   assert.ok(strokeCalls.length >= 3, 'ground pass plus lifted outline and fill passes');
 });
 
+
+test('Minimap draws a landmark icon for a lot near the car and none for a far one', async () => {
+  const { Minimap } = await import('../src/ui/minimap.js');
+  const { RALLY } = await import('../src/world/layout.js');
+  const g = createMockContext();
+  g.clip = () => g.calls.push({ fn: 'clip', args: [] });
+  const canvas = { getContext: () => g, width: 0, height: 0, className: '' };
+  const saved = globalThis.document;
+  globalThis.document = { createElement: () => canvas };
+  try {
+    const ground = {
+      roads: { roads: [], byId: new Map([[RALLY.road, { path: { sample: () => ({ x: 9e4, z: 9e4 }) } }]]) },
+      pads: [],
+      lots: [
+        { cx: 2400, cz: -2150, lot: { kind: 'police' } },
+        { cx: -2000, cz: 2000, lot: { kind: 'garage' } },
+      ],
+    };
+    const mm = new Minimap({ appendChild() {} }, ground);
+    mm.draw(2400, -2100, 0, 0, 1);
+    const scales = g.calls.filter((c) => c.fn === 'scale');
+    assert.equal(scales.length, 1);
+    assert.ok(g.calls.some((c) => c.fn === 'closePath'), 'the shield is a closed path');
+    assert.ok(g.calls.findIndex((c) => c.fn === 'clip') < g.calls.findIndex((c) => c.fn === 'scale'), 'drawn inside the clip');
+  } finally {
+    globalThis.document = saved;
+  }
+});
