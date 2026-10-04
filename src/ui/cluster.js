@@ -3,10 +3,15 @@
  * tachometer with a red zone, needle and shift lights, digital speed and gear in its
  * lower gap, and four small dials around it (FUEL, TEMP, BOOST or VAC, EXH).
  * Identically used for the 3rd person HUD and the cockpit binnacle texture.
+ * This is the `classic` style (the Hayate's); `Cluster` draws the others from `cluster-styles.js`.
  */
 
 import { BOOST_MIN, EXH_MAX, EXH_MIN, INTAKE_MIN, TEMP_MAX, TEMP_MIN, TEMP_RED } from '../vehicles/gauges.js';
 import { clamp } from '../core/mathx.js';
+import { clusterStyleOf, drawStyled } from './cluster-styles.js';
+import { paintDial } from '../vehicles/instruments.js';
+
+export { CLUSTER_STYLES, clusterStyleOf } from './cluster-styles.js';
 
 /** @typedef {import('../vehicles/gauges.js').Gauges} Gauges */
 /** @typedef {import('../vehicles/specs.js').CarSpec} CarSpec */
@@ -380,11 +385,37 @@ export class Cluster {
     this.t = 0;
   }
 
-  /** @param {CarSpec} spec */
-  setSpec(spec) {
+  /**
+   * The car, and optionally one style for every car (`CLUSTER_STYLES`, or 'car' or null for the
+   * car's own, `spec.dash.hud`).
+   * @param {CarSpec} spec @param {string | null} [override]
+   */
+  setSpec(spec, override = this.override ?? null) {
     this.spec = spec;
+    this.override = override;
+    this.style = clusterStyleOf(spec, override);
     this.maxRpm = maxRpmOf(spec);
+    /** @type {Map<string, HTMLCanvasElement>} */
+    this.faces = new Map();
   }
+
+  /**
+   * Dial faces are painted once per car into an image at twice the size and drawn from there.
+   * @type {import('./cluster-styles.js').DialPainter}
+   */
+  dial = (g, cx, cy, m, type, spec, face) => {
+    const key = `${type}|${face}|${m}`;
+    let c = this.faces.get(key);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = c.height = Math.ceil(m * 4);
+      const cg = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+      cg.scale(2, 2);
+      paintDial(cg, m, m, m, type, spec, face);
+      this.faces.set(key, c);
+    }
+    g.drawImage(c, cx - m, cy - m, m * 2, m * 2);
+  };
 
   /** @param {boolean} on */
   show(on) {
@@ -394,6 +425,7 @@ export class Cluster {
   /** @param {Gauges} gs @param {number} dt */
   draw(gs, dt) {
     this.t += dt;
-    drawCluster(this.g, gs, this.spec, this.t, W, H, false);
+    if (this.style === 'classic') drawCluster(this.g, gs, this.spec, this.t, W, H, false);
+    else drawStyled(this.g, this.style, gs, this.spec, this.t, this.dial);
   }
 }

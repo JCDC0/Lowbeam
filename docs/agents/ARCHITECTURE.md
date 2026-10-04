@@ -75,6 +75,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
 | `src/ui/pursuit.js` | Pursuit HUD (`pursuitHud`, NFS: Most Wanted style) and pure `layoutPursuit(view)` |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
+| `src/ui/cluster-styles.js` | HUD cluster styles per car (`drawStyled`, `CLUSTER_STYLES`, `clusterStyleOf`, `warningLamps`, `shiftLightsLit`) |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
@@ -171,10 +172,18 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.2)
+## Current state (0.8.10)
 
 Done and tested:
 
+- Speedometer styles for the HUD cluster (0.8.10, A16 part 1). `CLUSTER_STYLES` in `cluster-styles.js`
+  gives each car an outside-view cluster matched to its cockpit personality (`spec.dash?.hud ?? 'classic'`):
+  `classic` (Hayate rally sedan, unchanged), `twin` (Rampart 440, two large white/cream dials with red
+  needles, chrome rings, shift lamp and gear window), `sport` (Vespera GT, yellow Ferrari-style central
+  tach with digital speed readout in its center and five shift lights), `digital` (Tsurugi GT-X, modern
+  arc LCD screen in bezel), and `vfd` (Hikari 300ZR, 1984 fluorescent green/amber/cyan bar-graph display).
+  Every style maintains warning lamps (CHECK, DMG, REV, ENG OFF, HOT) and shift light alerts within the
+  400 by 300 bottom-right HUD footprint.
 - Every car its own instruments, and a fifth car (0.8.2). `DASHES` in dash.js gives each gauge a
   `face` and a pod a `screen`: the Hayate keeps the classic black dials (the original, still the
   reference), the Rampart has cream dials with black numerals and a red needle, the Vespera yellow

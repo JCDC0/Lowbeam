@@ -17,6 +17,7 @@ function createMockContext() {
     translate: log('translate'),
     scale: log('scale'),
     beginPath: log('beginPath'),
+    closePath: log('closePath'),
     arc: log('arc'),
     fill: log('fill'),
     stroke: log('stroke'),
@@ -110,3 +111,70 @@ test('drawCluster renders both HUD and cockpit layouts for every car and gear 1.
     }
   }
 });
+
+test('CLUSTER_STYLES lists five styles and clusterStyleOf picks correctly', async () => {
+  const { CLUSTER_STYLES, clusterStyleOf } = await import('../src/ui/cluster-styles.js');
+  assert.deepEqual(CLUSTER_STYLES, ['classic', 'twin', 'sport', 'digital', 'vfd']);
+
+  const mockSpec = { dash: { hud: 'sport' } };
+  assert.equal(clusterStyleOf(/** @type {*} */ (mockSpec)), 'sport');
+  assert.equal(clusterStyleOf(/** @type {*} */ (mockSpec), 'twin'), 'twin');
+  assert.equal(clusterStyleOf(/** @type {*} */ (mockSpec), 'car'), 'sport');
+  assert.equal(clusterStyleOf(/** @type {*} */ ({})), 'classic');
+  assert.equal(clusterStyleOf(/** @type {*} */ ({ dash: {} })), 'classic');
+});
+
+test('warningLamps and shiftLightsLit evaluate correctly across gauge states', async () => {
+  const { warningLamps, shiftLightsLit } = await import('../src/ui/cluster-styles.js');
+  const spec = carById('hayate');
+  const gs = createGauges(spec);
+
+  // Normal running state
+  let lamps = warningLamps(gs, 0);
+  assert.equal(lamps.find((l) => l.label === 'CHECK').on, false);
+  assert.equal(lamps.find((l) => l.label === 'DMG').on, false);
+  assert.equal(lamps.find((l) => l.label === 'REV').on, false);
+  assert.equal(lamps.find((l) => l.label === 'ENG OFF').on, false);
+  assert.equal(lamps.find((l) => l.label === 'HOT').on, false);
+
+  // Damaged, blown, engine off, overrev, hot
+  gs.damage = 0.5;
+  gs.blown = true;
+  gs.engineOn = false;
+  gs.overrev = 1.0;
+  gs.temp = 120;
+  lamps = warningLamps(gs, 0);
+  assert.equal(lamps.find((l) => l.label === 'CHECK').on, true);
+  assert.equal(lamps.find((l) => l.label === 'DMG').on, true);
+  assert.equal(lamps.find((l) => l.label === 'REV').on, true);
+  assert.equal(lamps.find((l) => l.label === 'ENG OFF').on, true);
+  assert.equal(lamps.find((l) => l.label === 'HOT').on, true);
+
+  // Shift lights
+  gs.engineOn = true;
+  gs.rpm = spec.engine.shiftUp * 0.7;
+  assert.equal(shiftLightsLit(gs, spec, 5, 0), 0);
+  gs.rpm = spec.engine.shiftUp * 0.9;
+  assert.ok(shiftLightsLit(gs, spec, 5, 0) >= 2);
+  gs.rpm = spec.engine.shiftUp;
+  assert.equal(shiftLightsLit(gs, spec, 5, 0), 5);
+  gs.shift = true;
+  assert.equal(shiftLightsLit(gs, spec, 5, 0), 5);
+});
+
+test('drawStyled renders all styles without crashing', async () => {
+  const { drawStyled, CLUSTER_STYLES } = await import('../src/ui/cluster-styles.js');
+  for (const style of CLUSTER_STYLES) {
+    if (style === 'classic') continue;
+    for (const spec of CARS) {
+      const gs = createGauges(spec);
+      gs.kmh = 160;
+      gs.rpm = spec.engine.redline - 500;
+      gs.gear = '4';
+      const ctx = createMockContext();
+      drawStyled(/** @type {*} */ (ctx), style, gs, spec, 0.5);
+      assert.ok(ctx.calls.length > 0, `${style} for ${spec.id} drew canvas operations`);
+    }
+  }
+});
+

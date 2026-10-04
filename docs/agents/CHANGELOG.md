@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.10 (2026-10-04)
+
+Speedometer styles for the HUD cluster (A16 part 1).
+
+- `src/ui/cluster-styles.js`: `CLUSTER_STYLES` (`classic`, `twin`, `sport`, `digital`, `vfd`) and `drawStyled` providing each car with an arcade HUD speedometer matching its dashboard character:
+  - `twin`: Rampart 440 twin white dials with red needles in chrome housing, gear window, shift lamp and fuel/temp bars.
+  - `sport`: Vespera GT central yellow tachometer with embedded digital speed readout, shift lights and vertical gauges.
+  - `digital`: Tsurugi GT-X modern LCD screen in a bezel with gear and warning lamps.
+  - `vfd`: Hikari 300ZR 1984 vacuum fluorescent bar-graph display in green, amber, cyan with phosphor ghosting.
+- `src/ui/cluster.js`: reads `spec.dash?.hud ?? 'classic'`, caches dial faces per car, and draws the styled clusters.
+- `clusterStyleOf`: pure resolver for spec dash style and manual overrides.
+- `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
+- Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
+
 ## 0.8.2 (2026-10-04)
 
 Give every car its own instruments, and add the Hikari 300ZR with a fluorescent dash.
