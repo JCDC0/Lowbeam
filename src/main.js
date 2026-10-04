@@ -11,6 +11,7 @@ import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
 import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
 import { mapScreen } from './ui/map.js';
+import { pursuitHud } from './ui/pursuit.js';
 import { statsOverlay } from './ui/stats.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
@@ -44,6 +45,7 @@ const garage = new Garage(ui);
 const hud = new Hud(ui);
 const pause = pauseScreen(ui);
 const map = mapScreen(ui);
+const pursuit = pursuitHud(ui);
 const toast = toaster(ui);
 const stats = statsOverlay(ui, stage, () => drive?.traffic?.agents?.length ?? 0);
 audio.onTrack = (t) => {
@@ -56,6 +58,10 @@ let prevSettingsState = 'menu';
 let world = null;
 /** @type {Drive | null} */
 let drive = null;
+/** @type {import('./ui/pursuit.js').PursuitView | null} */
+let pursuitMock = null;
+/** @type {import('./ui/pursuit.js').PoliceMarker[] | null} */
+let markersMock = null;
 const fly = { x: 0, y: 30, z: 0, yaw: 0, pitch: -0.2 };
 
 /** @typedef {'title' | 'menu' | 'garage' | 'loading' | 'drive' | 'pause' | 'settings' | 'controls' | 'map' | 'free'} State */
@@ -214,6 +220,7 @@ function frame(now) {
     world.update(stage.camera, drive.car.group.position);
     stage.render(world.scene, stage.camera);
   }
+  pursuit.update(pursuitMock ?? (/** @type {any} */ (drive)?.pursuitView?.() ?? null), dt);
   input.endFrame();
   requestAnimationFrame(frame);
 }
@@ -267,4 +274,30 @@ window.__lowbeam = {
   /** @param {string} name */
   shot: (name) => stage.shot(name),
   toast,
+  pursuit,
+  /**
+   * Sets pursuit mock view and optional markers for testing and capturing screenshots.
+   * @param {import('./ui/pursuit.js').PursuitView | string | null} [view]
+   * @param {import('./ui/pursuit.js').PoliceMarker[]} [markers]
+   */
+  pursuitDemo(view = 'pursuit', markers = []) {
+    if (typeof view === 'string') {
+      const presets = {
+        pursuit: { state: 'pursuit', heat: 2, evade: 0.35, cooldown: 0, bust: 0, units: 3, heli: false, bounty: 12500, time: 48 },
+        evading: { state: 'evading', heat: 3, evade: 0.72, cooldown: 0, bust: 0, units: 4, heli: true, bounty: 45000, time: 115 },
+        cooldown: { state: 'cooldown', heat: 3, evade: 1.0, cooldown: 0.45, bust: 0, units: 4, heli: true, bounty: 45000, time: 130 },
+        busted: { state: 'busted', heat: 2, evade: 0.1, cooldown: 0, bust: 1.0, units: 2, heli: false, bounty: 18000, time: 62 },
+        escaped: { state: 'escaped', heat: 3, evade: 1.0, cooldown: 1.0, bust: 0, units: 0, heli: false, bounty: 50000, time: 155 },
+      };
+      pursuitMock = presets[view] ?? null;
+    } else {
+      pursuitMock = view;
+    }
+    markersMock = markers;
+    pursuit.update(pursuitMock, 0);
+    return pursuitMock;
+  },
+  getMarkers() {
+    return markersMock ?? (/** @type {any} */ (drive)?.policeMarkers?.() ?? []);
+  },
 };

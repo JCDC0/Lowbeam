@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.10 (2026-10-04)
+
+The pursuit HUD (NFS: Most Wanted 2005 style).
+
+- New `src/ui/pursuit.js`: `pursuitHud` DOM component and pure `layoutPursuit(view)`.
+  Displays five heat pips, status banner (`PURSUIT`, `EVADING`, `COOLDOWN`, `BUSTED`, `ESCAPED`),
+  units count, helicopter tag, dual bars (evade/cooldown + conditional bust bar), bounty and time footer.
+- `style.css`: `.pursuit-hud` with skewed amber heat marks, colored state banners, progress bars and smooth terminal fade-out.
+- `src/main.js`: mounts `pursuitHud`, steps it in frame loop, exports `window.__lowbeam.pursuitDemo(state, markers)` and `getMarkers()`.
+- Tests: `tests/pursuit-hud.test.mjs` verifying heat calculation, state banner formatting, bar fills, bust bar activation and terminal states.
+
 ## 0.7.7 (2026-10-04)
 
 Fill the town with smaller buildings and housing.

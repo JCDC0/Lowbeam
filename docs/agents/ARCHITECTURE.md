@@ -46,7 +46,7 @@ wav, json, txt, png) for other captures such as rendered audio.
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
   `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
-  `src/render/pool-grid.js`, `src/police/heli.js`.
+  `src/render/pool-grid.js`, `src/police/heli.js`, `src/ui/pursuit.js` (`layoutPursuit`).
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -72,6 +72,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
 | `src/ui/menus.js` | Title, main menu, settings, controls, loading, pause and toast DOM screens |
 | `src/ui/hud.js` | Driving HUD: area name, money, prompt, minimap slot, cluster slot |
+| `src/ui/pursuit.js` | Pursuit HUD (`pursuitHud`, NFS: Most Wanted style) and pure `layoutPursuit(view)` |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
