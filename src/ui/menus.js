@@ -1,6 +1,7 @@
 import { audio, CHANNELS } from '../audio/audio.js';
 import { store } from '../core/store.js';
 import { RENDER_HEIGHTS, DEFAULT_LINES } from '../render/stage.js';
+import { CLUSTER_STYLES } from './cluster-styles.js';
 
 /**
  * @param {HTMLElement} ui
@@ -217,6 +218,11 @@ export function settingsScreen(ui, stage = null) {
             <span class="ac-pill click" data-act="toggle-render" id="set-render-val">240 LINES</span>
             <span class="hints-inline">TARGET: 240 / 360 / 480 LINES</span>
           </div>
+          <div class="ac-row click" data-row="cluster">
+            <span class="ac-rlabel">SPEEDOMETER</span>
+            <span class="ac-pill click" data-act="toggle-cluster" id="set-cluster-val">PER CAR</span>
+            <span class="hints-inline">PER CAR / CLASSIC / TWIN / SPORT / DIGITAL / VFD</span>
+          </div>
           ${CHANNELS.map((c) => `
             <div class="ac-row click" data-row="${c}">
               <span class="ac-rlabel">${CH_NAMES[c]}</span>
@@ -237,9 +243,11 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-info-header">CONFIGURATION HELP</div>
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
+          <div class="ac-info-row"><span class="k">SPEEDOMETER</span><span class="v">PER CAR / 5 STYLES</span></div>
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
             <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 is the authentic PS1 resolution; 480 (default) keeps the dither and 15-bit color with a clearer picture.<br><br>
+            <b>SPEEDOMETER:</b> HUD cluster style in outside views. PER CAR matches each vehicle's instruments; or lock to Classic, Twin, Sport, Digital or VFD.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
         </div>
@@ -253,6 +261,9 @@ export function settingsScreen(ui, stage = null) {
   const rows = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.ac-row')]);
   const transEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-trans-val'));
   const renderEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-render-val'));
+  const clusterEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-cluster-val'));
+  const CLUSTER_CHOICES = ['car', ...CLUSTER_STYLES];
+  const CLUSTER_LABELS = { car: 'PER CAR', classic: 'CLASSIC', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
   let sel = 0;
   /** @type {string | null} */
   let clickedAction = null;
@@ -271,6 +282,15 @@ export function settingsScreen(ui, stage = null) {
     sync();
   }
 
+  function setClusterChoice(style) {
+    store.set('clusterStyle', style);
+    const drive = window.__lowbeam?.drive;
+    if (drive?.cluster && drive.car?.spec) {
+      drive.cluster.setSpec(drive.car.spec, style);
+    }
+    sync();
+  }
+
   function sync() {
     const isManual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
     transEl.textContent = isManual ? 'MANUAL' : 'AUTO';
@@ -281,6 +301,11 @@ export function settingsScreen(ui, stage = null) {
     renderEl.textContent = `${curH} LINES`;
     renderEl.classList.toggle('cyan', curH > 240);
     renderEl.classList.toggle('on', curH === 240);
+
+    const curCluster = store.get('clusterStyle', 'car');
+    clusterEl.textContent = CLUSTER_LABELS[curCluster] ?? String(curCluster).toUpperCase();
+    clusterEl.classList.toggle('cyan', curCluster !== 'car');
+    clusterEl.classList.toggle('on', curCluster === 'car');
 
     for (const c of CHANNELS) {
       const setting = audio.settings[c];
@@ -327,6 +352,10 @@ export function settingsScreen(ui, stage = null) {
       }
       if (rowId === 'render') {
         clickedAction = 'toggle-render';
+        return;
+      }
+      if (rowId === 'cluster') {
+        clickedAction = 'toggle-cluster';
         return;
       }
       const idx = rows.indexOf(/** @type {HTMLElement} */ (row));
@@ -377,6 +406,11 @@ export function settingsScreen(ui, stage = null) {
           const nextH = HEIGHTS[(HEIGHTS.indexOf(curH) + 1) % HEIGHTS.length];
           setRenderHeight(nextH);
           audio.ui('select');
+        } else if (action === 'toggle-cluster') {
+          const curC = store.get('clusterStyle', 'car');
+          const nextC = CLUSTER_CHOICES[(CLUSTER_CHOICES.indexOf(curC) + 1) % CLUSTER_CHOICES.length];
+          setClusterChoice(nextC);
+          audio.ui('select');
         } else if (action === 'toggle-audio' && ch) {
           audio.toggle(ch);
           audio.ui('select');
@@ -418,8 +452,14 @@ export function settingsScreen(ui, stage = null) {
           const nextH = HEIGHTS[(idx + HEIGHTS.length - 1) % HEIGHTS.length];
           setRenderHeight(nextH);
           audio.ui('move');
-        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 2];
+        } else if (sel === 2) {
+          const curC = store.get('clusterStyle', 'car');
+          const idx = CLUSTER_CHOICES.indexOf(curC);
+          const nextC = CLUSTER_CHOICES[(idx + CLUSTER_CHOICES.length - 1) % CLUSTER_CHOICES.length];
+          setClusterChoice(nextC);
+          audio.ui('move');
+        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 3];
           const curV = audio.settings[ch].volume;
           const nextV = Math.max(0, Math.round((curV - 0.1) * 10) / 10);
           audio.setVolume(ch, nextV);
@@ -439,8 +479,14 @@ export function settingsScreen(ui, stage = null) {
           const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
           setRenderHeight(nextH);
           audio.ui('move');
-        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 2];
+        } else if (sel === 2) {
+          const curC = store.get('clusterStyle', 'car');
+          const idx = CLUSTER_CHOICES.indexOf(curC);
+          const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
+          setClusterChoice(nextC);
+          audio.ui('move');
+        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 3];
           const curV = audio.settings[ch].volume;
           const nextV = Math.min(1, Math.round((curV + 0.1) * 10) / 10);
           if (!audio.settings[ch].on && nextV > 0) audio.setOn(ch, true);
@@ -461,8 +507,14 @@ export function settingsScreen(ui, stage = null) {
           const nextH = HEIGHTS[(idx + 1) % HEIGHTS.length];
           setRenderHeight(nextH);
           audio.ui('select');
-        } else if (sel >= 2 && sel < 2 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 2];
+        } else if (sel === 2) {
+          const curC = store.get('clusterStyle', 'car');
+          const idx = CLUSTER_CHOICES.indexOf(curC);
+          const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
+          setClusterChoice(nextC);
+          audio.ui('select');
+        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 3];
           audio.toggle(ch);
           audio.ui('select');
           sync();

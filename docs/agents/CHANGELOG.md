@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.11 (2026-10-04)
+
+Speedometer settings and garage style readout (A16 part 2).
+
+- `src/ui/menus.js`: added `SPEEDOMETER` row to Settings screen with options `PER CAR` (default) or lock to any style (`CLASSIC`, `TWIN DIAL`, `SPORT TACH`, `DIGITAL LCD`, `1984 VFD`), saved under `clusterStyle` in local storage.
+- `src/ui/garage.js`: garage card displays the selected car's HUD cluster style name (`CLUSTER` row).
+- `src/drive.js`: passes the stored `clusterStyle` preference when initializing or updating the HUD gauge cluster.
+- `src/main.js`: dynamically updates active drive gauge cluster when settings are adjusted.
+- `src/ui/cluster.js`: `Cluster` constructor and `setSpec` support stored `clusterStyle` override.
+
 ## 0.8.10 (2026-10-04)
 
 Speedometer styles for the HUD cluster (A16 part 1).

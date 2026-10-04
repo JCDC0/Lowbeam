@@ -11,8 +11,10 @@ import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert, psxPhong, psxUniforms } from '../render/psx.js';
 import { store } from '../core/store.js';
 import { damp } from '../core/mathx.js';
+import { clusterStyleOf } from './cluster-styles.js';
 
 const BAR_LABELS = { topSpeed: 'TOP SPEED', handling: 'HANDLING', accel: 'ACCELERATION' };
+const CLUSTER_NAMES = { classic: 'CLASSIC', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
 
 function buildRoom() {
   const b = new MeshBuilder();
@@ -159,10 +161,13 @@ export class Garage {
         return `<div class="bar"><span class="k">${label}</span><span class="v">${cells}</span></div>`;
       })
       .join('');
+    const styleKey = clusterStyleOf(s);
+    const styleName = CLUSTER_NAMES[styleKey] ?? styleKey.toUpperCase();
     q('.spec').innerHTML = `
       <span class="k">LAYOUT</span><span>${s.layout}</span>
       <span class="k">ENGINE</span><span>${s.engineLabel}</span>
       <span class="k">GEARBOX</span><span>${s.gears.length}-SPEED ${trans}</span>
+      <span class="k">CLUSTER</span><span>${styleName}</span>
       <span class="k">WEIGHT</span><span>${s.mass.toLocaleString('en-US')} kg</span>`;
     const pi = this.model.paintIndex;
     const hex = (c) => `#${c.toString(16).padStart(6, '0')}`;

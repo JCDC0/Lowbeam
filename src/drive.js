@@ -176,8 +176,8 @@ export class Drive {
     this.world.add(this.car.fx.group);
     this.gauges = createGauges(spec);
     audio.setCar(spec);
-    if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec);
-    else this.cluster.setSpec(spec);
+    if (!this.cluster) this.cluster = new Cluster(this.hud.clusterSlot, spec, store.get('clusterStyle', 'car'));
+    else this.cluster.setSpec(spec, store.get('clusterStyle', 'car'));
     this.toPump(this.world.scatter.stations[0]);
     this.traffic.agents.length = 0;
     this.traffic.populate(this.car.state);

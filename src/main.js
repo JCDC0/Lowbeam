@@ -179,6 +179,9 @@ function frame(now) {
     garage.render(stage);
   } else if (state === 'settings') {
     const ev = settings.update(input);
+    if (drive?.cluster && drive.car?.spec) {
+      drive.cluster.setSpec(drive.car.spec, store.get('clusterStyle', 'car'));
+    }
     if (ev === 'back') setState(prevSettingsState);
     if (prevSettingsState === 'pause' && drive) drive.render();
     else {

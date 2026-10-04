@@ -173,10 +173,15 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.10)
+## Current state (0.8.11)
 
 Done and tested:
 
+- Speedometer choice and garage display (0.8.11, A16 part 2). Settings features a `SPEEDOMETER` row
+  configured to `PER CAR` (default) or locked to any specific style (`classic`, `twin`, `sport`,
+  `digital`, `vfd`), stored in local storage under `clusterStyle`. Drive applies the stored setting upon
+  cluster creation and during in-game settings updates. The garage card details the car's HUD cluster style
+  (CLASSIC, TWIN DIAL, SPORT TACH, DIGITAL LCD, 1984 VFD).
 - Speedometer styles for the HUD cluster (0.8.10, A16 part 1). `CLUSTER_STYLES` in `cluster-styles.js`
   gives each car an outside-view cluster matched to its cockpit personality (`spec.dash?.hud ?? 'classic'`):
   `classic` (Hayate rally sedan, unchanged), `twin` (Rampart 440, two large white/cream dials with red

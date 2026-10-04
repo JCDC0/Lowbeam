@@ -8,6 +8,7 @@
 
 import { BOOST_MIN, EXH_MAX, EXH_MIN, INTAKE_MIN, TEMP_MAX, TEMP_MIN, TEMP_RED } from '../vehicles/gauges.js';
 import { clamp } from '../core/mathx.js';
+import { store } from '../core/store.js';
 import { clusterStyleOf, drawStyled } from './cluster-styles.js';
 import { paintDial } from '../vehicles/instruments.js';
 
@@ -371,8 +372,8 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
 }
 
 export class Cluster {
-  /** @param {HTMLElement} parent @param {CarSpec} spec */
-  constructor(parent, spec) {
+  /** @param {HTMLElement} parent @param {CarSpec} spec @param {string | null} [override] */
+  constructor(parent, spec, override = null) {
     this.canvas = document.createElement('canvas');
     this.canvas.className = 'gauges';
     parent.appendChild(this.canvas);
@@ -381,7 +382,7 @@ export class Cluster {
     this.canvas.height = H * dpr;
     this.g = /** @type {CanvasRenderingContext2D} */ (this.canvas.getContext('2d'));
     this.g.scale(dpr, dpr);
-    this.setSpec(spec);
+    this.setSpec(spec, override);
     this.t = 0;
   }
 
@@ -390,7 +391,7 @@ export class Cluster {
    * car's own, `spec.dash.hud`).
    * @param {CarSpec} spec @param {string | null} [override]
    */
-  setSpec(spec, override = this.override ?? null) {
+  setSpec(spec, override = this.override ?? store.get('clusterStyle', 'car')) {
     this.spec = spec;
     this.override = override;
     this.style = clusterStyleOf(spec, override);
