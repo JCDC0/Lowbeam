@@ -13,6 +13,8 @@ import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScr
 import { mapScreen } from './ui/map.js';
 import { pursuitHud } from './ui/pursuit.js';
 import { statsOverlay } from './ui/stats.js';
+import { RouteTracker } from './ui/route.js';
+import { routeHud } from './ui/route-hud.js';
 import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
@@ -47,6 +49,8 @@ const pause = pauseScreen(ui);
 const map = mapScreen(ui);
 const pursuit = pursuitHud(ui);
 const toast = toaster(ui);
+const tracker = new RouteTracker(null);
+const rHud = routeHud(ui);
 const stats = statsOverlay(ui, stage, () => drive?.traffic?.agents?.length ?? 0);
 audio.onTrack = (t) => {
   if (state === 'drive') toast(`NOW PLAYING   ${t.title.toUpperCase()}`, 3);
@@ -78,6 +82,7 @@ function setState(next) {
   controls.show(state === 'controls');
   loading.show(state === 'loading');
   hud.show(state === 'drive' || state === 'pause');
+  rHud.show(state === 'drive' || state === 'pause');
   pause.show(state === 'pause');
   map.show(state === 'map', drive?.car);
   if (state === 'menu') menu.refresh(garage.spec);
@@ -220,6 +225,9 @@ function frame(now) {
     world.update(stage.camera, drive.car.group.position);
     stage.render(world.scene, stage.camera);
   }
+  if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
+  if (drive?.car) tracker.update(drive.car, dt);
+  rHud.update(tracker, dt);
   pursuit.update(pursuitMock ?? (/** @type {any} */ (drive)?.pursuitView?.() ?? null), dt);
   input.endFrame();
   requestAnimationFrame(frame);
@@ -299,5 +307,16 @@ window.__lowbeam = {
   },
   getMarkers() {
     return markersMock ?? (/** @type {any} */ (drive)?.policeMarkers?.() ?? []);
+  },
+  tracker,
+  routeHud: rHud,
+  setWaypoint(pt) {
+    tracker.setDestination(pt);
+  },
+  clearWaypoint() {
+    tracker.clear();
+  },
+  getRoute() {
+    return tracker.getRouteInfo();
   },
 };

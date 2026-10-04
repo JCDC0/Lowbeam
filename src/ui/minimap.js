@@ -15,8 +15,9 @@ export class Minimap {
    * @param {HTMLElement} parent
    * @param {import('../world/ground.js').Ground} ground
    * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
+   * @param {() => { route?: any, destination?: any, distance?: number, arrived?: boolean } | null} [getRoute]
    */
-  constructor(parent, ground, getMarkers) {
+  constructor(parent, ground, getMarkers, getRoute) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = SIZE;
     this.canvas.height = SIZE;
@@ -43,6 +44,7 @@ export class Minimap {
     this.scale = 0.55;
     this.time = 0;
     this.getMarkers = getMarkers ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getMarkers?.() ?? []));
+    this.getRoute = getRoute ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getRoute?.() ?? null));
   }
 
   /**
@@ -83,6 +85,24 @@ export class Minimap {
       g.fill();
     }
     drawRoads(g, this.roads, 2.4 / s);
+
+    const routeInfo = this.getRoute ? this.getRoute() : null;
+    const route = routeInfo?.route;
+    if (route && route.points && route.points.length >= 2) {
+      g.strokeStyle = '#00e5ff';
+      g.lineWidth = 3.6 / s;
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.beginPath();
+      for (let i = 0; i < route.points.length; i++) {
+        const pt = route.points[i];
+        const px = pt[0] ?? pt.x;
+        const pz = pt[1] ?? pt.z;
+        if (i === 0) g.moveTo(px, pz);
+        else g.lineTo(px, pz);
+      }
+      g.stroke();
+    }
 
     g.setTransform(1, 0, 0, 1, 0, 0);
     for (const p of this.pads) {
@@ -214,6 +234,51 @@ export class Minimap {
         g.stroke();
       }
       g.restore();
+    }
+
+    if (routeInfo?.destination) {
+      const dest = routeInfo.destination;
+      const destX = Array.isArray(dest) ? dest[0] : dest.x;
+      const destZ = Array.isArray(dest) ? dest[1] : dest.z;
+      const [sx, sy] = toScreen(destX, destZ);
+      const distFromCenter = Math.hypot(sx - R, sy - R);
+
+      if (distFromCenter <= R - 8) {
+        g.save();
+        g.fillStyle = '#00e5ff';
+        g.strokeStyle = '#fff';
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.arc(sx, sy, 4.5, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        g.fillStyle = '#fff';
+        g.beginPath();
+        g.arc(sx, sy, 1.8, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      } else {
+        const angleToEdge = Math.atan2(sy - R, sx - R);
+        const edgeR = R - 7;
+        const ex = R + Math.cos(angleToEdge) * edgeR;
+        const ey = R + Math.sin(angleToEdge) * edgeR;
+
+        g.save();
+        g.translate(ex, ey);
+        g.rotate(angleToEdge);
+        g.fillStyle = '#00e5ff';
+        g.strokeStyle = '#000';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(5, 0);
+        g.lineTo(-4, -4);
+        g.lineTo(-2, 0);
+        g.lineTo(-4, 4);
+        g.closePath();
+        g.fill();
+        g.stroke();
+        g.restore();
+      }
     }
     g.restore();
 

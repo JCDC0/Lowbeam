@@ -9,6 +9,7 @@
 /** @typedef {import('../traffic/net.js').TrafficNet} TrafficNet */
 /** @typedef {import('../traffic/net.js').Lane} Lane */
 /** @typedef {import('../traffic/net.js').Link} Link */
+/** @typedef {{ points: [number, number][], length: number, lanes: Lane[] }} Route */
 
 /**
  * Binary min-heap for A* priority queue.
@@ -599,5 +600,21 @@ export class RouteTracker {
     }
 
     return this.distance;
+  }
+
+  /**
+   * Returns current route info for rendering on map and minimap.
+   * @returns {{ route: import('./route.js').Route | null, destination: { x: number, z: number } | null, distance: number, arrived: boolean }}
+   */
+  getRouteInfo() {
+    return {
+      route: this.route,
+      destination: this.destination ? {
+        x: Array.isArray(this.destination) ? this.destination[0] : this.destination.x,
+        z: Array.isArray(this.destination) ? this.destination[1] : this.destination.z,
+      } : null,
+      distance: this.distance,
+      arrived: this.arrived,
+    };
   }
 }

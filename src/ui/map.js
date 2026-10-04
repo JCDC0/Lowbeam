@@ -95,8 +95,11 @@ export class MapScreen {
    * @param {HTMLElement} ui
    * @param {any} [world]
    * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
+   * @param {() => { route?: any, destination?: any, distance?: number, arrived?: boolean } | null} [getRoute]
+   * @param {(pt: { x: number, z: number }) => any} [setWaypoint]
+   * @param {() => void} [clearWaypoint]
    */
-  constructor(ui, world = null, getMarkers) {
+  constructor(ui, world = null, getMarkers, getRoute, setWaypoint, clearWaypoint) {
     this.el = document.createElement('section');
     this.el.id = 'map';
     this.el.className = 'screen';
@@ -108,6 +111,9 @@ export class MapScreen {
 
     this.world = world;
     this.getMarkers = getMarkers ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getMarkers?.() ?? []));
+    this.getRoute = getRoute ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getRoute?.() ?? null));
+    this.setWaypoint = setWaypoint ?? ((pt) => (/** @type {any} */ (globalThis).window?.__lowbeam?.setWaypoint?.(pt)));
+    this.clearWaypoint = clearWaypoint ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.clearWaypoint?.()));
     this.data = null;
     this.cacheCanvas = null;
     this.cacheW = 0;
@@ -124,12 +130,18 @@ export class MapScreen {
     this.lastMouseX = 0;
     this.lastMouseY = 0;
     this.hasMoved = false;
+    let startX = 0;
+    let startY = 0;
 
     // Setup input listeners
     this.canvas.addEventListener('mousedown', (e) => {
-      this.dragging = true;
-      this.lastMouseX = e.clientX;
-      this.lastMouseY = e.clientY;
+      if (e.button === 0) {
+        this.dragging = true;
+        this.lastMouseX = e.clientX;
+        this.lastMouseY = e.clientY;
+        startX = e.clientX;
+        startY = e.clientY;
+      }
     });
 
     window.addEventListener('mousemove', (e) => {
@@ -144,8 +156,19 @@ export class MapScreen {
       this.hasMoved = true;
     });
 
-    window.addEventListener('mouseup', () => {
-      this.dragging = false;
+    window.addEventListener('mouseup', (e) => {
+      if (this.dragging && e.button === 0) {
+        this.dragging = false;
+        const d = Math.hypot(e.clientX - startX, e.clientY - startY);
+        if (d < 6) {
+          this.handleClick(e.clientX, e.clientY);
+        }
+      }
+    });
+
+    this.canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      if (this.clearWaypoint) this.clearWaypoint();
     });
 
     this.canvas.addEventListener('wheel', (e) => {
@@ -157,6 +180,47 @@ export class MapScreen {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     if (world) this.setWorld(world);
+  }
+
+  /**
+   * Handles click on canvas to set waypoint, snapping to landmark icon if near.
+   * @param {number} clientX
+   * @param {number} clientY
+   */
+  handleClick(clientX, clientY) {
+    const rect = this.canvas.getBoundingClientRect();
+    const screenX = clientX - rect.left;
+    const screenY = clientY - rect.top;
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const wx = this.camX + (screenX - cx) / this.zoom;
+    const wz = this.camZ + (screenY - cy) / this.zoom;
+
+    let targetX = wx;
+    let targetZ = wz;
+
+    if (this.data?.pois) {
+      const snapDist = 20;
+      let closest = null;
+      let closestD = Infinity;
+      for (const poi of this.data.pois) {
+        const poiScreenX = cx + (poi.x - this.camX) * this.zoom;
+        const poiScreenY = cy + (poi.z - this.camZ) * this.zoom;
+        const d = Math.hypot(screenX - poiScreenX, screenY - poiScreenY);
+        if (d < snapDist && d < closestD) {
+          closestD = d;
+          closest = poi;
+        }
+      }
+      if (closest) {
+        targetX = closest.x;
+        targetZ = closest.z;
+      }
+    }
+
+    if (this.setWaypoint) {
+      this.setWaypoint({ x: targetX, z: targetZ });
+    }
   }
 
   resize() {
@@ -295,8 +359,33 @@ export class MapScreen {
    * @returns {'close' | null}
    */
   update(input, car = null) {
-    if (input.pressed('map') || input.pressed('back') || input.pressed('pause')) {
+    if (input.pressed('map') || input.down.has('Escape')) {
       return 'close';
+    }
+
+    if (input.hit.has('Backspace')) {
+      if (this.clearWaypoint) this.clearWaypoint();
+    }
+
+    if (input.hit.has('Enter') || input.hit.has('NumpadEnter')) {
+      let targetX = this.camX;
+      let targetZ = this.camZ;
+      if (this.data?.pois) {
+        let closest = null;
+        let closestD = Infinity;
+        for (const poi of this.data.pois) {
+          const d = Math.hypot(this.camX - poi.x, this.camZ - poi.z);
+          if (d < (28 / this.zoom) && d < closestD) {
+            closestD = d;
+            closest = poi;
+          }
+        }
+        if (closest) {
+          targetX = closest.x;
+          targetZ = closest.z;
+        }
+      }
+      if (this.setWaypoint) this.setWaypoint({ x: targetX, z: targetZ });
     }
 
     const panSpeed = (350 / this.zoom) * (1 / 60);
@@ -394,6 +483,81 @@ export class MapScreen {
       const half = this.cacheHalf;
       const [left, top] = toScreen(-half, -half);
       g.drawImage(this.cacheCanvas, left, top, half * 2 * z, half * 2 * z);
+    }
+
+    // Active GPS route
+    const routeInfo = this.getRoute ? this.getRoute() : null;
+    const route = routeInfo?.route;
+    if (route && route.points && route.points.length >= 2) {
+      g.save();
+      g.lineCap = 'round';
+      g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(0, 229, 255, 0.4)';
+      g.lineWidth = Math.max(6, 8 * z);
+      g.beginPath();
+      for (let i = 0; i < route.points.length; i++) {
+        const [rx, ry] = toScreen(route.points[i][0], route.points[i][1]);
+        if (i === 0) g.moveTo(rx, ry);
+        else g.lineTo(rx, ry);
+      }
+      g.stroke();
+
+      g.strokeStyle = '#00e5ff';
+      g.lineWidth = Math.max(3, 4.2 * z);
+      g.beginPath();
+      for (let i = 0; i < route.points.length; i++) {
+        const [rx, ry] = toScreen(route.points[i][0], route.points[i][1]);
+        if (i === 0) g.moveTo(rx, ry);
+        else g.lineTo(rx, ry);
+      }
+      g.stroke();
+      g.restore();
+    }
+
+    if (routeInfo?.destination) {
+      const dest = routeInfo.destination;
+      const destX = Array.isArray(dest) ? dest[0] : dest.x;
+      const destZ = Array.isArray(dest) ? dest[1] : dest.z;
+      const [wpx, wpy] = toScreen(destX, destZ);
+
+      g.save();
+      const pulse = (Math.sin(performance.now() * 0.006) + 1) * 0.5;
+      g.strokeStyle = 'rgba(0, 229, 255, 0.6)';
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.arc(wpx, wpy, 11 + pulse * 4, 0, Math.PI * 2);
+      g.stroke();
+
+      g.fillStyle = '#00e5ff';
+      g.strokeStyle = '#fff';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(wpx, wpy - 8, 6, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+
+      g.beginPath();
+      g.moveTo(wpx, wpy);
+      g.lineTo(wpx - 4, wpy - 6);
+      g.lineTo(wpx + 4, wpy - 6);
+      g.closePath();
+      g.fill();
+      g.stroke();
+
+      g.fillStyle = '#060a12';
+      g.beginPath();
+      g.arc(wpx, wpy - 8, 2.5, 0, Math.PI * 2);
+      g.fill();
+
+      const d = routeInfo.distance;
+      const distStr = d !== undefined ? (d >= 1000 ? `${(d / 1000).toFixed(1)} KM` : `${Math.round(d)} M`) : '';
+      if (distStr) {
+        g.fillStyle = '#00e5ff';
+        g.font = `bold 11px ${FONT}`;
+        g.textAlign = 'center';
+        g.fillText(`WAYPOINT // ${distStr}`, wpx, wpy - 20);
+      }
+      g.restore();
     }
 
     // Zone names
@@ -581,7 +745,7 @@ export class MapScreen {
     g.fillStyle = DIM;
     g.font = `10px ${FONT}`;
     g.textAlign = 'center';
-    g.fillText('TAB / ESC  CLOSE    DRAG / ARROWS  PAN    WHEEL / +/-  ZOOM    HOME  RECENTER', w / 2, h - 16);
+    g.fillText('TAB / ESC  CLOSE    DRAG / ARROWS  PAN    WHEEL / +/-  ZOOM    HOME  RECENTER    CLICK / ENTER  WAYPOINT    BACKSPACE  CLEAR', w / 2, h - 16);
 
     // North Compass (Top Right)
     const nX = w - 48;
@@ -647,9 +811,12 @@ export class MapScreen {
  * @param {HTMLElement} ui
  * @param {any} [world]
  * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
+ * @param {() => { route?: any, destination?: any, distance?: number, arrived?: boolean } | null} [getRoute]
+ * @param {(pt: { x: number, z: number }) => any} [setWaypoint]
+ * @param {() => void} [clearWaypoint]
  */
-export function mapScreen(ui, world = null, getMarkers) {
-  return new MapScreen(ui, world, getMarkers);
+export function mapScreen(ui, world = null, getMarkers, getRoute, setWaypoint, clearWaypoint) {
+  return new MapScreen(ui, world, getMarkers, getRoute, setWaypoint, clearWaypoint);
 }
 
 /**

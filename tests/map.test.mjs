@@ -277,3 +277,195 @@ test('MapScreen.render draws police cars and helicopter markers with searchlight
     globalThis.window = savedWindow;
   }
 });
+
+test('MapScreen handles click and Enter to set waypoint, Backspace to clear, and draws route', async () => {
+  const { MapScreen } = await import('../src/ui/map.js');
+  const g = createMockContext();
+  const canvas = {
+    getContext: () => g,
+    width: 800,
+    height: 600,
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+    addEventListener() {},
+  };
+  const saved = globalThis.document;
+  const savedWindow = globalThis.window;
+  globalThis.document = {
+    createElement: (tag) => {
+      if (tag === 'canvas') return canvas;
+      return { appendChild() {}, className: '', style: {} };
+    },
+  };
+  globalThis.window = {
+    innerWidth: 800,
+    innerHeight: 600,
+    devicePixelRatio: 1,
+    addEventListener() {},
+  };
+
+  try {
+    let waypoint = null;
+    let cleared = false;
+    const routeData = {
+      route: { points: [[0, 0], [100, 100]], length: 141.4, lanes: [] },
+      destination: { x: 100, z: 100 },
+      distance: 141.4,
+      arrived: false,
+    };
+
+    const mockWorld = {
+      mapData: {
+        bounds: { half: 1000 },
+        roads: [],
+        pois: [{ kind: 'station', id: 's1', name: 'TEST GAS', x: 200, z: 200 }],
+        zones: [],
+      },
+    };
+
+    const map = new MapScreen(
+      { appendChild() {} },
+      mockWorld,
+      () => [],
+      () => (waypoint ? routeData : null),
+      (pt) => { waypoint = pt; },
+      () => { waypoint = null; cleared = true; },
+    );
+
+    // Click near POI at (200, 200)
+    // screen center is 400, 300; cam is at 0, 0; zoom is 0.55
+    const screenX = 400 + 200 * 0.55;
+    const screenY = 300 + 200 * 0.55;
+    map.handleClick(screenX, screenY);
+    assert.deepEqual(waypoint, { x: 200, z: 200 }, 'snaps to nearby POI');
+
+    // Render with route
+    map.render({ spec: { name: 'CORVETTE' }, state: { x: 0, z: 0, yaw: 0, speed: 0, rpm: 0, gear: 1 } });
+    const lineToCalls = g.calls.filter((c) => c.fn === 'lineTo');
+    assert.ok(lineToCalls.length > 0, 'draws route line');
+
+    // Backspace clears waypoint
+    cleared = false;
+    const mockInputBackspace = {
+      down: new Set(),
+      hit: new Set(['Backspace']),
+      pressed: (k) => false,
+    };
+    map.update(mockInputBackspace, null);
+    assert.equal(cleared, true, 'clears waypoint on Backspace');
+    assert.equal(waypoint, null);
+
+    // Enter sets waypoint at cam center
+    const mockInputEnter = {
+      down: new Set(),
+      hit: new Set(['Enter']),
+      pressed: (k) => false,
+    };
+    map.camX = 50;
+    map.camZ = 75;
+    map.update(mockInputEnter, null);
+    assert.deepEqual(waypoint, { x: 50, z: 75 }, 'sets waypoint at cam position on Enter');
+  } finally {
+    globalThis.document = saved;
+    globalThis.window = savedWindow;
+  }
+});
+
+test('Minimap draws route polyline and clamps edge waypoint indicator', async () => {
+  const { Minimap } = await import('../src/ui/minimap.js');
+  const { RALLY } = await import('../src/world/layout.js');
+  const g = createMockContext();
+  g.clip = () => g.calls.push({ fn: 'clip', args: [] });
+  const canvas = { getContext: () => g, width: 168, height: 168, className: '' };
+  const saved = globalThis.document;
+  globalThis.document = {
+    createElement: () => canvas,
+  };
+
+  try {
+    const ground = {
+      roads: { roads: [], byId: new Map([[RALLY.road, { path: { sample: () => ({ x: 0, z: 0 }) } }]]) },
+      pads: [],
+      lots: [],
+    };
+    const routeData = {
+      route: { points: [[0, 0], [50, 50], [500, 500]], length: 700, lanes: [] },
+      destination: { x: 500, z: 500 },
+      distance: 700,
+      arrived: false,
+    };
+    const mm = new Minimap({ appendChild() {} }, ground, () => [], () => routeData);
+    // Draw with car at (0, 0) - waypoint at (500, 500) is far off screen (> R=84)
+    mm.draw(0, 0, 0, 0, 0.1);
+
+    const lineToCalls = g.calls.filter((c) => c.fn === 'lineTo');
+    assert.ok(lineToCalls.length >= 2, 'draws route polyline');
+    const rotateCalls = g.calls.filter((c) => c.fn === 'rotate');
+    assert.ok(rotateCalls.length >= 1, 'rotates clamped edge waypoint indicator');
+  } finally {
+    globalThis.document = saved;
+  }
+});
+
+test('routeHud updates distance readout and ARRIVED state', async () => {
+  const { routeHud } = await import('../src/ui/route-hud.js');
+  const classList = new Set();
+  const mockEl = {
+    className: '',
+    textContent: '',
+    style: { display: '' },
+    classList: {
+      add: (...names) => names.forEach((n) => classList.add(n)),
+      remove: (...names) => names.forEach((n) => classList.delete(n)),
+      contains: (n) => classList.has(n),
+    },
+  };
+  const saved = globalThis.document;
+  globalThis.document = {
+    createElement: () => mockEl,
+  };
+
+  try {
+    const hud = routeHud({ appendChild() {} });
+
+    // No tracker
+    hud.update(null);
+    assert.equal(mockEl.textContent, '');
+    assert.equal(classList.has('on'), false);
+
+    // Active route < 1000m
+    const mockTrackerM = {
+      route: { points: [], length: 420 },
+      destination: { x: 100, z: 100 },
+      distance: 420.2,
+      arrived: false,
+    };
+    hud.update(mockTrackerM);
+    assert.equal(mockEl.textContent, '420 M');
+    assert.equal(classList.has('on'), true);
+
+    // Active route >= 1000m
+    const mockTrackerKm = {
+      route: { points: [], length: 3500 },
+      destination: { x: 100, z: 100 },
+      distance: 3520,
+      arrived: false,
+    };
+    hud.update(mockTrackerKm);
+    assert.equal(mockEl.textContent, '3.5 KM');
+    assert.equal(classList.has('on'), true);
+
+    // Arrived
+    const mockTrackerArrived = {
+      route: null,
+      destination: { x: 100, z: 100 },
+      distance: 0,
+      arrived: true,
+    };
+    hud.update(mockTrackerArrived, 0.1);
+    assert.equal(mockEl.textContent, 'ARRIVED');
+    assert.equal(classList.has('arrived'), true);
+  } finally {
+    globalThis.document = saved;
+  }
+});
+

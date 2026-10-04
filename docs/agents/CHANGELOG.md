@@ -60,6 +60,44 @@ Blinkers on the civilian traffic (A14 part 1).
 - Civilian lane changes reversed within 6 s stay at 0.0 % on the brief's seed 21 setup, so the
   blinkers did not make the dithering worse.
 
+## 0.7.16 (2026-10-04)
+
+The pass-by whoosh, as strong as the speed between you (A14 part 2).
+
+- New pure `src/audio/passby.js`. `PassBy` tracks every traffic agent within `RANGE` 80 m and
+  watches the relative position and velocity: when their dot product turns from negative (closing)
+  to positive (opening) that is the closest approach, and only then, within `MISS` 14 m and over
+  `MIN_SPEED` 4 m/s relative, does it emit one `{ speed, dist, side, heavy, kind }` event. One
+  event per pass: a car that has whooshed stays fired until it goes out of range and comes back,
+  so a car matching your speed beside you is silent and a pass is never heard twice.
+- `passbyGain` is the loudness curve in one place, read by the voice and the tests: strong at
+  30 m/s and up, falling with the miss distance so a car 13 m away is nearly nothing. A 120 km/h
+  pass is violent and a 15 km/h creep is barely there. `passbyDuration` shortens as the speed
+  rises (0.25 + 6 / speed s).
+- `renderPassby` is the voice as pure DSP: white noise through a state-variable band-pass whose
+  center sweeps down through the pass (Doppler), a swell and decay envelope, and a low rumble
+  layer for the heavy vehicles (over `HEAVY_MASS` 4 t: trucks, buses, tankers, semis).
+- `src/audio/audio.js`: `passbyVoice` plays that same voice live through the effects channel and
+  the camera low-pass, so the cockpit muffles it exactly as it muffles the tires, and pans it to
+  the side the car went past on a new `StereoPanner` (the sides follow the repo convention, so
+  at yaw 0 the player's left is +X). `update` takes `f.traffic` and runs the tracker each frame.
+- `src/drive.js`: one hook, the traffic agents passed into `audio.update`.
+- `tools/render-passby.mjs` writes `tools/shots/audio/passby.wav`: a scripted pass at 20, 60 and
+  120 km/h relative (plus a semi at 60 for the rumble), measured gains 0.06, 0.61 and 1.34.
+- Tests: new `tests/passby.test.mjs`, ten cases: one event per pass, never two for one car,
+  a car matching speed beside you silent, a creep and a 30 m miss silent, the left and right
+  sides, the heavy flag, louder for faster and closer, and the render's swell and scaling.
+
+## 0.7.13 (2026-10-04)
+
+Set and draw GPS waypoint route on tactical map, minimap and HUD (A15 part 2).
+
+- `src/ui/map.js`: clicking on the tactical map sets a GPS destination, snapping to nearby landmarks or gas stations within 20 screen pixels; Enter sets a waypoint at the map center; Backspace and context menu (right-click) clear the destination. Renders the active route polyline with an amber glow and a pulsing destination pin with a distance tag.
+- `src/ui/minimap.js`: draws the active route polyline on top of the road network, draws the destination pin when in range, and clamps a directional indicator arrow to the minimap rim when the waypoint is off-screen.
+- New `src/ui/route-hud.js`: DOM component mounted beneath the minimap displaying the remaining route distance (e.g. `420 M` or `3.5 KM`) with styling in `style.css`; flashes an `ARRIVED` banner for 3 seconds upon arrival.
+- `src/main.js`: wires `RouteTracker` to the traffic network, updates `tracker` and `routeHud` in the frame loop, syncs visibility in `setState`, and exposes `setWaypoint`, `clearWaypoint`, and `getRoute` on `window.__lowbeam`.
+- Tests: `tests/map.test.mjs` expanded with unit tests for map click/key waypoint interaction, route line rendering, edge marker clamping, and `routeHud` distance formatting and arrival state.
+
 ## 0.7.12 (2026-10-04)
 
 The GPS waypoint route, pure (A15 part 1).

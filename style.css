@@ -484,6 +484,29 @@ html, body {
   width: 168px;
   height: 168px;
 }
+.route-hud {
+  position: absolute;
+  left: 2.5vw;
+  bottom: calc(3.5vh - 22px);
+  width: 168px;
+  text-align: center;
+  font-family: var(--display);
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.18em;
+  color: var(--amber);
+  display: none;
+  pointer-events: none;
+  text-shadow: 0 0 6px rgba(255, 180, 60, 0.6);
+  z-index: 10;
+}
+.route-hud.on {
+  display: block;
+}
+.route-hud.arrived {
+  color: #00e5ff;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.8);
+}
 #hud .cluster {
   position: absolute;
   right: 1.5vw;

@@ -81,6 +81,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station, rally, landmark icons, and police/heli markers with rim indicators |
 | `src/ui/route.js` | Pure: GPS waypoint routing on the traffic network (`routeTo`, `RouteTracker`) |
+| `src/ui/route-hud.js` | DOM: GPS waypoint distance readout and arrival banner under the minimap |
 | `src/ui/stats.js` | DOM: F3 corner readout of FPS, draw calls, triangles and traffic count |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
@@ -161,11 +162,13 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/audio/engine-worklet.js` | AudioWorklet shell around `EngineVoice`, driven by k-rate parameters |
 | `src/audio/env.js` | Pure: forest, town and lake amounts around a point, for the ambience |
 | `src/audio/songs.js` | Pure: the four tracks composed as note events (`composeTrack`, `TRACKS`) |
+| `src/audio/passby.js` | Pure: `PassBy` (the tracker that finds a car going past), `passbyGain`, `passbyDuration` and `renderPassby` (the whoosh as pure DSP) |
 | `src/audio/music.js` | `MusicPlayer`: streams the recorded soundtrack with crossfades; the synthesizer, look-ahead scheduling and speed-driven layer mix as the fallback |
 | `src/audio/soundtrack.js` | Pure: the recorded tracks (`SOUNDTRACK`, mood, measured loudness), `MoodTracker`, `nextTrack` |
 | `assets/music/` | The recorded soundtrack, eight MP3s made by Jc with Google's music tools |
 | `docs/agents/tasks/` | Briefs for Antigravity: dashboard repair, Tab map, garage, vehicle bodies, buildings |
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
+| `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
 ## Current state (0.8.2)
@@ -248,6 +251,15 @@ Done and tested:
   `Drive` owns it: `scrambleHeli()` and `recallHeli()` until the police core decides, and the A13
   contract's `policeMarkers()` (the helicopter and its spot) and `pursuitView()` (null for now).
   Its rotor sound comes with the police core.
+- GPS waypoint route on map, minimap and HUD (0.7.13, A15 part 2). Clicking anywhere on the
+  tactical map sets a GPS destination, snapping to landmarks or gas stations within 20 screen
+  pixels; pressing Enter sets a waypoint at the map center, and Backspace or right-click clears
+  it. `RouteTracker` computes the A* route along traffic lanes. The tactical map draws the route
+  polyline in amber with a glow underneath, and marks the destination with an animated pulsing pin
+  and distance tag. The rotating minimap renders the route polyline over the road surface, draws a
+  waypoint icon when in view, and clamps a directional indicator arrow to the minimap rim when
+  the waypoint is off-screen. Mounted below the minimap, `routeHud` displays the remaining
+  distance in meters or kilometers, flashing a cyan "ARRIVED" banner upon reaching within 25 m.
 - Landmarks (0.6.7). `LOTS` in layout.js lists seven flat paved lots beside the coast roads and West
   Ave, each made like a gas station forecourt (`road`, `near`, `side`, `w`, `d`) and kept clear by the
   street generator (`blocked`): the Kurogane Police HQ on Hanazaki Cape (x 2400, z -2150, 140 by
@@ -467,6 +479,16 @@ Done and tested:
     and a metallic ring scaled by closing speed), landing thumps, pump hum and clicks.
     A low-pass per camera (cockpit 1.7 kHz, hood 3.6 kHz, chase 9 kHz, bumper 12 kHz)
     muffles the vehicle sounds; the cockpit is also quieter.
+  - Pass-by whoosh (0.7.16, `passby.js`). `PassBy` watches every traffic agent within 80 m and
+    emits one event when the dot of the relative position and velocity turns from closing to
+    opening (the closest approach), within 14 m and over 4 m/s relative, so a car matching your
+    speed beside you is silent and a pass is never heard twice. `passbyGain` is the loudness
+    curve (strong at 30 m/s and up, falling with the miss distance) and `passbyDuration` the
+    length; the voice is white noise through a band-pass sweeping down through the pass
+    (Doppler) with a low rumble for vehicles over 4 t. It goes through the effects channel and
+    the camera low-pass, panned to the side the car passed on. `renderPassby` is the same voice
+    as pure DSP, so `tools/render-passby.mjs` renders a check WAV of passes at 20, 60 and
+    120 km/h.
   - Ambience: crickets (four gated tones), wind in the trees that follows forest density,
     lake lapping, town hum with a neon buzz, a 120 Hz fluorescent hum on a forecourt.
     All fade in a car going fast. `EnvMap` (pure) supplies forest, town and water.
