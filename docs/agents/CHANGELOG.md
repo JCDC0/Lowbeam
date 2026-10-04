@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.18 (2026-10-04)
+
+Roadblocks and spike strips (A17 part 4).
+
+- New pure `src/police/roadblock.js`. `planRoadblock` lays two or three units across the player's
+  lane 250 to 400 m ahead at heat 4 and up, splitting the road into slots and leaving one slot
+  open at an end as the gap to thread; `shouldSetRoadblock` and `tooNearBlock` keep one block at
+  a time, set up out of sight of the player. `planSpikes` lays a strip across that gap,
+  `hitSpikes` says when the car runs over it, and `spikePenalty` is the flat-tire curve: grip and
+  top speed fall over the first seconds and mend after `FLAT_TIME` 22 s (or at a pump).
+- `src/drive.js`: the block and strip are planned and tracked in `stepPolice`, and the flat-tire
+  timer runs from the frame.
+- Tests: new `tests/roadblock.test.mjs`, seven cases covering the placement distance, the heat
+  gate, the gap, the one-at-a-time rule, the strip and the tire curve.
+
 ## 0.8.17 (2026-10-04)
 
 The police chase (A17 part 3): units leave their lanes, the pursuit is wired in.

@@ -27,6 +27,7 @@ import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
 import { Pursuit } from './race/pursuit.js';
 import { Heat, noticesSpeeding, noticesTrap } from './police/heat.js';
 import { roster, unitFor } from './police/units.js';
+import { planRoadblock, shouldSetRoadblock, tooNearBlock, planSpikes, hitSpikes, spikePenalty } from './police/roadblock.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
@@ -123,6 +124,17 @@ export class Drive {
     this.policeDamage = 0;
     /** The last speed the toll meter saw, for the speed trap. */
     this.lastTollSpeed = 0;
+    /** @type {any} the standing roadblock, if any. */
+    this.roadblock = null;
+    /** @type {any} the spike strip laid across it, if any. */
+    this.spikes = null;
+    /** Seconds the tires have been flat. */
+    this.flatTime = 0;
+    /** Seconds since the last roadblock was laid. */
+    this.blockCooldown = 0;
+    /** Roadblocks and strips dodged, for the end-of-pursuit report. */
+    this.roadblocksDodged = 0;
+    this.spikesDodged = 0;
     if (this.heli && this.heliView.ok) {
       world.add(this.heliView.group);
       world.add(this.heliView.cone);
@@ -231,6 +243,30 @@ export class Drive {
     this.heliChasing = heliUp && !!this.pursuit && this.pursuit.pstate !== 'escaped' && this.pursuit.pstate !== 'busted';
     for (const u of units) u.agent.pursuit = !!this.pursuit;
 
+    // Roadblocks and spike strips at heat 4 and up (A17 part 4). The block is planned on the
+    // lane ahead of the player, spawned as parked units, with a strip laid across the gap.
+    this.blockCooldown = Math.max(0, this.blockCooldown - dt);
+    if (shouldSetRoadblock(s, this.roadblock, level, this.blockCooldown) && this.pursuit) {
+      const road = this.world.ground.at(s.x, s.z, s.y).road;
+      const lane = road ? this.trafficNet.lane(road.id, road.dir > 0 ? 1 : -1, 0) : null;
+      if (lane) {
+        const aheadS = this.laneAheadS(lane, s);
+        const block = planRoadblock({ lane, s: aheadS, sample: (l, at, o) => this.trafficNet.sample(l, at, o) }, level);
+        if (block) {
+          this.roadblock = block;
+          this.spikes = planSpikes(block, level);
+          this.blockCooldown = 30;
+          this.roadblocksDodged++;
+        }
+      }
+    }
+    // Drive over a strip and the tires go flat.
+    if (this.spikes && hitSpikes(this.spikes, s)) this.flatTime = Math.max(this.flatTime, 0.1);
+    if (this.flatTime > 0) {
+      this.flatTime += dt;
+      if (!spikePenalty(this.flatTime).active) this.flatTime = 0;
+    }
+
     // In sight: a unit close enough, or the helicopter's light on the player.
     const seen = (near && near.d < 150) || !!(this.heliChasing && this.heli.spot.sees);
     if (this.pursuit) {
@@ -245,6 +281,12 @@ export class Drive {
     this.policeDamage = 0;
     this.infractions.length = 0;
     this.traffic.heat = level;
+  }
+
+  /** The lane arc length of the player's position on this lane, so a roadblock can be laid ahead. @param {any} lane @param {any} s */
+  laneAheadS(lane, s) {
+    const hit = lane.road.path.nearest(s.x, s.z);
+    return hit ? hit.s : 0;
   }
 
   /** Whether the car is somewhere the police lose you: a hideout lot, under a deck, a car park. @param {any} s */

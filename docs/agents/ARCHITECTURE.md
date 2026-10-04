@@ -46,7 +46,7 @@ wav, json, txt, png) for other captures such as rendered audio.
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
   `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
-  `src/render/pool-grid.js`, `src/police/{heli,units,heat}.js`, `src/ui/pursuit.js` (`layoutPursuit`),
+  `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock}.js`, `src/ui/pursuit.js` (`layoutPursuit`),
   `src/ui/route.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
@@ -103,6 +103,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/police/heli-view.js` | Draws the helicopter from the Blender models (body, spinning main and tail rotors), the fading shaft of light, and the searchlight in a free headlight beam slot |
 | `src/police/units.js` | Pure: the four police unit kinds (`police`, `police-fast`, `police-heavy`, `police-int`) and `roster(heat)`, the Most Wanted table of which units are on the road at each heat |
 | `src/police/heat.js` | Pure: `Heat` (what the police notice, 0 to 5), `noticesSpeeding`, `noticesTrap` |
+| `src/police/roadblock.js` | Pure: `planRoadblock` (units across a lane with a gap), `shouldSetRoadblock`, `planSpikes`, `hitSpikes`, `spikePenalty` (the flat-tire curve) |
 | `tools/blender/` | Blender scripts for the landmarks: `kit.py` (helpers and the JSON exporter), one script per model; run through the Blender MCP |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
@@ -176,7 +177,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.17)
+## Current state (0.8.18)
 
 Done and tested:
 
@@ -228,6 +229,11 @@ Done and tested:
   level, sends out the roster for the heat, flags the units to chase, scrambles the helicopter at
   heat 3 and over and recalls it on an escape or a bust. `pursuitView()` and `policeMarkers()` now
   return the A13 contract, so the HUD and both maps work as they are.
+- Roadblocks and spike strips (0.8.18, A17 part 4, `src/police/roadblock.js`). `planRoadblock`
+  puts two or three units across the player's lane 250 to 400 m ahead at heat 4 and up, leaving
+  one slot open at an end as the gap; one block at a time, set up out of sight. `planSpikes` lays
+  a strip across that gap and `spikePenalty` is the flat-tire curve (grip and top speed fall, then
+  mend after 22 s). Driven from `stepPolice`.
 - Typography update across the UI (0.8.12, A16 part 3). `:root` defines eight font variables
   matching `src/render/fonts.js`: `--font-display`, `--font-tech`, `--font-race`, `--font-mono`,
   `--font-seg7`, `--font-seg14`, `--font-impact`, `--font-jp`. Orbitron 900 on LOWBEAM title with Dela Gothic One
