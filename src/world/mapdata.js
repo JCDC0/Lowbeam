@@ -9,7 +9,7 @@ import { COAST, LAKES, SEA, STATIONS, TOLLS, WORLD_HALF, ZONES, RALLY } from './
 /**
  * @typedef {{ id: string, name: string, cls: string, surface: string, width: number, oneway: boolean,
  *   closed: boolean, points: number[][], lifted: number[][][] }} MapRoad
- * @typedef {{ kind: 'station' | 'toll' | 'start', id: string, name: string, x: number, z: number, brand?: string }} MapPoi
+ * @typedef {{ kind: 'station' | 'toll' | 'start' | 'police' | 'garage' | 'hideout', id: string, name: string, x: number, z: number, brand?: string }} MapPoi
  */
 
 /**
@@ -52,6 +52,7 @@ export function buildMapData(ground, { step = 24 } = {}) {
   const pois = [];
   for (const pad of ground.pads) pois.push({ kind: 'station', id: pad.id, name: pad.name, x: pad.cx, z: pad.cz, brand: pad.station.brand });
   for (const t of TOLLS) pois.push({ kind: 'toll', id: t.id, name: t.name, x: t.x, z: t.z });
+  for (const pad of ground.lots) pois.push({ kind: pad.lot.kind, id: pad.lot.id, name: pad.lot.name, x: pad.cx, z: pad.cz });
   const kuro = ground.roads.byId.get(RALLY.road);
   if (kuro) {
     const q = kuro.path.sample(RALLY.startS);

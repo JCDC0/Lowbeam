@@ -317,12 +317,53 @@ function crossable(def) {
 const inLoop = polygonMask(pathPolygon(loopCenter));
 const inSoto = polygonMask(pathPolygon(new Path(SOTOKAN_POINTS, { closed: true, step: 4 })));
 const inNaikan = (x, z, m) => ((x - NAIKAN.x) / (NAIKAN.rx + m)) ** 2 + ((z - NAIKAN.z) / (NAIKAN.rz + m)) ** 2 < 1;
+/**
+ * Landmark lots, modeled in Blender (tools/blender/, assets/models/): the police headquarters on
+ * Hanazaki Cape, the tuning garages, the old warehouses where a car can hide. Each is a flat paved
+ * lot beside a road like a gas station's forecourt (`road`, `near`, `side`, `w` along the road, `d`
+ * away from it), with the model's front on the road. The street generator keeps clear of them.
+ * `sign` is the text painted on the model's sign. Logic for them (the police, the helicopter,
+ * hiding) comes later and finds them here.
+ * @typedef {{ id: string, kind: 'police' | 'garage' | 'hideout', model: string, name: string, sign?: string,
+ *   road: string, near: number[], side: 'left' | 'right', w: number, d: number }} Lot
+ * @type {Lot[]}
+ */
+export const LOTS = [
+  { id: 'police', kind: 'police', model: 'police_hq', name: 'KUROGANE POLICE HQ', sign: 'KUROGANE POLICE', road: 'higashi', near: [2400, -2150], side: 'right', w: 140, d: 110 },
+  { id: 'garage-tsurugi', kind: 'garage', model: 'garage', name: 'TSURUGI WORKS', sign: 'TSURUGI WORKS', road: 'higashi', near: [2480, 1600], side: 'left', w: 34, d: 32 },
+  { id: 'garage-koga', kind: 'garage', model: 'garage', name: 'KOGA SPEED', sign: 'KOGA SPEED', road: 'higashi', near: [2520, -300], side: 'right', w: 34, d: 32 },
+  { id: 'garage-hoshi', kind: 'garage', model: 'garage', name: 'HOSHI AUTO', sign: 'HOSHI AUTO', road: 'west', near: [-2120, 870], side: 'left', w: 34, d: 32 },
+  { id: 'hideout-futo', kind: 'hideout', model: 'hideout', name: 'FUTO WAREHOUSE', road: 'higashi', near: [2430, 2120], side: 'right', w: 48, d: 40 },
+  { id: 'hideout-kita', kind: 'hideout', model: 'hideout', name: 'KITA WAREHOUSE', road: 'kita', near: [1650, -2470], side: 'right', w: 48, d: 40 },
+  { id: 'hideout-nishi', kind: 'hideout', model: 'hideout', name: 'NISHI WAREHOUSE', road: 'west', near: [-2240, 640], side: 'right', w: 48, d: 40 },
+];
+const lotDefs = [...HIGASHI, ...KITA, ...WEST];
+/** The rectangle of a lot, the same way ground.js makes its pad. @param {Lot} lot */
+function lotRect(lot) {
+  const def = /** @type {RoadDef} */ (lotDefs.find((d) => d.id === lot.road));
+  const path = new Path(def.points, { step: 2 });
+  const q = path.sample(path.nearest(lot.near[0], lot.near[1]).s);
+  const sign = lot.side === 'left' ? 1 : -1;
+  const vx = q.tz * sign;
+  const vz = -q.tx * sign;
+  const off = def.hw + (def.walk || 0) + 0.4 + lot.d / 2;
+  return { cx: q.x + vx * off, cz: q.z + vz * off, ux: q.tx, uz: q.tz, vx, vz, hw: lot.w / 2, hd: lot.d / 2 };
+}
+const lotRects = LOTS.map(lotRect);
+/** @param {number} x @param {number} z */
+const onLot = (x, z) => lotRects.some((r) => {
+  const dx = x - r.cx;
+  const dz = z - r.cz;
+  return Math.abs(dx * r.ux + dz * r.uz) < r.hw + 14 && Math.abs(dx * r.vx + dz * r.vz) < r.hd + 14;
+});
+
 const CITY_STREET = {
   surface: 'asphalt', hw: 4.6, priority: 2.5, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40,
   lines: /** @type {const} */ ('center'), maxGrade: 0.09, lamps: lampsAll(34), walk: 2.4,
 };
 const STREETS = cityStreets({
   seed: SEED,
+  blocked: onLot,
   base: CITY_STREET,
   frame: [...CITY_FRAME, ...R18, ...HARBOR, ...WEST, ...EAST, ...HIGASHI].map((d) => ({
     id: d.id, path: new Path(d.points, { closed: !!d.closed, step: 2 }), hw: d.hw, cross: crossable(d),

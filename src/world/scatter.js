@@ -4,6 +4,7 @@
  * the light baker and the collision grid all read the same lists.
  */
 
+import { lotContents } from './lots.js';
 import { placeBuildings } from './buildings.js';
 import { CITY, SEED } from './layout.js';
 import { padDistance } from './ground.js';
@@ -100,10 +101,11 @@ export function stationLayout(pad) {
 }
 
 /**
- * Everything placed in the valley, computed once from the ground.
- * @param {Ground} ground
+ * Everything placed on the island, computed once from the ground. `models` are the landmark
+ * models already loaded (build-lots.js), whose colliders and lights join the rest.
+ * @param {Ground} ground @param {{ models?: Record<string, import('./lots.js').ModelData> }} [opts]
  */
-export function scatterWorld(ground) {
+export function scatterWorld(ground, { models = {} } = {}) {
   /** @type {BakeLight[]} */
   const lights = [];
   /** @type {Circle[]} */
@@ -111,6 +113,9 @@ export function scatterWorld(ground) {
   /** @type {Box[]} */
   const boxes = [];
   const lamps = placeLamps(ground, lights, circles);
+  const lot = lotContents(ground.lots, models);
+  boxes.push(...lot.boxes);
+  lights.push(...lot.lights);
   const stations = ground.pads.map((pad) => placeStation(ground, pad, lights, circles, boxes));
   const buildings = placeBuildings(ground, lights, boxes, SIGN_COLORS);
   const trees = placeForest(ground, buildings, circles, clearOfRoads);
@@ -191,7 +196,7 @@ function clearOfRoads(ground, x, z, margin) {
   if (ground.roads.influence(x, z, margin + SKIRT, hit) && hit.edge < margin + SKIRT) return false;
   // Nothing grows or stands under a deck either.
   if (ground.roads.query(x, z, hit, margin + 3, -Infinity, Infinity) && (hit.lift || 0) > 1) return false;
-  for (const pad of ground.pads) if (padDistance(pad, x, z) < margin) return false;
+  for (const pad of ground.flats) if (padDistance(pad, x, z) < margin) return false;
   return true;
 }
 

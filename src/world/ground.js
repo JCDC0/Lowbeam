@@ -7,7 +7,7 @@
 import { findJunctions, junctionSpans } from './junctions.js';
 import { Heightfield, baseHeight } from './heightfield.js';
 import { ELEVATED, RoadNetwork, SINK } from './roads.js';
-import { ROADS, STATIONS, WATER_LEVEL, cityStyle } from './layout.js';
+import { LOTS, ROADS, STATIONS, WATER_LEVEL, cityStyle } from './layout.js';
 import { lerp, smoothstep } from '../core/mathx.js';
 
 /** Terrain within this distance of a road edge is flattened to the road. Must exceed CELL * sqrt(2). */
@@ -40,7 +40,7 @@ export function makePad(net, st) {
   const vx = p.tz * sign;
   const vz = -p.tx * sign;
   const hd = st.d / 2;
-  const off = road.hw + 0.4 + hd;
+  const off = road.hw + road.walk + 0.4 + hd;
   return {
     id: st.id,
     name: st.name,
@@ -75,6 +75,10 @@ export class Ground {
     this.roads = new RoadNetwork(ROADS);
     /** @type {Pad[]} */
     this.pads = STATIONS.map((st) => makePad(this.roads, st));
+    /** Landmark lots (police headquarters, garages, hideouts): pads with a `lot` instead of a station. */
+    this.lots = LOTS.map((lot) => Object.assign(makePad(this.roads, lot), { station: null, lot }));
+    /** Everything the ground is flattened and paved for: forecourts and lots. */
+    this.flats = [...this.pads, ...this.lots];
     /** Where surface roads cross or meet at a T (junctions.js), and the stretches of road inside them. */
     this.junctions = findJunctions(this.roads.roads);
     this.junctionSpans = junctionSpans(this.junctions);
@@ -124,13 +128,13 @@ export class Ground {
           target = Math.min(inf.h, inf.low ?? Infinity) - SINK;
           if (inf.road.surface === 'gravel' && inf.edge < FLAT + 3) surf = TERRAIN.dirt;
         }
-        for (const pad of this.pads) {
+        for (const pad of this.flats) {
           const e = padDistance(pad, x, z);
           const pw = 1 - smoothstep(FLAT, FLAT + BLEND, e);
           if (pw > w) {
             w = pw;
             target = pad.h - SINK;
-            if (pad.station.servicePark && e < FLAT + 4) surf = TERRAIN.dirt;
+            if (pad.station?.servicePark && e < FLAT + 4) surf = TERRAIN.dirt;
           }
         }
         h = lerp(h, target, w);
@@ -178,7 +182,7 @@ export class Ground {
     const onRoad = this.roads.query(x, z, this._hit, 0, -Infinity, y);
     // A pad beats the sloped road skirt it overlaps, never the road surface itself.
     if (!onRoad || this._hit.edge > 0) {
-      for (const pad of this.pads) {
+      for (const pad of this.flats) {
         if (padDistance(pad, x, z) <= 0) {
           o.h = pad.h;
           o.surface = pad.surface;

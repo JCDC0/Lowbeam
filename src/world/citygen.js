@@ -32,10 +32,11 @@ const SNAP_OWN = 30;
 const MIN_LENGTH = 70;
 
 /**
- * @param {{ frame: FrameRoad[], avoid: Avoid[], districts: District[], seed: number, base: Partial<import('./layout.js').RoadDef> }} o
+ * @param {{ frame: FrameRoad[], avoid: Avoid[], districts: District[], seed: number, base: Partial<import('./layout.js').RoadDef>,
+ *   blocked?: (x: number, z: number) => boolean }} o
  * @returns {import('./layout.js').RoadDef[]}
  */
-export function cityStreets({ frame, avoid, districts, seed, base }) {
+export function cityStreets({ frame, avoid, districts, seed, base, blocked }) {
   /** @type {import('./layout.js').RoadDef[]} */
   const out = [];
   const near = nearIndex(frame, avoid);
@@ -61,7 +62,7 @@ export function cityStreets({ frame, avoid, districts, seed, base }) {
           const w = v + amp * Math.sin(t * freq + phase);
           line.push([dist.center[0] + dir[0] * t + off[0] * w, dist.center[1] + dir[1] * t + off[1] * w]);
         }
-        let runs = clip(line, dist, near);
+        let runs = clip(line, dist, near, blocked);
         if (family === 0) runs = runs.flatMap((r) => breakRun(r, rng, dist.breaks, su));
         for (const run of runs) {
           const pts = finish(run, near, family === 0 ? across : []);
@@ -135,8 +136,9 @@ function nearIndex(frame, avoid) {
  * The parts of a line that are inside the district and allowed: clear of expressways and ramps,
  * not crossing a frame road where it is lifted, not running alongside a frame road.
  * @param {number[][]} line @param {District} dist @param {ReturnType<typeof nearIndex>} near
+ * @param {((x: number, z: number) => boolean) | undefined} blocked places no street may go (landmark lots)
  */
-function clip(line, dist, near) {
+function clip(line, dist, near, blocked) {
   /** @type {number[][][]} */
   const runs = [];
   let run = [];
@@ -147,7 +149,7 @@ function clip(line, dist, near) {
     const tl = Math.hypot(next[0] - prev[0], next[1] - prev[1]) || 1;
     const tx = (next[0] - prev[0]) / tl;
     const tz = (next[1] - prev[1]) / tl;
-    let ok = dist.inside(x, z);
+    let ok = dist.inside(x, z) && !(blocked && blocked(x, z));
     if (ok) {
       for (const p of near.around(x, z, 80)) {
         const d = Math.hypot(p.x - x, p.z - z);

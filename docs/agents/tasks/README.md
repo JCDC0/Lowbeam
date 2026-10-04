@@ -14,7 +14,8 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 | [A9-rival-duels.md](A9-rival-duels.md) | now (Hermes) | Dev server range requests, gauge alias cleanup, rival duels with a `RaceEvent` base and HUD |
 | [C1-kurogane-island.md](C1-kurogane-island.md) | now (Claude) | The map overhaul: island, built-up zones, real street network, viaduct, new buildings, lamps and light pools |
 | [A10-junction-traffic-map-icons.md](A10-junction-traffic-map-icons.md) | now (Antigravity) | Traffic lights and give-way at any crossing or T junction, the island and new POIs on the map, a stats overlay |
-| [A11-rally.md](A11-rally.md) | after A9 (Hermes) | Pace notes, the rally RaceEvent with gates, medals, penalties and a ghost, its HUD |
+| [A11-rally.md](A11-rally.md) | now (Hermes, resume from `docs/agents/handoff/HANDOFF-A11.md`) | Pace notes, the rally RaceEvent with gates, medals, penalties and a ghost, its HUD |
+| A12 (prompt in chat) | now (Antigravity) | Landmark icons on the minimap, `tools/landmarks.html` model viewer, `tools/buildbench.mjs` world-build bench |
 | [A5-buildings.md](A5-buildings.md) | after A7 part 6 | Building kit, facade atlas, street furniture |
 | [A3-bodies-batch1.md](A3-bodies-batch1.md) | cancelled | Claude builds every car body now |
 | [A4-bodies-batch2.md](A4-bodies-batch2.md) | cancelled | Claude builds every car body now |
@@ -22,8 +23,8 @@ The overall plan and its reasoning are in `docs/DESIGN.md` and `docs/agents/ARCH
 ## Rules for working in the shared tree
 
 - Pull or check `git status` and `git log --oneline -5` before starting. Claude commits too.
-- Claim the next free version number after reading `git log` (Claude is using 0.1.10, then
-  0.2.x). Bump `package.json`, `package-lock.json` and `docs/agents/CHANGELOG.md` together.
+- Use only your own version range: Claude 0.6.7 and 0.7.x, Hermes 0.6.8 and 0.6.9,
+  Antigravity 0.6.10 to 0.6.12. Ask for a new range when it runs out. Bump `package.json`, `package-lock.json` and `docs/agents/CHANGELOG.md` together.
 - Stage your own files by name. Never `git add -A`.
 - Prefer new files. In a shared file make small exact-string edits, re-read it right
   before editing, never rewrite it whole.

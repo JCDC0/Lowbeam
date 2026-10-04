@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.7 (2026-10-04)
+
+Model the police headquarters, garages and hideouts in Blender and place them on lots.
+
+- New `LOTS` in layout.js: the police HQ on Hanazaki Cape, three tuning garages and three hideout
+  warehouses, each a flat lot beside a road; the city streets keep clear of them (`blocked` in
+  `cityStreets`).
+- `Ground.lots`: landmark pads, flattened and paved like the forecourts (pad offset now counts the
+  road's sidewalk).
+- New `tools/blender/` (kit and one script per model) and `assets/models/*.json`, built with the
+  Blender MCP and exported with box-projected UVs, colliders and lights.
+- New pure `src/world/lots.js` and `src/world/build-lots.js`; the scatter adds the lots' colliders and
+  lights, `World.create` builds the models; map points for police, garages and hideouts.
+- Tests: `tests/lots.test.mjs` (frame, contents, every lot flat and clear of streets).
+- Task brief index: A12 (Antigravity) and the A11 resume (Hermes); version ranges per agent.
+
 ## 0.6.6 (2026-10-04)
 
 F3 stats overlay displays performance and scene metrics.

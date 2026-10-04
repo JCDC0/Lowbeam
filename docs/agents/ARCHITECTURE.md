@@ -87,6 +87,10 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/citygen.js` | Pure: the city's local streets, district by district (`cityStreets`), and `polygonMask` for fast inside tests |
 | `src/world/junctions.js` | Pure: crossings and T junctions found from road geometry (`findJunctions`), and the stretches of road inside them |
 | `src/world/buildings.js` | Pure: building placement along every town road by district style (`placeBuildings`), with a 2 m road mask (`RoadMask`) |
+| `src/world/lots.js` | Pure: where a landmark lot's model stands (`lotFrame`, `toWorld`) and its colliders and lights in world space (`lotContents`) |
+| `src/world/build-lots.js` | Loads the landmark models (`loadModels`, `assets/models/<name>.json`), paints their signs, builds them on their lots (`buildLots`) |
+| `assets/models/` | Landmark models exported from Blender as JSON (positions, normals, UVs, material groups, colliders, lights): `police_hq`, `garage`, `hideout` |
+| `tools/blender/` | Blender scripts for the landmarks: `kit.py` (helpers and the JSON exporter), one script per model; run through the Blender MCP |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
 | `src/world/island.js` | Pure: `inland(x, z)`, meters inside the coast (`COAST` in layout.js), from a precomputed grid with a noisy shore |
@@ -153,10 +157,23 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.6)
+## Current state (0.6.7)
 
 Done and tested:
 
+- Landmarks (0.6.7). `LOTS` in layout.js lists seven flat paved lots beside the coast roads and West
+  Ave, each made like a gas station forecourt (`road`, `near`, `side`, `w`, `d`) and kept clear by the
+  street generator (`blocked`): the Kurogane Police HQ on Hanazaki Cape (x 2400, z -2150, 140 by
+  110 m), three tuning garages (Tsurugi Works, Koga Speed, Hoshi Auto) and three hideout warehouses
+  (Futo, Kita, Nishi). `Ground.lots` are pads with a `lot` instead of a station and are flattened
+  like the forecourts. Each model is built in Blender from a script in `tools/blender/` (the HQ:
+  the office block with a helipad on its roof, a five-bay motor pool for the patrol cars and a radio
+  tower; the garage: a two-bay workshop with a lift, a glass office and a roof sign; the
+  hideout: a rusting warehouse with its door rolled up, a dark inside and a carport) and exported
+  as JSON with its colliders and lights, so no loader is vendored. `World.create` loads the models
+  before the scatter, which adds their colliders and lights (so they join the light pools), and
+  `buildLots` stands each model on its lot with its front to the road. The map and the tactical map
+  show them as police, garage and hideout points. The police, the helicopter and hiding come later.
 - F3 performance and scene stats overlay (0.6.6, A10 part 3). `src/ui/stats.js`: F3 toggles a corner
   readout of frames per second, draw calls, triangles (`renderer.info.render`), and traffic agent
   count with inline styles and zero `style.css` edits.

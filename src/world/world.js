@@ -17,6 +17,8 @@ import { buildBridges } from './build-bridges.js';
 import { buildHighway } from './build-highway.js';
 import { buildLamps, buildTown } from './props.js';
 import { buildTrees } from './build-trees.js';
+import { buildLots, loadModels } from './build-lots.js';
+import { LOTS } from './layout.js';
 import { buildStations } from './gas-station.js';
 import { buildSky, MOON_DIR } from '../render/sky.js';
 
@@ -37,7 +39,8 @@ export class World {
     await step('SURVEYING KUROGANE');
     w.ground = new Ground();
     await step('PLACING LAMPS AND TREES');
-    w.scatter = scatterWorld(w.ground);
+    const models = await loadModels(LOTS.map((l) => l.model));
+    w.scatter = scatterWorld(w.ground, { models });
     w.grid = new LightGrid(w.scatter.lights);
     installPools(w.scatter.lights, WORLD_HALF + 100);
     await step('CUTTING THE TERRAIN');
@@ -58,6 +61,7 @@ export class World {
     const town = buildTown(w.scatter.buildings, w.grid);
     w.add(town);
     w.groundChunks.push(...town.userData.chunks);
+    w.add(buildLots(w.ground.lots, models));
     w.add(buildStations(w.scatter.stations, w.grid));
     await step('GROWING THE FOREST');
     const trees = buildTrees(w.scatter.trees);

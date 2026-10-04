@@ -103,7 +103,7 @@ export class RoadMask {
         this.disc(p.x[i], p.z[i], r);
       }
     }
-    for (const pad of ground.pads) {
+    for (const pad of ground.flats) {
       const r = Math.hypot(pad.hw, pad.hd) + 4;
       for (let z = pad.cz - r; z <= pad.cz + r; z += MASK_CELL) {
         for (let x = pad.cx - r; x <= pad.cx + r; x += MASK_CELL) if (padDistance(pad, x, z) < 4) this.set(x, z);
