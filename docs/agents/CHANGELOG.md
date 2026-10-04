@@ -14,6 +14,18 @@ Speedometer styles for the HUD cluster (A16 part 1).
 - `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
 - Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
 
+## 0.8.3 (2026-10-04)
+
+One set of instrument painters for the cockpit and the HUD (the base of the 0.8.10 HUD styles).
+
+- New `src/vehicles/instruments.js`: the dial face, needle and screen painters moved out of `cockpit.js`
+  and `screens.js` (`paintDial` draws at any center and radius, `paintNeedle`, `paintScreen` for `lcd`
+  and `vfd`, `readingOf`, `FACES`). The cockpit looks the same; `cluster-styles.js` draws the HUD with
+  them.
+- The LCD's CHECK ENGINE moved to the top-left corner, clear of the speed digits.
+- Tests: `tests/instruments.test.mjs` (numerals on the dial faces, both screens, every HUD style for
+  every car).
+
 ## 0.8.2 (2026-10-04)
 
 Give every car its own instruments, and add the Hikari 300ZR with a fluorescent dash.

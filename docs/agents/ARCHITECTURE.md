@@ -76,6 +76,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/ui/pursuit.js` | Pursuit HUD (`pursuitHud`, NFS: Most Wanted style) and pure `layoutPursuit(view)` |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/ui/cluster-styles.js` | HUD cluster styles per car (`drawStyled`, `CLUSTER_STYLES`, `clusterStyleOf`, `warningLamps`, `shiftLightsLit`) |
+| `src/vehicles/instruments.js` | Canvas painters shared by the cockpit and the HUD: dial faces (`paintDial`, `FACES`), needles (`paintNeedle`), the LCD and VFD screens (`paintScreen`), `readingOf` |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
@@ -183,7 +184,10 @@ Done and tested:
   tach with digital speed readout in its center and five shift lights), `digital` (Tsurugi GT-X, modern
   arc LCD screen in bezel), and `vfd` (Hikari 300ZR, 1984 fluorescent green/amber/cyan bar-graph display).
   Every style maintains warning lamps (CHECK, DMG, REV, ENG OFF, HOT) and shift light alerts within the
-  400 by 300 bottom-right HUD footprint.
+  400 by 300 bottom-right HUD footprint. The styles draw with the cockpit's own painters
+  (`vehicles/instruments.js`, 0.8.3: `paintDial`, `paintNeedle`, `paintScreen`, `readingOf`), so the
+  dials and screens in the HUD are the ones on the dashboard and cannot drift apart. `Cluster.setSpec(spec,
+  override)` takes one style for every car (or 'car') for the settings row of part 2.
 - Every car its own instruments, and a fifth car (0.8.2). `DASHES` in dash.js gives each gauge a
   `face` and a pod a `screen`: the Hayate keeps the classic black dials (the original, still the
   reference), the Rampart has cream dials with black numerals and a red needle, the Vespera yellow

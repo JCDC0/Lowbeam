@@ -14,7 +14,7 @@ import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
 import { canvasTexture, makeCanvas } from '../render/textures.js';
 import { DASHES, gaugeScale, needleAngle } from './dash.js';
 import { makeScreen } from './screens.js';
-import { FONT } from '../render/fonts.js';
+import { FACES, paintDial, readingOf } from './instruments.js';
 
 export { DASHES, gaugeScale, needleAngle };
 
@@ -48,74 +48,14 @@ export function cockpitCamera(eye, cowlY, cowlZ, roofY) {
 
 /** @typedef {import('./dash.js').GaugeSpot} GaugeSpot */
 
-/** How each face is painted: dial, ticks, red zone, numerals (only on the big dials), needle. */
-const FACES = {
-  classic: { inner: '#1a1c22', outer: '#0b0c0f', tick: '#e8e4da', red: '#d0201a', numerals: false, needle: 0xff5a1e },
-  white: { inner: '#f2eee2', outer: '#d8d2c0', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
-  yellow: { inner: '#f2cc2a', outer: '#d8a814', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
-};
-
 /**
- * Draws a gauge face onto a canvas: the dial, ticks, the red zone, and on the white and yellow
- * faces the numerals (the classic black face has none: the needle against the ticks is enough).
+ * A gauge face as a texture (`paintDial`); the faces with numerals get the larger canvas.
  * @param {import('./dash.js').GaugeType} type @param {import('./specs.js').CarSpec} spec @param {keyof typeof FACES} face
  */
 function drawFace(type, spec, face = 'classic') {
-  const F = FACES[face];
-  const S = F.numerals ? 192 : 128;
+  const S = FACES[face].numerals ? 192 : 128;
   const c = makeCanvas(S, S);
-  const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
-  const m = S / 2;
-  const sc = gaugeScale(type, spec);
-  g.fillStyle = '#07080a';
-  g.fillRect(0, 0, S, S);
-  const grad = g.createRadialGradient(m, m * 0.85, 4, m, m, m);
-  grad.addColorStop(0, F.inner);
-  grad.addColorStop(1, F.outer);
-  g.fillStyle = grad;
-  g.beginPath();
-  g.arc(m, m, m - 1, 0, Math.PI * 2);
-  g.fill();
-  const toXY = (a, rr) => [m + Math.sin(a) * rr, m - Math.cos(a) * rr];
-  const R = m - 6;
-  if (sc.red < sc.max) {
-    g.strokeStyle = F.red;
-    g.lineWidth = (sc.small ? 7 : 6) * (S / 128);
-    g.beginPath();
-    const a0 = needleAngle(sc, sc.red) - Math.PI / 2;
-    const a1 = needleAngle(sc, sc.max) - Math.PI / 2;
-    g.arc(m, m, R - 3, a0, a1);
-    g.stroke();
-  }
-  g.strokeStyle = F.tick;
-  const k = S / 128;
-  for (let v = sc.min; v <= sc.max + 1e-6; v += sc.minor) {
-    const major = Math.abs(((v - sc.min) / sc.major) - Math.round((v - sc.min) / sc.major)) < 1e-6;
-    const a = needleAngle(sc, v);
-    const [x0, y0] = toXY(a, R);
-    const [x1, y1] = toXY(a, R - (major ? 13 : 7) * k);
-    g.lineWidth = (major ? 4 : 2) * k;
-    g.beginPath();
-    g.moveTo(x0, y0);
-    g.lineTo(x1, y1);
-    g.stroke();
-    // Numerals on every major tick of the tach, every other one on the speedometer (three digits).
-    const step = Math.round((v - sc.min) / sc.major);
-    if (major && F.numerals && !sc.small && (type === 'tach' || (type === 'speed' && step % 2 === 0))) {
-      const [tx, ty] = toXY(a, R - 24 * k);
-      g.fillStyle = F.tick;
-      g.font = `bold ${Math.round((type === 'tach' ? 17 : 13) * k)}px ${FONT.mono}`;
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(String(Math.round(v / sc.div)), tx, ty);
-    }
-  }
-  if (F.numerals && !sc.small) {
-    g.fillStyle = F.tick;
-    g.font = `${Math.round(11 * k)}px ${FONT.mono}`;
-    g.textAlign = 'center';
-    g.fillText(sc.label, m, type === 'tach' ? m - R * 0.3 : m + R * 0.42);
-  }
+  paintDial(/** @type {CanvasRenderingContext2D} */ (c.getContext('2d')), S / 2, S / 2, S / 2, type, spec, face, true);
   return canvasTexture(c);
 }
 
@@ -429,10 +369,7 @@ export function buildCockpit(model) {
         gg.pivot.rotation.z = -needleAngle(gg.scale, gg.value);
       }
       if (screen) {
-        screen.draw({
-          kmh: g.kmh, rpm: g.rpm, gear: g.gear, boost: g.engineOn ? g.boost ?? 0 : 0, fuel: g.fuel / spec.fuel.tank, temp: g.temp,
-          shift: !!g.shift, limiter: !!g.limiter, blown: !!g.blown, warn: g.damage > 0.3 || g.temp > 115 || !g.engineOn, time,
-        });
+        screen.draw(readingOf(g, spec, time));
       }
       if (gear) gear.set(g.gear, g.blown ? '#ff3020' : '#ffb020');
       if (shiftLamp) /** @type {THREE.MeshBasicMaterial} */ (shiftLamp.material).color.set(g.limiter && Math.floor(time * 12) % 2 ? 0x101010 : g.shift || g.limiter ? 0xff2a10 : 0x1a0c08);
