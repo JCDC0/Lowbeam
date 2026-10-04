@@ -633,7 +633,7 @@ export class Drive {
     this.hud.rallyPanel(this.rallyPanel());
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
-    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally });
+    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally, traffic: this.traffic.agents });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }

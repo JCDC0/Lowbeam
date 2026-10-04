@@ -21,10 +21,12 @@
 import { store } from '../core/store.js';
 import { clamp } from '../core/mathx.js';
 import { MusicPlayer } from './music.js';
+import { PassBy, passbyDuration, passbyGain } from './passby.js';
 
 /** @typedef {'master' | 'engine' | 'effects' | 'ambience' | 'music'} Channel */
 /** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} Mode */
 /** @typedef {{ volume: number, on: boolean }} ChannelSetting */
+/** @typedef {import('./passby.js').PassByEvent} PassByEvent */
 
 export const CHANNELS = /** @type {const} */ (['master', 'engine', 'effects', 'ambience', 'music']);
 
@@ -138,6 +140,8 @@ export class AudioSystem {
     this.lastThrottle = 0;
     this.pumping = false;
     this.music = null;
+    /** Watches the nearby traffic for cars going past the player. */
+    this.passby = new PassBy();
     /** Called with each recorded track as it starts, for a "now playing" line. */
     this.onTrack = /** @type {((t: import('./soundtrack.js').Track) => void) | null} */ (null);
   }
@@ -268,6 +272,9 @@ export class AudioSystem {
     bus.musicMode.connect(bus.music);
     bus.ui = g(0.5);
     bus.ui.connect(bus.effects);
+    // The pass-by whoosh is panned to the side the car went past on.
+    bus.passPan = c.createStereoPanner ? c.createStereoPanner() : g(1);
+    bus.passPan.connect(bus.view);
 
     const white = noiseBuffer(c, 2, 'white');
     const pink = noiseBuffer(c, 4, 'pink');
@@ -453,7 +460,7 @@ export class AudioSystem {
    * One drive frame. `f.state` is the vehicle state, `f.boost` the gauge boost in bar,
    * `f.env` the EnvMap result around the car. `f.mountain` (on the pass) and `f.rival` (meters
    * to the nearest street racer) set the music's mood.
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean }} f
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[] }} f
    * @param {number} [at]
    */
   update(f, at) {
@@ -464,6 +471,7 @@ export class AudioSystem {
     this.setView(/** @type {any} */ (f.view), t);
     this.music?.setSpeed(f.state.speed * 3.6, t);
     this.music?.setScene(!!f.mountain, f.rival ?? Infinity);
+    if (f.traffic) for (const ev of this.passby.update(s, f.traffic)) this.passbyVoice(ev, t);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;
@@ -583,6 +591,48 @@ export class AudioSystem {
     this.noiseBurst(t, { f: 700 + 900 * k, q: 0.7, dur: 0.12 + 0.3 * k, gain: 0.9 * k, type: 'lowpass' });
     this.noiseBurst(t, { f: 2100, q: 8, dur: 0.18 + 0.4 * k, gain: 0.3 * k });
     this.blip(t, { f: 150 * (1.2 - 0.4 * k), f2: 42, dur: 0.22 + 0.15 * k, gain: 0.9 * k, type: 'sine', dest: this.bus.view });
+  }
+
+  /**
+   * The whoosh of a car going past. Filtered noise with a swell and a decay, a band-pass that
+   * sweeps down through the pass (Doppler) and a low rumble for the heavy vehicles, through the
+   * effects channel and the camera low-pass so the cockpit muffles it like the tires.
+   * @param {PassByEvent} ev @param {number} [at]
+   */
+  passbyVoice(ev, at) {
+    if (!this.built) return;
+    const t = at ?? this.ctx.currentTime;
+    const speed = ev.speed;
+    const gain = passbyGain(speed, ev.dist, ev.heavy);
+    if (gain < 0.02) return;
+    const dur = passbyDuration(speed);
+    if (this.bus.passPan.pan) put(this.bus.passPan.pan, ev.side * 0.85, t);
+    const swell = dur * 0.34;
+    // The noise, band-passed and sweeping down as the car recedes.
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.white;
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(Math.min(520 + speed * 34, 5200), t);
+    bp.frequency.exponentialRampToValueAtTime(Math.max((520 + speed * 34) * 0.42, 180), t + dur);
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(gain * 1.7, t + swell);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(bp).connect(env).connect(this.bus.passPan);
+    src.start(t, Math.random() * 1.5);
+    src.stop(t + dur + 0.05);
+    if (ev.heavy) {
+      const rumble = this.ctx.createBiquadFilter();
+      rumble.type = 'lowpass';
+      rumble.frequency.value = 110;
+      const rg = this.ctx.createGain();
+      rg.gain.setValueAtTime(0.0001, t);
+      rg.gain.linearRampToValueAtTime(gain * 1.0, t + swell);
+      rg.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      src.connect(rumble).connect(rg).connect(this.bus.passPan);
+    }
   }
 
   /** Menu chirps for the screens. @param {'move' | 'select' | 'back' | 'error'} name @param {number} [at] */
