@@ -21,14 +21,10 @@ const FOLLOW = {
 };
 
 /**
- * The cockpit camera sits ahead of the modeled eye (closer to the glass, so the roof header and
- * the dash top both leave the frame) and looks only slightly
- * down, so the windshield fills the upper two thirds and the instruments still show over the
- * wheel (looking 1.3 m down over 10 m put the horizon high and the frame on the dash).
+ * The cockpit camera is solved per car in cockpit.js (`cockpitCamera`): above the modeled eye, high
+ * enough to see the road from about 5 m ahead over the cowl, pitched down so the horizon sits a third
+ * of the way down and the binnacle shows under the road.
  */
-const COCKPIT_RAISE = -0.02;
-const COCKPIT_FORWARD = 0.22;
-const COCKPIT_DROP = 0.75;
 
 const _eye = new THREE.Vector3();
 const _look = new THREE.Vector3();
@@ -106,9 +102,8 @@ export class CameraRig {
       const def = car.model.def;
       const parent = view === 'cockpit' ? car.model.bodyRoot : car.model.group;
       if (view === 'cockpit') {
-        _eye.copy(car.cockpit.eye);
-        _eye.y += COCKPIT_RAISE;
-        _eye.z += COCKPIT_FORWARD;
+        const c = car.cockpit.camera;
+        _eye.set(c.x, c.y, c.z);
         fov = 72;
         cam.near = 0.08;
       } else if (view === 'hood') {
@@ -123,7 +118,7 @@ export class CameraRig {
       }
       _look.copy(_eye);
       _look.z += 10;
-      _look.y -= view === 'cockpit' ? COCKPIT_DROP : 0.5;
+      _look.y -= view === 'cockpit' ? Math.tan(car.cockpit.camera.pitch) * 10 : 0.5;
       parent.updateWorldMatrix(true, false);
       parent.localToWorld(_eye);
       parent.localToWorld(_look);

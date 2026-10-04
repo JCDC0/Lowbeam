@@ -18,6 +18,31 @@ export { DASHES, gaugeScale, needleAngle };
 
 /** Steering wheel turns per radian of front wheel angle. */
 export const STEER_RATIO = 4.5;
+/**
+ * The cockpit camera, solved per car (`cockpitCamera`): the road shows from `road` meters ahead
+ * over the cowl, the camera never closer than `headroom` to the roof liner, it pitches down `pitch`
+ * radians so the horizon sits about a third of the way down the frame, and the binnacle is raised
+ * until its gauges sit `gauges` radians below the camera's level, so they stay in frame under the
+ * road instead of being cut off by the bottom edge.
+ */
+export const COCKPIT_VIEW = { road: 5, forward: 0.25, headroom: 0.09, pitch: 0.17, gauges: 0.46 };
+
+/**
+ * Where the cockpit camera sits for a car, in body space (y is the height above the ground):
+ * `COCKPIT_VIEW.forward` ahead of the modeled eye (so the roof header leaves the top of the frame),
+ * high enough that the sight line over the cowl meets the road
+ * `COCKPIT_VIEW.road` meters ahead of the camera, capped under the roof.
+ * @param {{ x: number, y: number, z: number }} eye @param {number} cowlY @param {number} cowlZ @param {number} roofY
+ */
+export function cockpitCamera(eye, cowlY, cowlZ, roofY) {
+  const D = COCKPIT_VIEW.road;
+  const z = eye.z + COCKPIT_VIEW.forward;
+  const run = Math.max(0.3, cowlZ - z);
+  // The sight line over the cowl hits the ground at y * run / (y - cowlY) meters; solve for D.
+  const want = (D * cowlY) / Math.max(0.5, D - run);
+  const y = Math.min(roofY - COCKPIT_VIEW.headroom, Math.max(eye.y, want));
+  return { x: eye.x, y, z, pitch: COCKPIT_VIEW.pitch, hit: (y * run) / Math.max(0.01, y - cowlY) };
+}
 
 /** @typedef {import('./dash.js').GaugeSpot} GaugeSpot */
 
@@ -180,6 +205,7 @@ export function buildCockpit(model) {
   const dx = def.driver * Math.min(0.4, halfIn * 0.45);
   const eye = new THREE.Vector3(dx, roofY - 0.23, roofZ - 0.48);
   const dashBack = eye.z + 0.64;
+  const cam = cockpitCamera(eye, cowlY, cowlZ, roofY);
   const b = new MeshBuilder();
   const E = [eye.x, eye.y, eye.z];
   /** Quad wound toward the eye. */
@@ -214,7 +240,7 @@ export function buildCockpit(model) {
     q('dash', [s * halfIn, beltY, cowlZ - 0.04], [s * halfIn, beltY, eye.z - 0.95], [s * (halfIn + 0.07), beltY + 0.01, eye.z - 0.95], [s * (halfIn + 0.07), beltY + 0.01, cowlZ - 0.04]);
     b.box('trim', s * (halfIn - 0.01), beltY - 0.12, eye.z + 0.1, 0.03, 0.03, 0.18);
   }
-  q('pillar', [-w3r, roofY, roofZ], [w3r, roofY, roofZ], [w3r - 0.02, roofY - 0.09, roofZ - 0.03], [-w3r + 0.02, roofY - 0.09, roofZ - 0.03]);
+  q('pillar', [-w3r, roofY, roofZ], [w3r, roofY, roofZ], [w3r - 0.02, roofY - 0.05, roofZ - 0.03], [-w3r + 0.02, roofY - 0.05, roofZ - 0.03]);
   q('liner', [-w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ], [w3r, roofY - 0.02, roofZ - 1.6], [-w3r, roofY - 0.02, roofZ - 1.6]);
   b.box('dash', 0, roofY - 0.045, roofZ + 0.04, 0.16, 0.045, 0.025);
   q('mirror', [-0.07, roofY - 0.064, roofZ + 0.026], [0.07, roofY - 0.064, roofZ + 0.026], [0.07, roofY - 0.028, roofZ + 0.026], [-0.07, roofY - 0.028, roofZ + 0.026]);
@@ -237,6 +263,8 @@ export function buildCockpit(model) {
     can: psxBasic({ color: 0x050506, ...dbl }),
     bezel: psxPhong({ color: 0x9a9ea6, specular: 0xffffff, shininess: 80, ...o }),
     needle: psxBasic({ color: 0xff5a1e, ...dbl }),
+    rim: psxPhong({ color: 0x4a4a52, specular: 0x666666, shininess: 30, ...o }),
+    marker: psxBasic({ color: 0xf2c51c }),
     lampOff: psxBasic({ color: 0x1a0c08 }),
   };
   const shell = b.mesh(mats);
@@ -257,7 +285,10 @@ export function buildCockpit(model) {
     let center;
     let hood = 0;
     if (pod.pod === 'cluster') {
-      center = new THREE.Vector3(dx, beltY - 0.065, dashBack - 0.06);
+      // A binnacle on the dash top, as high as it needs to be for the camera to see it under the road.
+      const z = dashBack - 0.06;
+      const y = Math.max(beltY - 0.065, cam.y - (z - cam.z) * Math.tan(COCKPIT_VIEW.gauges));
+      center = new THREE.Vector3(dx, Math.min(y, beltY + 0.07), z);
       hood = 0.07;
     } else if (pod.pod === 'top') {
       center = new THREE.Vector3(dx * 0.35, beltY + 0.05, dashBack + 0.08);
@@ -301,19 +332,26 @@ export function buildCockpit(model) {
     pods.push(frame);
   }
 
-  // Steering wheel: a rim with three spokes and a hub, low enough to see the gauges over it.
+  // Steering wheel: a rim with three spokes and a hub.
   const wheel = new THREE.Group();
-  wheel.position.set(dx, eye.y - 0.45, eye.z + 0.4);
-  wheel.rotation.x = -0.4;
+  // Its rim's top sits just under the gauges as the camera sees them, so the rim frames the cluster.
+  // The tilt brings the rim's top 0.18 sin 0.4 toward the driver and 0.18 cos 0.4 above the hub.
+  const tilt = -0.4;
+  const topZ = cam.z + 0.2;
+  const topY = cam.y - (topZ - cam.z) * Math.tan(COCKPIT_VIEW.gauges + 0.3);
+  wheel.position.set(dx, topY - 0.18 * Math.cos(tilt), topZ - 0.18 * Math.sin(tilt));
+  wheel.rotation.x = tilt;
   const spin = new THREE.Group();
   wheel.add(spin);
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.019, 6, 24), mats.dash);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.019, 6, 24), mats.rim);
   const wb = new MeshBuilder();
   wb.box('s', 0, -0.09, 0, 0.045, 0.16, 0.02);
   wb.box('s', -0.1, -0.01, 0, 0.16, 0.035, 0.02);
   wb.box('s', 0.1, -0.01, 0, 0.16, 0.035, 0.02);
   wb.box('s', 0, -0.01, -0.012, 0.1, 0.075, 0.035);
-  const spokes = wb.mesh({ s: mats.dash });
+  // The racing marker at twelve o'clock, so the wheel reads against the dark dash and shows its turn.
+  wb.box('m', 0, 0.18, 0.004, 0.026, 0.05, 0.045);
+  const spokes = wb.mesh({ s: mats.trim, m: mats.marker });
   spin.add(rim, spokes);
   group.add(wheel);
   group.visible = false;
@@ -323,6 +361,8 @@ export function buildCockpit(model) {
     group,
     wheel: spin,
     eye,
+    /** The camera's place and pitch in body space (`cockpitCamera`). */
+    camera: cam,
     gauges,
     /**
      * Moves the needles and lamps from the gauge readings. Needles chase their target a

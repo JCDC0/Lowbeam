@@ -165,7 +165,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.0)
+## Current state (0.8.1)
 
 Done and tested:
 
@@ -572,9 +572,14 @@ Done and tested:
 - Cameras (`CameraRig`, C cycles, the choice is saved by name under `cameraView`): chase
   (damped, leans toward the direction of travel in a slide, FOV 62 to 78 with speed), car
   (the standard near view: 5.6 m back, 1.8 m up, looking 7 m ahead of the car so the road shows
-  over it, FOV 60 to 70), hood, bumper and cockpit. The cockpit camera sits 22 cm ahead of the
-  modeled eye and looks 0.75 m down over 10 m (`COCKPIT_*` in cameras.js), so the windshield
-  fills the top half and the instruments the bottom. The cockpit is a lofted
+  over it, FOV 60 to 70), hood, bumper and cockpit. Since 0.8.1 the cockpit camera is solved per car
+  (`cockpitCamera` and `COCKPIT_VIEW` in cockpit.js): 25 cm ahead of the modeled eye, raised (under
+  the roof liner) until the sight line over the cowl meets the road 5 m ahead, pitched 0.17 rad down
+  so the horizon sits a third of the way down the frame. The binnacle rises on the dash until its
+  gauges sit 0.46 rad below the camera's level, and the steering wheel is placed by its tilted rim
+  top just under them (a lighter rim and a yellow marker at twelve o'clock so it reads and shows its
+  turn). Before, the eye sat low behind a high cowl in every car (the road was hidden for 33 to 100 m
+  ahead) and the wheel was out of frame. The cockpit is a lofted
   interior (`buildCockpit`): dash, binnacle, gauge face (dark until the cluster
   lands), steering wheel turning at 4.5 times the road wheel angle, A-pillars, header,
   liner, door panels, mirror, console and passenger seat. It rides in the leaning body.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1 (2026-10-04)
+
+Fix the cockpit view: see the road, the gauges and the wheel in every car.
+
+- `cockpit.js`: `cockpitCamera` solves the camera per car from its eye, cowl and roof so the road shows
+  from 5 m ahead (it was hidden for 33 to 100 m); the binnacle is raised to sit in frame under the road;
+  the steering wheel is placed by its tilted rim top under the gauges, with a lighter rim and a yellow
+  marker. `COCKPIT_VIEW` holds the numbers. The header strip is slimmer.
+- `cameras.js` reads the camera from the cockpit instead of fixed offsets.
+
 ## 0.8.0 (2026-10-04)
 
 More typefaces: segment digits, a monospace, a heavy display face and a Japanese face.
