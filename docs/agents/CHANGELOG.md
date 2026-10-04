@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.6.8 (2026-10-04)
+
+The Kuro Pass time attack, the second RaceEvent (A11 part 2).
+
+- New pure `src/race/rally.js`: `Rally extends` the A9 base. `new Rally(carId, cfg, road, opts?)`
+  takes the stage road (a `world/roads.js` Road through `path.length`, or anything with a plain
+  `length`), starts at `cfg.startS` and finishes `cfg.finishEndOffset` short of the end, with
+  `cfg.checkpoints` gates spread evenly between. Gates only count when the car is actually on the
+  road, so cutting one does not finish the run; `nextGate()` is the next required gate.
+- Splits are recorded at every gate and at the finish as `{ at, against, ahead }` and compared
+  against the saved best for that car, passed in as `opts.best` and `opts.bestSplits`. Medals come
+  from `cfg.medals` (average km/h targets, gold first) and the prize from `cfg.prize`.
+  `penalize()` adds `PENALTY` 5 s for putting the car back on the stage.
+- Off course: more than `OFF_COURSE` 25 m from the road for `OFF_LIMIT` 3 s starts an `OFF_GRACE`
+  10 s countdown, then the run aborts with no result. Coming back on the road clears the timer.
+- Ghost: `recordGhost(t, pose)` stores `x`, `z` and `yaw` as whole centimeters and centi-radians
+  every `GHOST_STEP` 0.1 s, and `ghostAt(t)` interpolates between samples, returning null outside
+  the recorded span so the caller knows not to draw anything. Drawing the ghost car is Claude's.
+- Pure module: it never reads or writes the save, so `Drive` owns `rallyBest` and `rallyGhost`.
+- Tests: `tests/rally.test.mjs`, 15 cases: the 3 s countdown holds the clock, gates evenly spaced
+  between start and finish, a run through every gate finishes with a time and a medal, skipping a
+  gate does not finish, the penalty adds exactly 5 s, the off-course countdown aborts and coming
+  back clears it, `ghostAt` interpolates and returns null outside the span, ghost samples are
+  stored as integers, splits compare against a best time (and are null with no best), medals and
+  prize come from the config, a fast run wins gold, and `RALLY` is left as authored.
+- Verified against the real Kuro Pass road read through `ground.roads.byId.get(RALLY.road)`: a
+  5,913 m stage from s 400 to 6,313 with gates at 1583, 2765, 3948 and 5130, gold at 251.9 km/h.
+  Positions are read from the road, never hard-coded, since the map is still moving.
+
 ## 0.6.7 (2026-10-04)
 
 Model the police headquarters, garages and hideouts in Blender and place them on lots.

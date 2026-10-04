@@ -109,7 +109,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/race/event.js` | Pure: the `RaceEvent` interface every race kind shares: state, `update(dt, world)`, `result()` |
 | `src/race/duel.js` | Pure: `Duel`, the one-on-one race with a street racer; gauge drains for whoever is behind, prize and challenge rules |
 | `src/race/pacenotes.js` | Pure: walks a stage every 5 m and grades each corner (`1` tightest to `6` flat) with hairpin, long, tightens, opens, crest and into |
-| `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost |
+| `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost (`ghostAt(t)`) |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
 | `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
 | `src/traffic/bodies.js` | Geometry per kind: the lofted body (`vehicleGeometry`) from the civilian models by kind id or from the kind's `model`; the old boxy stand-ins are the fallback |
@@ -157,7 +157,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.6.7)
+## Current state (0.6.8)
 
 Done and tested:
 
@@ -610,6 +610,18 @@ Done and tested:
   with `dir` left or right read from the sign of the yaw change, matching the convention in
   `vehicles/physics.js` (yaw 0 faces +Z). A crest is a mod on the nearest corner rather than a
   note of its own.
+  `race/rally.js` (since 0.6.8) is the timed run. `new Rally(carId, cfg, road, opts?)` reads the
+  stage length off the road (`path.length` on a `world/roads.js` Road, or a plain `length`), starts
+  at `cfg.startS` and finishes `cfg.finishEndOffset` short of the end, with `cfg.checkpoints` gates
+  spread evenly between (`gates`, `gatesHit`, `nextGate()`). Gates only count when the car is on
+  the road, so cutting one does not finish the run. `splits` is one entry per gate plus the finish,
+  each `{ at, against, ahead }`, compared against the saved best for that car. Medals come from
+  `cfg.medals` (average km/h) and the prize from `cfg.prize`, gold first, and `penalize()` adds
+  `PENALTY` 5 s for putting the car back on the stage. More than `OFF_COURSE` 25 m off the road for
+  `OFF_LIMIT` 3 s starts an `OFF_GRACE` 10 s countdown, then the run aborts with no result.
+  `recordGhost(t, pose)` stores whole centimeters and centi-radians every `GHOST_STEP` 0.1 s and
+  `ghostAt(t)` interpolates between samples, returning null outside the span. Pure: it never reads
+  or writes the save, so Drive owns `rallyBest` and `rallyGhost`.
 - Cockpit (`cockpit.js`, since 0.4.9). The interior is lofted from the body (dash top, a
   rounded lip and face, firewall, floor, console, vents, A-pillars, header, liner, door
   panels and sills, mirror, passenger seat) and each car has its own real instruments, not a
@@ -645,7 +657,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 179 passing for this milestone (`npm test`), including `tests/pacenotes.test.mjs` for the
+- Tests: 199 passing for this milestone (`npm test`), including `tests/rally.test.mjs` for the
+  Kuro Pass time attack, `tests/pacenotes.test.mjs` for the
   rally pace notes and `tests/race.test.mjs` for the duel
   rules, `tests/devserver.test.mjs` for the dev server's range
   requests, `tests/map.test.mjs` for the tactical map and

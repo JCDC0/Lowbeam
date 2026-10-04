@@ -184,7 +184,8 @@ test('the ghost records x, z and yaw as rounded integers', () => {
 
 test('splits are recorded at each gate and compared against a best time', () => {
   const roadLen = 6400;
-  const rally = new Rally('hayate', RALLY, road(roadLen), { best: 300, bestSplits: [100, 200] });
+  const bestSplits = [100, 200, 300, 400, 500];
+  const rally = new Rally('hayate', RALLY, road(roadLen), { best: 300, bestSplits });
   for (let t = 0; t < COUNTDOWN; t += 1 / 60) rally.update(1 / 60, { s: 0 });
   const dt = 1 / 60;
   let s = 0;
