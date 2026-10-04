@@ -76,7 +76,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/ui/pursuit.js` | Pursuit HUD (`pursuitHud`, NFS: Most Wanted style) and pure `layoutPursuit(view)` |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/ui/cluster-styles.js` | HUD cluster styles per car (`drawStyled`, `CLUSTER_STYLES`, `clusterStyleOf`, `warningLamps`, `shiftLightsLit`) |
-| `src/vehicles/instruments.js` | Canvas painters shared by the cockpit and the HUD: dial faces (`paintDial`, `FACES`, the racing `tuner` face and `paintTunerReadout`), needles (`paintNeedle`), the LCD and VFD screens (`paintScreen`, bare for the HUD), `readingOf` |
+| `src/vehicles/instruments.js` | Canvas painters shared by the cockpit and the HUD: dial faces (`paintDial`, `FACES`, the racing `tuner` face and `paintTunerReadout`), warning and gauge symbols (`paintIcon`), needles (`paintNeedle`), the LCD and VFD screens (`paintScreen`, bare for the HUD), `readingOf` |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
@@ -180,6 +180,15 @@ wav, json, txt, png) for other captures such as rendered audio.
 
 Done and tested:
 
+- HUD gauges grown up (0.8.7). Warnings are symbols, not words (`paintIcon` in instruments.js: check
+  engine, a wrench for damage, a pinned gauge for over-rev, a battery for engine off, a thermometer for
+  hot, a pump for low fuel, a snail for the turbo), each in a fixed place and faint when off, so one
+  lighting never pushes another aside (before, the lit ones were packed into a row that reflowed). Fuel
+  and temperature are their own small gauges on the Rampart (cream, at the outer corners), the Vespera
+  (yellow, beside the tach) and the Hayate (racing gauges, with boost); the gear moved into the gauges:
+  a window in the Rampart's tach and one window with the speed in the Vespera's. The LCD and VFD strips
+  are larger, less leaned, with tighter glow, and their B, F, T, BST, FUEL, TEMP, TURBO and CHECK ENGINE
+  labels are symbols, in the cockpit too. New lamp FUEL under 15 %.
 - Controls settings (0.8.13, A16 part 4). The CONTROLS screen (main menu, Settings, Pause) rebinds every
   action: two key slots each, the gamepad button shown, Enter then a key to bind, Esc to cancel, a key in
   use elsewhere is swapped, Escape and Enter cannot be bound, RESET TO DEFAULTS. Saved under `keys` and

@@ -118,6 +118,16 @@ Speedometer styles for the HUD cluster (A16 part 1).
 - `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
 - Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
 
+## 0.8.7 (2026-10-04)
+
+Symbols for the warnings, fuel and temperature as gauges, the gear inside the gauges, bigger screens.
+
+- `instruments.js`: `paintIcon` (engine, wrench, overrev, battery, temp, fuel, turbo); the LCD and VFD
+  use symbols for their bars and warnings; the tuner face shows a symbol for boost, temp and fuel.
+- `cluster-styles.js`: warnings in fixed slots (`lampIcons`), faint when off; `warningLamps` gains
+  `icon` and a FUEL lamp; small fuel and temperature gauges on twin, sport and tuner; the gear in the
+  Rampart's tach and in the Vespera's speed window; the digital strips scaled up.
+
 ## 0.8.6 (2026-10-04)
 
 The HUD clusters float instead of sitting on boards, and the Hayate gets a racing tach.

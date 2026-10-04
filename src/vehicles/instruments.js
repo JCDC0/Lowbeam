@@ -29,6 +29,91 @@ export const FACES = {
   tuner: { inner: '#1c1c21', outer: '#040405', tick: '#ff3a26', red: '#ffe6dc', numerals: true, needle: 0xff3020 },
 };
 
+/**
+ * The warning and gauge symbols, drawn as strokes so they read at any size: `engine` (check
+ * engine), `wrench` (damage), `overrev` (a gauge pinned), `battery` (engine off: no charge), `temp`
+ * (a thermometer in coolant), `fuel` (a pump), `turbo` (a snail). Centered on (x, y), `size` across.
+ * @param {CanvasRenderingContext2D} g @param {IconName} name @param {number} x @param {number} y
+ * @param {number} size @param {string} color @param {number} [glow] blur of the glow, 0 for none
+ */
+export function paintIcon(g, name, x, y, size, color, glow = 0) {
+  const u = size / 24;
+  const path = (pts, close = true) => {
+    g.beginPath();
+    pts.forEach(([a, b], i) => (i ? g.lineTo(x + a * u, y + b * u) : g.moveTo(x + a * u, y + b * u)));
+    if (close) g.closePath();
+    g.stroke();
+  };
+  g.strokeStyle = color;
+  g.fillStyle = color;
+  g.lineWidth = Math.max(1, 2 * u);
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  g.shadowColor = color;
+  g.shadowBlur = glow;
+  if (name === 'engine') {
+    path([[-8, -2], [-6, -2], [-6, -5], [-3, -5], [-3, -8], [3, -8], [3, -5], [6, -5], [8, -3], [10, -3], [10, 4], [8, 4], [6, 7], [-3, 7], [-5, 4], [-8, 4]]);
+    path([[-11, -3], [-11, 5]], false);
+    path([[-11, 1], [-8, 1]], false);
+  } else if (name === 'wrench') {
+    g.lineWidth = Math.max(1, 3.2 * u);
+    path([[-8, 8], [2, -2]], false);
+    g.lineWidth = Math.max(1, 2.6 * u);
+    g.beginPath();
+    g.arc(x + 5 * u, y - 5 * u, 4.5 * u, -Math.PI / 4 + 0.8, -Math.PI / 4 - 0.8 + Math.PI * 2);
+    g.stroke();
+  } else if (name === 'overrev') {
+    g.beginPath();
+    g.arc(x, y + 5 * u, 11 * u, Math.PI * 1.05, Math.PI * 1.95);
+    g.stroke();
+    path([[-9, -1], [-7, 1]], false);
+    path([[9, -1], [7, 1]], false);
+    g.lineWidth = Math.max(1, 2.6 * u);
+    path([[0, 5], [8, -3]], false);
+    g.beginPath();
+    g.arc(x, y + 5 * u, 2.4 * u, 0, Math.PI * 2);
+    g.fill();
+  } else if (name === 'battery') {
+    g.strokeRect(x - 10 * u, y - 5 * u, 20 * u, 13 * u);
+    g.fillRect(x - 7 * u, y - 8 * u, 4 * u, 3 * u);
+    g.fillRect(x + 3 * u, y - 8 * u, 4 * u, 3 * u);
+    path([[-7, 1.5], [-3, 1.5]], false);
+    path([[3, 1.5], [7, 1.5]], false);
+    path([[5, -0.5], [5, 3.5]], false);
+  } else if (name === 'temp') {
+    g.lineWidth = Math.max(1, 2.6 * u);
+    path([[0, -10], [0, 3]], false);
+    g.beginPath();
+    g.arc(x, y + 5 * u, 3.4 * u, 0, Math.PI * 2);
+    g.fill();
+    g.lineWidth = Math.max(1, 1.8 * u);
+    path([[2, -7], [5, -7]], false);
+    path([[2, -3], [5, -3]], false);
+    path([[-11, 10], [-9, 8], [-7, 10], [-5, 8]], false);
+    path([[5, 8], [7, 10], [9, 8], [11, 10]], false);
+  } else if (name === 'fuel') {
+    g.strokeRect(x - 9 * u, y - 9 * u, 11 * u, 19 * u);
+    g.fillRect(x - 7 * u, y - 7 * u, 7 * u, 5 * u);
+    path([[2, -5], [6, -5], [8, -3], [8, 6], [6, 8]], false);
+  } else {
+    g.beginPath();
+    g.arc(x, y, 9 * u, 0, Math.PI * 1.6);
+    g.stroke();
+    g.beginPath();
+    g.arc(x, y, 4.2 * u, 0, Math.PI * 2);
+    g.stroke();
+    path([[2.8, -8.6], [11, -8.6], [11, -3]], false);
+  }
+  g.shadowBlur = 0;
+  g.lineCap = 'butt';
+  g.lineJoin = 'miter';
+}
+
+/** @typedef {'engine' | 'wrench' | 'overrev' | 'battery' | 'temp' | 'fuel' | 'turbo'} IconName */
+
+/** The symbol for a gauge's label. @type {Partial<Record<import('./dash.js').GaugeType, IconName>>} */
+const GAUGE_ICON = { fuel: 'fuel', temp: 'temp', boost: 'turbo' };
+
 /** Units under a tuner gauge's readout. */
 const TUNER_UNIT = { tach: 'km/h', speed: 'km/h', boost: 'bar', temp: '°C', fuel: '%', oil: 'bar', volt: 'V' };
 
@@ -164,7 +249,9 @@ function paintTuner(g, cx, cy, m, type, sc) {
   }
   g.textAlign = 'right';
   g.font = `bold ${Math.round(9 * k)}px ${FONT.tech}`;
-  g.fillText(type === 'tach' ? 'RPM' : sc.label, cx + m * 0.78, cy + m * 0.16);
+  const icon = GAUGE_ICON[type];
+  if (icon) paintIcon(g, icon, cx + m * 0.48, cy + m * 0.08, m * 0.3, F.tick, 4 * k);
+  else g.fillText(type === 'tach' ? 'RPM' : sc.label, cx + m * 0.78, cy + m * 0.16);
   g.shadowBlur = 0;
   const b = tunerBox(cx, cy, m);
   g.fillStyle = '#08090b';
@@ -286,7 +373,7 @@ function drawLcd(g, W, H, r, spec, tach, flash, c, bare) {
   }
   const glow = (on) => {
     g.shadowColor = /** @type {string} */ (g.fillStyle);
-    g.shadowBlur = bare && on ? 7 : 0;
+    g.shadowBlur = bare && on ? 4 : 0;
   };
   // The tach: segments on an arc over the middle, from the lower left round to the lower right.
   const n = 44;
@@ -317,7 +404,7 @@ function drawLcd(g, W, H, r, spec, tach, flash, c, bare) {
   }
   // Speed under the arc, its unit beneath.
   g.shadowColor = '#46e8ff';
-  g.shadowBlur = bare ? 6 : 0;
+  g.shadowBlur = bare ? 4 : 0;
   segDigits(g, String(Math.round(r.kmh)), '888', cx + 38, H * 0.8, 36, FONT.seg7, '#e8fbff', c('#0a1a1e'));
   g.shadowBlur = 0;
   g.font = `11px ${FONT.mono}`;
@@ -344,7 +431,7 @@ function drawLcd(g, W, H, r, spec, tach, flash, c, bare) {
     ['T', (r.temp - 60) / 70, r.temp > 110 ? '#ff3a2a' : '#e8fbff'],
   ];
   bars.forEach(([label, v, color], i) => {
-    const x = 10 + i * 12;
+    const x = 9 + i * 15;
     const top = H * 0.3;
     const h = H * 0.42;
     g.fillStyle = c('#08262c');
@@ -352,19 +439,10 @@ function drawLcd(g, W, H, r, spec, tach, flash, c, bare) {
     const f = Math.max(0, Math.min(1, Number(v)));
     g.fillStyle = String(color);
     g.fillRect(x, top + h * (1 - f), 7, h * f);
-    g.font = `10px ${FONT.mono}`;
-    g.fillStyle = c('#5a8a94');
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(String(label), x + 3.5, top + h + 9);
+    const icon = /** @type {IconName} */ ({ B: 'turbo', F: 'fuel', T: 'temp' }[String(label)]);
+    paintIcon(g, icon, x + 3.5, top + h + 10, 12, f > 0 && String(color) === '#ff3a2a' ? '#ff3a2a' : c('#5a8a94'));
   });
-  if (r.warn || r.blown) {
-    g.font = `bold 11px ${FONT.mono}`;
-    g.fillStyle = '#ffa020';
-    g.textAlign = 'left';
-    g.textBaseline = 'middle';
-    g.fillText(r.blown ? 'CHECK ENGINE' : 'WARNING', 9, 14);
-  }
+  if (r.warn || r.blown) paintIcon(g, 'engine', 16, 14, 16, r.blown ? '#ff3a2a' : '#ffa020', bare ? 6 : 0);
 }
 
 /**
@@ -381,7 +459,7 @@ function drawVfd(g, W, H, r, spec, tach, flash, c, bare) {
   }
   const glow = (color) => {
     g.shadowColor = color;
-    g.shadowBlur = 8;
+    g.shadowBlur = bare ? 5 : 8;
     g.fillStyle = color;
   };
   const dim = (color) => {
@@ -430,31 +508,20 @@ function drawVfd(g, W, H, r, spec, tach, flash, c, bare) {
   else glow('#ffb02e');
   g.fillText(r.gear, W - 30, H * 0.84);
   // TURBO lamp and boost bar, fuel and temperature as segment bars on the left.
-  g.font = `bold 11px ${FONT.mono}`;
-  g.textAlign = 'left';
-  if (r.boost > 0.3) glow('#ffb02e');
-  else dim('#2a1e08');
-  g.fillText('TURBO', 10, 72);
-  const segBar = (label, v, y, color, ghost, warn) => {
-    dim('#3a8a5a');
-    g.font = `10px ${FONT.mono}`;
-    g.fillText(label, 10, y + 6);
+  // Boost (its turbo symbol lights on boost, the old TURBO lamp), fuel and temperature as segment bars.
+  const segBar = (icon, v, y, color, ghost, warn, lit) => {
+    paintIcon(g, icon, 17, y + 4, 12, lit ? (warn ? '#ff3a2a' : color) : c('#3a8a5a'), lit ? 6 : 0);
     const m = 8;
     const on = segmentsLit(v, 1, m);
     for (let i = 0; i < m; i++) {
       if (i < on) glow(warn ? '#ff3a2a' : color);
       else dim(ghost);
-      g.fillRect(44 + i * 9, y, 7, 8);
+      g.fillRect(32 + i * 9, y, 7, 8);
     }
   };
-  segBar('BST', Math.max(0, r.boost) / 1.0, 78, '#ffb02e', '#2a1e08', false);
-  segBar('FUEL', r.fuel, 92, '#5aff8a', '#0c2a18', r.fuel < 0.15);
-  segBar('TEMP', (r.temp - 60) / 70, 106, '#5aff8a', '#0c2a18', r.temp > 110);
-  if (r.warn || r.blown) {
-    glow('#ff3a2a');
-    g.font = `bold 11px ${FONT.mono}`;
-    g.textAlign = 'center';
-    g.fillText(r.blown ? 'CHECK ENGINE' : 'CHECK', W * 0.5, H * 0.97);
-  }
+  segBar('turbo', Math.max(0, r.boost) / 1.0, 74, '#ffb02e', '#2a1e08', false, r.boost > 0.3);
+  segBar('fuel', r.fuel, 90, '#5aff8a', '#0c2a18', r.fuel < 0.15, r.fuel < 0.15);
+  segBar('temp', (r.temp - 60) / 70, 106, '#5aff8a', '#0c2a18', r.temp > 110, r.temp > 110);
+  if (r.warn || r.blown) paintIcon(g, 'engine', W * 0.5, H * 0.93, 14, r.blown ? '#ff3a2a' : '#ffb02e', 8);
   g.shadowBlur = 0;
 }
