@@ -45,8 +45,7 @@ export class Rally extends RaceEvent {
    * @param {{ id: string, name: string, startS: number, finishEndOffset: number, checkpoints: number,
    *           medals: Record<string, number>, prize: Record<string, number> }} cfg the RALLY config
    * @param {{ length: number, id?: string, path?: { length: number } }} road the stage road; a
-   *   `world/roads.js` Road works because it exposes `path.length`, and so does anything with a
-   *   plain `length`
+   *   `world/roads.js` Road is passed as `any` because its `length` lives on its `path`
    * @param {{ best?: number | null, bestSplits?: (number | null)[] | null }} [opts] the saved best
    *   time for this car and its splits, so each gate can say whether the driver is up or down
    */
@@ -54,7 +53,7 @@ export class Rally extends RaceEvent {
     super(`rally-${cfg.id}-${carId}`, 'rally', [carId]);
     this.carId = carId;
     this.cfg = cfg;
-    this.road = /** @type {StageRoad} */ (road);
+    this.road = /** @type {StageRoad} */ (/** @type {any} */ (road));
     this.startS = cfg.startS;
     this.finishS = this.roadLength() - cfg.finishEndOffset;
     this.gates = this.placeGates(cfg.checkpoints);
@@ -75,6 +74,8 @@ export class Rally extends RaceEvent {
     /** @type {{ t: number, x: number, z: number, yaw: number }[]} */
     this.ghost = emptyGhost();
     this.ghostNext = 0;
+    /** The last arc length the car was on the road, so an off-course step does not skip a gate. */
+    this.lastS = this.startS;
     /** @type {RallyResult | null} */
     this.outcome = null;
   }
@@ -208,8 +209,8 @@ export class Rally extends RaceEvent {
     }
     // The finish only counts once every gate has been driven through.
     if (!off && this.gatesHit >= this.gates.length && s >= this.finishS) {
-      this.recordSplit();
-      return [this.finish()];
+      const split = this.recordSplit();
+      return [split, this.finish()];
     }
     return [];
   }
@@ -252,7 +253,7 @@ export class Rally extends RaceEvent {
     return { type: 'end', won: true, prize, time, medals };
   }
 
-  /** @returns {import('./event.js').RaceResult | null} */
+  /** @returns {RallyResult | null} */
   result() {
     return this.outcome;
   }

@@ -80,6 +80,8 @@ export const SWELL = {
   fall: 0.06,
   holdDown: 3,
   rivalFloor: 0.55,
+  /** A rally run holds the track up here, so it is never silent on the stage. */
+  rallyFloor: 0.7,
 };
 
 /** Smooth 0 to 1 between a and b. @param {number} a @param {number} b @param {number} x */
@@ -100,13 +102,14 @@ export class SpeedSwell {
 
   /**
    * @param {number} dt seconds since the last call
-   * @param {{ kmh: number, mountain: boolean, rival: number }} scene
+   * @param {{ kmh: number, mountain: boolean, rival: number, rally?: boolean }} scene
    * @returns {number} the level
    */
   update(dt, scene) {
     const S = SWELL;
     let want = smooth(S.quiet, scene.mountain ? S.fullMountain : S.full, scene.kmh);
     if (scene.rival < MOOD_RULES.rivalNear) want = Math.max(want, S.rivalFloor);
+    if (scene.rally) want = Math.max(want, S.rallyFloor);
     if (want >= this.level) {
       this.below = 0;
       this.level = Math.min(want, this.level + S.rise * dt);

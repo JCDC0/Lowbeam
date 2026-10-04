@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.6.9 (2026-10-04)
+
+Starting the Kuro Pass run, the rally HUD, and the T-junction give-way (A11 part 3).
+
+- `src/drive.js`: the run, marked like the duel. Stopped within 15 m of the start line the prompt
+  reads `F  KURO PASS TIME ATTACK` and F begins a run: `placeOnRallyStart` puts the car on the line
+  facing down the stage, `audio.music.hold('ridge')` runs, `audio.beep('count')` and
+  `audio.beep('go')` come from the race events, and R during a run puts the car back on the stage
+  with the 5 s penalty. A new best and its ghost are saved per car under `rallyBest` and
+  `rallyGhost`. The stage road comes from `ground.roads.byId.get(RALLY.road)` every time, never a
+  cached position.
+- `src/traffic/sim.js`: `rallyRoad` stops spawning on that road and fades out any agent still on it,
+  so the stage belongs to the player while a run is going.
+- `src/traffic/sim.js`: the T-junction give-way Antigravity's net.js left as data is now read. A
+  stop carrying `yield: { lanes, at }` holds a side-road car while anything on the through road could
+  reach the junction in less than `YIELD_TIME` 4.5 s (`yieldClear`, looking `YIELD_LOOK` 45 m up the
+  road), and lets it go once the road is clear. Every yield line sits about 11 m short of the lane
+  end, so a car waiting there waits `YIELD_LINE` 0.4 m short of it rather than on top of it, which
+  would creep it to a standstill and never let it turn in.
+- `src/ui/hud.js` and `style.css`: the rally panel, the clock, the split at each gate (green ahead,
+  red behind), the next two pace notes as big text, the off-course countdown and the result card for
+  4 s. It sits at the top, so it stays clear of the gauges in the cockpit view.
+- `src/audio/soundtrack.js`: a `rally` flag on the swell scene, like `rival`, holding the level at
+  `SWELL.rallyFloor` 0.7 so a run is never silent below 50 km/h. Threading it to the swell needed
+  one extra line in `music.js` (`setScene`) and one in `audio.js`, which were outside the part's
+  stated file list; both were authorized as one-line edits.
+- Tests: new `tests/rally-traffic.test.mjs` (five cases: the network has yield stops, an agent
+  stops at one while traffic approaches, the same agent goes once it is clear, a rally road clears
+  traffic and keeps it from spawning and gives it back afterwards, and other roads are unaffected)
+  and two more in `tests/rally.test.mjs` (gates count in order and only then does the finish count,
+  and a run that cannot pass a gate never finishes however far it drives).
+- Verified in the browser at 480 lines: the prompt reads `F  KURO PASS TIME ATTACK`, F starts the
+  countdown, the panel shows the clock and both pace notes on the pass, and a full run through every
+  gate finishes gold with the splits alternating behind and ahead of a stored best.
+
 ## 0.7.3 (2026-10-04)
 
 Brief A13 for the pursuit HUD, ahead of the helicopter and the police.

@@ -111,7 +111,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/race/duel.js` | Pure: `Duel`, the one-on-one race with a street racer; gauge drains for whoever is behind, prize and challenge rules |
 | `src/race/pacenotes.js` | Pure: walks a stage every 5 m and grades each corner (`1` tightest to `6` flat) with hairpin, long, tightens, opens, crest and into |
 | `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost (`ghostAt(t)`) |
-| `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions |
+| `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions, T-junction give-way (`yieldClear`) and `rallyRoad` to keep a stage clear |
 | `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
 | `src/traffic/bodies.js` | Geometry per kind: the lofted body (`vehicleGeometry`) from the civilian models by kind id or from the kind's `model`; the old boxy stand-ins are the fallback |
 | `src/vehicles/bodies/civilians.js` | Pure: the fourteen traffic bodies (`CIVILIAN_MODELS`): cars and vans from profiles, trucks, tanker, bus and semi as a lofted cab with cargo, extra axles |
@@ -160,7 +160,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.3)
+## Current state (0.6.9)
 
 Done and tested:
 
@@ -651,6 +651,17 @@ Done and tested:
   `recordGhost(t, pose)` stores whole centimeters and centi-radians every `GHOST_STEP` 0.1 s and
   `ghostAt(t)` interpolates between samples, returning null outside the span. Pure: it never reads
   or writes the save, so Drive owns `rallyBest` and `rallyGhost`.
+  Driving one is in `drive.js` (`rallyRoad`, `atRallyStart`, `placeOnRallyStart`, `startRally`,
+  `stepRally`, `endRally`, `rallyPanel`), marked like the duel. Stopped within `RALLY_NEAR` 15 m of
+  the start line the prompt reads `F  KURO PASS TIME ATTACK` and F begins a run: the car is placed on
+  the line facing down the stage, `audio.music.hold('ridge')` runs and the music is held at
+  `SWELL.rallyFloor` 0.7 so it is never silent on the pass, `audio.beep('count')` and
+  `audio.beep('go')` come from the race events, and R during a run puts the car back on the stage
+  with the 5 s penalty. A new best time and its ghost are saved per car under `rallyBest` and
+  `rallyGhost`. `TrafficSim.rallyRoad` then stops spawning on that road and fades out any agent
+  still on it, so the stage belongs to the player. The HUD panel (`Hud.rallyPanel`) shows the clock,
+  the last split green ahead or red behind, the next two pace notes as `L4 LONG` style text, the
+  off-course countdown, and the result card for 4 s.
 - Cockpit (`cockpit.js`, since 0.4.9). The interior is lofted from the body (dash top, a
   rounded lip and face, firewall, floor, console, vents, A-pillars, header, liner, door
   panels and sills, mirror, passenger seat) and each car has its own real instruments, not a
@@ -686,7 +697,8 @@ Done and tested:
   transmission mode (`AUTO` / `MANUAL`). Clamps bar values cleanly to 10 segments.
 - `__lowbeam.simulate(seconds, input)` runs the drive loop without frames, for checks
   in a hidden tab; `__lowbeam.setState('free')` gives the development free camera.
-- Tests: 199 passing for this milestone (`npm test`), including `tests/rally.test.mjs` for the
+- Tests: 206 passing for this milestone (`npm test`), including `tests/rally-traffic.test.mjs` for
+  the T-junction give-way and the cleared stage, `tests/rally.test.mjs` for the
   Kuro Pass time attack, `tests/pacenotes.test.mjs` for the
   rally pace notes and `tests/race.test.mjs` for the duel
   rules, `tests/devserver.test.mjs` for the dev server's range

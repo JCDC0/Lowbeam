@@ -408,6 +408,72 @@ html, body {
   text-shadow: 0 2px 0 #000;
   min-height: 24px;
 }
+#hud .rally {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 4vh;
+  transform: translateX(-50%);
+  width: min(460px, 52vw);
+  text-align: center;
+}
+#hud .rallytime {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 0 3px 0 #000;
+}
+#hud .rallysplit {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  min-height: 24px;
+  text-shadow: 0 2px 0 #000;
+}
+#hud .rallysplit.ahead {
+  color: #7ddc7d;
+}
+#hud .rallysplit.behind {
+  color: #ff6a5e;
+}
+#hud .rallycount {
+  font-size: 46px;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 3px 0 #000;
+  min-height: 48px;
+}
+#hud .rallynotes {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 4px;
+}
+#hud .rallynote {
+  font-size: 24px;
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  text-shadow: 0 2px 0 #000;
+  min-width: 4em;
+}
+#hud .rallynote.second {
+  font-size: 17px;
+  opacity: 0.8;
+}
+#hud .rallyoff {
+  font-size: 18px;
+  letter-spacing: 0.2em;
+  color: #ff6a5e;
+  text-shadow: 0 2px 0 #000;
+  min-height: 22px;
+}
+#hud .rallyend {
+  font-size: 22px;
+  letter-spacing: 0.14em;
+  color: #fff;
+  text-shadow: 0 2px 0 #000;
+  min-height: 28px;
+}
 #hud .mapslot {
   position: absolute;
   left: 2.5vw;

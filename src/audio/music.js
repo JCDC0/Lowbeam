@@ -321,7 +321,7 @@ export class MusicPlayer {
     /** Track ids that failed to load; their mood falls back to another file, then the synth. */
     this.broken = new Set();
     this.moods = new MoodTracker();
-    this.scene = { kmh: 0, mountain: false, rival: Infinity };
+    this.scene = { kmh: 0, mountain: false, rival: Infinity, rally: false };
     this.mode = /** @type {import('./audio.js').Mode} */ ('title');
     this.turn = 0;
     this.lastId = /** @type {string | null} */ (null);

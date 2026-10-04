@@ -254,6 +254,42 @@ test('RALLY is not edited by the rally module', () => {
   assert.ok(RALLY.prize.gold > RALLY.prize.bronze);
 });
 
+test('gates are counted in order and only then does the finish count', () => {
+  const roadLen = 6400;
+  const rally = new Rally('hayate', RALLY, road(roadLen));
+  for (let t = 0; t < COUNTDOWN; t += 1 / 60) rally.update(1 / 60, { s: 0 });
+  assert.equal(rally.state, 'running');
+  const dt = 1 / 60;
+  let s = RALLY.startS;
+  let t = 0;
+  const hits = [];
+  while (rally.state === 'running' && t < 300) {
+    s += 1.2;
+    for (const e of rally.update(dt, { s, d: 0 })) if (e.type === 'split') hits.push(e.index);
+    t += dt;
+  }
+  assert.equal(rally.state, 'won', 'the run should finish');
+  assert.equal(rally.gatesHit, RALLY.checkpoints);
+  assert.deepEqual(hits, [0, 1, 2, 3, 4], 'one split per gate then the finish, in order');
+});
+
+test('a run that cannot pass a gate never finishes, however far it drives', () => {
+  const roadLen = 6400;
+  const rally = new Rally('hayate', RALLY, road(roadLen));
+  for (let t = 0; t < COUNTDOWN; t += 1 / 60) rally.update(1 / 60, { s: 0 });
+  const dt = 1 / 60;
+  let s = RALLY.startS;
+  let t = 0;
+  const first = rally.gates[0];
+  while (rally.state === 'running' && t < 300) {
+    s += s < first ? 1.2 : 40;
+    rally.update(dt, { s, d: 0 });
+    t += dt;
+  }
+  assert.equal(rally.state, 'running', 'skipping a gate must not finish the run');
+  assert.equal(rally.gatesHit, 1);
+});
+
 test('a run faster than the gold target wins gold', () => {
   const rally = new Rally('hayate', RALLY, road(6400));
   for (let t = 0; t < COUNTDOWN; t += 1 / 60) rally.update(1 / 60, { s: 0 });

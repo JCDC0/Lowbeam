@@ -41,6 +41,12 @@ const CHANGE_EVERY = 0.8;
 const LANE_HOLD = 8;
 /** Clear gap a civilian needs ahead in the slow lane before drifting back into it. */
 const SLOW_LANE_GAP = 120;
+/** How far up the through road a car counts as approaching a give-way. */
+const YIELD_LOOK = 45;
+/** How close a car has to be, in seconds, to hold a give-way. */
+const YIELD_TIME = 4.5;
+/** How far short of the line a car waits when the junction is clear, so it can turn in. */
+const YIELD_LINE = 0.4;
 
 const CLASS_DENSITY = { expressway: 4.5, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
 
@@ -71,6 +77,8 @@ export class TrafficSim {
     this.agents = [];
     this.target = target;
     this.rivalTarget = rivals;
+    /** Road id the player is racing on, so traffic stays off it. Null outside a rally. */
+    this.rallyRoad = /** @type {string | null} */ (null);
     this.time = 0;
     this.nextId = 1;
     this.spawnTimer = 0;
@@ -262,6 +270,7 @@ export class TrafficSim {
       const pick = max < 1e6 ? this.pickNear(player, min, max) : null;
       const lane = pick ? pick.lane : this.pickLane();
       const s = pick ? pick.s : this.rng.next() * lane.length;
+      if (this.rallyRoad && lane.road.id === this.rallyRoad) continue;
       const q = this.net.sample(lane, s, this._q);
       const d = Math.hypot(q.x - player.x, q.z - player.z);
       if (d < min || d > max) continue;
@@ -336,6 +345,11 @@ export class TrafficSim {
     this.sortLanes();
     for (const a of this.agents) {
       a.age += dt;
+      if (this.rallyRoad && a.lane.road.id === this.rallyRoad && a.mode === 'drive') {
+        // The stage belongs to the player during a run, so anything still on it fades out.
+        a.fade -= dt * 2;
+        continue;
+      }
       if (a.mode === 'wreck') this.stepWreck(a, dt);
       else this.stepDrive(a, dt, player);
     }
@@ -409,6 +423,19 @@ export class TrafficSim {
     for (const stop of lane.stops) {
       const d = stop.s - a.s - half;
       if (d < -1 || d > 70) continue;
+      // A give-way at a T junction: hold while anything on the through road could
+      // reach the junction. The network leaves this as data on the stop.
+      if (stop.yield) {
+        if (!this.yieldClear(stop.yield)) continue;
+        // The line sits right at the end of the side road, so a car that is on top of
+        // it has nothing left to give way to. Holding it there would creep it to a
+        // standstill against the junction and never let it turn in.
+        if (d < gap) {
+          gap = Math.max(YIELD_LINE, d);
+          v = 0;
+        }
+        continue;
+      }
       const light = lightState(stop.node, stop.axis, this.time);
       const canStop = d > (a.speed * a.speed) / (2 * 4.5);
       if (light === 'red' || (light === 'yellow' && canStop)) {
@@ -433,6 +460,29 @@ export class TrafficSim {
       }
     }
     return { gap, v };
+  }
+
+  /**
+   * Whether a T junction is safe to join: nothing on the through road could reach it in
+   * time to matter. The network leaves this on the stop as `{ lanes, at }`.
+   * @param {{ lanes: Lane[], at: number }} y
+   */
+  yieldClear(y) {
+    for (const lane of y.lanes) {
+      for (const o of this.byLane.get(lane) || []) {
+        if (o.mode === 'wreck') continue;
+        let ds = y.at - o.s;
+        if (lane.closed && ds < 0) ds += lane.length;
+        if (ds < -2 || ds > YIELD_LOOK) continue;
+        // Far enough away, or slow enough, that it clears before the side car arrives.
+        const gap = ds - o.kind.length / 2;
+        if (gap > 25 && o.speed < 4) continue;
+        if (gap <= 0) return false;
+        const tta = gap / Math.max(1, o.speed);
+        if (tta < YIELD_TIME) return false;
+      }
+    }
+    return true;
   }
 
   /** @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number }} player */

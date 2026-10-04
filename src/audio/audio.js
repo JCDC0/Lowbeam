@@ -453,7 +453,7 @@ export class AudioSystem {
    * One drive frame. `f.state` is the vehicle state, `f.boost` the gauge boost in bar,
    * `f.env` the EnvMap result around the car. `f.mountain` (on the pass) and `f.rival` (meters
    * to the nearest street racer) set the music's mood.
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number }} f
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean }} f
    * @param {number} [at]
    */
   update(f, at) {

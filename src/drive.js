@@ -24,6 +24,19 @@ import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
+import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
+import { paceNotes } from './race/pacenotes.js';
+import { RALLY } from './world/layout.js';
+
+/** How close to the rally start the car has to be stopped to begin a run. */
+const RALLY_NEAR = 15;
+
+/** Formats a run time as m:ss.mmm, the way a stage board shows it. */
+function fmtTime(t) {
+  const m = Math.floor(t / 60);
+  const s = t - m * 60;
+  return `${m}:${s < 10 ? '0' : ''}${s.toFixed(3)}`;
+}
 
 /** Key shown in prompts for the interact action. */
 const INTERACT_KEY = 'F';
@@ -66,6 +79,14 @@ export class Drive {
     this.duelAgent = null;
     this.duelEndTimer = 0;
     this.duelEnd = '';
+    /** @type {Rally | null} the Kuro Pass run in progress. */
+    this.rally = null;
+    /** The saved best ghost for this car, read at the start of a run. */
+    this.rallyBestGhost = null;
+    this.rallyEndTimer = 0;
+    this.rallyEnd = '';
+    this.rallyNoteCache = null;
+    this.rallyNoteRoad = null;
     this.rivalDistance = Infinity;
     this.hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
     /** @type {Cluster | null} */
@@ -193,6 +214,139 @@ export class Drive {
     return { rival: duel.rival.name, player: duel.gauge.player, rivalGauge: duel.gauge.rival, count, end: '' };
   }
 
+  // ── Kuro Pass time attack (A11 part 3) ───────────────────────────────────────
+
+  /** The stage road, read from the world every time rather than cached. */
+  rallyRoad() {
+    return this.world.ground.roads.byId.get(RALLY.road) || null;
+  }
+
+  /** The pace notes for the stage, built once per run. */
+  rallyNotes(road) {
+    if (this.rallyNoteCache && this.rallyNoteRoad === road) return this.rallyNoteCache;
+    this.rallyNoteRoad = road;
+    this.rallyNoteCache = paceNotes(road.path, (s) => road.heightAt(s));
+    return this.rallyNoteCache;
+  }
+
+  /** True when the car is stopped on the stage road near the start line. */
+  atRallyStart() {
+    const road = this.rallyRoad();
+    if (!road) return false;
+    const s = this.car.state;
+    if (s.speed > 1) return false;
+    const p = road.path.nearest(s.x, s.z);
+    return Math.abs(p.d) < road.hw + 4 && Math.abs(p.s - RALLY.startS) < RALLY_NEAR;
+  }
+
+  /** Puts the car on the start line facing down the stage. */
+  placeOnRallyStart() {
+    const road = this.rallyRoad();
+    if (!road) return;
+    const p = road.path.sample(RALLY.startS);
+    this.car.place(p.x, p.z, Math.atan2(p.tx, p.tz), this.ground);
+    this.rig.snap();
+  }
+
+  /** Starts a run, telling the traffic sim to keep off the stage. */
+  startRally() {
+    const road = this.rallyRoad();
+    if (!road) return;
+    const carId = this.car.spec.id;
+    const best = store.get('rallyBest', {})[carId];
+    const ghost = store.get('rallyGhost', {})[carId];
+    this.rally = new Rally(carId, RALLY, /** @type {any} */ (road), { best: best ? best.time : null, bestSplits: best ? best.splits : null });
+    this.rallyBestGhost = ghost || null;
+    this.rallyEndTimer = 0;
+    this.rallyEnd = '';
+    this.placeOnRallyStart();
+    this.rallyNotes(road);
+    this.traffic.rallyRoad = RALLY.road;
+    audio.music.hold('ridge');
+    this.toast(RALLY.name, 2.5);
+  }
+
+  /** Ends the run, saves a new best and its ghost, and gives the stage back. */
+  endRally() {
+    const rally = this.rally;
+    if (!rally) return;
+    const out = rally.result();
+    if (this.traffic.rallyRoad) this.traffic.rallyRoad = null;
+    audio.music.release();
+    this.rally = null;
+    if (!out) {
+      this.rallyEndTimer = 0;
+      this.rallyEnd = 'RUN ABORTED';
+      this.rallyEndTimer = 3;
+      return;
+    }
+    const carId = this.car.spec.id;
+    if (out.record) {
+      const best = store.get('rallyBest', {});
+      best[carId] = { time: out.time, splits: out.splits.map((sp) => sp.at) };
+      store.set('rallyBest', best);
+      const ghosts = store.get('rallyGhost', {});
+      ghosts[carId] = rally.ghost;
+      store.set('rallyGhost', ghosts);
+      this.rallyEnd = `NEW BEST  ${fmtTime(out.time)}  +¥${out.prize.toLocaleString('en-US')}`;
+    } else {
+      this.rallyEnd = `${fmtTime(out.time)}  ${out.medals[0] ? out.medals[0].toUpperCase() : ''}  +¥${out.prize.toLocaleString('en-US')}`;
+    }
+    this.money += out.prize;
+    store.set('money', this.money);
+    this.rallyEndTimer = 4;
+  }
+
+  /** Advances the run one step, plays the beeps and handles the result. */
+  stepRally(dt) {
+    const rally = this.rally;
+    if (!rally) return;
+    const road = this.rallyRoad();
+    if (!road) {
+      this.endRally();
+      return;
+    }
+    const s = this.car.state;
+    const p = road.path.nearest(s.x, s.z);
+    // Off the stage means off course, which is what d being huge tells the rally.
+    const onRoad = Math.abs(p.d) < road.hw + 6;
+    for (const e of rally.update(dt, /** @type {any} */ ({
+      s: onRoad ? p.s : rally.lastS,
+      d: onRoad ? p.d : 999,
+      pose: { x: s.x, z: s.z, yaw: s.yaw },
+    }))) {
+      if (e.type === 'count') audio.beep('count');
+      else if (e.type === 'go') audio.beep('go');
+      else if (e.type === 'end' || e.type === 'abort') this.endRally();
+    }
+    if (onRoad) this.rally.lastS = p.s;
+  }
+
+  /**
+   * What the rally panel should show this frame, or null when no run is going.
+   * @returns {{ time: string, split: { delta: number, ahead: boolean } | null,
+   *   notes: { text: string }[], count: number, end: string, off: number } | null}
+   */
+  rallyPanel() {
+    if (this.rallyEndTimer > 0) return { time: '', split: null, notes: [], count: 0, end: this.rallyEnd, off: 0 };
+    const rally = this.rally;
+    if (!rally) return null;
+    const road = this.rallyRoad();
+    const notes = road ? this.rallyNotes(road) : [];
+    const s = road ? road.path.nearest(this.car.state.x, this.car.state.z).s : 0;
+    const ahead = notes.filter((n) => n.s > s - 20).slice(0, 2);
+    const last = rally.splits[rally.splits.length - 1];
+    const count = rally.state === 'countdown' ? Math.max(1, Math.ceil(RALLY_COUNTDOWN - rally.elapsed)) : 0;
+    return {
+      time: fmtTime(rally.lapTime + rally.penalty),
+      split: last && last.against !== null ? { delta: last.at - last.against, ahead: last.ahead } : null,
+      notes: ahead.map((n) => ({ text: `${n.dir === 'left' ? 'L' : 'R'} ${n.grade}${n.mods.length ? ' ' + n.mods.join(' ').toUpperCase() : ''}` })),
+      count,
+      end: '',
+      off: rally.offCountdown > 0 ? Math.ceil(rally.offCountdown) : 0,
+    };
+  }
+
   /** Tow to the nearest station's pump for a fee. A blown engine is rebuilt on the way, as far as the money goes. */
   tow() {
     const s = this.car.state;
@@ -311,6 +465,13 @@ export class Drive {
           : `RIVAL  ${rival.agent.kind.name}   ${rival.ahead ? 'AHEAD' : 'BEHIND'} ${Math.round(rival.distance)} M`;
       }
     }
+    // Kuro Pass time attack: stopped on the start line, F begins a run. F is also the
+    // refuel key, so it only starts a run when there is nothing else to do.
+    if (!this.rally) {
+      const atStart = this.atRallyStart();
+      if (atStart && !prompt && input.pressed('interact')) this.startRally();
+      else if (atStart && !prompt) prompt = `${INTERACT_KEY}  ${RALLY.name}`;
+    }
     // A duel with a street racer: the challenge key starts one, the pure Duel runs the
     // gauges and the HUD shows them. The rival agent races at its top speed while duelling.
     if (input.pressed('challenge') && !this.duel) {
@@ -322,7 +483,12 @@ export class Drive {
       }
     }
     if (input.pressed('reset')) {
-      if (!s.engineOn || s.blown) this.tow();
+      if (this.rally) {
+        // Back on the stage, with the penalty the rules ask for.
+        this.rally.penalize();
+        this.placeOnRallyStart();
+        this.toast('BACK ON THE STAGE  +5.000', 2);
+      } else if (!s.engineOn || s.blown) this.tow();
       else this.resetToRoad();
     }
     if (s.blowCount !== this.blowsSeen) {
@@ -396,9 +562,12 @@ export class Drive {
     this.stepDuel(dt);
     if (this.duelEndTimer > 0) this.duelEndTimer = Math.max(0, this.duelEndTimer - dt);
     this.hud.duelPanel(this.duelPanel());
+    this.stepRally(dt);
+    if (this.rallyEndTimer > 0) this.rallyEndTimer = Math.max(0, this.rallyEndTimer - dt);
+    this.hud.rallyPanel(this.rallyPanel());
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
-    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance });
+    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }
