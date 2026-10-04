@@ -12,6 +12,30 @@ More typefaces: segment digits, a monospace, a heavy display face and a Japanese
   pump displays and plates.
 - `concepts/` (reference images from the web) is git-ignored and out of the history.
 
+## 0.7.15 (2026-10-04)
+
+Blinkers on the civilian traffic (A14 part 1).
+
+- `src/traffic/sim.js`: agents carry `signal` (-1 left, 0 off, +1 right, 2 for hazards) in the
+  driver's own frame. A civilian that decides to change lanes signals first and only moves after
+  `SIGNAL_MIN` 1.2 to `SIGNAL_MAX` 2.5 s from its own random stream, then looks again; if the gap
+  closed the signal goes off and the change is dropped. The signal stays on through the move and
+  goes off when it ends. The checks a move has to pass are now `changeSafe`, called both before the
+  signal and again after it, so a lane that fills up while the car waits cancels it.
+- Turns and exits signal the same way: `signalForTurn` starts the signal about `SIGNAL_LEAD` 60 m
+  before a planned exit or turn, an exit to the right and a turn whichever way the target lane is.
+- Street racers never signal; they weave. A wreck runs its hazards on both sides until it fades.
+- `src/traffic/render.js`: the flare on the outer head and tail lamp on the signalling side goes
+  amber (`SIGNAL`) while the indicator is lit, blinking at about 1.5 Hz (`BLINK` 0.33 s on and off)
+  with a phase per agent so a queue does not blink in unison. It uses the flares that were already
+  there, so there is no extra draw call, and `update` now takes the clock as its third argument.
+- Tests: new `tests/blinkers.test.mjs`, seven cases: a fresh agent has no signal, a lane change is
+  signalled on the correct side for at least 1.2 s before the move starts, the signal runs 1.2 to
+  2.5 s across five seeds, a change dropped because the gap closed turns the signal off, racers
+  never signal, a wreck runs its hazards, and a car signals about 60 m out for an exit.
+- Civilian lane changes reversed within 6 s stay at 0.0 % on the brief's seed 21 setup, so the
+  blinkers did not make the dithering worse.
+
 ## 0.7.11 (2026-10-04)
 
 Police and helicopter markers on the minimap and Tab tactical map.

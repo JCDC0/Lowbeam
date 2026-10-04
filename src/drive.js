@@ -582,7 +582,7 @@ export class Drive {
       this.rig.bump(crash);
       audio.impact(crash);
     }
-    this.trafficView.update(this.traffic.agents, this.car.state);
+    this.trafficView.update(this.traffic.agents, this.car.state, this.time);
     if (this.heli) {
       this.heliWorld.target = this.heliChasing ? s : null;
       this.heli.update(dt, this.heliWorld);

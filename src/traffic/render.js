@@ -28,6 +28,10 @@ const MAX_FLARE_CARS = 60;
 const HEAD = new THREE.Color(1.0, 0.92, 0.72);
 const TAIL = new THREE.Color(0.85, 0.06, 0.04);
 const TAIL_BRAKE = new THREE.Color(1.6, 0.12, 0.06);
+/** An indicator: amber, at the same brightness as a head lamp flare. */
+const SIGNAL = new THREE.Color(1.5, 0.62, 0.06);
+/** Seconds on and off for an indicator, so a queue does not blink in unison. */
+const BLINK = 0.33;
 /** A headlight beam: range (m), where its cone ends (cosine) and how far down it aims. */
 const BEAM = { range: 42, cos: 0.86, pitch: -0.09 };
 
@@ -68,6 +72,7 @@ export class TrafficRenderer {
     this.root = new THREE.Group();
     this.root.name = 'traffic';
     parent.add(this.root);
+    this.time = 0;
     this.material = psxPhong({ vertexColors: true, local: true, lamp: true, paint: true, specular: 0x303030, shininess: 34, side: THREE.DoubleSide });
     /** @type {Map<string, { mesh: THREE.InstancedMesh, brake: THREE.InstancedBufferAttribute, max: number, n: number, lamps: ReturnType<typeof lampSpots> }>} */
     this.meshes = new Map();
@@ -101,8 +106,10 @@ export class TrafficRenderer {
   /**
    * @param {import('./sim.js').Agent[]} agents
    * @param {{ x: number, z: number }} [focus] the player, for the flares and the beams
+   * @param {number} [time] seconds, for the indicator blink
    */
-  update(agents, focus) {
+  update(agents, focus, time = 0) {
+    this.time = time;
     for (const m of this.meshes.values()) m.n = 0;
     this.near.length = 0;
     for (const a of agents) {
@@ -146,13 +153,21 @@ export class TrafficRenderer {
       const s = Math.sin(a.yaw);
       const world = (p) => _p.set(a.x + p[0] * c + p[2] * s, a.y + p[1], a.z - p[0] * s + p[2] * c);
       const size = Math.min(2.2, 1.25 + a.kind.width * 0.2);
+      // An indicator takes over the outer lamp on the side being signalled, at both ends
+      // of the car, and blinks about 1.5 Hz with a phase per car.
+      const sig = a.signal || 0;
+      const on = sig !== 0 && ((this.time * (1 / (BLINK * 2)) + a.id * 0.37) % 1) < 0.5;
       for (const [spots, color, dir, k] of [[m.lamps.head, HEAD, 1, 1], [m.lamps.tail, a.brake > 0.5 ? TAIL_BRAKE : TAIL, -1, a.brake > 0.5 ? 0.95 : 0.7]]) {
-        for (const p of spots) {
+        for (let i = 0; i < spots.length; i++) {
+          const p = spots[i];
+          // Local +x is the car's left, and spot 0 is that side.
+          const side = i === 0 ? -1 : 1;
+          const amber = on && (sig === 2 || sig === side);
           world(p);
           _s.set(size * k, size * k, size * k);
           _m.compose(_p, _q.identity(), _s);
           this.flares.setMatrixAt(f, _m);
-          this.flares.setColorAt(f, color);
+          this.flares.setColorAt(f, amber ? SIGNAL : color);
           this.flareDir.setXYZ(f, s * dir, 0, c * dir);
           f++;
         }

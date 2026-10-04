@@ -621,6 +621,14 @@ Done and tested:
   says it must leave, and drifting back to the slow lane needs `slowLaneClear`: 120 m clear ahead in
   it and nothing faster within 60 m behind. Measured on the brief's seed 21 setup, civilian lane
   changes reversed within 6 s fell from 51.3 % to 3.3 %. Racers set `laneHold` to 0 and keep weaving.
+  Since 0.7.15 a civilian signals before it moves: `signal` is -1 left, 0 off, +1 right and 2 for a
+  wreck's hazards, in the driver's own frame (`signalSide`, since lane 0 is the leftmost on a
+  keep-left road). `beginSignal` holds it for `SIGNAL_MIN` 1.2 to `SIGNAL_MAX` 2.5 s from the
+  agent's own stream, and the checks the move needs live in `changeSafe`, called before the signal
+  and again after, so a lane that fills up while the car waits cancels it (`clearSignal`). Exits and
+  turns signal through `signalForTurn` about `SIGNAL_LEAD` 60 m out. The renderer puts an amber flare
+  (`SIGNAL`) on the outer lamp of the signalling side, blinking at `BLINK` 0.33 s on and off with a
+  phase per agent, reusing the existing flare mesh. Racers never signal; a wreck runs its hazards.
   Kinds: sedan, hatchback, kei car, wagon, taxi, SUV, minivan, panel van,
   pickup, kei truck, box truck, tanker, bus and semi, weighted by road class. A car the
   player hits becomes a wreck (`vehicles/contact.js`: three circles each, impulse and
