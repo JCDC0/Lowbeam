@@ -60,6 +60,18 @@ Blinkers on the civilian traffic (A14 part 1).
 - Civilian lane changes reversed within 6 s stay at 0.0 % on the brief's seed 21 setup, so the
   blinkers did not make the dithering worse.
 
+## 0.7.12 (2026-10-04)
+
+The GPS waypoint route, pure (A15 part 1).
+
+- New pure `src/ui/route.js`: `routeTo(net, from, to)` snaps car and destination to the nearest directed lanes
+  (preferring a lane whose direction agrees with car yaw), runs A* over `(lane, s)` nodes with straight-line
+  Euclidean heuristic, and generates a polyline every 10 m with total length and lane list.
+- `RouteTracker`: holds the current route, `update(car, dt)` returns the remaining distance, detects arrival
+  within 25 m of the destination (`arrived`), and re-plans when the car is more than 40 m off the polyline for 2 s.
+- Tests: new `tests/route.test.mjs` verifying directed one-way lanes, T-junction turns, off-course re-planning,
+  arrival detection, G1 to Police HQ route existence under 1.6x straight-line distance, and planning in under 30 ms.
+
 ## 0.7.11 (2026-10-04)
 
 Police and helicopter markers on the minimap and Tab tactical map.

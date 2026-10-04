@@ -46,7 +46,8 @@ wav, json, txt, png) for other captures such as rendered audio.
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
   `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
-  `src/render/pool-grid.js`, `src/police/heli.js`, `src/ui/pursuit.js` (`layoutPursuit`).
+  `src/render/pool-grid.js`, `src/police/heli.js`, `src/ui/pursuit.js` (`layoutPursuit`),
+  `src/ui/route.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -79,6 +80,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
 | `src/vehicles/thermal.js` | Pure: engine temperature, exhaust temperature, over-rev, damage, the money shift, limp mode, repair |
 | `src/ui/minimap.js` | Rotating canvas minimap with roads, pads, station, rally, landmark icons, and police/heli markers with rim indicators |
+| `src/ui/route.js` | Pure: GPS waypoint routing on the traffic network (`routeTo`, `RouteTracker`) |
 | `src/ui/stats.js` | DOM: F3 corner readout of FPS, draw calls, triangles and traffic count |
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
