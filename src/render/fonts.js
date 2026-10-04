@@ -8,6 +8,8 @@
  * - `mono`: Share Tech Mono, monospace readouts.
  * - `impact`: Dela Gothic One, heavy banners for the police and the races (it has kana and kanji).
  * - `jp`: M PLUS 1p, Japanese text on signs and in the UI.
+ * - `tech`: Orbitron, wide and geometric, for the title and menu headings.
+ * - `race`: Teko, condensed, for big race and pursuit numbers (countdowns, heat, bounty, results).
  */
 
 export const FONT = {
@@ -17,6 +19,8 @@ export const FONT = {
   mono: '"Share Tech Mono", monospace',
   impact: '"Dela Gothic One", "M PLUS 1p", sans-serif',
   jp: '"M PLUS 1p", "Yu Gothic", "Meiryo", "MS Gothic", "Noto Sans CJK JP", sans-serif',
+  tech: '"Orbitron", "Lowbeam Display", sans-serif',
+  race: '"Teko", "Share Tech Mono", sans-serif',
 };
 
 /**
@@ -40,6 +44,10 @@ export async function loadFonts(timeout = 4000) {
     ['400 32px "Dela Gothic One"', `ABC${JP_TEXT}`],
     ['400 32px "M PLUS 1p"', `ABC${JP_TEXT}`],
     ['700 32px "M PLUS 1p"', `ABC${JP_TEXT}`],
+    ['700 32px "Orbitron"', 'ABC012'],
+    ['900 32px "Orbitron"', 'ABC012'],
+    ['500 32px "Teko"', 'ABC012'],
+    ['700 32px "Teko"', 'ABC012'],
   ];
   const all = Promise.all(want.map(([font, text]) => document.fonts.load(font, text).catch(() => [])));
   await Promise.race([all, new Promise((r) => setTimeout(r, timeout))]);

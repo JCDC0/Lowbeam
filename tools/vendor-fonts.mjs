@@ -8,6 +8,8 @@
  * - Share Tech Mono (OFL): monospace readouts.
  * - Dela Gothic One (OFL): heavy display face for police and race banners, with Japanese.
  * - M PLUS 1p (OFL): Japanese text on signs and in the UI, regular and bold.
+ * - Orbitron (OFL): a wide geometric face for the title and menu headings, bold and black.
+ * - Teko (OFL): a condensed sport face for big race and pursuit numbers, latin only.
  *
  * The CJK fonts come split into about 120 pieces per weight with a unicode-range each, so the browser
  * only downloads the pieces whose characters a page actually uses.
@@ -52,6 +54,12 @@ fontsource('share-tech-mono', '400.css');
 fontsource('dela-gothic-one', '400.css');
 fontsource('m-plus-1p', '400.css');
 fontsource('m-plus-1p', '700.css');
+fontsource('orbitron', '700.css');
+fontsource('orbitron', '900.css');
+fontsource('teko', 'latin-500.css');
+fontsource('teko', 'latin-700.css');
+fs.copyFileSync(path.join(nm, '@fontsource', 'orbitron', 'LICENSE'), path.join(out, 'Orbitron-OFL.txt'));
+fs.copyFileSync(path.join(nm, '@fontsource', 'teko', 'LICENSE'), path.join(out, 'Teko-OFL.txt'));
 
 fs.writeFileSync(path.join(out, 'fonts.css'), css);
 fs.copyFileSync(path.join(nm, 'dseg', 'DSEG-LICENSE.txt'), path.join(out, 'DSEG-LICENSE.txt'));

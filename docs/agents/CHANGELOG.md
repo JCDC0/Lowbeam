@@ -14,6 +14,14 @@ Speedometer styles for the HUD cluster (A16 part 1).
 - `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
 - Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
 
+## 0.8.4 (2026-10-04)
+
+Two more typefaces for the UI.
+
+- Orbitron (bold, black) as `FONT.tech` for the title screen and menu headings, and Teko (medium, bold)
+  as `FONT.race` for big race and pursuit numbers. Both OFL, vendored by `tools/vendor-fonts.mjs`
+  (latin only), licenses in `assets/fonts/`, loaded by `loadFonts`.
+
 ## 0.8.3 (2026-10-04)
 
 One set of instrument painters for the cockpit and the HUD (the base of the 0.8.10 HUD styles).

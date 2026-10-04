@@ -88,8 +88,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/collision.js` | Pure: circles and oriented boxes in a grid; car as three circles; impulses |
 | `src/vehicles/car.js` | `Car`: physics state, model, two spot headlights, cockpit, interpolated pose |
 | `src/render/cameras.js` | `CameraRig`: chase, car (near, from behind), hood, bumper, cockpit |
-| `assets/fonts/` | The vendored faces, all SIL OFL (`LICENSES.md`): Michroma (the display face), DSEG7 and DSEG14 Classic, Share Tech Mono, Dela Gothic One, M PLUS 1p; `fonts.css` is generated |
-| `src/render/fonts.js` | `FONT` (the CSS stacks: display, seg7, seg14, mono, impact, jp) and `loadFonts`, which `World.create` awaits before drawing any canvas |
+| `assets/fonts/` | The vendored faces, all SIL OFL (`LICENSES.md`): Michroma (the display face), DSEG7 and DSEG14 Classic, Share Tech Mono, Dela Gothic One, M PLUS 1p, Orbitron, Teko; `fonts.css` is generated |
+| `src/render/fonts.js` | `FONT` (the CSS stacks: display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, which `World.create` awaits before drawing any canvas |
 | `tools/vendor-fonts.mjs` | Copies the font packages from node_modules into assets/fonts/ and writes fonts.css (CJK faces stay split by unicode-range) |
 | `src/world/layout.js` | Authored data for Kurogane: Route 1, avenues, pass, city grid, ramps, stations, tolls, zones, rally, economy |
 | `src/world/roadgen.js` | Pure road generators: offset paths, dual carriageways, diamond interchange ramps |
@@ -216,6 +216,9 @@ Done and tested:
   Now in use: M PLUS 1p for every Japanese sign (neon, shop signs, toll plaza signs, station signs),
   Dela Gothic One for the plaza names, the brand names and the lot signs (police HQ, garages), DSEG7
   for the pylon prices, pump displays and plates. Reference images in `concepts/` are git-ignored.
+  Since 0.8.4 two more: Orbitron (`FONT.tech`, bold and black, wide and geometric) for the title and the
+  menu headings, and Teko (`FONT.race`, medium and bold, condensed) for big race and pursuit numbers;
+  both latin only, about 60 kB together. Where each face goes in the UI is task A16 part 3.
 - Smaller buildings and housing (0.7.7, `buildings.js`, `props.js`). Between the towers and the
   houses the town now has five more kinds: `shop`, a narrow shophouse of two to four floors with a lit
   shop under a striped awning and a lit signboard (`SHOP_SIGNS` in textures.js: ラーメン, 居酒屋 with

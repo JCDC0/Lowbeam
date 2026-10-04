@@ -11,3 +11,5 @@ from `node_modules` and writes `fonts.css`.
 | Share Tech Mono | Monospace readouts | Carrois Type Design, Ralph du Carrois; Reserved Font Name 'Share' (`@fontsource/share-tech-mono` 5.3.0) | `ShareTechMono-OFL.txt` |
 | Dela Gothic One | Heavy display face for police and race banners | The Dela Gothic Project Authors (`@fontsource/dela-gothic-one` 5.3.0) | `DelaGothicOne-OFL.txt` |
 | M PLUS 1p | Japanese text on signs and in the UI | The M+ Project Authors (`@fontsource/m-plus-1p` 5.3.0) | `MPLUS1p-OFL.txt` |
+| Orbitron | Title and menu headings | The Orbitron Project Authors (`@fontsource/orbitron` 5.3.0) | `Orbitron-OFL.txt` |
+| Teko | Big race and pursuit numbers | The Teko Project Authors (`@fontsource/teko` 5.3.0) | `Teko-OFL.txt` |
