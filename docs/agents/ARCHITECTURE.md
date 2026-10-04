@@ -46,7 +46,7 @@ wav, json, txt, png) for other captures such as rendered audio.
   `src/core/rng.js`, everything in `src/world/` except files named `build-*`, `props`,
   `gas-station`, `rally-dressing`, `world` (so `scatter.js` is pure), and
   `src/vehicles/{specs,surfaces,physics,gauges}.js`, `src/audio/{engine-dsp,env,songs}.js`,
-  `src/render/pool-grid.js`.
+  `src/render/pool-grid.js`, `src/police/heli.js`.
   Tests import only pure modules.
 - Units are meters, seconds, kilograms. North is -Z, east is +X.
 - Yaw 0 faces +Z. forward = (sin yaw, cos yaw), left = (cos yaw, -sin yaw). Path
@@ -91,6 +91,8 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/lots.js` | Pure: where a landmark lot's model stands (`lotFrame`, `toWorld`) and its colliders and lights in world space (`lotContents`) |
 | `src/world/build-lots.js` | Loads the landmark models (`loadModels`, `assets/models/<name>.json`), paints their signs, builds them on their lots (`buildLots`) |
 | `assets/models/` | Landmark models exported from Blender as JSON (positions, normals, UVs, material groups, colliders, lights): `police_hq`, `garage`, `hideout` |
+| `src/police/heli.js` | Pure: the police helicopter (`Heli`): spin up on the HQ roof pad, lift off, chase from behind and above, bank and pitch, return and land; the searchlight and whether it sees the target; `Skyline`, the highest ground or roof per 32 m cell |
+| `src/police/heli-view.js` | Draws the helicopter from the Blender models (body, spinning main and tail rotors), the fading shaft of light, and the searchlight in a free headlight beam slot |
 | `tools/blender/` | Blender scripts for the landmarks: `kit.py` (helpers and the JSON exporter), one script per model; run through the Blender MCP |
 | `src/world/merge.js` | Pure: slip roads (an exit that grows out of a carriageway's edge, an entry that tapers into it), their shared stretch and gore (`slipMeta`), biarcs for connector ramps |
 | `src/world/zones.js` | Pure: named zones, inside the loop, city and water amounts |
@@ -160,10 +162,27 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.4)
+## Current state (0.7.5)
 
 Done and tested:
 
+- Police helicopter (0.7.5, `src/police/`). Modeled in Blender (`tools/blender/heli.py`, a light
+  twin in white with a blue band, a glass bubble nose, skids, a four-blade main rotor and a
+  two-blade tail rotor) and exported as three models (`heli`, `heli_rotor`, `heli_tail`) so the
+  rotors spin; `World.create` loads them with the landmarks (`world.models`). It parks on the
+  helipad on the police HQ's roof (`HELIPAD` in the HQ model's frame, `helipadOf`). `Heli` (pure)
+  spins up over 5 s, lifts off, and chases a target from 32 m behind and 14 m to the side with
+  1.2 s of lead, 55 m over the ground and never closer than 28 m over the highest roof or hillside
+  near it or ahead of it (`Skyline`, which counts the towers and the landmark models), at up to
+  75 m/s (270 km/h, so the fastest cars outrun it on a straight), easing in with 9 m/s2 and banking
+  and pitching with its acceleration. Recalled, it flies home, lands and spins down over 8 s. Its
+  searchlight follows the target with a lag (a hard turn shakes it) and cannot see through a deck:
+  under a viaduct or an overpass the target is lost (`spot.sees`, `lost` counts the seconds).
+  `HeliView` draws it, a shaft of light that fades out above the ground, and the spot on the ground
+  through the headlight beams of the world shader (it takes the first slot the traffic left free).
+  `Drive` owns it: `scrambleHeli()` and `recallHeli()` until the police core decides, and the A13
+  contract's `policeMarkers()` (the helicopter and its spot) and `pursuitView()` (null for now).
+  Its rotor sound comes with the police core.
 - Landmarks (0.6.7). `LOTS` in layout.js lists seven flat paved lots beside the coast roads and West
   Ave, each made like a gas station forecourt (`road`, `near`, `side`, `w`, `d`) and kept clear by the
   street generator (`blocked`): the Kurogane Police HQ on Hanazaki Cape (x 2400, z -2150, 140 by

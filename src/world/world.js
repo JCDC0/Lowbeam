@@ -18,6 +18,7 @@ import { buildHighway } from './build-highway.js';
 import { buildLamps, buildTown } from './props.js';
 import { buildTrees } from './build-trees.js';
 import { buildLots, loadModels } from './build-lots.js';
+import { HELI_MODELS } from '../police/heli-view.js';
 import { LOTS } from './layout.js';
 import { buildStations } from './gas-station.js';
 import { buildSky, MOON_DIR } from '../render/sky.js';
@@ -39,7 +40,9 @@ export class World {
     await step('SURVEYING KUROGANE');
     w.ground = new Ground();
     await step('PLACING LAMPS AND TREES');
-    const models = await loadModels(LOTS.map((l) => l.model));
+    const models = await loadModels([...LOTS.map((l) => l.model), ...HELI_MODELS]);
+    /** Every Blender model loaded for the world (the landmarks, the police helicopter). */
+    w.models = models;
     w.scatter = scatterWorld(w.ground, { models });
     w.grid = new LightGrid(w.scatter.lights);
     installPools(w.scatter.lights, WORLD_HALF + 100);
@@ -72,6 +75,8 @@ export class World {
   }
 
   constructor() {
+    /** @type {Record<string, import('./lots.js').ModelData>} */
+    this.models = {};
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(FOG.color);
     this.scene.fog = new THREE.Fog(FOG.color, FOG.near, FOG.far);

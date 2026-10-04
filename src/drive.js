@@ -26,7 +26,9 @@ import { EnvMap } from './audio/env.js';
 import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
-import { RALLY } from './world/layout.js';
+import { RALLY, WORLD_HALF } from './world/layout.js';
+import { Heli, Skyline, helipadOf } from './police/heli.js';
+import { HeliView } from './police/heli-view.js';
 
 /** How close to the rally start the car has to be stopped to begin a run. */
 const RALLY_NEAR = 15;
@@ -99,6 +101,65 @@ export class Drive {
     this.trafficNet = new TrafficNet(world.ground.roads);
     this.traffic = new TrafficSim(this.trafficNet);
     this.trafficView = new TrafficRenderer(world.root);
+    // The police helicopter, parked on the HQ roof until something sends it up (heli.js).
+    const hq = world.ground.lots.find((p) => p.lot.kind === 'police');
+    /** @type {Heli | null} */
+    this.heli = hq ? new Heli(helipadOf(hq)) : null;
+    this.heliView = new HeliView(world.models || {});
+    /** Whether the helicopter is after the player; the police set it, `scrambleHeli` does for now. */
+    this.heliChasing = false;
+    if (this.heli && this.heliView.ok) {
+      world.add(this.heliView.group);
+      world.add(this.heliView.cone);
+      this.heliView.update(this.heli);
+      const roofs = [...world.scatter.buildings, ...world.ground.lots.map((p) => {
+        const m = world.models?.[p.lot.model];
+        return { x: p.cx, z: p.cz, y: p.h, w: m ? m.size[0] : 0, d: m ? m.size[2] : 0, h: m ? m.size[1] : 0 };
+      })];
+      const hf = world.ground.hf;
+      const deck = { road: null, s: 0, d: 0, h: 0, edge: 0, lift: 0 };
+      this.heliWorld = {
+        target: null,
+        skyline: new Skyline((x, z) => hf.at(x, z), roofs, WORLD_HALF),
+        groundAt: (x, z) => world.ground.at(x, z).h,
+        // A car under a deck is out of the light.
+        covered: (x, z, y) => world.ground.roads.query(x, z, deck, 0, -Infinity, Infinity) && (deck.lift || 0) > 2 && deck.h > y + 2.5,
+      };
+    } else this.heli = null;
+  }
+
+  /** Sends the helicopter up after the player (a stand-in until the police core decides). */
+  scrambleHeli() {
+    if (!this.heli) return;
+    this.heliChasing = true;
+    this.heli.launch();
+  }
+
+  /** Sends the helicopter home to land. */
+  recallHeli() {
+    if (!this.heli) return;
+    this.heliChasing = false;
+    this.heli.recall();
+  }
+
+  /**
+   * The pursuit as the HUD shows it (A13 contract), null while there is none. The police core
+   * fills it in; the helicopter alone is not a pursuit.
+   * @returns {null}
+   */
+  pursuitView() {
+    return null;
+  }
+
+  /**
+   * Every police car and the helicopter for the maps (A13 contract): the helicopter while it is
+   * off the pad, with its searchlight's spot.
+   * @returns {{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }[]}
+   */
+  policeMarkers() {
+    const h = this.heli;
+    if (!h || h.state === 'parked') return [];
+    return [{ kind: 'heli', x: h.x, z: h.z, yaw: h.yaw, search: h.spot.on ? { x: h.spot.x, z: h.spot.z, r: h.spot.r } : undefined }];
   }
 
   /**
@@ -522,6 +583,11 @@ export class Drive {
       audio.impact(crash);
     }
     this.trafficView.update(this.traffic.agents, this.car.state);
+    if (this.heli) {
+      this.heliWorld.target = this.heliChasing ? s : null;
+      this.heli.update(dt, this.heliWorld);
+      this.heliView.update(this.heli);
+    }
     const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
     if (gate) {
       const paid = Math.min(this.money, gate.fee);

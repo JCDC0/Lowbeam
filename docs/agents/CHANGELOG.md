@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.5 (2026-10-04)
+
+The police helicopter: modeled in Blender, parked on the HQ roof, flying and lighting the target.
+
+- New `tools/blender/heli.py` and `assets/models/heli*.json`: body, main rotor and tail rotor as
+  three models; `kit.py` gains `loft` (a body from elliptical stations, split into materials) and an
+  object filter on `export`.
+- New pure `src/police/heli.js` (`Heli`, `Skyline`, `helipadOf`) and `src/police/heli-view.js`.
+- `World.create` loads the helicopter's models (`world.models`); `Drive` parks it on the HQ roof, steps
+  and draws it, and answers the A13 contract (`policeMarkers`, `pursuitView`); `scrambleHeli` and
+  `recallHeli` stand in for the police core.
+- Tests: `tests/heli.test.mjs` (spin up before lift off, follows a car at 100 km/h with the light on it,
+  never under the clearance over a 130 m tower, outrun by a fast car, lost under a deck, lands and spins
+  down on the pad, banks and pitches).
+
 ## 0.7.4 (2026-10-04)
 
 Brief A14 for Hermes, the next plan, and the changelog back in version order.

@@ -138,6 +138,43 @@ def cylinder(name, material, cx, cy, cz, r, h, sides=8, top=True):
     return _obj(name, bm, material)
 
 
+def loft(name, material, stations, sides=12, keep=None):
+    """
+    A smooth body along z from cross sections: each station is (z, yc, hw, hh), an ellipse of half
+    width hw and half height hh around height yc. Ends are closed with fans. `keep(zmid, angle)`
+    picks which faces this call makes (angle 0 is the right side, pi/2 the top), so one shape can
+    be cut into several materials by calling loft once per material.
+    """
+    bm = bmesh.new()
+    rings = []
+    for (z, yc, hw, hh) in stations:
+        ring = []
+        for k in range(sides):
+            a = 2 * math.pi * k / sides
+            ring.append(bm.verts.new(g2b(hw * math.cos(a), yc + hh * math.sin(a), z)))
+        rings.append(ring)
+    for i in range(len(rings) - 1):
+        zm = (stations[i][0] + stations[i + 1][0]) / 2
+        for k in range(sides):
+            j = (k + 1) % sides
+            am = 2 * math.pi * (k + 0.5) / sides
+            if keep and not keep(zm, am):
+                continue
+            bm.faces.new([rings[i][k], rings[i][j], rings[i + 1][j], rings[i + 1][k]])
+    for idx in (0, len(rings) - 1):
+        z = stations[idx][0]
+        if keep and not keep(z, -1):
+            continue
+        c = bm.verts.new(g2b(0, stations[idx][1], z))
+        for k in range(sides):
+            bm.faces.new([rings[idx][k], rings[idx][(k + 1) % sides], c])
+    bm.verts.ensure_lookup_table()
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return _obj(name, bm, material)
+
+
 def collider(cx, cz, w, d, y0=0.0, y1=10.0):
     """A box collider for the game (axis aligned in the model's frame)."""
     e = bpy.data.objects.new('COL', None)
@@ -160,15 +197,18 @@ def light(x, y, z, color, rng, spot=0):
     return e
 
 
-def export(name, path):
-    """Writes every mesh in the scene as one model, grouped by material."""
+def export(name, path, only=None):
+    """
+    Writes every mesh in the scene as one model, grouped by material. `only(object_name)` limits it
+    to some objects (a helicopter's body and its rotors are separate models so the rotors can spin).
+    """
     groups = {}
     order = []
     deps = bpy.context.evaluated_depsgraph_get()
     lo = [math.inf] * 3
     hi = [-math.inf] * 3
     for ob in bpy.context.scene.objects:
-        if ob.type != 'MESH':
+        if ob.type != 'MESH' or (only and not only(ob.name)):
             continue
         ev = ob.evaluated_get(deps)
         me = ev.to_mesh()
@@ -232,6 +272,8 @@ def export(name, path):
         out['normal'].extend(gr['nrm'])
         out['uv'].extend(gr['uv'])
     for ob in bpy.context.scene.objects:
+        if only and not only(ob.name):
+            continue
         if 'lb_collider' in ob:
             cx, cz, hx, hz, y0, y1 = ob['lb_collider']
             out['colliders'].append({'x': cx, 'z': cz, 'hx': hx, 'hz': hz, 'y0': y0, 'y1': y1})
