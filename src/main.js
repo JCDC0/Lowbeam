@@ -41,7 +41,7 @@ for (const type of ['keydown', 'pointerdown']) {
 const title = titleScreen(ui, version);
 const menu = mainMenuScreen(ui);
 const settings = settingsScreen(ui, stage);
-const controls = controlsScreen(ui);
+const controls = controlsScreen(ui, input);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
 const hud = new Hud(ui);
@@ -57,6 +57,8 @@ audio.onTrack = (t) => {
 };
 /** @type {'menu' | 'pause'} */
 let prevSettingsState = 'menu';
+/** @type {'menu' | 'pause' | 'settings'} */
+let prevControlsState = 'menu';
 
 /** @type {World | null} */
 let world = null;
@@ -86,7 +88,7 @@ function setState(next) {
   pause.show(state === 'pause');
   map.show(state === 'map', drive?.car);
   if (state === 'menu') menu.refresh(garage.spec);
-  const audioMode = state === 'menu' || state === 'controls' ? 'title' : (state === 'settings' ? (prevSettingsState === 'pause' ? 'pause' : 'title') : (state === 'map' ? 'pause' : state));
+  const audioMode = state === 'menu' ? 'title' : (state === 'controls' ? (prevControlsState === 'pause' ? 'pause' : 'title') : (state === 'settings' ? (prevSettingsState === 'pause' ? 'pause' : 'title') : (state === 'map' ? 'pause' : state)));
   audio.setMode(/** @type {import('./audio/audio.js').Mode} */ (audioMode));
   if (state === 'garage') garageSound();
 }
@@ -168,8 +170,10 @@ function frame(now) {
     else if (ev === 'settings') {
       prevSettingsState = 'menu';
       setState('settings');
-    } else if (ev === 'controls') setState('controls');
-    else if (ev === 'title') setState('title');
+    } else if (ev === 'controls') {
+      prevControlsState = 'menu';
+      setState('controls');
+    } else if (ev === 'title') setState('title');
     garage.render(stage);
   } else if (state === 'garage') {
     const ev = garage.update(dt, input);
@@ -183,6 +187,10 @@ function frame(now) {
       drive.cluster.setSpec(drive.car.spec, store.get('clusterStyle', 'car'));
     }
     if (ev === 'back') setState(prevSettingsState);
+    else if (ev === 'controls') {
+      prevControlsState = 'settings';
+      setState('controls');
+    }
     if (prevSettingsState === 'pause' && drive) drive.render();
     else {
       garage.update(dt, null);
@@ -190,9 +198,12 @@ function frame(now) {
     }
   } else if (state === 'controls') {
     const ev = controls.update(input);
-    if (ev === 'back') setState('menu');
-    garage.update(dt, null);
-    garage.render(stage);
+    if (ev === 'back') setState(prevControlsState);
+    if (prevControlsState === 'pause' && drive) drive.render();
+    else {
+      garage.update(dt, null);
+      garage.render(stage);
+    }
   } else if (state === 'drive') {
     if (input.pressed('map')) {
       audio.ui('select');
@@ -216,6 +227,10 @@ function frame(now) {
     else if (pick === 'settings') {
       prevSettingsState = 'pause';
       setState('settings');
+    }
+    else if (pick === 'controls') {
+      prevControlsState = 'pause';
+      setState('controls');
     }
     else if (pick === 'garage') setState('garage');
     else if (pick === 'menu') setState('menu');

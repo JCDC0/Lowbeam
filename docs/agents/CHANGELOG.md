@@ -69,6 +69,19 @@ Police patrols and heat (A17 part 1).
 - Tests: new `tests/police-heat.test.mjs`, ten cases covering the unit kinds, the roster, the heat
   model and spawning a unit on the network.
 
+## 0.8.13 (2026-10-04)
+
+The controls settings: key rebinding (A16 part 4, by Antigravity; committed by Claude after its session
+was halted, with two JSDoc type fixes).
+
+- `src/core/input.js`: `CONTROL_ACTIONS`, `ACTION_LABELS`, `PAD_LABELS`, `keyLabel(code)` (W, UP, SPACE,
+  SHIFT), `rebind(map, action, slot, code)` (swaps a key already in use, refuses Escape and Enter),
+  `loadBindings()` and `setBindings(map)` with the bindings saved under `keys`.
+- The controls screen (`controlsScreen` in menus.js) is a settings screen: two key slots per action and
+  the gamepad button, Enter to listen (PRESS KEY), Esc to cancel, RESET TO DEFAULTS, the old briefing in
+  a column beside it. Reached from the main menu, Settings and Pause, and returns to where it came from.
+- Tests: `tests/controls.test.mjs`.
+
 ## 0.8.12 (2026-10-04)
 
 Typography update across the UI with Orbitron, Teko, Dela Gothic One, Share Tech Mono and M PLUS 1p (A16 part 3).

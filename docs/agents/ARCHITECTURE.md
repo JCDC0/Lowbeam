@@ -68,7 +68,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `index.html`, `style.css` | Page shell with the import map; all UI styles and the display font |
 | `src/main.js` | Boot, state machine (title, menu, garage, settings, controls, loading, drive, pause, free), `window.__lowbeam` |
 | `src/drive.js` | Free roam: fixed-step loop, collisions, cameras, refuel, tow, reset, area names |
-| `src/core/input.js` | Keyboard and standard-mapping gamepad; menu actions; `drive(dt)` with keyboard ramps |
+| `src/core/input.js` | Keyboard and standard-mapping gamepad; menu actions; `drive(dt)` with keyboard ramps; key bindings (`KEYS` defaults, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings |
 | `src/ui/garage.js` | Showroom scene, turntable, the car card with bars and paints |
 | `src/ui/menus.js` | Title, main menu, settings, controls, loading, pause and toast DOM screens |
@@ -180,6 +180,10 @@ wav, json, txt, png) for other captures such as rendered audio.
 
 Done and tested:
 
+- Controls settings (0.8.13, A16 part 4). The CONTROLS screen (main menu, Settings, Pause) rebinds every
+  action: two key slots each, the gamepad button shown, Enter then a key to bind, Esc to cancel, a key in
+  use elsewhere is swapped, Escape and Enter cannot be bound, RESET TO DEFAULTS. Saved under `keys` and
+  applied at once (`input.setBindings`).
 - The HUD clusters float, and the Hayate has a racing tach (0.8.6). The user wanted the styles off
   their boards: `twin` and `sport` are now only their dials, rings, windows and bars, each with a soft
   dark shadow so it reads over a lit road; `digital` and `vfd` are the cockpit's screens drawn bare

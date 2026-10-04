@@ -2,6 +2,7 @@ import { audio, CHANNELS } from '../audio/audio.js';
 import { store } from '../core/store.js';
 import { RENDER_HEIGHTS, DEFAULT_LINES } from '../render/stage.js';
 import { CLUSTER_STYLES } from './cluster-styles.js';
+import { CONTROL_ACTIONS, ACTION_LABELS, PAD_LABELS, KEYS, keyLabel, rebind } from '../core/input.js';
 
 /**
  * @param {HTMLElement} ui
@@ -226,6 +227,11 @@ export function settingsScreen(ui, stage = null) {
             <span class="ac-pill click" data-act="toggle-cluster" id="set-cluster-val">PER CAR</span>
             <span class="hints-inline">PER CAR / CLASSIC / RACING / TWIN / SPORT / DIGITAL / VFD</span>
           </div>
+          <div class="ac-row click" data-row="controls">
+            <span class="ac-rlabel">CONTROLS</span>
+            <span class="ac-pill click" data-act="open-controls">CONFIGURE</span>
+            <span class="hints-inline">CUSTOMIZE KEYBOARD BINDINGS</span>
+          </div>
           ${CHANNELS.map((c) => `
             <div class="ac-row click" data-row="${c}">
               <span class="ac-rlabel">${CH_NAMES[c]}</span>
@@ -247,6 +253,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
           <div class="ac-info-row"><span class="k">SPEEDOMETER</span><span class="v">PER CAR / 5 STYLES</span></div>
+          <div class="ac-info-row"><span class="k">CONTROLS</span><span class="v">KEY BINDINGS</span></div>
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
             <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 is the authentic PS1 resolution; 480 (default) keeps the dither and 15-bit color with a clearer picture.<br><br>
@@ -361,6 +368,10 @@ export function settingsScreen(ui, stage = null) {
         clickedAction = 'toggle-cluster';
         return;
       }
+      if (rowId === 'controls') {
+        clickedAction = 'open-controls';
+        return;
+      }
       const idx = rows.indexOf(/** @type {HTMLElement} */ (row));
       if (idx !== -1) {
         sel = idx;
@@ -388,7 +399,7 @@ export function settingsScreen(ui, stage = null) {
     },
     /**
      * @param {import('../core/input.js').Input} input
-     * @returns {'back' | null}
+     * @returns {'back' | 'controls' | null}
      */
     update(input) {
       if (clickedAction) {
@@ -414,6 +425,9 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(CLUSTER_CHOICES.indexOf(curC) + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('select');
+        } else if (action === 'open-controls') {
+          audio.ui('select');
+          return 'controls';
         } else if (action === 'toggle-audio' && ch) {
           audio.toggle(ch);
           audio.ui('select');
@@ -461,8 +475,8 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + CLUSTER_CHOICES.length - 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
-        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 3];
+        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 4];
           const curV = audio.settings[ch].volume;
           const nextV = Math.max(0, Math.round((curV - 0.1) * 10) / 10);
           audio.setVolume(ch, nextV);
@@ -488,8 +502,8 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
-        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 3];
+        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 4];
           const curV = audio.settings[ch].volume;
           const nextV = Math.min(1, Math.round((curV + 0.1) * 10) / 10);
           if (!audio.settings[ch].on && nextV > 0) audio.setOn(ch, true);
@@ -516,8 +530,11 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('select');
-        } else if (sel >= 3 && sel < 3 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 3];
+        } else if (sel === 3) {
+          audio.ui('select');
+          return 'controls';
+        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
+          const ch = CHANNELS[sel - 4];
           audio.toggle(ch);
           audio.ui('select');
           sync();
@@ -532,76 +549,270 @@ export function settingsScreen(ui, stage = null) {
 }
 
 /**
- * Tactical Controls briefing screen.
+ * Interactive Controls settings and key rebinding screen.
  * @param {HTMLElement} ui
+ * @param {import('../core/input.js').Input | null} [initialInput]
  */
-export function controlsScreen(ui) {
+export function controlsScreen(ui, initialInput = null) {
+  let activeInput = initialInput;
   const s = screen(
     ui,
     'controls',
     `<div class="ac-frame">
       <div class="ac-header">
-        <div class="ac-tag">// PILOT INTERFACE // CONTROL MAPPING</div>
-        <div class="ac-title">CONTROLS BRIEFING</div>
+        <div class="ac-tag">// PILOT INTERFACE // CONTROL CONFIGURATION</div>
+        <div class="ac-title">CONTROLS</div>
         <div class="ac-line"></div>
       </div>
-      <div class="ac-controls-grid">
-        <div class="ac-col-box">
-          <div class="ac-col-title">KEYBOARD ASSIGNMENT</div>
-          <div class="ac-binding-row"><span class="k">THROTTLE</span><span class="v">W / UP ARROW</span></div>
-          <div class="ac-binding-row"><span class="k">BRAKE / REVERSE</span><span class="v">S / DOWN ARROW</span></div>
-          <div class="ac-binding-row"><span class="k">STEERING</span><span class="v">A / D / LEFT / RIGHT</span></div>
-          <div class="ac-binding-row"><span class="k">HANDBRAKE</span><span class="v">SPACEBAR</span></div>
-          <div class="ac-binding-row"><span class="k">MANUAL GEARS</span><span class="v">R &nbsp; N &nbsp; 1 .. 7</span></div>
-          <div class="ac-binding-row"><span class="k">UPSHIFT (MANUAL)</span><span class="v">SHIFT / E</span></div>
-          <div class="ac-binding-row"><span class="k">DOWNSHIFT (MANUAL)</span><span class="v">CTRL / Q</span></div>
-          <div class="ac-binding-row"><span class="k">CYCLE CAMERA</span><span class="v">C (5 VIEWS: CHASE, CAR, HOOD, BUMPER, COCKPIT)</span></div>
-          <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">TAB</span></div>
-          <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD F (AT STATION)</span></div>
-          <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">R</span></div>
-          <div class="ac-binding-row"><span class="k">CHALLENGE RACER</span><span class="v">H (RACER AHEAD ON ROUTE 1 OR THE BAYSHORE LINE)</span></div>
-          <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">ESCAPE</span></div>
+      <div class="ac-body ac-controls-body">
+        <div class="ac-controls-table-wrap">
+          <div class="ac-controls-header-row">
+            <span class="ac-ch-action">ACTION</span>
+            <span class="ac-ch-key">KEY 1</span>
+            <span class="ac-ch-key">KEY 2</span>
+            <span class="ac-ch-pad">GAMEPAD</span>
+          </div>
+          <div class="ac-controls-table">
+            ${CONTROL_ACTIONS.map((act) => `
+              <div class="ac-ctrl-row click" data-act="${act}">
+                <span class="ac-ctrl-name">${ACTION_LABELS[act]}</span>
+                <span class="ac-pill ac-key-slot click" data-slot="0" id="slot-${act}-0">--</span>
+                <span class="ac-pill ac-key-slot click" data-slot="1" id="slot-${act}-1">--</span>
+                <span class="ac-ctrl-pad">${PAD_LABELS[act]}</span>
+              </div>
+            `).join('')}
+            <div class="ac-ctrl-row click" data-special="reset">
+              <span class="ac-ctrl-name">RESET TO DEFAULTS</span>
+              <span class="ac-pill click" data-special="reset" style="grid-column: span 2; text-align: center;">RESET DEFAULTS</span>
+              <span class="ac-ctrl-pad">RESTORE DEFAULT KEYBOARD KEYS</span>
+            </div>
+            <div class="ac-ctrl-row click" data-special="back">
+              <span class="ac-ctrl-name">BACK</span>
+              <span class="ac-pill click" data-special="back" style="grid-column: span 2; text-align: center;">RETURN</span>
+              <span class="ac-ctrl-pad">SAVE &amp; RETURN</span>
+            </div>
+          </div>
         </div>
-        <div class="ac-col-box">
-          <div class="ac-col-title">GAMEPAD ASSIGNMENT (XINPUT)</div>
-          <div class="ac-binding-row"><span class="k">THROTTLE</span><span class="v">RIGHT TRIGGER [RT]</span></div>
-          <div class="ac-binding-row"><span class="k">BRAKE / REVERSE</span><span class="v">LEFT TRIGGER [LT]</span></div>
-          <div class="ac-binding-row"><span class="k">STEERING</span><span class="v">LEFT STICK / D-PAD</span></div>
-          <div class="ac-binding-row"><span class="k">HANDBRAKE</span><span class="v">A / X BUTTON</span></div>
-          <div class="ac-binding-row"><span class="k">UPSHIFT (MANUAL)</span><span class="v">RIGHT BUMPER [RB]</span></div>
-          <div class="ac-binding-row"><span class="k">DOWNSHIFT (MANUAL)</span><span class="v">LEFT BUMPER [LB]</span></div>
-          <div class="ac-binding-row"><span class="k">CYCLE CAMERA</span><span class="v">Y BUTTON</span></div>
-          <div class="ac-binding-row"><span class="k">TACTICAL MAP</span><span class="v">SELECT / BACK / X</span></div>
-          <div class="ac-binding-row"><span class="k">REFUEL & REPAIR</span><span class="v">HOLD B (AT STATION)</span></div>
-          <div class="ac-binding-row"><span class="k">RESET / TOW</span><span class="v">BACK BUTTON</span></div>
-          <div class="ac-binding-row"><span class="k">CHALLENGE RACER</span><span class="v">R3 (BOTH BUMPERS ARE THE MANUAL GEARS)</span></div>
-          <div class="ac-binding-row"><span class="k">PAUSE</span><span class="v">START BUTTON</span></div>
+        <div class="ac-info-panel">
+          <div class="ac-info-header">CONTROLS BRIEFING</div>
+          <div class="ac-info-row"><span class="k">MANUAL SHIFT</span><span class="v">SEQUENTIAL N R 1..7</span></div>
+          <div class="ac-info-row"><span class="k">CAMERA VIEWS</span><span class="v">CHASE / HOOD / COCKPIT</span></div>
+          <div class="ac-info-row"><span class="k">RADAR &amp; MAP</span><span class="v">TAB TACTICAL MAP</span></div>
+          <div class="ac-info-row"><span class="k">SERVICE STATIONS</span><span class="v">HOLD F REFUEL &amp; REPAIR</span></div>
+          <div class="ac-notice" style="margin-top: 14px;">
+            <b>KEY REBINDING:</b> Select a slot with <b>W/S</b> and <b>A/D</b> (or click), then press <b>Enter</b> to rebind. Press the new key, or <b>Esc</b> to cancel. If a key is already assigned, it will swap places automatically.<br><br>
+            <b>MANUAL GEARS:</b> Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. Mind the tachometer: over-rev downshifts cause thermal damage.<br><br>
+            <b>COCKPIT VIEW:</b> Press <b>C</b> to cycle camera views. Cockpit features tachometer needle, digital speed, boost gauge, water temp, and sequential shift lamps.<br><br>
+            <b>HIGHWAY DUELS:</b> Press <b>H</b> while tailing a rival on Route 1 or the Bayshore Line to challenge them to a street race.
+          </div>
         </div>
       </div>
-      <div class="ac-notice">
-        <b>COCKPIT VIEW:</b> Press <b>C</b> to enter interior POV. The dash cluster displays analog tachometer, sweeping needle, speedometer, boost/vacuum dial, water temp, and sequential shift indicator LEDs.
-      </div>
-      <div class="hints" style="margin-top: 14px;">
-        <span class="click ac-pill on" id="btn-ctrl-back" style="padding: 6px 20px; font-size: 11px;">RETURN [ESC / ENTER]</span>
+      <div class="hints" id="controls-hints">
+        <b>W / S</b> ROW &nbsp; <b>A / D</b> SLOT &nbsp; <b>ENTER / CLICK</b> REBIND &nbsp; <b>ESC</b> BACK
       </div>
     </div>`
   );
 
-  let clicked = false;
-  s.el.addEventListener('click', () => (clicked = true));
+  const rows = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.ac-ctrl-row')]);
+  const hintsEl = /** @type {HTMLElement} */ (s.el.querySelector('#controls-hints'));
+
+  let selRow = 0;
+  let selCol = 0;
+  /** @type {{ action: string, slot: number } | null} */
+  let listening = null;
+  /** @type {string | null} */
+  let clickedAction = null;
+  /** @type {number | null} */
+  let clickedSlot = null;
+  /** @type {string | null} */
+  let clickedSpecial = null;
+
+  function sync(inp = null) {
+    const input = inp || activeInput;
+    if (!input) return;
+    const bindings = input.bindings || KEYS;
+
+    for (let i = 0; i < CONTROL_ACTIONS.length; i++) {
+      const act = CONTROL_ACTIONS[i];
+      const list = bindings[act] || KEYS[act] || [];
+      const s0 = /** @type {HTMLElement | null} */ (s.el.querySelector(`#slot-${act}-0`));
+      const s1 = /** @type {HTMLElement | null} */ (s.el.querySelector(`#slot-${act}-1`));
+
+      const isListen0 = listening && listening.action === act && listening.slot === 0;
+      const isListen1 = listening && listening.action === act && listening.slot === 1;
+
+      if (s0) {
+        s0.textContent = isListen0 ? 'PRESS KEY' : keyLabel(list[0]);
+        s0.classList.toggle('listening', !!isListen0);
+        s0.classList.toggle('focused', !listening && selRow === i && selCol === 0);
+      }
+      if (s1) {
+        s1.textContent = isListen1 ? 'PRESS KEY' : keyLabel(list[1]);
+        s1.classList.toggle('listening', !!isListen1);
+        s1.classList.toggle('focused', !listening && selRow === i && selCol === 1);
+      }
+    }
+
+    rows.forEach((r, idx) => r.classList.toggle('sel', idx === selRow));
+
+    if (hintsEl) {
+      hintsEl.innerHTML = listening
+        ? '<b>PRESS ANY KEY</b> TO BIND &nbsp;//&nbsp; <b>ESC</b> CANCEL'
+        : '<b>W / S</b> ROW &nbsp; <b>A / D</b> SLOT &nbsp; <b>ENTER / CLICK</b> REBIND &nbsp; <b>ESC</b> BACK';
+    }
+  }
+
+  s.el.addEventListener('click', (e) => {
+    const target = /** @type {HTMLElement} */ (e.target);
+    const slotEl = target.closest('.ac-key-slot');
+    if (slotEl) {
+      const rowEl = slotEl.closest('.ac-ctrl-row');
+      if (rowEl) {
+        const act = /** @type {HTMLElement} */ (rowEl).dataset.act;
+        const slot = Number(/** @type {HTMLElement} */ (slotEl).dataset.slot);
+        if (act !== undefined) {
+          clickedAction = act;
+          clickedSlot = slot;
+        }
+      }
+      return;
+    }
+    const specialEl = target.closest('[data-special]');
+    if (specialEl) {
+      clickedSpecial = /** @type {HTMLElement} */ (specialEl).dataset.special || null;
+      return;
+    }
+    const rowEl = /** @type {HTMLElement | null} */ (target.closest('.ac-ctrl-row'));
+    if (rowEl) {
+      const idx = rows.indexOf(/** @type {HTMLElement} */ (rowEl));
+      if (idx !== -1) {
+        selRow = idx;
+        if (rowEl.dataset.special) clickedSpecial = rowEl.dataset.special;
+      }
+    }
+  });
 
   return {
     ...s,
+    /** @param {boolean} on */
+    show(on) {
+      if (on) {
+        listening = null;
+        selRow = 0;
+        selCol = 0;
+        sync(activeInput);
+      }
+      s.show(on);
+    },
     /**
      * @param {import('../core/input.js').Input} input
      * @returns {'back' | null}
      */
     update(input) {
-      if (clicked || input.pressed('back') || input.pressed('confirm') || input.pressed('pause')) {
-        clicked = false;
+      activeInput = input;
+
+      if (listening) {
+        if (clickedSpecial || input.pressed('back') || input.hit.has('Escape')) {
+          clickedSpecial = null;
+          clickedAction = null;
+          clickedSlot = null;
+          listening = null;
+          audio.ui('back');
+          sync(input);
+          return null;
+        }
+        for (const code of input.hit) {
+          if (code === 'Escape') continue;
+          if (code === 'Enter' || code === 'NumpadEnter') {
+            listening = null;
+            audio.ui('back');
+            sync(input);
+            return null;
+          }
+          const next = rebind(input.bindings, listening.action, listening.slot, code);
+          input.setBindings(next);
+          audio.ui('select');
+          listening = null;
+          sync(input);
+          return null;
+        }
+        return null;
+      }
+
+      if (clickedAction && clickedSlot !== null) {
+        const act = clickedAction;
+        const slot = clickedSlot;
+        clickedAction = null;
+        clickedSlot = null;
+        const actIdx = CONTROL_ACTIONS.indexOf(/** @type {any} */ (act));
+        if (actIdx !== -1) {
+          selRow = actIdx;
+          selCol = slot;
+          listening = { action: act, slot };
+          audio.ui('select');
+          sync(input);
+          return null;
+        }
+      }
+
+      if (clickedSpecial) {
+        const sp = clickedSpecial;
+        clickedSpecial = null;
+        if (sp === 'reset') {
+          input.setBindings(KEYS);
+          audio.ui('select');
+          sync(input);
+          return null;
+        }
+        if (sp === 'back') {
+          audio.ui('back');
+          return 'back';
+        }
+      }
+
+      if (input.pressed('back')) {
         audio.ui('back');
         return 'back';
       }
+      if (input.pressed('up')) {
+        selRow = (selRow + rows.length - 1) % rows.length;
+        audio.ui('move');
+        sync(input);
+      }
+      if (input.pressed('down')) {
+        selRow = (selRow + 1) % rows.length;
+        audio.ui('move');
+        sync(input);
+      }
+      if (input.pressed('left')) {
+        if (selRow < CONTROL_ACTIONS.length && selCol > 0) {
+          selCol = 0;
+          audio.ui('move');
+          sync(input);
+        }
+      }
+      if (input.pressed('right')) {
+        if (selRow < CONTROL_ACTIONS.length && selCol < 1) {
+          selCol = 1;
+          audio.ui('move');
+          sync(input);
+        }
+      }
+      if (input.pressed('confirm')) {
+        if (selRow < CONTROL_ACTIONS.length) {
+          listening = { action: CONTROL_ACTIONS[selRow], slot: selCol };
+          audio.ui('select');
+          sync(input);
+        } else if (selRow === CONTROL_ACTIONS.length) {
+          input.setBindings(KEYS);
+          audio.ui('select');
+          sync(input);
+        } else {
+          audio.ui('back');
+          return 'back';
+        }
+      }
+
       return null;
     },
   };
@@ -610,6 +821,7 @@ export function controlsScreen(ui) {
 const PAUSE_OPTIONS = /** @type {const} */ ([
   ['resume', 'RESUME'],
   ['settings', 'SETTINGS'],
+  ['controls', 'CONTROLS'],
   ['garage', 'GARAGE'],
   ['menu', 'MAIN MENU'],
   ['title', 'QUIT TO TITLE'],
@@ -648,7 +860,7 @@ export function pauseScreen(ui) {
     },
     /**
      * @param {import('../core/input.js').Input} input
-     * @returns {'resume' | 'settings' | 'garage' | 'menu' | 'title' | null}
+     * @returns {'resume' | 'settings' | 'controls' | 'garage' | 'menu' | 'title' | null}
      */
     update(input) {
       if (clicked) {
@@ -679,3 +891,4 @@ export function pauseScreen(ui) {
     },
   };
 }
+
