@@ -9,7 +9,7 @@
 /**
  * @typedef {'countdown' | 'running' | 'won' | 'lost' | 'aborted'} RaceState
  * @typedef {{ type: string, [k: string]: any }} RaceEventMsg
- * @typedef {{ gap: number, hits?: { player?: number, rival?: number } }} RaceWorld
+ * @typedef {{ gap?: number, hits?: { player?: number, rival?: number }, [k: string]: any }} RaceWorld
  * @typedef {{ won: boolean, prize: number, rival: string, reason: string }} RaceResult
  */
 

@@ -121,6 +121,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/traffic/net.js` | Pure: every road as directed lanes with keep-left offsets, links between lanes (ends, exits, turns), traffic lights |
 | `src/race/event.js` | Pure: the `RaceEvent` interface every race kind shares: state, `update(dt, world)`, `result()` |
 | `src/race/duel.js` | Pure: `Duel`, the one-on-one race with a street racer; gauge drains for whoever is behind, prize and challenge rules |
+| `src/race/pursuit.js` | Pure: `Pursuit`, the police chase as a `RaceEvent`: pursuit, evading, cooldown, busted, escaped; evade and bust bars, heat-scaled, infractions and bounty, and the A13 `PursuitView` |
 | `src/race/pacenotes.js` | Pure: walks a stage every 5 m and grades each corner (`1` tightest to `6` flat) with hairpin, long, tightens, opens, crest and into |
 | `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost (`ghostAt(t)`) |
 | `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions, T-junction give-way (`yieldClear`) and `rallyRoad` to keep a stage clear |
@@ -175,7 +176,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.15)
+## Current state (0.8.16)
 
 Done and tested:
 
@@ -200,6 +201,13 @@ Done and tested:
   a light bar as two roof flares alternating at 2 Hz while chasing. `Heat` rises with what the
   police see and with the pursuit clock and cools after a quiet spell. `spawnUnit`, `units`,
   `countUnits` and `unitsNear` let the police core find them.
+- The pursuit as a RaceEvent (0.8.16, A17 part 2, `src/race/pursuit.js`). `Pursuit` extends
+  `RaceEvent` like `Duel` and `Rally`. Out of sight the evade bar fills (faster at low heat), back
+  in sight it drains; a full evade bar starts the cooldown, where the units search the last known
+  position, which widens with time. Stopping under 10 km/h with a unit alongside fills the bust bar
+  over 3 s. Infractions (speeding, reckless, hit and run, ramming, resisting arrest at 30 s,
+  offroad, property, a toll run) each fire once and add bounty, which also grows with time, heat
+  and the cost to state. `view()` is the A13 `PursuitView` plus the grown MW fields.
 - Speedometer choice and garage display (0.8.11, A16 part 2). Settings features a `SPEEDOMETER` row
   configured to `PER CAR` (default) or locked to any specific style (`classic`, `twin`, `sport`,
   `digital`, `vfd`), stored in local storage under `clusterStyle`. Drive applies the stored setting upon

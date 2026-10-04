@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.8.16 (2026-10-04)
+
+The pursuit as a RaceEvent (A17 part 2).
+
+- New pure `src/race/pursuit.js`: `Pursuit` extends `RaceEvent`, the same shape as `Duel` and
+  `Rally`, so the drive loop does not care it is running. Its states are the A13 `PursuitView`
+  ones the HUD already draws: `pursuit`, `evading`, `cooldown`, `busted`, `escaped`.
+- Losing them: out of sight the evade bar fills (faster the lower the heat, as Most Wanted lets a
+  newcomer slip away); back in sight it drains and the pursuit is on again. A full evade bar starts
+  the cooldown, where they search the last known position, which widens with time; the helicopter
+  seeing you, or any unit, drops you straight back into pursuit.
+- The bust: below about 10 km/h with a unit alongside, the bust bar fills over `BUST_TIME` 3 s;
+  pulling away empties it again.
+- Infractions, each once per pursuit, each adding bounty: speeding, reckless driving, hit and run
+  (a civilian wrecked), ramming a police vehicle, resisting arrest (30 s), driving off road,
+  damage to property, and a toll gate run at speed. `bounty` rises with time, heat, each
+  infraction and the cost to state. `disable()` and `involve()` track units out and involved.
+- `view()` returns exactly the A13 `PursuitView` fields (heat, evade, cooldown, bust, units,
+  heli, bounty, time), plus the grown MW fields (`infractions`, `cost`, `disabled`, `involved`,
+  `hiding`, `report`), so the HUD built in A13 keeps working.
+- Tests: new `tests/pursuit.test.mjs`, fifteen cases over the states, the bars, the infractions and
+  the end-of-pursuit report.
+
 ## 0.8.15 (2026-10-04)
 
 Police patrols and heat (A17 part 1).
