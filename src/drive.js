@@ -24,6 +24,9 @@ import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
+import { Pursuit } from './race/pursuit.js';
+import { Heat, noticesSpeeding, noticesTrap } from './police/heat.js';
+import { roster, unitFor } from './police/units.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
@@ -108,6 +111,18 @@ export class Drive {
     this.heliView = new HeliView(world.models || {});
     /** Whether the helicopter is after the player; the police set it, `scrambleHeli` does for now. */
     this.heliChasing = false;
+    // The police core (A17): heat says what the police notice, the pursuit event holds the
+    // state, and the sim spawns and drives the units.
+    /** @type {Heat | null} */
+    this.heat = null;
+    /** @type {Pursuit | null} */
+    this.pursuit = null;
+    /** Infraction events collected this frame for the pursuit. @type {string[]} */
+    this.infractions = [];
+    /** Yen of damage to police cars this frame. */
+    this.policeDamage = 0;
+    /** The last speed the toll meter saw, for the speed trap. */
+    this.lastTollSpeed = 0;
     if (this.heli && this.heliView.ok) {
       world.add(this.heliView.group);
       world.add(this.heliView.cone);
@@ -143,23 +158,100 @@ export class Drive {
   }
 
   /**
-   * The pursuit as the HUD shows it (A13 contract), null while there is none. The police core
-   * fills it in; the helicopter alone is not a pursuit.
-   * @returns {null}
+   * The pursuit as the HUD shows it (A13 contract), null while there is none. The helicopter
+   * alone is not a pursuit.
+   * @returns {any}
    */
   pursuitView() {
-    return null;
+    if (this.pursuit && (this.pursuit.pstate === 'busted' || this.pursuit.pstate === 'escaped')) {
+      return this.pursuit.reportView();
+    }
+    return this.pursuit ? this.pursuit.view() : null;
   }
 
   /**
-   * Every police car and the helicopter for the maps (A13 contract): the helicopter while it is
-   * off the pad, with its searchlight's spot.
-   * @returns {{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }[]}
+   * Every police car and the helicopter for the maps (A13 contract): each unit, plus the
+   * helicopter while it is off the pad, with its searchlight's spot. A searching unit also
+   * carries its sight cone, and the first marker carries where they think the player is.
+   * @returns {{ kind: string, x: number, z: number, yaw: number, search?: { x: number, z: number, r: number }, cone?: { r: number, half: number }, last?: { x: number, z: number, r: number } }[]}
    */
   policeMarkers() {
+    /** @type {any[]} */
+    const out = [];
     const h = this.heli;
-    if (!h || h.state === 'parked') return [];
-    return [{ kind: 'heli', x: h.x, z: h.z, yaw: h.yaw, search: h.spot.on ? { x: h.spot.x, z: h.spot.z, r: h.spot.r } : undefined }];
+    if (h && h.state !== 'parked') {
+      out.push({ kind: 'heli', x: h.x, z: h.z, yaw: h.yaw, search: h.spot.on ? { x: h.spot.x, z: h.spot.z, r: h.spot.r } : undefined });
+    }
+    const searching = this.pursuit ? this.pursuit.pstate === 'cooldown' : false;
+    const units = this.traffic.units();
+    for (const u of units) {
+      const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw };
+      if (searching) m.cone = { r: 60, half: 0.61 };
+      out.push(m);
+    }
+    if (out.length && searching && this.pursuit) out[0].last = { x: this.pursuit.last.x, z: this.pursuit.last.z, r: this.pursuit.last.r };
+    return out;
+  }
+
+  /**
+   * One frame of the police: what they notice, how hard they are trying, whether they can see
+   * the player, and the units themselves. Called from the drive frame.
+   * @param {number} dt @param {any} s the car state
+   */
+  stepPolice(dt, s) {
+    if (!this.heat) this.heat = new Heat();
+    const units = this.traffic.unitsNear(s, 200);
+    const near = units[0];
+    const speedKmh = s.speed * 3.6;
+    // What the police notice this frame.
+    const events = { speeding: false, trap: false, duel: !!this.duel };
+    if (near && noticesSpeeding(s, near.agent)) events.speeding = true;
+    if (noticesTrap(this.lastTollSpeed)) events.trap = true;
+    if (this.policeDamage > 0) events.hitPolice = true;
+
+    // A pursuit starts the moment the heat reaches the first level, and runs while any unit is
+    // involved or the helicopter is up.
+    this.heat.update(dt, { ...events, pursuit: this.pursuit ? this.pursuit.pstate !== 'escaped' : false });
+    const level = this.heat.level;
+    if (!this.pursuit && level >= 1) {
+      this.pursuit = new Pursuit();
+      this.pursuit.setHeat(level, false);
+    }
+    // Send more units out as the heat rises, from the roster for that level.
+    const want = level ? roster(level).length : this.traffic.patrolTarget;
+    while (this.traffic.countUnits() < want) {
+      const a = this.traffic.spawnUnit(s, level ? unitFor(level).id : 'police', 120, 380);
+      if (!a) break;
+      if (this.pursuit) this.pursuit.involve();
+    }
+    // Units chase once there is a pursuit and the helicopter is up at heat 3 and over.
+    const heliUp = level >= 3;
+    if (heliUp && !this.heliChasing) this.scrambleHeli();
+    if (this.heliChasing && (this.pursuit?.pstate === 'escaped' || this.pursuit?.pstate === 'busted' || level === 0)) this.recallHeli();
+    this.heliChasing = heliUp && !!this.pursuit && this.pursuit.pstate !== 'escaped' && this.pursuit.pstate !== 'busted';
+    for (const u of units) u.agent.pursuit = !!this.pursuit;
+
+    // In sight: a unit close enough, or the helicopter's light on the player.
+    const seen = (near && near.d < 150) || !!(this.heliChasing && this.heli.spot.sees);
+    if (this.pursuit) {
+      this.pursuit.setHeat(level, this.heliChasing);
+      if (seen) this.pursuit.lastSeen(s.x, s.z);
+      const hiding = this.inHidingSpot(s);
+      this.pursuit.update(dt, {
+        speed: s.speed, seen, units: this.traffic.countUnits(), heli: this.heliChasing,
+        hiding, damage: this.policeDamage, events: this.infractions,
+      });
+    }
+    this.policeDamage = 0;
+    this.infractions.length = 0;
+    this.traffic.heat = level;
+  }
+
+  /** Whether the car is somewhere the police lose you: a hideout lot, under a deck, a car park. @param {any} s */
+  inHidingSpot(s) {
+    for (const p of this.world.ground.lots) if (p.lot.kind === 'hideout' && Math.hypot(p.cx - s.x, p.cz - s.z) < 30) return true;
+    if (this.heliWorld && this.heliWorld.covered(s.x, s.z, s.y)) return true;
+    return false;
   }
 
   /**
@@ -595,9 +687,15 @@ export class Drive {
       store.set('money', this.money);
       store.set('tollBest', this.tolls.best);
       const kmh = Math.round(gate.speed);
+      // A speed trap run this fast is what the police call an infraction (A17).
+      this.lastTollSpeed = gate.speed;
+      if (noticesTrap(gate.speed)) this.infractions.push('tollRun');
       this.toast(`${gate.name}   ${kmh} KM/H   ¥${paid.toLocaleString('en-US')}${gate.record ? '   NEW BEST' : `   BEST ${Math.round(gate.best)}`}`, 3.2);
       audio.ui('select');
     }
+
+    // The police: what they notice, the units, and the pursuit state (A17).
+    this.stepPolice(dt, s);
 
     if (s.surfFront === 'water' && s.y < WATER_LEVEL - 0.5) {
       this.resetToRoad();

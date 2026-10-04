@@ -124,7 +124,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/race/pursuit.js` | Pure: `Pursuit`, the police chase as a `RaceEvent`: pursuit, evading, cooldown, busted, escaped; evade and bust bars, heat-scaled, infractions and bounty, and the A13 `PursuitView` |
 | `src/race/pacenotes.js` | Pure: walks a stage every 5 m and grades each corner (`1` tightest to `6` flat) with hairpin, long, tightens, opens, crest and into |
 | `src/race/rally.js` | Pure: `Rally`, the Kuro Pass time attack: gates, splits against a best time, medals, off-course abort, penalties and the ghost (`ghostAt(t)`) |
-| `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions, T-junction give-way (`yieldClear`) and `rallyRoad` to keep a stage clear |
+| `src/traffic/sim.js` | Pure: `TrafficSim`, agents with IDM car following, lights, lane changes, spawn and despawn around the player, wrecks, player collisions, T-junction give-way (`yieldClear`) and `rallyRoad` to keep a stage clear; police units (`spawnUnit`, `units`, `countUnits`, `unitsNear`) and the pursuit steering (`stepChase`, `sim.heat`) |
 | `src/traffic/kinds.js` | Pure: the fourteen traffic vehicle kinds and the sixteen street racers (`RIVALS`: the racer models and the player cars), sizes, speeds and where each is common |
 | `src/traffic/bodies.js` | Geometry per kind: the lofted body (`vehicleGeometry`) from the civilian models by kind id or from the kind's `model`; the old boxy stand-ins are the fallback |
 | `src/vehicles/bodies/civilians.js` | Pure: the fourteen traffic bodies (`CIVILIAN_MODELS`): cars and vans from profiles, trucks, tanker, bus and semi as a lofted cab with cargo, extra axles |
@@ -176,7 +176,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-passby.mjs` | Node: writes the pass-by whoosh WAV (passes at 20, 60 and 120 km/h) to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.8.16)
+## Current state (0.8.17)
 
 Done and tested:
 
@@ -208,6 +208,13 @@ Done and tested:
   over 3 s. Infractions (speeding, reckless, hit and run, ramming, resisting arrest at 30 s,
   offroad, property, a toll run) each fire once and add bounty, which also grows with time, heat
   and the cost to state. `view()` is the A13 `PursuitView` plus the grown MW fields.
+- The police chase (0.8.17, A17 part 3). `stepChase` in the sim: a pursuing unit within 120 m
+  stops following its lane and drives at the player, aiming 1.2 s ahead, braking for traffic, and
+  at heat 4 and up aiming at the player's flank to PIT (a Rhino drives head-on). `Drive.stepPolice`
+  runs it from the frame: it feeds the heat what they notice, starts the pursuit at the first
+  level, sends out the roster for the heat, flags the units to chase, scrambles the helicopter at
+  heat 3 and over and recalls it on an escape or a bust. `pursuitView()` and `policeMarkers()` now
+  return the A13 contract, so the HUD and both maps work as they are.
 - Typography update across the UI (0.8.12, A16 part 3). `:root` defines eight font variables
   matching `src/render/fonts.js`: `--font-display`, `--font-tech`, `--font-race`, `--font-mono`,
   `--font-seg7`, `--font-seg14`, `--font-impact`, `--font-jp`. Orbitron 900 on LOWBEAM title with Dela Gothic One

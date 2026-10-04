@@ -56,6 +56,13 @@ const SIGNAL_LEAD = 60;
 
 const CLASS_DENSITY = { expressway: 4.5, arterial: 1.6, street: 1, ramp: 0.35, mountain: 0.5, forest: 0.4 };
 
+/** Within this many meters a pursuing unit stops following its lane and drives at the player. */
+const CHASE_RANGE = 120;
+/** How far ahead the unit aims, the player's own speed times this lead. */
+const CHASE_LEAD = 1.2;
+/** How hard a unit steers toward its aim point, radians per second at the limit. */
+const CHASE_STEER = 3.4;
+
 /** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] */
 function idm(v, v0, accel, gap, closing, rival = false) {
   const free = 1 - Math.pow(v / Math.max(v0, 0.1), 4);
@@ -85,6 +92,8 @@ export class TrafficSim {
     this.rivalTarget = rivals;
     /** How many patrol cars cruise among the traffic when nothing is happening. */
     this.patrolTarget = patrols;
+    /** 1 to 5 while a pursuit is on: how hard the units drive, and whether they ram. */
+    this.heat = 0;
     /** Road id the player is racing on, so traffic stays off it. Null outside a rally. */
     this.rallyRoad = /** @type {string | null} */ (null);
     this.time = 0;
@@ -414,7 +423,10 @@ export class TrafficSim {
         a.fade -= dt * 2;
         continue;
       }
+      // A police unit that is chasing and close enough drives at the player instead of its lane.
+      const chasing = a.pursuit && Math.hypot(a.x - player.x, a.z - player.z) < CHASE_RANGE;
       if (a.mode === 'wreck') this.stepWreck(a, dt);
+      else if (chasing) this.stepChase(a, dt, player);
       else this.stepDrive(a, dt, player);
     }
     // Remove what was left behind, what ended and what has been a wreck long enough.
@@ -642,6 +654,59 @@ export class TrafficSim {
       a.vz = Math.cos(a.yaw) * a.speed;
       a.yawRate = 0;
     }
+  }
+
+  /**
+   * A pursuing unit within `CHASE_RANGE` of the player stops following its lane and drives at
+   * the player directly: it aims at where the player will be (`CHASE_LEAD` seconds ahead),
+   * brakes for the traffic in its way, and at heat 4 and up aims at the player's flank to ram.
+   * A Rhino (`headOn`) always drives straight at the player from ahead instead of chasing.
+   * @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number, vx?: number, vz?: number }} player
+   */
+  stepChase(a, dt, player) {
+    const dist = Math.hypot(player.x - a.x, player.z - a.z);
+    // The player's own velocity, so the aim leads a moving target.
+    const pvx = player.vx ?? 0;
+    const pvz = player.vz ?? 0;
+    const lead = CHASE_LEAD;
+    let tx = player.x + pvx * lead;
+    let tz = player.z + pvz * lead;
+    // At heat 4 and up a cruiser aims at the player's side to PIT them; the very close in it
+    // still aims at the car itself, so it does not swing wide at the last moment.
+    if (this.heat >= 4 && !a.kind.headOn && dist < 40) {
+      const px = Math.sin(a.yaw);
+      const pz = Math.cos(a.yaw);
+      const side = 2.2 * (a.id % 2 ? 1 : -1);
+      tx += pz * side;
+      tz += -px * side;
+    }
+    const aimYaw = Math.atan2(tx - a.x, tz - a.z);
+    const diff = wrapAngle(aimYaw - a.yaw);
+    const turn = clamp(diff, -CHASE_STEER * dt, CHASE_STEER * dt);
+    a.yawRate = dt > 0 ? turn / dt : 0;
+    a.yaw += turn;
+
+    // It drives hard, but brakes for whatever is directly in front, the way a real chase does.
+    const v0 = a.lane.limit * a.kind.speed[1] * (0.7 + 0.12 * this.heat);
+    const aheadX = a.x + Math.sin(a.yaw) * 18;
+    const aheadZ = a.z + Math.cos(a.yaw) * 18;
+    let block = Infinity;
+    for (const o of this.agents) {
+      if (o === a || o.mode === 'wreck') continue;
+      const dx = o.x - aheadX;
+      const dz = o.z - aheadZ;
+      const d = Math.hypot(dx, dz);
+      if (d < 6) block = Math.min(block, d);
+    }
+    const acc = idm(a.speed, v0, a.kind.accel * 1.6, block, a.speed);
+    a.brake = acc < -1.2 ? 1 : 0;
+    a.speed = Math.max(0, a.speed + clamp(acc, -11, a.kind.accel * 1.6) * dt);
+
+    a.vx = Math.sin(a.yaw) * a.speed;
+    a.vz = Math.cos(a.yaw) * a.speed;
+    a.x += a.vx * dt;
+    a.z += a.vz * dt;
+    // A chasing unit keeps the lane's ground height; it never climbs off the road.
   }
 
   /** A slower speed for a tight bend ahead on this lane. @param {Agent} a */

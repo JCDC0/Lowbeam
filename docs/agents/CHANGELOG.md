@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.8.17 (2026-10-04)
+
+The police chase (A17 part 3): units leave their lanes, the pursuit is wired in.
+
+- `src/traffic/sim.js`: `stepChase`. A pursuing unit within `CHASE_RANGE` 120 m stops following
+  its lane and drives at the player, aiming where the player will be (`CHASE_LEAD` 1.2 s ahead),
+  braking for the traffic in its way and steering at `CHASE_STEER`. At heat 4 and up a cruiser
+  aims at the player's flank to PIT; a Rhino (`headOn`) drives straight at the player. Units
+  carry a `pursuit` flag and `sim.heat` decides how hard they drive.
+- `src/drive.js`: the police core is wired into the drive frame as `stepPolice`. It feeds the
+  heat what they notice (speeding past a unit, a toll speed trap, a duel in sight), starts the
+  pursuit when the heat first reaches a level, sends out the roster for that heat, flags the units
+  to chase, scrambles the helicopter at heat 3 and over and recalls it on an escape or a bust,
+  and steps the pursuit event. `pursuitView()` and `policeMarkers()` now return the A13 contract:
+  every unit plus the helicopter with its searchlight, a searching unit's sight cone, and where
+  they last saw the player.
+- Verified live at 480 lines: forcing the heat to 4 brought out three cruisers, the unmarked fast
+  units and the Rhinos, scrambled the helicopter, and filled the HUD view and the map markers.
+
 ## 0.8.16 (2026-10-04)
 
 The pursuit as a RaceEvent (A17 part 2).
