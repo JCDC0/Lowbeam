@@ -84,8 +84,11 @@ export function stationLayout(pad) {
       sign: { u: -hw + 2, v: -hd + 1.5 },
       tents: [-4, 9, 22].map((u) => ({ u, v: hd - 9, w: 7, d: 7 })),
       floods: [[-hw + 1, hd - 1], [hw - 1, hd - 1], [hw - 1, -hd + 1], [6, -hd + 1]].map(([u, v]) => ({ u, v })),
+      vending: [],
+      gates: [],
     };
   }
+  const kiosk = { u: hw * 0.45, v: hd - 6, w: 15, d: 9, h: 4.2 };
   return {
     canopy: { u0: -hw * 0.5, u1: hw * 0.5, v0: -hd + 5, v1: -hd + 5 + hd * 1.05, h: 5.2 },
     islands: [
@@ -93,10 +96,14 @@ export function stationLayout(pad) {
       { u: 0, v: -hd + 10 + hd * 0.5, len: hw * 0.62 },
     ],
     pumps: [],
-    kiosk: { u: hw * 0.45, v: hd - 6, w: 15, d: 9, h: 4.2 },
+    kiosk,
     sign: { u: -hw + 3, v: -hd + 1.5 },
     tents: [],
     floods: [],
+    // Two vending machines against the kiosk's front, by its left corner, and the entrance and exit
+    // boards at the road edge.
+    vending: [0, 1].map((i) => ({ u: kiosk.u - kiosk.w / 2 + 0.7 + i * 1.05, v: kiosk.v - kiosk.d / 2 - 0.45, w: 0.95, d: 0.8, h: 1.85 })),
+    gates: [{ u: -hw + 8, v: -hd + 0.9, text: 'in' }, { u: hw - 4, v: -hd + 0.9, text: 'out' }],
   };
 }
 
@@ -293,7 +300,15 @@ function placeStation(ground, pad, lights, circles, boxes) {
   const kf = padPoint(pad, k.u, k.v - k.d / 2 - 1.5);
   lights.push({ x: kf.x, y: pad.h + 2.6, z: kf.z, c: [1.6, 1.35, 0.95], range: 10 });
   const sp = padPoint(pad, L.sign.u, L.sign.v);
-  circles.push({ x: sp.x, z: sp.z, r: 0.35 });
+  circles.push({ x: sp.x, z: sp.z, r: 1.0 });
+  for (const m of L.vending) {
+    const p = padPoint(pad, m.u, m.v);
+    boxes.push({ x: p.x, z: p.z, hx: m.w / 2, hz: m.d / 2, yaw });
+  }
+  for (const gt of L.gates) {
+    const p = padPoint(pad, gt.u, gt.v);
+    circles.push({ x: p.x, z: p.z, r: 0.12 });
+  }
   lights.push({ x: sp.x, y: pad.h + 7, z: sp.z, c: pad.station.brand === 'hoshi' ? [0.3, 0.5, 1.0] : [1.0, 0.45, 0.15], range: 10 });
   for (const t of L.tents) {
     for (const [du, dv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {

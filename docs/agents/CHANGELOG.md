@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.6 (2026-10-04)
+
+Rebuild the gas stations the Japanese way, to match the toll plazas.
+
+- `gas-station.js`: a deep canopy with a lit brand fascia and a lamp grid, two-tone pillars, striped
+  islands with bollards, self-service dispensers with lit price heads and colored nozzles, hose reels
+  hanging from the canopy, a price pylon square to the road, a glass-fronted kiosk with a lit band,
+  vending machines, and IN and OUT boards. One atlas and one fascia texture per brand.
+- `scatter.js`: `stationLayout` places the vending machines and the boards, `placeStation` gives them
+  colliders; the pylon's collider grows to 1 m.
+
 ## 0.7.5 (2026-10-04)
 
 The police helicopter: modeled in Blender, parked on the HQ roof, flying and lighting the target.

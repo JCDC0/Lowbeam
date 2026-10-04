@@ -125,7 +125,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/world/forest.js` | Pure: nine tree species, habitats, stands, groves, the edge belt and thicket |
 | `src/world/build-trees.js` | Nine low-poly tree geometries, instanced chunks, per-instance tint (`treeTint`) |
 | `src/world/props.js` | Street lamps, town buildings with windows, konbini, neon |
-| `src/world/gas-station.js` | Canopy, pumps, kiosk, brand sign; service park tents, floods, rival cars |
+| `src/world/gas-station.js` | The stations, Japanese style: lit fascia canopy with a lamp grid, two-tone pillars, striped islands and bollards, self-service dispensers and hanging hose reels, the price pylon, a glass-fronted kiosk, vending machines, IN and OUT boards; service park tents, floods, rival cars |
 | `src/world/world.js` | `World.create(step)`: builds the scene in stages; `update(camera, focus)` |
 | `src/render/bake.js` | `LightGrid`, `bakeGeometry` (the `bake` attribute), `sampleLight` for movers |
 | `src/render/pools.js` | `installPools`: uploads the world's lights and the cell grid as float textures for the per-pixel light pools |
@@ -162,10 +162,20 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `tools/render-engines.mjs` | Node: writes a drive-by WAV per car to `tools/shots/audio/` |
 | `tools/audio-lab.html` | Browser: renders a scripted drive through the real audio graph offline, analyzes it, saves a WAV |
 
-## Current state (0.7.5)
+## Current state (0.7.6)
 
 Done and tested:
 
+- Gas stations rebuilt (0.7.6, `gas-station.js`), in the same hand as the toll plazas: a canopy 1.4 m
+  deep with a lit fascia band in the brand's colors (the emblem and the name every 9 m, a brand-lit
+  trim under it) and a ceiling of square lamps, pillars clad in the brand color to 1.3 m, islands with
+  hazard-striped ends and yellow bollards, tall self-service dispensers with a lit price head and red,
+  yellow and green nozzles on both sides, a hose reel hanging over each from the canopy, a price
+  pylon by the road square to the traffic (the brand, セルフ, then レギュラー, ハイオク and 軽油 in
+  lit digits), a kiosk with a glass shop front, mullions and a lit band on its parapet, roof plant, two
+  vending machines against it and the 入口 IN and 出口 OUT boards at the road edge. Each brand's
+  pictures are one canvas atlas plus a repeating fascia texture. `stationLayout` gains `vending` and
+  `gates` (with colliders); the pylon's collider is 1 m.
 - Police helicopter (0.7.5, `src/police/`). Modeled in Blender (`tools/blender/heli.py`, a light
   twin in white with a blue band, a glass bubble nose, skids, a four-blade main rotor and a
   two-blade tail rotor) and exported as three models (`heli`, `heli_rotor`, `heli_tail`) so the
