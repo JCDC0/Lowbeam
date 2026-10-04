@@ -14,8 +14,9 @@ export class Minimap {
   /**
    * @param {HTMLElement} parent
    * @param {import('../world/ground.js').Ground} ground
+   * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
    */
-  constructor(parent, ground) {
+  constructor(parent, ground, getMarkers) {
     this.canvas = document.createElement('canvas');
     this.canvas.width = SIZE;
     this.canvas.height = SIZE;
@@ -40,6 +41,8 @@ export class Minimap {
     const start = ss1.path.sample(RALLY.startS);
     this.flag = { x: start.x, z: start.z };
     this.scale = 0.55;
+    this.time = 0;
+    this.getMarkers = getMarkers ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getMarkers?.() ?? []));
   }
 
   /**
@@ -106,6 +109,111 @@ export class Minimap {
         g.fillStyle = (i + j) % 2 ? '#111' : '#fff';
         g.fillRect(sx + 1 + i * 3, sy - 7 + j * 3, 3, 3);
       }
+    }
+
+    // Police and helicopter markers (A13)
+    this.time += dt;
+    const sirenRed = Math.floor(this.time / 0.2) % 2 === 0;
+    const markers = (this.getMarkers ? this.getMarkers() : null) || [];
+    const edgeMarkers = [];
+
+    for (const m of markers) {
+      // Helicopter searchlight circle in world coordinates
+      if (m.kind === 'heli' && m.search && m.search.r > 0) {
+        const [spotX, spotY] = toScreen(m.search.x, m.search.z);
+        const spotRadius = m.search.r * s;
+        g.save();
+        g.beginPath();
+        g.arc(spotX, spotY, spotRadius, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255, 255, 230, 0.22)';
+        g.fill();
+        g.strokeStyle = 'rgba(255, 255, 200, 0.45)';
+        g.lineWidth = 1;
+        g.stroke();
+        g.restore();
+      }
+
+      const [mx, my] = toScreen(m.x, m.z);
+      const distFromCenter = Math.hypot(mx - R, my - R);
+
+      if (distFromCenter <= R - 6) {
+        // Inside minimap circle
+        const screenAngle = Math.atan2(cc * Math.sin(m.yaw) + d * Math.cos(m.yaw), a * Math.sin(m.yaw) + b * Math.cos(m.yaw));
+        g.save();
+        g.translate(mx, my);
+        g.rotate(screenAngle);
+
+        if (m.kind === 'heli') {
+          // Helicopter rotor glyph (cross with spinning rotor blades)
+          g.fillStyle = '#5ad5ff';
+          g.beginPath();
+          g.arc(0, 0, 3, 0, Math.PI * 2);
+          g.fill();
+          g.strokeStyle = '#fff';
+          g.lineWidth = 1.2;
+          const rotorAng = (this.time * 25) % (Math.PI * 2);
+          g.beginPath();
+          g.moveTo(Math.cos(rotorAng) * 6, Math.sin(rotorAng) * 6);
+          g.lineTo(-Math.cos(rotorAng) * 6, -Math.sin(rotorAng) * 6);
+          g.moveTo(Math.cos(rotorAng + Math.PI / 2) * 6, Math.sin(rotorAng + Math.PI / 2) * 6);
+          g.lineTo(-Math.cos(rotorAng + Math.PI / 2) * 6, -Math.sin(rotorAng + Math.PI / 2) * 6);
+          g.stroke();
+        } else {
+          // Police car arrow: siren blinks between red and blue with 0.4 s cycle (0.2 s alternate)
+          g.fillStyle = sirenRed ? '#ff2b3d' : '#2b7fff';
+          g.strokeStyle = '#fff';
+          g.lineWidth = 1.2;
+          g.beginPath();
+          g.moveTo(5, 0);
+          g.lineTo(-4, -4);
+          g.lineTo(-2, 0);
+          g.lineTo(-4, 4);
+          g.closePath();
+          g.fill();
+          g.stroke();
+        }
+        g.restore();
+      } else {
+        // Outside minimap circle: clip to rim as edge indicator
+        edgeMarkers.push({ m, mx, my, distFromCenter });
+      }
+    }
+
+    // Edge markers clamped to rim
+    for (const { m, mx, my } of edgeMarkers) {
+      const angleToEdge = Math.atan2(my - R, mx - R);
+      const edgeR = R - 7;
+      const ex = R + Math.cos(angleToEdge) * edgeR;
+      const ey = R + Math.sin(angleToEdge) * edgeR;
+
+      g.save();
+      g.translate(ex, ey);
+      g.rotate(angleToEdge);
+
+      if (m.kind === 'heli') {
+        g.fillStyle = '#5ad5ff';
+        g.strokeStyle = '#fff';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(4, 0);
+        g.lineTo(-3, -3);
+        g.lineTo(-3, 3);
+        g.closePath();
+        g.fill();
+        g.stroke();
+      } else {
+        g.fillStyle = sirenRed ? '#ff2b3d' : '#2b7fff';
+        g.strokeStyle = '#fff';
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(4, 0);
+        g.lineTo(-3, -3.5);
+        g.lineTo(-3, 3.5);
+        g.closePath();
+        g.fill();
+        g.stroke();
+      }
+      g.restore();
     }
     g.restore();
 

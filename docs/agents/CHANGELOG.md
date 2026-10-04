@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.11 (2026-10-04)
+
+Police and helicopter markers on the minimap and Tab tactical map.
+
+- `src/ui/minimap.js`: takes markers getter; draws police cars as directional chevrons flashing between red and blue with a 0.4 s siren rhythm; draws the helicopter with a spinning rotor glyph and translucent searchlight circle of radius `r`; clamps markers outside the minimap circle to the rim as edge indicator arrows.
+- `src/ui/map.js`: `MapScreen` accepts markers getter; renders police chevrons and helicopter rotor glyphs oriented along heading and translucent searchlight spots in world space.
+- Tests: `tests/map.test.mjs` extended with checks for police and helicopter markers, searchlight circles, heading rotation, and rim edge clamping.
+
 ## 0.7.10 (2026-10-04)
 
 The pursuit HUD (NFS: Most Wanted 2005 style).

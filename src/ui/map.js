@@ -94,8 +94,9 @@ export class MapScreen {
   /**
    * @param {HTMLElement} ui
    * @param {any} [world]
+   * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
    */
-  constructor(ui, world = null) {
+  constructor(ui, world = null, getMarkers) {
     this.el = document.createElement('section');
     this.el.id = 'map';
     this.el.className = 'screen';
@@ -106,6 +107,7 @@ export class MapScreen {
     this.g = /** @type {CanvasRenderingContext2D} */ (this.canvas.getContext('2d'));
 
     this.world = world;
+    this.getMarkers = getMarkers ?? (() => (/** @type {any} */ (globalThis).window?.__lowbeam?.getMarkers?.() ?? []));
     this.data = null;
     this.cacheCanvas = null;
     this.cacheW = 0;
@@ -154,6 +156,7 @@ export class MapScreen {
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    if (world) this.setWorld(world);
   }
 
   resize() {
@@ -418,6 +421,64 @@ export class MapScreen {
       }
     }
 
+    // Police and helicopter markers (A13)
+    const markers = (this.getMarkers ? this.getMarkers() : null) || [];
+    const sirenRed = Math.floor(performance.now() / 200) % 2 === 0;
+
+    for (const m of markers) {
+      // Helicopter searchlight circle
+      if (m.kind === 'heli' && m.search && m.search.r > 0) {
+        const [spotX, spotY] = toScreen(m.search.x, m.search.z);
+        const spotRadius = m.search.r * z;
+        g.save();
+        g.beginPath();
+        g.arc(spotX, spotY, spotRadius, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255, 255, 230, 0.22)';
+        g.fill();
+        g.strokeStyle = 'rgba(255, 255, 200, 0.55)';
+        g.lineWidth = 1.5;
+        g.stroke();
+        g.restore();
+      }
+
+      const [mx, my] = toScreen(m.x, m.z);
+      if (mx < -50 || mx > w + 50 || my < -50 || my > h + 50) continue;
+
+      g.save();
+      g.translate(mx, my);
+      g.rotate(-m.yaw);
+
+      if (m.kind === 'heli') {
+        g.fillStyle = '#5ad5ff';
+        g.beginPath();
+        g.arc(0, 0, 4, 0, Math.PI * 2);
+        g.fill();
+        g.strokeStyle = '#fff';
+        g.lineWidth = 1.5;
+        const rotorAng = (performance.now() * 0.025) % (Math.PI * 2);
+        g.beginPath();
+        g.moveTo(Math.cos(rotorAng) * 9, Math.sin(rotorAng) * 9);
+        g.lineTo(-Math.cos(rotorAng) * 9, -Math.sin(rotorAng) * 9);
+        g.moveTo(Math.cos(rotorAng + Math.PI / 2) * 9, Math.sin(rotorAng + Math.PI / 2) * 9);
+        g.lineTo(-Math.cos(rotorAng + Math.PI / 2) * 9, -Math.sin(rotorAng + Math.PI / 2) * 9);
+        g.stroke();
+      } else {
+        // Police car chevron pointing forward
+        g.fillStyle = sirenRed ? '#ff2b3d' : '#2b7fff';
+        g.strokeStyle = '#fff';
+        g.lineWidth = 1.5;
+        g.beginPath();
+        g.moveTo(0, 8);
+        g.lineTo(6, -6);
+        g.lineTo(0, -3);
+        g.lineTo(-6, -6);
+        g.closePath();
+        g.fill();
+        g.stroke();
+      }
+      g.restore();
+    }
+
     // Player arrow
     if (car) {
       const s = car.state;
@@ -585,9 +646,10 @@ export class MapScreen {
  * Creates MapScreen instance.
  * @param {HTMLElement} ui
  * @param {any} [world]
+ * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
  */
-export function mapScreen(ui, world = null) {
-  return new MapScreen(ui, world);
+export function mapScreen(ui, world = null, getMarkers) {
+  return new MapScreen(ui, world, getMarkers);
 }
 
 /**

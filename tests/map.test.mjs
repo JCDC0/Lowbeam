@@ -73,6 +73,7 @@ function createMockContext() {
     clearRect: log('clearRect'),
     setTransform: log('setTransform'),
     translate: log('translate'),
+    rotate: log('rotate'),
     scale: log('scale'),
     beginPath: log('beginPath'),
     closePath: log('closePath'),
@@ -85,6 +86,7 @@ function createMockContext() {
     moveTo: log('moveTo'),
     lineTo: log('lineTo'),
     fillText: log('fillText'),
+    drawImage: log('drawImage'),
     setLineDash: log('setLineDash'),
     fillStyle: '',
     strokeStyle: '',
@@ -193,5 +195,85 @@ test('Minimap draws a landmark icon for a lot near the car and none for a far on
     assert.ok(g.calls.findIndex((c) => c.fn === 'clip') < g.calls.findIndex((c) => c.fn === 'scale'), 'drawn inside the clip');
   } finally {
     globalThis.document = saved;
+  }
+});
+
+test('Minimap draws police and helicopter markers, rotates along heading, and clamps out-of-circle markers to rim', async () => {
+  const { Minimap } = await import('../src/ui/minimap.js');
+  const { RALLY } = await import('../src/world/layout.js');
+  const g = createMockContext();
+  g.clip = () => g.calls.push({ fn: 'clip', args: [] });
+  const canvas = { getContext: () => g, width: 0, height: 0, className: '' };
+  const saved = globalThis.document;
+  globalThis.document = { createElement: () => canvas };
+  try {
+    const ground = {
+      roads: { roads: [], byId: new Map([[RALLY.road, { path: { sample: () => ({ x: 9e4, z: 9e4 }) } }]]) },
+      pads: [],
+      lots: [],
+    };
+    const markers = [
+      { kind: 'police', x: 100, z: 100, yaw: 0 },
+      { kind: 'heli', x: 110, z: 110, yaw: 0.5, search: { x: 100, z: 100, r: 25 } },
+      // Marker far away to test rim clamping
+      { kind: 'police', x: 2000, z: 2000, yaw: 0 },
+    ];
+    const mm = new Minimap({ appendChild() {} }, ground, () => markers);
+    mm.draw(100, 100, 0, 0, 0.1);
+
+    const arcCalls = g.calls.filter((c) => c.fn === 'arc');
+    // Searchlight circle, helicopter hub, player circle, north ring etc.
+    assert.ok(arcCalls.length >= 3, 'searchlight circle and heli rotor hub drawn');
+
+    const rotateCalls = g.calls.filter((c) => c.fn === 'rotate');
+    assert.ok(rotateCalls.length >= 3, 'inside markers and clamped rim marker rotated');
+  } finally {
+    globalThis.document = saved;
+  }
+});
+
+test('MapScreen.render draws police cars and helicopter markers with searchlight', async () => {
+  const { MapScreen } = await import('../src/ui/map.js');
+  const g = createMockContext();
+  const canvas = { getContext: () => g, width: 800, height: 600, addEventListener() {} };
+  const saved = globalThis.document;
+  const savedWindow = globalThis.window;
+  globalThis.document = {
+    createElement: (tag) => {
+      if (tag === 'canvas') return canvas;
+      return { appendChild() {}, className: '', style: {} };
+    },
+  };
+  globalThis.window = {
+    innerWidth: 800,
+    innerHeight: 600,
+    devicePixelRatio: 1,
+    addEventListener() {},
+  };
+
+  try {
+    const mockWorld = {
+      mapData: {
+        bounds: { half: 1000 },
+        roads: [],
+        pois: [],
+        zones: [],
+      },
+    };
+    const markers = [
+      { kind: 'police', x: 200, z: -200, yaw: 1.2 },
+      { kind: 'heli', x: 250, z: -220, yaw: 0.4, search: { x: 200, z: -200, r: 30 } },
+    ];
+    const map = new MapScreen({ appendChild() {} }, mockWorld, () => markers);
+    map.render(null);
+
+    const arcCalls = g.calls.filter((c) => c.fn === 'arc');
+    assert.ok(arcCalls.length >= 2, 'heli searchlight circle and heli center hub drawn');
+
+    const rotateCalls = g.calls.filter((c) => c.fn === 'rotate');
+    assert.ok(rotateCalls.length >= 2, 'police car and helicopter rotated');
+  } finally {
+    globalThis.document = saved;
+    globalThis.window = savedWindow;
   }
 });
