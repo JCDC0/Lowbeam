@@ -62,9 +62,10 @@ test('needles sweep clockwise and stop at the ends of the scale', () => {
   assert.ok(Math.abs(needleAngle(f, 0.5)) < 1e-9, 'a half tank points straight up');
 });
 
-test('each car has its own kind of instruments: dials in three faces, an LCD and a VFD', () => {
+test('each car has its own kind of instruments: dials in four faces, an LCD and a VFD', () => {
   const cluster = (id) => DASHES[id].find((p) => p.pod === 'cluster');
-  assert.ok(cluster('hayate').gauges.every((g) => !g.face || g.face === 'classic') && !cluster('hayate').screen);
+  assert.equal(cluster('hayate').gauges.find((g) => g.type === 'tach').face, 'tuner', 'the tuner swapped in a racing tach');
+  assert.ok(cluster('hayate').gauges.filter((g) => g.type !== 'tach').every((g) => !g.face || g.face === 'classic') && !cluster('hayate').screen);
   assert.ok(cluster('rampart').gauges.every((g) => g.face === 'white'));
   assert.equal(cluster('vespera').gauges.find((g) => g.type === 'tach').face, 'yellow');
   assert.equal(cluster('tsurugi').screen, 'lcd');

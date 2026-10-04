@@ -221,7 +221,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-row click" data-row="cluster">
             <span class="ac-rlabel">SPEEDOMETER</span>
             <span class="ac-pill click" data-act="toggle-cluster" id="set-cluster-val">PER CAR</span>
-            <span class="hints-inline">PER CAR / CLASSIC / TWIN / SPORT / DIGITAL / VFD</span>
+            <span class="hints-inline">PER CAR / CLASSIC / RACING / TWIN / SPORT / DIGITAL / VFD</span>
           </div>
           ${CHANNELS.map((c) => `
             <div class="ac-row click" data-row="${c}">
@@ -247,7 +247,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
             <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 is the authentic PS1 resolution; 480 (default) keeps the dither and 15-bit color with a clearer picture.<br><br>
-            <b>SPEEDOMETER:</b> HUD cluster style in outside views. PER CAR matches each vehicle's instruments; or lock to Classic, Twin, Sport, Digital or VFD.<br><br>
+            <b>SPEEDOMETER:</b> HUD cluster style in outside views. PER CAR matches each vehicle's instruments; or lock to Classic, Racing, Twin, Sport, Digital or VFD.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
         </div>
@@ -263,7 +263,7 @@ export function settingsScreen(ui, stage = null) {
   const renderEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-render-val'));
   const clusterEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-cluster-val'));
   const CLUSTER_CHOICES = ['car', ...CLUSTER_STYLES];
-  const CLUSTER_LABELS = { car: 'PER CAR', classic: 'CLASSIC', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
+  const CLUSTER_LABELS = { car: 'PER CAR', classic: 'CLASSIC', tuner: 'RACING TACH', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
   let sel = 0;
   /** @type {string | null} */
   let clickedAction = null;

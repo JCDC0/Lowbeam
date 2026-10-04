@@ -1,33 +1,36 @@
 /**
  * The HUD cluster styles other than the classic one (`cluster.js`), each the outside-view twin of a
- * car's own dashboard, drawn with the same painters as the cockpit (`vehicles/instruments.js`):
+ * car's own dashboard, drawn with the same painters as the cockpit (`vehicles/instruments.js`). Like
+ * the classic one they float over the scene: no board or housing behind them, only the gauges.
  *
- * - `twin` (Rampart): two big cream dials with numerals and red needles in a chrome-ringed housing,
- *   the gear in a window between them over small fuel and temperature bars and a shift lamp.
- * - `sport` (Vespera): one big yellow tach with the speed in a digital window inside it, the gear,
- *   five shift lights and fuel and temperature bars beside it.
- * - `digital` (Tsurugi): the modern LCD (`lcd`) in a glass bezel.
- * - `vfd` (Hikari): the 1984 fluorescent display (`vfd`) in its bezel.
+ * - `tuner` (Hayate): an aftermarket racing tach, black with red lit ticks and numerals and the speed
+ *   in its LCD window, two small racing gauges for boost and temperature, a red fuel bar.
+ * - `twin` (Rampart): two big cream dials with numerals and red needles in chrome rings, the gear in a
+ *   small window between them over fuel and temperature bars, a shift lamp.
+ * - `sport` (Vespera): one big yellow tach with the speed in a digital window in its open bottom; the
+ *   gear, five shift lights and fuel and temperature bars beside it.
+ * - `digital` (Tsurugi) and `vfd` (Hikari): the cockpit's LCD and fluorescent display with no glass
+ *   behind them, leaned and tilted like a car display in Cyberpunk 2077, the lit segments glowing and
+ *   the unlit ones a faint tint.
  *
  * Every style draws the warning lamps (CHECK, DMG, REV, ENG OFF, HOT) in its own look and the shift
- * light. All of them fill the classic cluster's 400 by 300 canvas from the bottom, so the anchor and
- * footprint stay the same.
+ * light, in the classic cluster's 400 by 300 canvas, so the anchor and footprint stay the same.
  */
 
 import { FONT } from '../render/fonts.js';
-import { paintDial, paintNeedle, paintScreen, readingOf } from '../vehicles/instruments.js';
+import { paintDial, paintNeedle, paintScreen, paintTunerReadout, readingOf } from '../vehicles/instruments.js';
 
 /** @typedef {import('../vehicles/gauges.js').Gauges} Gauges */
 /** @typedef {import('../vehicles/specs.js').CarSpec} CarSpec */
-/** @typedef {'classic' | 'twin' | 'sport' | 'digital' | 'vfd'} ClusterStyle */
+/** @typedef {'classic' | 'tuner' | 'twin' | 'sport' | 'digital' | 'vfd'} ClusterStyle */
 /**
  * Paints a dial face; the Cluster passes one that caches each face as an image.
  * @typedef {(g: CanvasRenderingContext2D, cx: number, cy: number, m: number,
- *   type: import('../vehicles/dash.js').GaugeType, spec: CarSpec, face: 'classic' | 'white' | 'yellow') => void} DialPainter
+ *   type: import('../vehicles/dash.js').GaugeType, spec: CarSpec, face: import('../vehicles/dash.js').GaugeFace) => void} DialPainter
  */
 
 /** @type {ClusterStyle[]} */
-export const CLUSTER_STYLES = ['classic', 'twin', 'sport', 'digital', 'vfd'];
+export const CLUSTER_STYLES = ['classic', 'tuner', 'twin', 'sport', 'digital', 'vfd'];
 
 /** A car's own HUD style, or the override if one is chosen. @param {CarSpec} spec @param {string | null} [override] */
 export function clusterStyleOf(spec, override = null) {
@@ -85,56 +88,77 @@ function rrect(g, x, y, w, h, r) {
   g.arc(x + r, y + r, r, Math.PI, Math.PI * 1.5);
 }
 
-function housing(g, x, y, w, h, r, fill, edge, lw) {
-  rrect(g, x, y, w, h, r);
-  g.fillStyle = fill;
-  g.fill();
-  g.strokeStyle = edge;
-  g.lineWidth = lw;
+/** A dark shadow under floating text and bars, so they read over a lit road. */
+function shade(g, on = true) {
+  g.shadowColor = 'rgba(0, 0, 0, 0.85)';
+  g.shadowBlur = on ? 4 : 0;
+}
+
+/** A chrome or steel ring round a dial. */
+function ring(g, x, y, r, color, width) {
+  g.strokeStyle = color;
+  g.lineWidth = width;
+  g.beginPath();
+  g.arc(x, y, r, 0, Math.PI * 2);
   g.stroke();
 }
 
 /**
- * The lamps in a row between x0 and x1, centered on y.
+ * The analog styles' lamps: only the lit ones, as small pills centered on x, so nothing is drawn
+ * over the scene when all is well.
  * @param {CanvasRenderingContext2D} g @param {ReturnType<typeof warningLamps>} lamps
- * @param {'analog' | 'lcd' | 'vfd'} look
  */
-function lampRow(g, x0, x1, y, lamps, look) {
+function litPills(g, x, y, lamps) {
+  const on = lamps.filter((l) => l.on);
+  const w = 52;
+  let px = x - (on.length * w) / 2;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.font = `bold 10px ${FONT.mono}`;
+  for (const l of on) {
+    const color = l.red ? '#ff3a2a' : '#ffa020';
+    rrect(g, px + 2, y - 8, w - 4, 16, 3);
+    g.fillStyle = color;
+    g.shadowColor = color;
+    g.shadowBlur = 8;
+    g.fill();
+    g.shadowBlur = 0;
+    g.fillStyle = '#140a04';
+    g.fillText(l.label, px + w / 2, y + 1);
+    px += w;
+  }
+}
+
+/**
+ * The digital styles' lamps: every one as text, the lit ones glowing, the unlit a faint tint.
+ * @param {CanvasRenderingContext2D} g @param {ReturnType<typeof warningLamps>} lamps @param {'lcd' | 'vfd'} kind
+ */
+function lampText(g, x0, x1, y, lamps, kind) {
   const step = (x1 - x0) / lamps.length;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
+  g.font = `bold 11px ${FONT.mono}`;
   lamps.forEach((l, i) => {
-    const x = x0 + step * (i + 0.5);
     const color = l.red ? '#ff3a2a' : '#ffa020';
-    if (look === 'analog') {
-      rrect(g, x - step / 2 + 3, y - 8, step - 6, 16, 3);
-      g.fillStyle = l.on ? color : '#18181b';
-      g.fill();
-      g.font = `bold 10px ${FONT.mono}`;
-      g.fillStyle = l.on ? '#140a04' : '#3c3c42';
-      g.fillText(l.label, x, y + 1);
-    } else {
-      g.font = `bold 11px ${FONT.mono}`;
-      if (look === 'vfd' && l.on) {
-        g.shadowColor = color;
-        g.shadowBlur = 8;
-      }
-      g.fillStyle = l.on ? color : look === 'vfd' ? '#2a1e08' : '#0f2a30';
-      g.fillText(l.label, x, y);
-      g.shadowBlur = 0;
-    }
+    g.fillStyle = l.on ? color : kind === 'lcd' ? 'rgba(70, 232, 255, 0.2)' : 'rgba(255, 176, 46, 0.2)';
+    g.shadowColor = color;
+    g.shadowBlur = l.on ? 8 : 0;
+    g.fillText(l.label, x0 + step * (i + 0.5), y);
   });
+  g.shadowBlur = 0;
 }
 
-/** A short horizontal bar with a label, for fuel and temperature beside analog dials. */
+/** A short horizontal bar with a label, for fuel and temperature beside a dial. */
 function hbar(g, label, x, y, w, frac, fill, warn) {
+  shade(g);
   g.font = `bold 12px ${FONT.mono}`;
   g.textAlign = 'right';
   g.textBaseline = 'middle';
   g.fillStyle = fill;
   g.fillText(label, x - 6, y + 6);
-  g.fillStyle = '#0c0c0e';
+  g.fillStyle = 'rgba(8, 8, 10, 0.7)';
   g.fillRect(x, y, w, 12);
+  shade(g, false);
   g.fillStyle = warn ? '#ff3a2a' : fill;
   g.fillRect(x + 2, y + 2, (w - 4) * Math.max(0, Math.min(1, frac)), 8);
 }
@@ -154,70 +178,128 @@ export function drawStyled(g, style, gs, spec, t, dial = paintDial, w = W, h = H
   g.translate((w - W * s) / 2, (h - H * s) / 2);
   g.scale(s, s);
   const lamps = warningLamps(gs, t);
-  if (style === 'twin') drawTwin(g, gs, spec, t, dial, lamps);
+  if (style === 'tuner') drawTuner(g, gs, spec, t, dial, lamps);
+  else if (style === 'twin') drawTwin(g, gs, spec, t, dial, lamps);
   else if (style === 'sport') drawSport(g, gs, spec, t, dial, lamps);
   else drawScreenStyle(g, style === 'vfd' ? 'vfd' : 'lcd', gs, spec, t, lamps);
+  g.shadowBlur = 0;
   g.restore();
 }
 
 /** @param {CanvasRenderingContext2D} g @param {Gauges} gs @param {CarSpec} spec @param {number} t @param {DialPainter} dial */
+function drawTuner(g, gs, spec, t, dial, lamps) {
+  const shift = shiftLightsLit(gs, spec, 1, t) > 0;
+  const gauge = (type, x, y, m, value, readout, flash) => {
+    ring(g, x, y, m + 4, '#2a2c32', 9);
+    ring(g, x, y, m + 4, flash ? '#ff4030' : '#c4c8d0', 5);
+    if (flash) {
+      g.shadowColor = '#ff4030';
+      g.shadowBlur = 14;
+      ring(g, x, y, m + 4, '#ff4030', 3);
+      g.shadowBlur = 0;
+    }
+    dial(g, x, y, m, type, spec, 'tuner');
+    paintTunerReadout(g, x, y, m, readout);
+    paintNeedle(g, x, y, m, type, spec, value, '#ff3a20', 'tuner');
+  };
+  const cx = 280;
+  const cy = 166;
+  const R = 108;
+  gauge('tach', cx, cy, R, gs.rpm, String(Math.round(gs.kmh)), shift);
+  // The gear in white segments under the hub, above the 0, its unlit segments showing.
+  g.font = `bold ${Math.round(R * 0.2)}px ${FONT.seg14}`;
+  g.textAlign = 'center';
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = 'rgba(255, 255, 255, 0.07)';
+  g.fillText('~', cx - R * 0.05, cy + R * 0.38);
+  g.fillStyle = gs.blown ? '#ff3a2a' : '#f4f8ff';
+  g.shadowColor = g.fillStyle;
+  g.shadowBlur = 8;
+  g.fillText(gs.gear, cx - R * 0.05, cy + R * 0.38);
+  g.shadowBlur = 0;
+  const boost = gs.turbo ? gs.boost : gs.intake;
+  gauge('boost', 88, 100, 50, boost, `${boost >= 0 ? '' : '-'}${Math.abs(boost).toFixed(1)}`, false);
+  gauge('temp', 88, 214, 50, gs.temp ?? 84, String(Math.round(gs.temp ?? 84)), (gs.temp ?? 84) >= 115);
+  // Fuel: ten red segments under the small gauges.
+  const f = fuelOf(gs);
+  const lit = Math.round(f * 10);
+  shade(g);
+  g.font = `bold 9px ${FONT.tech}`;
+  g.textAlign = 'left';
+  g.textBaseline = 'middle';
+  g.fillStyle = '#ff3a26';
+  g.fillText('FUEL', 40, 281);
+  for (let i = 0; i < 10; i++) {
+    const on = i < lit;
+    g.fillStyle = on ? (f < 0.15 && Math.floor(t * 4) % 2 ? '#ffe6dc' : '#ff3a26') : 'rgba(255, 58, 38, 0.18)';
+    g.shadowColor = on ? '#ff3a26' : 'rgba(0, 0, 0, 0.85)';
+    g.shadowBlur = on ? 6 : 3;
+    g.fillRect(76 + i * 7, 276, 5, 11);
+  }
+  g.shadowBlur = 0;
+  litPills(g, cx, 30, lamps);
+}
+
+/** @param {CanvasRenderingContext2D} g @param {Gauges} gs @param {CarSpec} spec @param {number} t @param {DialPainter} dial */
 function drawTwin(g, gs, spec, t, dial, lamps) {
-  housing(g, 8, 100, 384, 196, 40, 'rgba(10, 10, 12, 0.9)', '#8e8e96', 3);
-  lampRow(g, 40, 360, 118, lamps, 'analog');
   const R = 78;
-  const y = 212;
+  const y = 208;
   for (const [type, x, value] of /** @type {const} */ ([['speed', 96, gs.kmh], ['tach', 304, gs.rpm]])) {
-    g.strokeStyle = '#cfcfd6';
-    g.lineWidth = 6;
-    g.beginPath();
-    g.arc(x, y, R + 4, 0, Math.PI * 2);
-    g.stroke();
+    shade(g);
+    ring(g, x, y, R + 4, '#cfcfd6', 6);
+    shade(g, false);
+    ring(g, x, y, R + 1, '#6a6a72', 1.5);
     dial(g, x, y, R, type, spec, 'white');
     paintNeedle(g, x, y, R, type, spec, value, '#d01010');
   }
   // Between the dials: the shift lamp, fuel and temperature bars, the gear window.
   const lit = shiftLightsLit(gs, spec, 1, t) > 0;
-  g.fillStyle = lit ? '#ff3020' : '#2a0c08';
+  g.fillStyle = lit ? '#ff3020' : 'rgba(80, 20, 14, 0.8)';
+  g.shadowColor = '#ff3020';
+  g.shadowBlur = lit ? 10 : 0;
   g.beginPath();
-  g.arc(200, 150, 7, 0, Math.PI * 2);
+  g.arc(200, 150, 6, 0, Math.PI * 2);
   g.fill();
   const bars = [['F', fuelOf(gs), fuelOf(gs) < 0.15], ['T', tempOf(gs), (gs.temp ?? 84) > 110]];
   bars.forEach(([label, f, warn], i) => {
-    const x = 186 + i * 22;
-    g.fillStyle = '#050506';
-    g.fillRect(x - 1, 166, 9, 66);
+    const x = 187 + i * 20;
+    shade(g);
+    g.fillStyle = 'rgba(8, 8, 10, 0.75)';
+    g.fillRect(x - 1, 166, 9, 62);
+    shade(g, false);
     g.fillStyle = warn ? '#ff3a2a' : '#f2eee2';
-    const fh = 62 * Math.max(0, Math.min(1, Number(f)));
-    g.fillRect(x + 1, 230 - fh, 5, fh);
+    const fh = 58 * Math.max(0, Math.min(1, Number(f)));
+    g.fillRect(x + 1, 226 - fh, 5, fh);
+    shade(g);
     g.font = `bold 10px ${FONT.mono}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillStyle = '#b8b4a8';
-    g.fillText(String(label), x + 3.5, 242);
+    g.fillStyle = '#f2eee2';
+    g.fillText(String(label), x + 3.5, 238);
   });
-  g.fillStyle = '#020203';
-  g.fillRect(182, 252, 36, 34);
-  g.strokeStyle = '#5a5a62';
+  rrect(g, 184, 250, 32, 32, 4);
+  g.fillStyle = 'rgba(4, 4, 6, 0.85)';
+  g.fill();
+  shade(g, false);
+  g.strokeStyle = '#cfcfd6';
   g.lineWidth = 2;
-  g.strokeRect(182, 252, 36, 34);
-  g.font = `bold 26px ${FONT.mono}`;
+  g.stroke();
+  g.font = `bold 24px ${FONT.mono}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillStyle = gs.blown ? '#ff3a2a' : '#f2eee2';
-  g.fillText(gs.gear, 200, 270);
+  g.fillText(gs.gear, 200, 267);
+  litPills(g, 200, 112, lamps);
 }
 
 /** @param {CanvasRenderingContext2D} g @param {Gauges} gs @param {CarSpec} spec @param {number} t @param {DialPainter} dial */
 function drawSport(g, gs, spec, t, dial, lamps) {
-  housing(g, 8, 56, 384, 240, 44, 'rgba(12, 10, 6, 0.9)', '#4a4130', 3);
   const cx = 262;
   const cy = 178;
   const R = 106;
-  g.strokeStyle = '#2a2418';
-  g.lineWidth = 6;
-  g.beginPath();
-  g.arc(cx, cy, R + 4, 0, Math.PI * 2);
-  g.stroke();
+  shade(g);
+  ring(g, cx, cy, R + 4, '#2a2418', 7);
+  shade(g, false);
   dial(g, cx, cy, R, 'tach', spec, 'yellow');
   // The speed in a black window in the open bottom of the tach, clear of the numerals.
   rrect(g, cx - 40, cy + 62, 80, 34, 5);
@@ -235,46 +317,53 @@ function drawSport(g, gs, spec, t, dial, lamps) {
   g.fillStyle = '#141414';
   g.fillText('km/h', cx, cy + 54);
   paintNeedle(g, cx, cy, R, 'tach', spec, gs.rpm, '#d01010');
-  // Left column: the gear, the shift lights, fuel and temperature, the lamps.
-  rrect(g, 44, 74, 72, 76, 8);
-  g.fillStyle = '#060606';
+  // Beside it: the gear, the shift lights, fuel and temperature, each floating on its own.
+  shade(g);
+  rrect(g, 52, 88, 64, 70, 8);
+  g.fillStyle = 'rgba(6, 6, 6, 0.82)';
   g.fill();
+  shade(g, false);
   g.strokeStyle = '#f2cc2a';
   g.lineWidth = 2;
   g.stroke();
-  g.font = `bold 54px ${FONT.mono}`;
+  g.font = `bold 50px ${FONT.mono}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillStyle = gs.blown ? '#ff3a2a' : '#f6f2e6';
-  g.fillText(gs.gear, 80, 114);
+  g.fillText(gs.gear, 84, 125);
   const n = 5;
   const lit = shiftLightsLit(gs, spec, n, t);
   for (let i = 0; i < n; i++) {
-    g.fillStyle = i < lit ? (i >= 3 || gs.shift ? '#ff3020' : '#3aff6a') : '#1a1a16';
+    const on = i < lit;
+    const color = i >= 3 || gs.shift ? '#ff3020' : '#3aff6a';
+    g.fillStyle = on ? color : 'rgba(30, 30, 26, 0.8)';
+    g.shadowColor = on ? color : 'rgba(0, 0, 0, 0.85)';
+    g.shadowBlur = on ? 10 : 3;
     g.beginPath();
-    g.arc(36 + i * 22, 170, 7, 0, Math.PI * 2);
+    g.arc(40 + i * 22, 178, 7, 0, Math.PI * 2);
     g.fill();
   }
-  hbar(g, 'F', 44, 192, 94, fuelOf(gs), '#f2cc2a', fuelOf(gs) < 0.15);
-  hbar(g, 'T', 44, 214, 94, tempOf(gs), '#f2cc2a', (gs.temp ?? 84) > 110);
-  lampRow(g, 22, 146, 248, lamps.slice(0, 3), 'analog');
-  lampRow(g, 22, 146, 270, lamps.slice(3), 'analog');
+  g.shadowBlur = 0;
+  hbar(g, 'F', 48, 202, 94, fuelOf(gs), '#f2cc2a', fuelOf(gs) < 0.15);
+  hbar(g, 'T', 48, 224, 94, tempOf(gs), '#f2cc2a', (gs.temp ?? 84) > 110);
+  litPills(g, 90, 262, lamps.slice(0, 3));
+  litPills(g, 90, 284, lamps.slice(3));
 }
 
 /**
- * The digital styles: the same screen the cockpit shows, in a bezel with the lamps above it.
+ * The digital styles: the cockpit's screen with no glass behind it, leaned forward and rising to
+ * the right like a car display in Cyberpunk 2077, the lamps along its top edge.
  * @param {CanvasRenderingContext2D} g @param {'lcd' | 'vfd'} kind @param {Gauges} gs @param {CarSpec} spec @param {number} t
  */
 function drawScreenStyle(g, kind, gs, spec, t, lamps) {
   const sw = 128 * SCREEN_ASPECT[kind];
-  const k = 380 / sw;
+  const k = 330 / sw;
   const sh = 128 * k;
-  const top = 290 - sh;
-  housing(g, 4, top - 34, 392, sh + 40, kind === 'lcd' ? 22 : 14, kind === 'lcd' ? '#050608' : '#0a0c0b', kind === 'lcd' ? '#1d2a30' : '#2a2f2c', 3);
-  lampRow(g, 30, 370, top - 16, lamps, kind === 'lcd' ? 'lcd' : 'vfd');
   g.save();
-  g.translate(10, top);
+  g.translate(48, 292 - sh);
+  g.transform(1, -0.07, -0.24, 1, 0, 0);
+  lampText(g, 20, sw * k - 10, -10, lamps, kind);
   g.scale(k, k);
-  paintScreen(g, kind, sw, 128, readingOf(gs, spec, t), spec);
+  paintScreen(g, kind, sw, 128, readingOf(gs, spec, t), spec, true);
   g.restore();
 }

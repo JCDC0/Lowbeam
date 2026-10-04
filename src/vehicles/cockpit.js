@@ -12,9 +12,10 @@ import * as THREE from 'three';
 import { MeshBuilder } from '../render/builder.js';
 import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
 import { canvasTexture, makeCanvas } from '../render/textures.js';
-import { DASHES, gaugeScale, needleAngle } from './dash.js';
+import { DASHES, dialAngle, gaugeScale, needleAngle } from './dash.js';
 import { makeScreen } from './screens.js';
 import { FACES, paintDial, readingOf } from './instruments.js';
+import { FONT } from '../render/fonts.js';
 
 export { DASHES, gaugeScale, needleAngle };
 
@@ -59,8 +60,8 @@ function drawFace(type, spec, face = 'classic') {
   return canvasTexture(c);
 }
 
-/** A small text texture, redrawn on change (the gear readout). */
-function textTexture(w, h) {
+/** A small text texture, redrawn on change (the gear readout, the racing tach's speed). */
+function textTexture(w, h, font = '"Lowbeam Display", sans-serif', align = 'center') {
   const c = makeCanvas(w, h);
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
   const tex = canvasTexture(c);
@@ -73,10 +74,10 @@ function textTexture(w, h) {
       g.fillStyle = '#050607';
       g.fillRect(0, 0, w, h);
       g.fillStyle = color;
-      g.textAlign = 'center';
+      g.textAlign = /** @type {CanvasTextAlign} */ (align);
       g.textBaseline = 'middle';
-      g.font = `bold ${Math.floor(h * 0.8)}px "Lowbeam Display", sans-serif`;
-      g.fillText(text, w / 2, h / 2 + 1);
+      g.font = `bold ${Math.floor(h * 0.8)}px ${font}`;
+      g.fillText(text, align === 'right' ? w - 2 : w / 2, h / 2 + 1);
       tex.needsUpdate = true;
     },
   };
@@ -150,7 +151,7 @@ function makeGauge(spot, spec, mats) {
   const cap = new THREE.Mesh(new THREE.CircleGeometry(spot.r * 0.13, 10), mats.can);
   cap.position.z = 0.009;
   grp.add(can, bezel, face, pivot, cap);
-  return { grp, pivot, scale: gaugeScale(spot.type, spec), type: spot.type, faceMat, value: gaugeScale(spot.type, spec).min };
+  return { grp, pivot, scale: gaugeScale(spot.type, spec), type: spot.type, face: spot.face, faceMat, value: gaugeScale(spot.type, spec).min };
 }
 
 /**
@@ -249,6 +250,9 @@ export function buildCockpit(model) {
   const extras = [];
   let shiftLamp = null;
   let gear = null;
+  /** The live speed in a racing tach's LCD window. */
+  let speedLcd = null;
+  let gearColor = '#ffb020';
   let warn = null;
   /** @type {ReturnType<typeof makeScreen> | null} */
   let screen = null;
@@ -300,6 +304,18 @@ export function buildCockpit(model) {
       gq.position.set(tach.u, tach.v - tach.r * 0.5, 0.011);
       frame.add(gq);
       extras.push(gm, gear.tex, gq.geometry);
+      if (tach.face === 'tuner') {
+        // The racing tach: the gear small and white under the hub, the speed in its LCD window.
+        gearColor = '#f4f8ff';
+        gq.scale.setScalar(0.62);
+        gq.position.set(tach.u - tach.r * 0.05, tach.v - tach.r * 0.3, 0.011);
+        speedLcd = textTexture(64, 32, FONT.seg7, 'right');
+        const sm = psxBasic({ map: speedLcd.tex });
+        const sq = new THREE.Mesh(new THREE.PlaneGeometry(tach.r * 0.62, tach.r * 0.31), sm);
+        sq.position.set(tach.u + tach.r * 0.45, tach.v - tach.r * 0.43, 0.011);
+        frame.add(sq);
+        extras.push(sm, speedLcd.tex, sq.geometry);
+      }
       if (pod.shift) {
         shiftLamp = new THREE.Mesh(new THREE.PlaneGeometry(tach.r * 0.9, 0.008), psxBasic({ color: 0x1a0c08 }));
         shiftLamp.position.set(tach.u, tach.v + tach.r + 0.016, 0.004);
@@ -366,12 +382,13 @@ export function buildCockpit(model) {
                       : g.engineOn ? 13.9 + 0.3 * Math.sin(time * 0.7) : 12.2;
         const rate = gg.type === 'tach' || gg.type === 'boost' ? 30 : 10;
         gg.value += (target - gg.value) * Math.min(1, rate * dt);
-        gg.pivot.rotation.z = -needleAngle(gg.scale, gg.value);
+        gg.pivot.rotation.z = -dialAngle(gg.scale, gg.value, gg.face);
       }
       if (screen) {
         screen.draw(readingOf(g, spec, time));
       }
-      if (gear) gear.set(g.gear, g.blown ? '#ff3020' : '#ffb020');
+      if (gear) gear.set(g.gear, g.blown ? '#ff3020' : gearColor);
+      if (speedLcd) speedLcd.set(String(Math.round(g.kmh)), '#f4f8ff');
       if (shiftLamp) /** @type {THREE.MeshBasicMaterial} */ (shiftLamp.material).color.set(g.limiter && Math.floor(time * 12) % 2 ? 0x101010 : g.shift || g.limiter ? 0xff2a10 : 0x1a0c08);
       if (warn) {
         const on = g.blown ? Math.floor(time * 3) % 2 === 0 : g.damage > 0.3 || g.temp > 115 || !g.engineOn;

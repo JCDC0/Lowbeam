@@ -15,6 +15,7 @@ function createMockContext() {
     restore: log('restore'),
     clearRect: log('clearRect'),
     translate: log('translate'),
+    transform: log('transform'),
     scale: log('scale'),
     beginPath: log('beginPath'),
     closePath: log('closePath'),
@@ -112,9 +113,9 @@ test('drawCluster renders both HUD and cockpit layouts for every car and gear 1.
   }
 });
 
-test('CLUSTER_STYLES lists five styles and clusterStyleOf picks correctly', async () => {
+test('CLUSTER_STYLES lists six styles and clusterStyleOf picks correctly', async () => {
   const { CLUSTER_STYLES, clusterStyleOf } = await import('../src/ui/cluster-styles.js');
-  assert.deepEqual(CLUSTER_STYLES, ['classic', 'twin', 'sport', 'digital', 'vfd']);
+  assert.deepEqual(CLUSTER_STYLES, ['classic', 'tuner', 'twin', 'sport', 'digital', 'vfd']);
 
   const mockSpec = { dash: { hud: 'sport' } };
   assert.equal(clusterStyleOf(/** @type {*} */ (mockSpec)), 'sport');

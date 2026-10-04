@@ -11,7 +11,7 @@
  */
 
 import { FONT } from '../render/fonts.js';
-import { gaugeScale, needleAngle, segmentsLit, tachZone } from './dash.js';
+import { dialAngle, gaugeScale, segmentsLit, tachZone } from './dash.js';
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
 
@@ -26,7 +26,11 @@ export const FACES = {
   classic: { inner: '#1a1c22', outer: '#0b0c0f', tick: '#e8e4da', red: '#d0201a', numerals: false, needle: 0xff5a1e },
   white: { inner: '#f2eee2', outer: '#d8d2c0', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
   yellow: { inner: '#f2cc2a', outer: '#d8a814', tick: '#141414', red: '#c01818', numerals: true, needle: 0xd01010 },
+  tuner: { inner: '#1c1c21', outer: '#040405', tick: '#ff3a26', red: '#ffe6dc', numerals: true, needle: 0xff3020 },
 };
+
+/** Units under a tuner gauge's readout. */
+const TUNER_UNIT = { tach: 'km/h', speed: 'km/h', boost: 'bar', temp: '°C', fuel: '%', oil: 'bar', volt: 'V' };
 
 /**
  * The reading a screen draws, from the gauges.
@@ -55,6 +59,10 @@ export function paintDial(g, cx, cy, m, type, spec, face = 'classic', square = f
     g.fillStyle = '#07080a';
     g.fillRect(cx - m, cy - m, m * 2, m * 2);
   }
+  if (face === 'tuner') {
+    paintTuner(g, cx, cy, m, type, sc);
+    return;
+  }
   const grad = g.createRadialGradient(cx, cy - m * 0.15, 4, cx, cy, m);
   grad.addColorStop(0, F.inner);
   grad.addColorStop(1, F.outer);
@@ -69,15 +77,15 @@ export function paintDial(g, cx, cy, m, type, spec, face = 'classic', square = f
     g.strokeStyle = F.red;
     g.lineWidth = (sc.small ? 7 : 6) * k;
     g.beginPath();
-    const a0 = needleAngle(sc, sc.red) - Math.PI / 2;
-    const a1 = needleAngle(sc, sc.max) - Math.PI / 2;
+    const a0 = dialAngle(sc, sc.red, face) - Math.PI / 2;
+    const a1 = dialAngle(sc, sc.max, face) - Math.PI / 2;
     g.arc(cx, cy, R - 3 * k, a0, a1);
     g.stroke();
   }
   g.strokeStyle = F.tick;
   for (let v = sc.min; v <= sc.max + 1e-6; v += sc.minor) {
     const major = Math.abs(((v - sc.min) / sc.major) - Math.round((v - sc.min) / sc.major)) < 1e-6;
-    const a = needleAngle(sc, v);
+    const a = dialAngle(sc, v, face);
     const [x0, y0] = toXY(a, R);
     const [x1, y1] = toXY(a, R - (major ? 13 : 7) * k);
     g.lineWidth = (major ? 4 : 2) * k;
@@ -105,22 +113,118 @@ export function paintDial(g, cx, cy, m, type, spec, face = 'classic', square = f
 }
 
 /**
- * A needle from just behind the hub to near the rim, and the hub over it.
+ * The aftermarket racing face: black, every tick and numeral lit red (white from the redline on),
+ * X1000 and the unit word in red, and the dark LCD window in the open lower right with its unlit
+ * segments showing. The live digits go on with `paintTunerReadout`.
+ * @param {CanvasRenderingContext2D} g @param {number} cx @param {number} cy @param {number} m
+ * @param {import('./dash.js').GaugeType} type @param {ReturnType<typeof gaugeScale>} sc
+ */
+function paintTuner(g, cx, cy, m, type, sc) {
+  const F = FACES.tuner;
+  const k = m / 64;
+  const grad = g.createRadialGradient(cx, cy - m * 0.25, 2, cx, cy, m);
+  grad.addColorStop(0, F.inner);
+  grad.addColorStop(1, F.outer);
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(cx, cy, m - 1, 0, Math.PI * 2);
+  g.fill();
+  const toXY = (a, rr) => [cx + Math.sin(a) * rr, cy - Math.cos(a) * rr];
+  const R = m - 5 * k;
+  for (let v = sc.min; v <= sc.max + 1e-6; v += sc.minor) {
+    const major = Math.abs(((v - sc.min) / sc.major) - Math.round((v - sc.min) / sc.major)) < 1e-6;
+    const color = v >= sc.red - 1e-6 ? F.red : F.tick;
+    const a = dialAngle(sc, v, 'tuner');
+    const [x0, y0] = toXY(a, R);
+    const [x1, y1] = toXY(a, R - (major ? 14 : 7) * k);
+    g.strokeStyle = color;
+    g.shadowColor = color;
+    g.shadowBlur = 4 * k;
+    g.lineWidth = (major ? 3.6 : 1.8) * k;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x1, y1);
+    g.stroke();
+    if (major && !sc.small) {
+      const [tx, ty] = toXY(a, R - 25 * k);
+      g.fillStyle = color;
+      g.font = `bold ${Math.round(13 * k)}px ${FONT.tech}`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(String(Math.round((v / sc.div) * 10) / 10), tx, ty);
+    }
+  }
+  g.fillStyle = F.tick;
+  g.shadowColor = F.tick;
+  g.textBaseline = 'middle';
+  g.font = `bold ${Math.round(6 * k)}px ${FONT.tech}`;
+  if (type === 'tach') {
+    g.textAlign = 'center';
+    g.fillText('X1000', cx - m * 0.25, cy + m * 0.06);
+  }
+  g.textAlign = 'right';
+  g.font = `bold ${Math.round(9 * k)}px ${FONT.tech}`;
+  g.fillText(type === 'tach' ? 'RPM' : sc.label, cx + m * 0.78, cy + m * 0.16);
+  g.shadowBlur = 0;
+  const b = tunerBox(cx, cy, m);
+  g.fillStyle = '#08090b';
+  g.fillRect(b.x, b.y, b.w, b.h);
+  g.strokeStyle = '#26282e';
+  g.lineWidth = Math.max(1, k);
+  g.strokeRect(b.x, b.y, b.w, b.h);
+  paintTunerReadout(g, cx, cy, m, '888', 'rgba(255, 255, 255, 0.07)', false);
+  g.fillStyle = F.tick;
+  g.font = `${Math.round(6 * k)}px ${FONT.mono}`;
+  g.textAlign = 'right';
+  g.textBaseline = 'top';
+  g.fillText(TUNER_UNIT[type] ?? '', b.x + b.w, b.y + b.h + 2 * k);
+}
+
+/** Where a tuner gauge's LCD window sits. */
+function tunerBox(cx, cy, m) {
+  return { x: cx + m * 0.14, y: cy + m * 0.27, w: m * 0.62, h: m * 0.32 };
+}
+
+/**
+ * The live digits in a tuner gauge's LCD window, white with a glow.
+ * @param {CanvasRenderingContext2D} g @param {number} cx @param {number} cy @param {number} m
+ * @param {string} text @param {string} [color] @param {boolean} [glow]
+ */
+export function paintTunerReadout(g, cx, cy, m, text, color = '#f4f8ff', glow = true) {
+  const b = tunerBox(cx, cy, m);
+  g.font = `bold ${Math.round(b.h * 0.78)}px ${FONT.seg7}`;
+  g.textAlign = 'right';
+  g.textBaseline = 'alphabetic';
+  g.fillStyle = color;
+  g.shadowColor = color;
+  g.shadowBlur = glow ? m * 0.08 : 0;
+  g.fillText(text, b.x + b.w - m * 0.03, b.y + b.h * 0.88);
+  g.shadowBlur = 0;
+}
+
+/**
+ * A needle from just behind the hub to near the rim, and the hub over it. On the tuner face it is a
+ * lit red bar with a glow.
  * @param {CanvasRenderingContext2D} g @param {number} cx @param {number} cy @param {number} m
  * @param {import('./dash.js').GaugeType} type @param {CarSpec} spec @param {number} value
- * @param {string} color
+ * @param {string} color @param {import('./dash.js').GaugeFace} [face]
  */
-export function paintNeedle(g, cx, cy, m, type, spec, value, color) {
-  const a = needleAngle(gaugeScale(type, spec), value);
+export function paintNeedle(g, cx, cy, m, type, spec, value, color, face) {
+  const a = dialAngle(gaugeScale(type, spec), value, face);
   const s = Math.sin(a);
   const c = Math.cos(a);
   g.strokeStyle = color;
-  g.lineWidth = Math.max(2, m * 0.045);
+  g.lineWidth = Math.max(2, m * (face === 'tuner' ? 0.035 : 0.045));
   g.lineCap = 'round';
+  if (face === 'tuner') {
+    g.shadowColor = color;
+    g.shadowBlur = m * 0.1;
+  }
   g.beginPath();
   g.moveTo(cx - s * m * 0.16, cy + c * m * 0.16);
   g.lineTo(cx + s * m * 0.84, cy - c * m * 0.84);
   g.stroke();
+  g.shadowBlur = 0;
   g.lineCap = 'butt';
   g.fillStyle = '#101012';
   g.beginPath();
@@ -129,16 +233,33 @@ export function paintNeedle(g, cx, cy, m, type, spec, value, color) {
 }
 
 /**
- * Paints a digital cluster over the whole W by H area (laid out for H = 128).
+ * Paints a digital cluster over the whole W by H area (laid out for H = 128). `bare` leaves out the
+ * glass behind it and draws the unlit segments as a faint tint of their lit color, so it floats over
+ * the scene (the HUD, after Cyberpunk 2077's car displays); the lit elements glow.
  * @param {CanvasRenderingContext2D} g @param {'lcd' | 'vfd'} kind @param {number} W @param {number} H
- * @param {Reading} r @param {CarSpec} spec
+ * @param {Reading} r @param {CarSpec} spec @param {boolean} [bare]
  */
-export function paintScreen(g, kind, W, H, r, spec) {
+export function paintScreen(g, kind, W, H, r, spec, bare = false) {
   const flash = (r.shift || r.limiter) && Math.floor(r.time * 10) % 2 === 0;
   const tach = gaugeScale('tach', spec);
-  if (kind === 'lcd') drawLcd(g, W, H, r, spec, tach, flash);
-  else drawVfd(g, W, H, r, spec, tach, flash);
+  const c = bare ? (/** @type {string} */ x) => BARE[x] ?? x : (/** @type {string} */ x) => x;
+  if (kind === 'lcd') drawLcd(g, W, H, r, spec, tach, flash, c, bare);
+  else drawVfd(g, W, H, r, spec, tach, flash, c, bare);
+  g.shadowBlur = 0;
 }
+
+/** The unlit colors on glass, and what they become with no glass behind them. */
+const BARE = {
+  '#2a0808': 'rgba(255, 58, 42, 0.16)',
+  '#08262c': 'rgba(70, 232, 255, 0.16)',
+  '#0a1a1e': 'rgba(232, 251, 255, 0.09)',
+  '#0c2a18': 'rgba(90, 255, 138, 0.14)',
+  '#2a1e08': 'rgba(255, 176, 46, 0.15)',
+  '#2a0a08': 'rgba(255, 58, 42, 0.15)',
+  '#062226': 'rgba(70, 240, 255, 0.10)',
+  '#3a8a5a': '#6ac88a',
+  '#5a8a94': '#7ab8c4',
+};
 
 /** Right-aligned digits with every segment ghosted behind them. */
 function segDigits(g, text, ghost, x, y, size, font, lit, unlit) {
@@ -155,12 +276,18 @@ function segDigits(g, text, ghost, x, y, size, font, lit, unlit) {
  * @param {CanvasRenderingContext2D} g @param {Reading} r @param {import('./specs.js').CarSpec} spec
  * @param {ReturnType<typeof gaugeScale>} tach
  */
-function drawLcd(g, W, H, r, spec, tach, flash) {
-  g.fillStyle = '#020405';
-  g.fillRect(0, 0, W, H);
-  g.strokeStyle = '#0e2a33';
-  g.lineWidth = 2;
-  g.strokeRect(2, 2, W - 4, H - 4);
+function drawLcd(g, W, H, r, spec, tach, flash, c, bare) {
+  if (!bare) {
+    g.fillStyle = '#020405';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#0e2a33';
+    g.lineWidth = 2;
+    g.strokeRect(2, 2, W - 4, H - 4);
+  }
+  const glow = (on) => {
+    g.shadowColor = /** @type {string} */ (g.fillStyle);
+    g.shadowBlur = bare && on ? 7 : 0;
+  };
   // The tach: segments on an arc over the middle, from the lower left round to the lower right.
   const n = 44;
   const lit = segmentsLit(r.rpm, tach.max, n);
@@ -175,11 +302,13 @@ function drawLcd(g, W, H, r, spec, tach, flash) {
     g.arc(cx, cy, R, a0, a1);
     g.arc(cx, cy, R - 12, a1, a0, true);
     g.closePath();
-    g.fillStyle = i < lit ? (red ? '#ff3a2a' : flash ? '#ffffff' : '#46e8ff') : red ? '#2a0808' : '#08262c';
+    g.fillStyle = i < lit ? (red ? '#ff3a2a' : flash ? '#ffffff' : '#46e8ff') : c(red ? '#2a0808' : '#08262c');
+    glow(i < lit);
     g.fill();
   }
+  glow(false);
   g.font = `11px ${FONT.mono}`;
-  g.fillStyle = '#5a8a94';
+  g.fillStyle = c('#5a8a94');
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   for (let v = 0; v <= tach.max; v += 1000) {
@@ -187,7 +316,10 @@ function drawLcd(g, W, H, r, spec, tach, flash) {
     g.fillText(String(v / 1000), cx + Math.cos(a) * (R - 21), cy + Math.sin(a) * (R - 21));
   }
   // Speed under the arc, its unit beneath.
-  segDigits(g, String(Math.round(r.kmh)), '888', cx + 38, H * 0.8, 36, FONT.seg7, '#e8fbff', '#0a1a1e');
+  g.shadowColor = '#46e8ff';
+  g.shadowBlur = bare ? 6 : 0;
+  segDigits(g, String(Math.round(r.kmh)), '888', cx + 38, H * 0.8, 36, FONT.seg7, '#e8fbff', c('#0a1a1e'));
+  g.shadowBlur = 0;
   g.font = `11px ${FONT.mono}`;
   g.fillStyle = '#46e8ff';
   g.textAlign = 'center';
@@ -201,7 +333,7 @@ function drawLcd(g, W, H, r, spec, tach, flash) {
   g.font = `bold 26px ${FONT.seg14}`;
   g.textAlign = 'center';
   g.textBaseline = 'alphabetic';
-  g.fillStyle = '#0a1a1e';
+  g.fillStyle = c('#0a1a1e');
   g.fillText('~', gx + 16, H * 0.3 + 33);
   g.fillStyle = r.blown ? '#ff3a2a' : '#ffffff';
   g.fillText(r.gear, gx + 16, H * 0.3 + 33);
@@ -215,13 +347,13 @@ function drawLcd(g, W, H, r, spec, tach, flash) {
     const x = 10 + i * 12;
     const top = H * 0.3;
     const h = H * 0.42;
-    g.fillStyle = '#08262c';
+    g.fillStyle = c('#08262c');
     g.fillRect(x, top, 7, h);
     const f = Math.max(0, Math.min(1, Number(v)));
     g.fillStyle = String(color);
     g.fillRect(x, top + h * (1 - f), 7, h * f);
     g.font = `10px ${FONT.mono}`;
-    g.fillStyle = '#5a8a94';
+    g.fillStyle = c('#5a8a94');
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(String(label), x + 3.5, top + h + 9);
@@ -239,12 +371,14 @@ function drawLcd(g, W, H, r, spec, tach, flash) {
  * @param {CanvasRenderingContext2D} g @param {Reading} r @param {import('./specs.js').CarSpec} spec
  * @param {ReturnType<typeof gaugeScale>} tach
  */
-function drawVfd(g, W, H, r, spec, tach, flash) {
+function drawVfd(g, W, H, r, spec, tach, flash, c, bare) {
   g.shadowBlur = 0;
-  g.fillStyle = '#020a08';
-  g.fillRect(0, 0, W, H);
-  g.fillStyle = '#041410';
-  g.fillRect(4, 4, W - 8, H - 8);
+  if (!bare) {
+    g.fillStyle = '#020a08';
+    g.fillRect(0, 0, W, H);
+    g.fillStyle = '#041410';
+    g.fillRect(4, 4, W - 8, H - 8);
+  }
   const glow = (color) => {
     g.shadowColor = color;
     g.shadowBlur = 8;
@@ -252,7 +386,7 @@ function drawVfd(g, W, H, r, spec, tach, flash) {
   };
   const dim = (color) => {
     g.shadowBlur = 0;
-    g.fillStyle = color;
+    g.fillStyle = c(color);
   };
   const COLORS = { green: '#5aff8a', amber: '#ffb02e', red: '#ff3a2a' };
   const GHOST = { green: '#0c2a18', amber: '#2a1e08', red: '#2a0a08' };

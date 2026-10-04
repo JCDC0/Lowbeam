@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { CARS } from '../src/vehicles/specs.js';
 import { createGauges } from '../src/vehicles/gauges.js';
-import { gaugeScale } from '../src/vehicles/dash.js';
+import { dialAngle, gaugeScale } from '../src/vehicles/dash.js';
 import { paintDial, paintScreen, readingOf } from '../src/vehicles/instruments.js';
 import { CLUSTER_STYLES, drawStyled } from '../src/ui/cluster-styles.js';
 
@@ -67,4 +67,16 @@ test('every HUD style shows the gear, the digital ones the speed, and no tach nu
       assert.equal(past.length, 0, `${style} ${spec.id} tach numerals ${past}`);
     }
   }
+});
+
+test("the racing tach parks its needle straight down and sweeps to 3 o'clock", () => {
+  const sc = gaugeScale('tach', CARS[0]);
+  assert.equal(dialAngle(sc, 0, 'tuner'), Math.PI);
+  assert.ok(Math.abs(dialAngle(sc, sc.max, 'tuner') - Math.PI * 2.5) < 1e-9);
+  assert.equal(dialAngle(sc, sc.max * 2, 'tuner'), dialAngle(sc, sc.max, 'tuner'));
+  const ctx = mockContext();
+  paintDial(/** @type {*} */ (ctx), 96, 96, 96, 'tach', CARS[0], 'tuner');
+  const t = texts(ctx);
+  assert.ok(t.includes('RPM') && t.includes('X1000') && t.includes('km/h'));
+  for (let n = 0; n <= sc.max / 1000; n++) assert.ok(t.includes(String(n)), `numeral ${n}`);
 });

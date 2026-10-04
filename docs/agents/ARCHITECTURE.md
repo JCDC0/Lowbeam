@@ -76,7 +76,7 @@ wav, json, txt, png) for other captures such as rendered audio.
 | `src/ui/pursuit.js` | Pursuit HUD (`pursuitHud`, NFS: Most Wanted style) and pure `layoutPursuit(view)` |
 | `src/ui/cluster.js` | Canvas arcade cluster (`Cluster`) and shared `drawCluster` for the cockpit binnacle |
 | `src/ui/cluster-styles.js` | HUD cluster styles per car (`drawStyled`, `CLUSTER_STYLES`, `clusterStyleOf`, `warningLamps`, `shiftLightsLit`) |
-| `src/vehicles/instruments.js` | Canvas painters shared by the cockpit and the HUD: dial faces (`paintDial`, `FACES`), needles (`paintNeedle`), the LCD and VFD screens (`paintScreen`), `readingOf` |
+| `src/vehicles/instruments.js` | Canvas painters shared by the cockpit and the HUD: dial faces (`paintDial`, `FACES`, the racing `tuner` face and `paintTunerReadout`), needles (`paintNeedle`), the LCD and VFD screens (`paintScreen`, bare for the HUD), `readingOf` |
 | `src/vehicles/gauges.js` | Pure: mirrors temperature, exhaust, damage and the gear from the physics; boost or manifold vacuum, shift light |
 | `src/vehicles/exhaust.js` | Pure: flame, sparks, smoke and pop events at the tailpipes, from the physics state |
 | `src/vehicles/exhaust-fx.js` | Flame fins, spark and smoke particles at the pipe tips (`ExhaustFx`, owned by `Car`) |
@@ -179,6 +179,19 @@ wav, json, txt, png) for other captures such as rendered audio.
 
 Done and tested:
 
+- The HUD clusters float, and the Hayate has a racing tach (0.8.6). The user wanted the styles off
+  their boards: `twin` and `sport` are now only their dials, rings, windows and bars, each with a soft
+  dark shadow so it reads over a lit road; `digital` and `vfd` are the cockpit's screens drawn bare
+  (`paintScreen(..., bare)`: no glass, the unlit segments a faint tint of their color, the lit ones
+  glowing), leaned and rising to the right like Cyberpunk 2077's car displays; the warning lamps only
+  show when lit on the analog styles. New face and style `tuner`, after an aftermarket racing gauge
+  (the user's reference): black, every tick and numeral lit red in Orbitron, white from the redline,
+  X1000 and RPM in red, a small LCD window in the open lower right, the needle a glowing red bar parked
+  straight down and sweeping 270 degrees to 3 o'clock (`dialAngle` in dash.js). The Hayate (the
+  tuner) uses it: in the cockpit its tach and dash-top boost gauge are racing gauges with the live
+  speed in the tach's LCD and the gear in white under the hub, and its HUD is a big racing tach with
+  the speed in its window, small racing boost and temperature gauges, a red fuel bar, and a bezel that
+  flashes red at the shift point. `classic` stays selectable in Settings (SPEEDOMETER).
 - Police patrols and heat (0.8.15, A17 part 1, `src/police/units.js`, `heat.js`). Four unit kinds,
   each borrowing an existing car body through its `model` id until Claude's police models land: the
   cruiser `police` from heat 1, the unmarked `police-fast` at 3, the Rhino `police-heavy` (drives

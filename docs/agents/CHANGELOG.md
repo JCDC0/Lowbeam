@@ -51,6 +51,19 @@ Speedometer styles for the HUD cluster (A16 part 1).
 - `warningLamps` and `shiftLightsLit`: pure warning lamp (CHECK, DMG, REV, ENG OFF, HOT) and shift light calculations.
 - Tests: `tests/cluster.test.mjs` expanded with tests for `CLUSTER_STYLES`, `clusterStyleOf`, warning lamps, shift lights, and multi-style rendering.
 
+## 0.8.6 (2026-10-04)
+
+The HUD clusters float instead of sitting on boards, and the Hayate gets a racing tach.
+
+- `cluster-styles.js`: no housings; `twin` and `sport` float with shadows, `digital` and `vfd` are bare,
+  leaned and glowing like Cyberpunk 2077's car displays, the analog styles show a lamp only when lit;
+  new style `tuner` (racing tach, small boost and temperature gauges, fuel bar).
+- `instruments.js`: the `tuner` face, `paintTunerReadout`, `paintNeedle` takes the face, `paintScreen`
+  takes `bare`. `dash.js`: face `tuner`, `dialAngle`. The Hayate's tach and boost gauge are racing
+  gauges, its HUD style `tuner`; the cockpit's racing tach shows the live speed in its LCD.
+- Settings and garage name the new style (RACING TACH).
+- Tests: the racing sweep and face, the style list.
+
 ## 0.8.5 (2026-10-04)
 
 Japanese area names, and the briefs for Most Wanted style chases and the rest of the UI.

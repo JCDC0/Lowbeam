@@ -14,7 +14,7 @@ import { damp } from '../core/mathx.js';
 import { clusterStyleOf } from './cluster-styles.js';
 
 const BAR_LABELS = { topSpeed: 'TOP SPEED', handling: 'HANDLING', accel: 'ACCELERATION' };
-const CLUSTER_NAMES = { classic: 'CLASSIC', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
+const CLUSTER_NAMES = { classic: 'CLASSIC', tuner: 'RACING TACH', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
 
 function buildRoom() {
   const b = new MeshBuilder();

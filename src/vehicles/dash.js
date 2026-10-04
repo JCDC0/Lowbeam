@@ -5,20 +5,23 @@
 
 /**
  * @typedef {'tach' | 'speed' | 'fuel' | 'temp' | 'boost' | 'oil' | 'volt'} GaugeType
- * @typedef {'classic' | 'white' | 'yellow'} GaugeFace
+ * @typedef {'classic' | 'white' | 'yellow' | 'tuner'} GaugeFace
  * @typedef {{ type: GaugeType, u: number, v: number, r: number, face?: GaugeFace }} GaugeSpot
  * @typedef {{ pod: 'cluster' | 'top' | 'center', w: number, h: number, gauges: GaugeSpot[], shift?: boolean,
  *   screen?: 'lcd' | 'vfd' }} DashPod
  *
  * A gauge's `face` is how its dial is painted: `classic` black with white ticks (the Hayate's, the
  * original), `white` cream with black ticks and numerals (a 60s and 70s muscle car), `yellow` with
- * black ticks and numerals (an Italian exotic's tach). A pod with a `screen` is not dials but one
+ * black ticks and numerals (an Italian exotic's tach), `tuner` an aftermarket racing gauge (black,
+ * red lit ticks and numerals, white past the redline, a small LCD readout in the open lower right,
+ * the needle parked straight down; it sweeps 270 degrees from 6 o'clock to 3 o'clock). A pod with a `screen` is not dials but one
  * display drawn every frame (screens.js): `lcd` a modern digital cluster, `vfd` an 80s vacuum
  * fluorescent one; its `gauges` list what the screen shows, laid out as a strip.
  */
 
 /**
- * Each car's instruments: the Hayate the classic black dials and a boost pod on the dash top, the
+ * Each car's instruments: the Hayate the classic black dials with an aftermarket racing tach in the
+ * middle and a racing boost gauge in a pod on the dash top (the tuner's), the
  * Rampart only a big white speedometer and tach, the Vespera yellow dials with no boost or exhaust
  * gauge, the Tsurugi a digital LCD cluster and a three-gauge center stack, the Hikari a green and
  * amber fluorescent display.
@@ -28,11 +31,11 @@ export const DASHES = {
   hayate: [
     { pod: 'cluster', w: 0.34, h: 0.16, shift: true, gauges: [
       { type: 'speed', u: -0.115, v: 0, r: 0.06 },
-      { type: 'tach', u: 0.025, v: 0, r: 0.07 },
+      { type: 'tach', u: 0.025, v: 0, r: 0.07, face: 'tuner' },
       { type: 'fuel', u: 0.135, v: 0.032, r: 0.03 },
       { type: 'temp', u: 0.135, v: -0.035, r: 0.03 },
     ] },
-    { pod: 'top', w: 0.08, h: 0.08, gauges: [{ type: 'boost', u: 0, v: 0, r: 0.034 }] },
+    { pod: 'top', w: 0.08, h: 0.08, gauges: [{ type: 'boost', u: 0, v: 0, r: 0.034, face: 'tuner' }] },
   ],
   rampart: [
     { pod: 'cluster', w: 0.32, h: 0.16, gauges: [
@@ -131,5 +134,17 @@ export function gaugeScale(type, spec) {
 export function needleAngle(scale, value) {
   const t = Math.max(0, Math.min(1, (value - scale.min) / (scale.max - scale.min)));
   return scale.small ? -SMALL_SWEEP / 2 + SMALL_SWEEP * t : -SWEEP / 2 + SWEEP * t;
+}
+
+/**
+ * The needle angle on a given face: the `tuner` face parks the needle straight down and sweeps
+ * 270 degrees clockwise to 3 o'clock, leaving the lower right for its readout; the others as
+ * `needleAngle`.
+ * @param {ReturnType<typeof gaugeScale>} scale @param {number} value @param {GaugeFace} [face]
+ */
+export function dialAngle(scale, value, face) {
+  if (face !== 'tuner') return needleAngle(scale, value);
+  const t = Math.max(0, Math.min(1, (value - scale.min) / (scale.max - scale.min)));
+  return Math.PI + SWEEP * t;
 }
 
