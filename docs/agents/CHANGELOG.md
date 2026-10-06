@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.51 (2026-10-07)
+
+Racer car trial: Mazuma RX-Coupe (`rv_rotary`).
+
+- `tools/blender/rv_rotary.py`: FD RX-7 inspired sports coupe with low sloping nose, raised pop-up headlights, curved waist, bubble rear window, ducktail spoiler, round tail lamps, and viewer wheels.
+- `assets/models/rv_rotary.json`: body only model (2,012 triangles, under 2,500 budget), verified clean in props viewer.
+- `assets/models/rv_rotary_full.json`: full model with wheels (2,716 triangles, under 3,200 budget), verified clean in props viewer.
+
 ## 0.9.50 (2026-10-07)
 
 Pursuit props, first part: spike strip.

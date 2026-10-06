@@ -1,6 +1,6 @@
 {
   "name": "lowbeam",
-  "version": "0.9.50",
+  "version": "0.9.51",
   "private": true,
   "description": "A PS1-style night driving game: cars, an expressway, a city, a mountain pass and a forest at night.",
   "type": "module",
