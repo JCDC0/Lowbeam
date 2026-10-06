@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.50 (2026-10-07)
+
+Pursuit props, first part: spike strip.
+
+- `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
+- `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
+
 ## 0.9.1 (2026-10-07)
 
 Brief G2 (a street racer as a Blender car), and the prop viewer grows options for it.
