@@ -21,6 +21,9 @@
 // at night on a strip of two-lane road beside a game car for scale, built by the game's own
 // loadModels and materials, with the same checks the game's integration needs.
 //   tools/props.html?models=spike_strip,police_barrier
+// Options: &budget=3000 sets the triangle budget per model (2000 by default); &smooth=38 smooths the
+// normals under a 38 degree crease the way the game's lofted cars are shaded (the exporter writes
+// flat normals); &car=0 hides the reference car.
 // Drag to orbit, wheel to zoom, 1 to 9 solo a model, 0 all, C collider boxes, L light markers,
 // R the reference car. window.__props: check() returns the report as data, shot(name) saves
 // tools/shots/<name>.png, show(i), view(yaw, pitch, dist). Reload the page after re-exporting.
@@ -33,13 +36,14 @@ import { lotContents } from '/src/world/lots.js';
 import { CarModel } from '/src/vehicles/models.js';
 import { carById } from '/src/vehicles/specs.js';
 import { loadFonts } from '/src/render/fonts.js';
+import { smoothNormals } from '/src/render/builder.js';
 
 /** Textures a material may name (`tex`); anything else draws as a plain color in the game. */
 const KNOWN_TEX = ['', 'window', 'metal', 'shutter', 'concrete', 'asphalt'];
-/** Triangle budget per prop: past it the prop costs more than a whole car. */
-const PROP_TRIS = 2000;
-
 const params = new URLSearchParams(location.search);
+/** Triangle budget per model: by default a prop, which past it costs more than a whole car. */
+const PROP_TRIS = Number(params.get('budget')) || 2000;
+const SMOOTH = Number(params.get('smooth')) || 0;
 const names = (params.get('models') || 'spike_strip,police_barrier,light_bar,breaker_scaffold').split(',').map((s) => s.trim()).filter(Boolean);
 await loadFonts();
 const stage = createStage(document.getElementById('c'));
@@ -88,7 +92,9 @@ for (const e of entries) {
   if (!e.m) continue;
   // A lot whose front faces +z, centered on the road: the model's own frame is the world's.
   const pad = { cx: e.cx, cz: 0, h: 0, vx: 0, vz: -1, lot: { id: e.name, model: e.name, kind: 'prop', name: e.name.toUpperCase() } };
-  group.add(buildLots([pad], models).children[0]);
+  const mesh = buildLots([pad], models).children[0];
+  if (SMOOTH) smoothNormals(mesh.geometry, SMOOTH);
+  group.add(mesh);
   const { boxes, lights } = lotContents([pad], models);
   e.colliders = new THREE.Group();
   for (const b of boxes) {
@@ -117,6 +123,7 @@ const car = new CarModel(carById('hayate'), 0, { light: 'baked' });
 car.group.position.set(entries.length ? entries[0].cx - entries[0].width / 2 - 4 : 0, 0, 1.85);
 car.group.rotation.y = Math.PI / 2;
 scene.add(car.group);
+car.group.visible = params.get('car') !== '0';
 
 /** The report: per model what the game will see, and anything that will go wrong. */
 function check() {

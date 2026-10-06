@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.1 (2026-10-07)
+
+Brief G2 (a street racer as a Blender car), and the prop viewer grows options for it.
+
+- `tools/props.html`: `&budget=` sets the triangle budget per model, `&smooth=38` smooths the normals
+  under the game's crease (the exporter writes flat normals) so a car shows as it will in the game,
+  `&car=0` hides the reference car.
+- New brief `G2-racer-car-trial.md`: the Mazuma RX-Coupe modeled in Blender to the player cars'
+  standard, before the rest of G1.
+
 ## 0.9.0 (2026-10-07)
 
 A new team and a guide that says what is true now; one set of typefaces everywhere.

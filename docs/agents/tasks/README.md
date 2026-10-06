@@ -30,8 +30,9 @@ the same commit as your work, with your own range.
 | Brief | Owner | Status | What |
 |---|---|---|---|
 | [B1-police-repair.md](B1-police-repair.md) | Backend | now | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
-| [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | now | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
-| Claude | Claude | after G1 | Fit the G1 props into the game; then the police car models; the Most Wanted pursuit HUD extras (`archive/A18-pursuit-mw.md`); the settings hint bar at 720 lines |
+| [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | started; finish after G2 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
+| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | now | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
+| Claude | Claude | after G1 and G2 | Fit the G2 car into the traffic renderer with the game's wheels, then the G1 props; then the police car models; the Most Wanted pursuit HUD extras (`archive/A18-pursuit-mw.md`); the settings hint bar at 720 lines |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view
 contract (`archive/A13-pursuit-hud.md`) and the Most Wanted design for the police
