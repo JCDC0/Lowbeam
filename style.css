@@ -25,8 +25,6 @@
   --font-seg14: 'DSEG14 Classic', monospace;
   --font-impact: 'Dela Gothic One', 'M PLUS 1p', sans-serif;
   --font-jp: 'M PLUS 1p', 'Yu Gothic', 'Meiryo', 'MS Gothic', 'Noto Sans CJK JP', sans-serif;
-  --display: var(--font-display);
-  --body: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -37,7 +35,7 @@ html, body {
   overflow: hidden;
   background: #000;
   color: var(--ink);
-  font-family: var(--body);
+  font-family: var(--font-mono);
   user-select: none;
 }
 
@@ -65,7 +63,7 @@ html, body {
 .screen button, .screen .click { pointer-events: auto; cursor: pointer; }
 
 .display {
-  font-family: var(--display);
+  font-family: var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -104,7 +102,7 @@ html, body {
 }
 #title h2 {
   margin: 0.5em 0 0;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-weight: normal;
   font-size: clamp(11px, 1.4vw, 18px);
   letter-spacing: 0.45em;
@@ -143,13 +141,13 @@ html, body {
   top: 4vh;
 }
 #garage .head .label {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: clamp(16px, 2vw, 28px);
   letter-spacing: 0.3em;
 }
 #garage .head .count {
   margin-top: 6px;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 12px;
   letter-spacing: 0.3em;
   color: var(--amber);
@@ -189,7 +187,7 @@ html, body {
 #garage .klass {
   display: inline-block;
   padding: 3px 9px 2px;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.3em;
   color: #000;
@@ -209,7 +207,7 @@ html, body {
   margin: 7px 0;
 }
 #garage .bar .k {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.18em;
   color: var(--ink-dim);
@@ -237,7 +235,7 @@ html, body {
   color: #c6ccd6;
 }
 #garage .spec .k {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.18em;
   color: var(--ink-dim);
@@ -260,7 +258,7 @@ html, body {
 #garage .paint .sw.sel { border-color: var(--ink); box-shadow: 0 0 8px rgba(255, 255, 255, 0.4); }
 #garage .paint .pname {
   margin-left: 6px;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.15em;
 }
@@ -273,7 +271,7 @@ html, body {
   border: 0;
   background: none;
   color: var(--amber);
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 34px;
   opacity: 0.8;
 }
@@ -286,7 +284,7 @@ html, body {
   right: 0;
   bottom: 3.5vh;
   text-align: center;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.22em;
   color: var(--ink-dim);
@@ -343,7 +341,7 @@ html, body {
   position: absolute;
   left: 3vw;
   top: 4vh;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: clamp(14px, 1.6vw, 22px);
   letter-spacing: 0.3em;
   text-shadow: 0 2px 0 #000, 0 0 12px rgba(0, 0, 0, 0.8);
@@ -352,7 +350,7 @@ html, body {
   flex-direction: column;
 }
 #hud .area .area-main {
-  font-family: var(--display);
+  font-family: var(--font-display);
 }
 #hud .area .area-jp {
   font-family: var(--font-jp);
@@ -542,7 +540,7 @@ html, body {
   bottom: calc(3.5vh - 22px);
   width: 168px;
   text-align: center;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   font-weight: bold;
   letter-spacing: 0.18em;
@@ -592,7 +590,7 @@ html, body {
 }
 #pause .opt {
   padding: 7px 0;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 13px;
   letter-spacing: 0.25em;
   color: var(--ink-dim);
@@ -627,7 +625,7 @@ html, body {
   margin-bottom: 22px;
 }
 .ac-tag {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.35em;
   color: var(--amber);
@@ -719,7 +717,7 @@ html, body {
   opacity: 0.85;
 }
 .ac-sub {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.18em;
   color: var(--ink-dim);
@@ -757,7 +755,7 @@ html, body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 .ac-info-row .k {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--ink-dim);
@@ -771,7 +769,7 @@ html, body {
 .ac-info-badge {
   margin-top: 18px;
   padding: 8px 12px;
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 10px;
   letter-spacing: 0.25em;
   text-align: center;
@@ -806,7 +804,7 @@ html, body {
   transform: translateX(6px);
 }
 .ac-row .ac-rlabel {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 12px;
   letter-spacing: 0.18em;
   color: var(--ink);
@@ -922,7 +920,7 @@ html, body {
   transform: translateX(4px);
 }
 .ac-ctrl-name {
-  font-family: var(--display);
+  font-family: var(--font-display);
   font-size: 11px;
   letter-spacing: 0.16em;
   color: var(--ink);
@@ -980,7 +978,7 @@ html, body {
 }
 .ac-notice b {
   color: var(--cyan);
-  font-family: var(--display);
+  font-family: var(--font-display);
 }
 
 @media (max-width: 840px) {

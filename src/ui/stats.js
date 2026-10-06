@@ -3,6 +3,8 @@
  * Displays FPS, draw calls, rendered triangles, and live traffic agent count.
  */
 
+import { FONT } from '../render/fonts.js';
+
 /**
  * Formats render and scene stats into text.
  * @param {number} fps
@@ -31,7 +33,7 @@ export function statsOverlay(parent, stage, getTrafficCount = () => 0, opts = {}
     'top: 8px',
     'background: rgba(4, 6, 12, 0.85)',
     'color: #e9edf2',
-    'font-family: monospace',
+    `font-family: ${FONT.mono}`,
     'font-size: 11px',
     'line-height: 1.4',
     'padding: 4px 8px',

@@ -8,6 +8,7 @@
 
 import { BOOST_MIN, EXH_MAX, EXH_MIN, INTAKE_MIN, TEMP_MAX, TEMP_MIN, TEMP_RED } from '../vehicles/gauges.js';
 import { clamp } from '../core/mathx.js';
+import { FONT as FACES } from '../render/fonts.js';
 import { store } from '../core/store.js';
 import { clusterStyleOf, drawStyled } from './cluster-styles.js';
 import { paintDial } from '../vehicles/instruments.js';
@@ -17,7 +18,7 @@ export { CLUSTER_STYLES, clusterStyleOf } from './cluster-styles.js';
 /** @typedef {import('../vehicles/gauges.js').Gauges} Gauges */
 /** @typedef {import('../vehicles/specs.js').CarSpec} CarSpec */
 
-const FONT = '"Lowbeam Display", "Eurostile", "Arial Black", sans-serif';
+const FONT = FACES.display;
 const AMBER = '#ffb43c';
 const RED = '#ff3b2f';
 const INK = '#e9edf2';

@@ -7,9 +7,10 @@
 
 import { LAKE, RALLY, TOWN, WORLD_HALF } from '../world/layout.js';
 import { clamp } from '../core/mathx.js';
+import { FONT as FACES } from '../render/fonts.js';
 import { drawRoads } from './minimap.js';
 
-const FONT = '"Lowbeam Display", "Eurostile", "Arial Black", sans-serif';
+const FONT = FACES.display;
 const AMBER = '#ffb43c';
 const CYAN = '#2aa8d8';
 const RED = '#e04040';

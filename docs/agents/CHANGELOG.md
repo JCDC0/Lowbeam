@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.0 (2026-10-07)
+
+A new team and a guide that says what is true now; one set of typefaces everywhere.
+
+- The team: Claude orchestrates and owns rendering, the world and the UI; a backend agent (GPT 6 Sol
+  or Hermes on Xiaomi MiMo 2.6 Pro) owns the game logic and tests; Gemini 3.8 Flash builds models in
+  Blender. One owner per file, ranges 0.9.0 to 0.9.19, 0.9.20 to 0.9.49, 0.9.50 to 0.9.69
+  (`docs/agents/tasks/README.md`). The old briefs moved to `tasks/archive/`.
+- `ARCHITECTURE.md` rewritten from about 800 lines to the current state, the conventions, how to
+  verify, the Blender workflow and the known issues (the police bugs). New briefs: B1 (police repair,
+  backend) and G1 (pursuit props, assets).
+- New `tools/props.html`: any exported model at night on a road beside a game car, with collider and
+  light markers and a `check()` report, for the asset agent to test in a browser.
+- Fonts: the classic cluster and the Tab map used their own stack with an Arial Black fallback, the
+  page body Arial Narrow, plates, the coin parking sign and the gas station signs the system sans
+  serif or monospace; all now use `FONT` and the `--font-*` variables (`--display` and `--body` are
+  gone). The settings help says six speedometer styles.
+
 ## 0.8.18 (2026-10-04)
 
 Roadblocks and spike strips (A17 part 4).

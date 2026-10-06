@@ -4,6 +4,7 @@
  */
 
 import { RALLY } from '../world/layout.js';
+import { FONT } from '../render/fonts.js';
 import { drawPoiIcon } from './map.js';
 
 const SIZE = 168;
@@ -303,7 +304,7 @@ export class Minimap {
     const nx = R + (-cc / nl) * (R - 11);
     const ny = R + (-d / nl) * (R - 11);
     g.fillStyle = '#e9edf2';
-    g.font = '10px "Lowbeam Display", sans-serif';
+    g.font = `10px ${FONT.display}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText('N', nx, ny);

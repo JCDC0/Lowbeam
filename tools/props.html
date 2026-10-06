@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lowbeam prop viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; image-rendering: pixelated; }
+  #info { position: fixed; left: 8px; top: 6px; color: #9ab; font: 12px monospace; white-space: pre; }
+  #info .bad { color: #ff6a50; }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info"></div>
+<script type="module">
+// Dev tool for the asset agent: any models exported by tools/blender/ (assets/models/<name>.json),
+// at night on a strip of two-lane road beside a game car for scale, built by the game's own
+// loadModels and materials, with the same checks the game's integration needs.
+//   tools/props.html?models=spike_strip,police_barrier
+// Drag to orbit, wheel to zoom, 1 to 9 solo a model, 0 all, C collider boxes, L light markers,
+// R the reference car. window.__props: check() returns the report as data, shot(name) saves
+// tools/shots/<name>.png, show(i), view(yaw, pitch, dist). Reload the page after re-exporting.
+import * as THREE from 'three';
+import { createStage } from '/src/render/stage.js';
+import { psxBasic, psxLambert } from '/src/render/psx.js';
+import { installPools } from '/src/render/pools.js';
+import { buildLots, loadModels } from '/src/world/build-lots.js';
+import { lotContents } from '/src/world/lots.js';
+import { CarModel } from '/src/vehicles/models.js';
+import { carById } from '/src/vehicles/specs.js';
+import { loadFonts } from '/src/render/fonts.js';
+
+/** Textures a material may name (`tex`); anything else draws as a plain color in the game. */
+const KNOWN_TEX = ['', 'window', 'metal', 'shutter', 'concrete', 'asphalt'];
+/** Triangle budget per prop: past it the prop costs more than a whole car. */
+const PROP_TRIS = 2000;
+
+const params = new URLSearchParams(location.search);
+const names = (params.get('models') || 'spike_strip,police_barrier,light_bar,breaker_scaffold').split(',').map((s) => s.trim()).filter(Boolean);
+await loadFonts();
+const stage = createStage(document.getElementById('c'));
+stage.configure({ lines: 540 });
+const { scene, camera } = stage;
+scene.background = new THREE.Color(0x0a0f22);
+scene.add(new THREE.HemisphereLight(0x6a7aa2, 0x202226, 1.8));
+const moon = new THREE.DirectionalLight(0xa4b6e0, 1.4);
+moon.position.set(-30, 60, -40);
+scene.add(moon);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 200), psxLambert({ color: 0x2c3026, baked: true }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.03;
+scene.add(ground);
+// Two lanes of 3.7 m with edge and center lines, along x, so a prop can be judged on a road.
+const road = new THREE.Mesh(new THREE.PlaneGeometry(400, 7.4), psxLambert({ color: 0x3a3c40, baked: true }));
+road.rotation.x = -Math.PI / 2;
+road.position.y = -0.01;
+scene.add(road);
+for (const z of [-3.55, 0, 3.55]) {
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(400, 0.15), psxBasic({ color: z ? 0xd8d8d0 : 0xe0b030 }));
+  line.rotation.x = -Math.PI / 2;
+  line.position.set(0, 0, z);
+  scene.add(line);
+}
+
+const models = await loadModels(names);
+const GAP = 4;
+const entries = [];
+let cursor = 0;
+for (const name of names) {
+  const m = models[name];
+  const width = m ? Math.max(1, m.size[0]) : 2;
+  entries.push({ name, m, width, cx: cursor + width / 2 });
+  cursor += width + GAP;
+}
+for (const e of entries) e.cx -= cursor / 2 - GAP / 2;
+
+const markerMat = (c) => psxBasic({ color: new THREE.Color(c[0], c[1], c[2]).multiplyScalar(1 / Math.max(c[0], c[1], c[2], 1)) });
+const marker = new THREE.SphereGeometry(0.15, 6, 4);
+const allLights = [];
+for (const e of entries) {
+  const group = new THREE.Group();
+  e.group = group;
+  scene.add(group);
+  if (!e.m) continue;
+  // A lot whose front faces +z, centered on the road: the model's own frame is the world's.
+  const pad = { cx: e.cx, cz: 0, h: 0, vx: 0, vz: -1, lot: { id: e.name, model: e.name, kind: 'prop', name: e.name.toUpperCase() } };
+  group.add(buildLots([pad], models).children[0]);
+  const { boxes, lights } = lotContents([pad], models);
+  e.colliders = new THREE.Group();
+  for (const b of boxes) {
+    const geo = new THREE.EdgesGeometry(new THREE.BoxGeometry(b.hx * 2, b.y1 - b.y0, b.hz * 2));
+    const line = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ color: 0x40ff60, depthTest: false }));
+    line.position.set(b.x, (b.y0 + b.y1) / 2, b.z);
+    line.rotation.y = b.yaw;
+    line.renderOrder = 10;
+    e.colliders.add(line);
+  }
+  e.marks = new THREE.Group();
+  for (const l of lights) {
+    const s = new THREE.Mesh(marker, markerMat(l.c));
+    s.position.set(l.x, l.y, l.z);
+    e.marks.add(s);
+    allLights.push(l);
+  }
+  group.add(e.colliders, e.marks);
+  e.boxes = boxes.length;
+  e.lightCount = lights.length;
+}
+installPools(allLights, 300);
+
+// A Hayate parked in the near lane for scale (4.4 m long, 1.4 m high).
+const car = new CarModel(carById('hayate'), 0, { light: 'baked' });
+car.group.position.set(entries.length ? entries[0].cx - entries[0].width / 2 - 4 : 0, 0, 1.85);
+car.group.rotation.y = Math.PI / 2;
+scene.add(car.group);
+
+/** The report: per model what the game will see, and anything that will go wrong. */
+function check() {
+  return entries.map((e) => {
+    if (!e.m) return { name: e.name, ok: false, problems: [`assets/models/${e.name}.json is missing or failed to load`] };
+    const m = e.m;
+    const tris = m.position.length / 9;
+    const problems = [];
+    if (tris > PROP_TRIS) problems.push(`${tris} triangles, over the ${PROP_TRIS} budget`);
+    for (const mt of m.materials) {
+      if (!KNOWN_TEX.includes(mt.tex) && !mt.tex.startsWith('sign:')) problems.push(`material ${mt.name}: unknown tex '${mt.tex}'`);
+    }
+    if (m.normal.length !== m.position.length) problems.push('normal count differs from position count');
+    if (m.uv.length / 2 !== m.position.length / 3) problems.push('uv count differs from vertex count');
+    const counted = m.groups.reduce((a, g) => a + g.count, 0);
+    if (counted !== m.position.length / 3) problems.push(`groups cover ${counted} of ${m.position.length / 3} vertices`);
+    let minY = Infinity;
+    for (let i = 1; i < m.position.length; i += 3) minY = Math.min(minY, m.position[i]);
+    if (minY < -0.05) problems.push(`geometry goes ${(-minY).toFixed(2)} m below the ground`);
+    if (minY > 0.3) problems.push(`lowest point is ${minY.toFixed(2)} m up: does it float?`);
+    return {
+      name: e.name, ok: problems.length === 0, size: m.size, triangles: tris, materials: m.materials.length,
+      colliders: e.boxes, lights: e.lightCount, problems,
+    };
+  });
+}
+
+let showColliders = false;
+let showLights = true;
+let solo = -1;
+let yaw = 0.55, pitch = 0.32, dist = 30;
+const target = new THREE.Vector3(0, 1, 0);
+function apply() {
+  entries.forEach((e, i) => {
+    e.group.visible = solo < 0 || solo === i;
+    if (e.colliders) e.colliders.visible = showColliders;
+    if (e.marks) e.marks.visible = showLights;
+  });
+  const sel = solo < 0 ? entries : [entries[solo]];
+  const x0 = Math.min(...sel.map((e) => e.cx - e.width / 2));
+  const x1 = Math.max(...sel.map((e) => e.cx + e.width / 2));
+  const height = Math.max(1.5, ...sel.map((e) => (e.m ? e.m.size[1] : 1)));
+  target.set((x0 + x1) / 2, height * 0.35, 0);
+  dist = Math.max(x1 - x0, height * 2, 6) * 1.1;
+  info();
+}
+function info() {
+  const rep = check();
+  const rows = rep.map((r, i) => {
+    const head = `${i + 1} ${r.name.padEnd(18)}`;
+    if (!r.size) return `<span class="bad">${head} ${r.problems.join('; ')}</span>`;
+    const line = `${head} ${r.size.map((v) => v.toFixed(1)).join(' x ')} m, ${String(r.triangles).padStart(5)} tris, ${r.materials} mats, ${r.colliders} colliders, ${r.lights} lights${solo === i ? '  <' : ''}`;
+    return r.ok ? line : `${line}\n<span class="bad">   ${r.problems.join('\n   ')}</span>`;
+  });
+  document.getElementById('info').innerHTML = [
+    'drag orbit, wheel zoom, 1 to 9 solo, 0 all, C colliders ' + (showColliders ? 'ON' : 'off') + ', L lights ' + (showLights ? 'ON' : 'off') + ', R car ' + (car.group.visible ? 'ON' : 'off'),
+    ...rows,
+  ].join('\n');
+}
+function frame() {
+  camera.position.set(
+    target.x + Math.sin(yaw) * Math.cos(pitch) * dist,
+    target.y + Math.sin(pitch) * dist,
+    target.z + Math.cos(yaw) * Math.cos(pitch) * dist,
+  );
+  camera.lookAt(target);
+  stage.render(scene, camera);
+}
+apply();
+(function loop() { frame(); requestAnimationFrame(loop); })();
+
+let drag = null;
+addEventListener('pointerdown', (e) => (drag = [e.clientX, e.clientY]));
+addEventListener('pointerup', () => (drag = null));
+addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  yaw -= (e.clientX - drag[0]) * 0.01;
+  pitch = Math.max(-0.05, Math.min(1.45, pitch + (e.clientY - drag[1]) * 0.01));
+  drag = [e.clientX, e.clientY];
+});
+addEventListener('wheel', (e) => (dist = Math.max(2, Math.min(300, dist + e.deltaY * 0.02))));
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k >= '1' && k <= '9' && entries[+k - 1]) solo = +k - 1;
+  else if (k === '0') solo = -1;
+  else if (k === 'c') showColliders = !showColliders;
+  else if (k === 'l') showLights = !showLights;
+  else if (k === 'r') car.group.visible = !car.group.visible;
+  else return;
+  apply();
+});
+
+window.__props = {
+  stage,
+  entries,
+  check,
+  /** @param {number} i index in ?models=, or -1 for all */
+  show(i) { solo = i; apply(); frame(); },
+  colliders(on) { showColliders = on; apply(); frame(); },
+  lights(on) { showLights = on; apply(); frame(); },
+  view(y, p, d) { yaw = y; pitch = p; if (d) dist = d; frame(); },
+  /** @param {string} name */
+  shot(name) { frame(); return stage.shot(name); },
+};
+</script>
+</body>
+</html>

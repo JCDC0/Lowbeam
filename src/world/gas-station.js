@@ -156,7 +156,7 @@ function brandTextures(brand) {
     g.fillStyle = '#ffffff';
     g.font = `bold 30px ${JP}`;
     g.fillText(text, x + 44, y + h / 2 + 1);
-    g.font = 'bold 18px sans-serif';
+    g.font = `bold 18px ${FONT.mono}`;
     g.fillText(sub, x + 100, y + h / 2 + 1);
   }
   {
@@ -210,7 +210,7 @@ function brandTextures(brand) {
     g.fill();
     g.fillStyle = '#ffffff';
     g.textAlign = 'left';
-    g.font = 'bold 15px sans-serif';
+    g.font = `15px ${FONT.impact}`;
     g.fillText(B.name, x + 8, y + 16);
     g.fillStyle = panel;
     g.fillRect(x + 126, y + 20, w - 130, h - 24);
@@ -218,7 +218,7 @@ function brandTextures(brand) {
     g.fillRect(x + 104, y + 20, 22, h - 24);
     g.fillStyle = '#ffffff';
     g.textAlign = 'center';
-    g.font = 'bold 20px sans-serif';
+    g.font = `20px ${FONT.impact}`;
     g.fillText(String(k + 1), x + 115, y + 34);
     g.fillStyle = ink;
     g.font = `bold 20px ${JP}`;
@@ -235,7 +235,7 @@ function brandTextures(brand) {
     g.fillRect(x + 284, y + 4, w - 288, h - 8);
     g.fillStyle = '#ffffff';
     g.textAlign = 'center';
-    g.font = 'bold 18px sans-serif';
+    g.font = `18px ${FONT.impact}`;
     g.fillText('PRO PIT', x + 284 + (w - 288) / 2, y + h / 2 + 1);
   }
   {

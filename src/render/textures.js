@@ -134,7 +134,7 @@ export function plateTexture(text, wide = false, bg = '#e8e6d8', ink = '#1d3a24'
     g.lineWidth = 2;
     g.strokeRect(1, 1, w - 2, h - 2);
     g.fillStyle = ink;
-    g.font = `bold ${wide ? 14 : 15}px monospace`;
+    g.font = `bold ${wide ? 14 : 15}px ${FONT.mono}`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(text, w / 2, h / 2 + 1);
@@ -440,7 +440,7 @@ export function brandTexture(brand) {
       g.closePath();
       g.fill();
     }
-    g.font = 'bold 11px sans-serif';
+    g.font = `bold 11px ${FONT.display}`;
     g.textAlign = 'center';
     g.fillStyle = '#ffffff';
     g.fillText(kitsune ? 'KITSUNE' : 'HOSHI', 32, 68);
@@ -503,10 +503,10 @@ export function shopSignAtlas() {
     g.fillStyle = '#ffffff';
     g.fillRect(4, 259, 26, 26);
     g.fillStyle = '#1d4fa6';
-    g.font = 'bold 24px sans-serif';
+    g.font = `24px ${FONT.impact}`;
     g.fillText('P', 17, 273);
     g.fillStyle = '#ffd23a';
-    g.font = 'bold 16px sans-serif';
+    g.font = `bold 16px ${FONT.mono}`;
     g.fillText('24H  ¥300', 80, 273);
     return canvasTexture(c);
   });

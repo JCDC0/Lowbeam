@@ -252,7 +252,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-info-header">CONFIGURATION HELP</div>
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
-          <div class="ac-info-row"><span class="k">SPEEDOMETER</span><span class="v">PER CAR / 5 STYLES</span></div>
+          <div class="ac-info-row"><span class="k">SPEEDOMETER</span><span class="v">PER CAR / 6 STYLES</span></div>
           <div class="ac-info-row"><span class="k">CONTROLS</span><span class="v">KEY BINDINGS</span></div>
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>

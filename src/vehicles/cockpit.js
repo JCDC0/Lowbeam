@@ -61,7 +61,7 @@ function drawFace(type, spec, face = 'classic') {
 }
 
 /** A small text texture, redrawn on change (the gear readout, the racing tach's speed). */
-function textTexture(w, h, font = '"Lowbeam Display", sans-serif', align = 'center') {
+function textTexture(w, h, font = FONT.display, align = 'center') {
   const c = makeCanvas(w, h);
   const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
   const tex = canvasTexture(c);
