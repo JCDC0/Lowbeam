@@ -31,11 +31,12 @@ and leaves `package.json` alone.
 
 | Brief | Owner | Status | What |
 |---|---|---|---|
-| [B1-police-repair.md](B1-police-repair.md) | Backend | parts 1 and 2 done by Claude (0.9.3); part 3 (sirens, rotor, music) open | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
-| [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | started; finish after G2 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
+| [B1-police-repair.md](B1-police-repair.md) | Claude | parts 1 and 2 done (0.9.3); part 3 (sirens, rotor, music) moved into C1 part 2 | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
+| [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | spike strip done; the rest after G3 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
 | [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | second fix round (0.9.53), see "Review of 0.9.52" | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
-| Claude | Claude | after G1 and G2 | Fit the G2 car into the traffic renderer with the game's wheels, then the G1 props; then the police car models; the Most Wanted pursuit HUD extras (`archive/A18-pursuit-mw.md`); the settings hint bar at 720 lines |
-| Claude | Claude | next | Instruments, from Jc's sketch: (1) the outside-view HUD gauges stack vertically, the small gauges curve along the side of the main dial as the first `classic` speedometer does, and the warning lamps sit inside the main dial; (2) the cockpit instruments become small and recessed in a binnacle under the windshield, above the wheel, legible only as moving needles and the fuel line: a digital car a wide low screen with small panels, an analog car three small round dials |
+| [C1-claude-queue.md](C1-claude-queue.md) | Claude | now, part 1 first | In order: other cars hit the world; red and blue light bars, lit blinkers and sirens; the music swell at 75 km/h and a track manifest; the instrument rework from Jc's sketch; a second-layer city expressway and greenery; nitrous; Gemini's models into the game |
+| [G3-police-cars.md](G3-police-cars.md) | Assets | after G2 passes | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
+| [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3 | Street trees, planters, hedges, shrubs and benches for the city |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view
 contract (`archive/A13-pursuit-hud.md`) and the Most Wanted design for the police

@@ -26,6 +26,15 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.5 (2026-10-07)
+
+The plan after the police rebuild, from Jc's requests: `C1-claude-queue.md` (other cars hit the
+world; red and blue light bars that light their surroundings, lit blinkers, sirens; the music in at
+30 and full at 75 km/h with a track manifest; the instrument rework; a second-layer city expressway
+and greenery; nitrous with heat, damage and over-rev risk; Gemini's models into the game),
+`G3-police-cars.md` (four police cars) and `G4-city-greenery.md`. The old Claude rows in the task
+list fold into C1.
+
 ## 0.9.4 (2026-10-07)
 
 Review of the Mazuma fix round (0.9.52), in the G2 brief: the lamps, the tips and the box are fixed;
