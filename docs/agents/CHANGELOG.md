@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.54 (2026-10-07)
+
+Police car trial: Japanese police cruiser sedan (`police_cruiser`).
+
+- `tools/blender/police_cruiser.py`: authentic Japanese patrol car in the Toyota Crown mould:
+  - Big 4-door sedan proportions: length 4.70 m (z from -2.35 to +2.35), body width 1.80 m, height 1.45 m (including roof light bar), wheelbase 2.80 m (axles at z = +-1.40).
+  - Japanese police two-tone livery: white upper body, hood, trunk, and pillars (`paint` 0xf4f4f2); black lower body, doors, and bumpers (`accent` 0x14161c).
+  - Low roof light bar with chrome bracket, central white siren speaker housing, left red lens (`lens-l` 0xff2a2a, x > 0), and right blue lens (`lens-r` 0x2a5aff, x < 0), both emissive, top reaching exactly 1.45 m.
+  - Front fascia: chrome grille surround with police sunburst star crest and black mesh, rectangular sedan headlights with chrome bezels, amber corner indicators, bumper rub strips, chin intake, and Japanese license plate.
+  - Rear fascia: wide sedan taillights with red lens and white reverse insert, license plate in trunk recess, bumper rub strip, and chrome exhaust tip.
+  - Wheel arches with dark inner wells (`under`), side mirrors on front doors, and 4 wheels for the viewer (`wheel-*`, radius 0.32 m).
+- `assets/models/police_cruiser.json`: body-only model (1,630 triangles, under 1,800 budget; bounds x: [-0.9800, 0.9800], y: [0.2200, 1.4500], z: [-2.3500, 2.3500]), check() clean with 0 problems.
+- `assets/models/police_cruiser_full.json`: full model with wheels (2,334 triangles, under 2,600 budget; bounds x: [-0.9800, 0.9800], y: [0.0000, 1.4500], z: [-2.3500, 2.3500]), check() clean with 0 problems.
+
 ## 0.9.53 (2026-10-07)
 
 Mazuma RX-Coupe fix round (`rv_rotary`).
