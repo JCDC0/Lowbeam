@@ -564,7 +564,7 @@ html, body {
 }
 #hud .gauges {
   display: block;
-  width: clamp(270px, 30vw, 400px);
+  width: clamp(200px, 21vw, 300px);
   height: auto;
 }
 

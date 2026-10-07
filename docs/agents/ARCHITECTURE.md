@@ -141,7 +141,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.9.52)
 
-334 tests pass; the type check is clean. By area:
+335 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -175,8 +175,11 @@ car so the road shows from 5 m.
 an aftermarket racing tach and boost gauge (`tuner` face), Rampart cream dials, Vespera yellow dials,
 Tsurugi a modern LCD, Hikari a 1984 fluorescent display. The HUD speedometer in the outside views is
 the car's own style drawn with the same painters (`cluster-styles.js`): `tuner`, `twin`, `sport`,
-`digital`, `vfd`, and the original `classic`; Settings can lock one style for every car. Warnings are
-symbols in fixed places (`paintIcon`).
+`digital`, `vfd`, and the original `classic`; Settings can lock one style for every car. Every style
+stands upright on a 300 by 400 canvas: the main dial at the bottom right, the small gauges climbing an
+arc up its left side and over its top (`arcSpot`), the twin's speedometer above its tach, and the
+digital styles a tall display whose rev bar curves up the side. Warnings are symbols in fixed places
+inside the main dial (`dialLamps`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
 turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; a blinking

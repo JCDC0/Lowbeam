@@ -26,6 +26,23 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.10 (2026-10-07)
+
+The HUD clusters stand upright, from Jc's sketch (C1 part 4, the outside view).
+
+- One upright 300 by 400 canvas for every style (`CLUSTER_W`, `CLUSTER_H`; CSS width 200 to 300 px):
+  the main dial at the bottom right (`MAIN`), the small gauges on one arc up its left side and over
+  its top (`arcSpot`), the way the classic cluster first placed them. The twin's speedometer stands
+  above its tach; the sport's five shift lights follow the tach's rim.
+- The warning symbols moved inside the main dial (`dialLamps`: a row across the face, or an arc
+  round the hub on the busy racing tach). The classic HUD's CHECK ENGINE, OVERREV, DMG and ENGINE
+  OFF words are now symbols like the others'.
+- The digital and VFD styles are a new tall display: the rev bar curves from the bottom left up the
+  side and over the top, thickening as it climbs; the gear, the warnings and big speed digits sit
+  inside the curve, the boost, fuel and temperature bars in its corner.
+- Tests: the check-engine symbol lights on the classic HUD instead of the words; the layout stands
+  upright with the small gauges clear of each other. 335 pass.
+
 ## 0.9.9 (2026-10-07)
 
 The music comes in earlier and new tracks drop in without code (C1 part 3).

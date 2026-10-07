@@ -1,16 +1,16 @@
 /**
- * The arcade gauge cluster, drawn on a canvas in the bottom right: a big round
- * tachometer with a red zone, needle and shift lights, digital speed and gear in its
- * lower gap, and four small dials around it (FUEL, TEMP, BOOST or VAC, EXH).
- * Identically used for the 3rd person HUD and the cockpit binnacle texture.
- * This is the `classic` style (the Hayate's); `Cluster` draws the others from `cluster-styles.js`.
+ * The arcade gauge cluster, drawn on an upright canvas in the bottom right: a big round
+ * tachometer with a red zone, needle and shift lights, digital speed and gear in its lower gap,
+ * the warning symbols across its face, and four small dials curving up its left side and over its
+ * top (FUEL, TEMP, BOOST or VAC, EXH). This is the `classic` style; `Cluster` draws the others
+ * from `cluster-styles.js` on the same canvas and arc.
  */
 
 import { BOOST_MIN, EXH_MAX, EXH_MIN, INTAKE_MIN, TEMP_MAX, TEMP_MIN, TEMP_RED } from '../vehicles/gauges.js';
 import { clamp } from '../core/mathx.js';
 import { FONT as FACES } from '../render/fonts.js';
 import { store } from '../core/store.js';
-import { clusterStyleOf, drawStyled } from './cluster-styles.js';
+import { CLUSTER_H, CLUSTER_W, MAIN, arcSpot, clusterStyleOf, dialLamps, drawStyled, warningLamps } from './cluster-styles.js';
 import { paintDial } from '../vehicles/instruments.js';
 
 export { CLUSTER_STYLES, clusterStyleOf } from './cluster-styles.js';
@@ -32,9 +32,9 @@ const SWEEP = Math.PI * 1.5;
 const T0 = (Math.PI * 5) / 6;
 const TSWEEP = (Math.PI * 4) / 3;
 
-const W = 400;
-const H = 300;
-const TACH = { x: 290, y: 190, r: 102 };
+const W = CLUSTER_W;
+const H = CLUSTER_H;
+const TACH = MAIN;
 
 /**
  * End of the tach scale: the redline plus 1,000 rpm, rounded up to the next 1,000. The blow
@@ -142,12 +142,8 @@ function subDial(g, x, y, r, frac, label, value, warn, warnFrom, warnHigh = true
   }
 }
 
-/** Positions of the four sub-dials around the tach, upper left of it. */
-const SUBS = [180, 148, 116, 84].map((deg) => {
-  const t = (deg * Math.PI) / 180;
-  const d = TACH.r + 46;
-  return { x: TACH.x + Math.cos(t) * d, y: TACH.y - Math.sin(t) * d, r: 33 };
-});
+/** The four sub-dials on the arc round the tach: up its left side and over its top. */
+const SUBS = [196, 226, 256, 286].map((deg) => ({ ...arcSpot(deg, 42), r: 31 }));
 
 /**
  * Renders the arcade gauge cluster onto any canvas context: one large round tachometer
@@ -274,7 +270,7 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     }
     g.fillStyle = DIM;
     g.font = `7px ${FONT}`;
-    g.fillText('x1000 r/min', cx, cy - R * 0.2);
+    g.fillText('x1000 r/min', cx, cy - R * 0.13);
   }
 
   const leds = 5;
@@ -285,7 +281,7 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
     const on = gs.engineOn && (gs.shift ? flash : gs.rpm > from + ((spec.engine.shiftUp - from) * i) / leds);
     const color = i < 2 ? '#3dff6a' : i < 4 ? AMBER : RED;
     const lx = cx + (i - (leds - 1) / 2) * ledSpacing;
-    const ly = cy - R * 0.42;
+    const ly = cy - R * (cockpit ? 0.42 : 0.52);
     g.fillStyle = on ? (gs.shift ? RED : color) : 'rgba(255, 255, 255, 0.08)';
     g.shadowColor = g.fillStyle;
     g.shadowBlur = on ? (cockpit ? 10 : 8) : 0;
@@ -295,18 +291,19 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   }
   g.shadowBlur = 0;
 
-  if (blown) {
+  if (!cockpit) dialLamps(g, cx, cy, R, warningLamps(gs, t), 'rgba(233, 237, 242, 0.18)', { row: true, y: -0.3, span: 0.4 });
+  else if (blown) {
     g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.2)';
-    g.font = cockpit ? `bold 24px ${FONT}` : `11px ${FONT}`;
-    g.fillText('CHECK ENGINE', cx, cy - R * (cockpit ? 0.18 : 0.05));
+    g.font = `bold 24px ${FONT}`;
+    g.fillText('CHECK ENGINE', cx, cy - R * 0.18);
   } else if (overrev > 0) {
     g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.2)';
-    g.font = cockpit ? `bold 24px ${FONT}` : `11px ${FONT}`;
-    g.fillText('OVERREV', cx, cy - R * (cockpit ? 0.18 : 0.05));
+    g.font = `bold 24px ${FONT}`;
+    g.fillText('OVERREV', cx, cy - R * 0.18);
   } else if (damage > 0.3) {
     g.fillStyle = AMBER;
-    g.font = cockpit ? `bold 24px ${FONT}` : `11px ${FONT}`;
-    g.fillText('DMG', cx, cy - R * (cockpit ? 0.18 : 0.05));
+    g.font = `bold 24px ${FONT}`;
+    g.fillText('DMG', cx, cy - R * 0.18);
   }
 
   const kmh = String(Math.round(gs.kmh));
@@ -363,10 +360,10 @@ export function drawCluster(g, gs, spec, t, w = W, h = H, cockpit = Boolean(/** 
   g.lineWidth = cockpit ? 2.5 : 1.5;
   g.stroke();
 
-  if (!gs.engineOn) {
+  if (cockpit && !gs.engineOn) {
     g.fillStyle = flash ? RED : 'rgba(255, 59, 47, 0.4)';
-    g.font = cockpit ? `bold 24px ${FONT}` : `10px ${FONT}`;
-    g.fillText('ENGINE OFF', cx, cy - R * (cockpit ? 0.65 : 0.62));
+    g.font = `bold 24px ${FONT}`;
+    g.fillText('ENGINE OFF', cx, cy - R * 0.65);
   }
 
   g.restore();

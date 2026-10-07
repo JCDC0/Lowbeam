@@ -4,6 +4,7 @@ import { CARS, carById } from '../src/vehicles/specs.js';
 import { createGauges } from '../src/vehicles/gauges.js';
 import { blowRpmOf } from '../src/vehicles/thermal.js';
 import { drawCluster, maxRpmOf, tachAngle, TACH_END } from '../src/ui/cluster.js';
+import { LAMP_AMBER, MAIN, arcSpot, CLUSTER_W, CLUSTER_H } from '../src/ui/cluster-styles.js';
 
 /** Mock 2D canvas context for pure Node testing. */
 function createMockContext() {
@@ -11,6 +12,10 @@ function createMockContext() {
   const log = (fn) => (...args) => calls.push({ fn, args });
   return {
     calls,
+    /** A stroke remembers its color, so a lit warning symbol can be found. */
+    stroke() {
+      calls.push({ fn: 'stroke', args: [], style: this.strokeStyle });
+    },
     save: log('save'),
     restore: log('restore'),
     clearRect: log('clearRect'),
@@ -21,7 +26,6 @@ function createMockContext() {
     closePath: log('closePath'),
     arc: log('arc'),
     fill: log('fill'),
-    stroke: log('stroke'),
     strokeRect: log('strokeRect'),
     fillRect: log('fillRect'),
     moveTo: log('moveTo'),
@@ -99,7 +103,9 @@ test('drawCluster renders both HUD and cockpit layouts for every car and gear 1.
     const ctxHud = createMockContext();
     drawCluster(/** @type {*} */ (ctxHud), gs, spec, 0.5, 400, 300, false);
     assert.ok(ctxHud.calls.some((c) => c.fn === 'fillText' && c.args[0] === 'HOT'), 'HUD should display HOT when temp >= 115');
-    assert.ok(ctxHud.calls.some((c) => c.fn === 'fillText' && c.args[0] === 'CHECK ENGINE'), 'HUD should display CHECK ENGINE when blown');
+    // The HUD carries its warnings as symbols in the tach face: blown, the check-engine symbol lights amber.
+    assert.ok(!ctxHud.calls.some((c) => c.fn === 'fillText' && c.args[0] === 'CHECK ENGINE'), 'HUD warnings are symbols, not words');
+    assert.ok(ctxHud.calls.some((c) => c.fn === 'stroke' && c.style === LAMP_AMBER), 'HUD lights the check-engine symbol when blown');
 
     // Cockpit mode (400x300 and 420x300)
     for (const [w, h] of [[400, 300], [420, 300]]) {
@@ -179,3 +185,15 @@ test('drawStyled renders all styles without crashing', async () => {
   }
 });
 
+
+test('the cluster stands upright: the main dial at the bottom right, the small gauges climbing an arc round it', () => {
+  assert.ok(CLUSTER_H > CLUSTER_W, 'taller than wide');
+  assert.ok(MAIN.y + MAIN.r < CLUSTER_H && MAIN.x + MAIN.r < CLUSTER_W, 'the main dial fits');
+  assert.ok(MAIN.y > CLUSTER_H / 2, 'and sits in the lower half');
+  const spots = [196, 226, 256, 286].map((deg) => arcSpot(deg, 42));
+  for (let i = 1; i < spots.length; i++) {
+    assert.ok(spots[i].y < spots[i - 1].y + 1e-9 || spots[i].x > spots[i - 1].x, 'each gauge is further round the arc than the last');
+    assert.ok(Math.hypot(spots[i].x - spots[i - 1].x, spots[i].y - spots[i - 1].y) > 62, 'and clear of it');
+  }
+  for (const p of spots) assert.ok(p.x - 31 > -2 && p.y - 31 > 0 && p.x + 31 < CLUSTER_W, 'inside the canvas');
+});
