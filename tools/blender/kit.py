@@ -119,16 +119,28 @@ def prism(name, material, outline, y0, y1, top=True):
     return _obj(name, bm, material)
 
 
-def cylinder(name, material, cx, cy, cz, r, h, sides=8, top=True):
+def cylinder(name, material, cx, cy, cz, r, h, sides=8, top=True, axis='y'):
+    """
+    A cylinder of radius r and length h. axis 'y' (the default) stands it up from (cx, cy, cz);
+    axis 'z' lays it along the car, from cz to cz + h (a negative h runs toward the back), for
+    round lamps and exhaust tips; axis 'x' lays it across, from cx to cx + h.
+    """
     bm = bmesh.new()
     lo = []
     hi = []
     for i in range(sides):
         a = 2 * math.pi * i / sides
-        x = cx + math.cos(a) * r
-        z = cz + math.sin(a) * r
-        lo.append(bm.verts.new(g2b(x, cy, z)))
-        hi.append(bm.verts.new(g2b(x, cy + h, z)))
+        u = math.cos(a) * r
+        v = math.sin(a) * r
+        if axis == 'z':
+            lo.append(bm.verts.new(g2b(cx + u, cy + v, cz)))
+            hi.append(bm.verts.new(g2b(cx + u, cy + v, cz + h)))
+        elif axis == 'x':
+            lo.append(bm.verts.new(g2b(cx, cy + u, cz + v)))
+            hi.append(bm.verts.new(g2b(cx + h, cy + u, cz + v)))
+        else:
+            lo.append(bm.verts.new(g2b(cx + u, cy, cz + v)))
+            hi.append(bm.verts.new(g2b(cx + u, cy + h, cz + v)))
     for i in range(sides):
         j = (i + 1) % sides
         bm.faces.new([lo[i], lo[j], hi[j], hi[i]])

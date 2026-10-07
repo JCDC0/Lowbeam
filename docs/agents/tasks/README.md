@@ -23,7 +23,9 @@ Ask Claude for a new range when yours runs out.
 | Claude | Everything else: `src/render/*`, `src/world/*`, `src/ui/*`, `style.css`, `index.html`, `src/main.js`, `src/vehicles/models.js`, `loft.js`, `bodies/*`, `car.js`, `cockpit.js`, `dash.js`, `instruments.js`, `screens.js`, `exhaust-fx.js`, `src/traffic/bodies.js`, `render.js`, `src/police/heli-view.js`, `tools/blender/kit.py`, `tools/*.html` viewers, `assets/fonts/*`, `docs/*`, `package.json` dependencies |
 
 The version bump in `package.json`, `package-lock.json` and the changelog is everyone's: make it in
-the same commit as your work, with your own range.
+the same commit as your work, with your own range. `package.json` always holds the highest version
+committed so far: a commit numbered below it (0.9.2 after 0.9.51) adds its changelog entry in order
+and leaves `package.json` alone.
 
 ## Open tasks
 
@@ -31,7 +33,7 @@ the same commit as your work, with your own range.
 |---|---|---|---|
 | [B1-police-repair.md](B1-police-repair.md) | Backend | now | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
 | [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | started; finish after G2 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
-| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | now | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
+| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | fix round (0.9.52), see "Review of 0.9.51" | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
 | Claude | Claude | after G1 and G2 | Fit the G2 car into the traffic renderer with the game's wheels, then the G1 props; then the police car models; the Most Wanted pursuit HUD extras (`archive/A18-pursuit-mw.md`); the settings hint bar at 720 lines |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view

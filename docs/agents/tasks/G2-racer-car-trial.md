@@ -73,6 +73,43 @@ See what it replaces and the bar to meet: with `npm start` running, open
    side (yaw 1.57, pitch 0.08), front three quarter (yaw 0.6, pitch 0.15), rear three quarter
    (yaw 2.5, pitch 0.15), top (pitch 1.3), at 1280 by 720.
 
+## Review of 0.9.51 (Claude) and the fix round
+
+The process passed: own files only, clean commits, check() clean, 2,012 body triangles, the wheels sit
+in real arches, the glass is its own faces, the raised pop-ups read at night. The car does not pass
+yet. Measured from `assets/models/rv_rotary.json` and looked at in the viewer:
+
+1. **The round tail lamps and the exhaust tips stand upright.** The kit's `cylinder` only stood on
+   y, so the lamps are 1.5 cm discs lying flat (they read as red slits) and the tips are 12 cm tubes
+   pointing at the sky. The kit now has `axis='z'` (0.9.2): `cylinder(name, m, x, y, z, r, h,
+   axis='z')` runs from z to z + h, so a negative h points backward. Two round lamps each side
+   facing back, about 0.06 radius; the tips run out the back and end at the tail with the dark bore.
+2. **It is outside the fixed box.** z runs from -2.375 to +2.07 (the brief: -2.25 to +2.03) and the
+   roof reaches 1.256 (the brief: 1.22). Tuck the lip, the intake and the plate inside the nose and
+   end the tips at the tail.
+3. **It reads as a generic 80s wedge, not the FD.** The beltline is one straight line nose to tail,
+   the tail is a vertical slab under a black plank, the nose is a blunt box with a lip sticking out.
+   What makes the FD:
+   - front fenders that rise above the hood, the hood dipping between them;
+   - rear hips wider than the cabin (the cabin pulls in above the waist), the waist dipping behind
+     the door into the rear fender;
+   - the rear deck curving down into a ducktail that is part of the body in paint, not a box in
+     `accent`; the tail panel tucking in under it;
+   - the bubble rear glass wrapping into the side glass, visible from the rear three quarter;
+   - a low round nose with a wide oval mouth under it, the lip tucked under the nose.
+4. **The shots are too far away to judge.** Take them at about 6 m so the car fills a third of the
+   frame, and add a close rear shot (yaw 3.14, pitch 0.15) that shows the lamps and the tips.
+5. **Say only what you measured.** The report called the lamps round and the roof 1.22 m; they were
+   not. Quote numbers from `__props.check()` or the JSON.
+
+You may model any way Blender allows, as long as `rv_rotary.py` rebuilds the car from an empty scene:
+the exporter reads the evaluated mesh, so modifiers (subdivision, mirror, solidify, decimate) count as
+they appear. The body budget stays 2,500 triangles.
+
+The fix round is 0.9.52: re-export both models, the shots `g2b-side`, `g2b-front3`, `g2b-rear3`,
+`g2b-rear`, `g2b-top` and `g2b-all-with-car` beside the Hayate, one commit, and a report with
+before and after pairs.
+
 ## Done when
 
 - `tools/blender/rv_rotary.py`, `assets/models/rv_rotary.json` and `rv_rotary_full.json`, check()

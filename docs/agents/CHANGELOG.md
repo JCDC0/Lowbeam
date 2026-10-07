@@ -15,6 +15,18 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.2 (2026-10-07)
+
+Review of the asset agent's first two commits, and a kit fix the car needed.
+
+- `tools/blender/kit.py`: `cylinder` takes `axis` ('y' upright as before, 'z' along the car, 'x'
+  across), so round lamps and exhaust tips can face backward. Before this, every cylinder stood up.
+- G2 review (in the brief): the spike strip (0.9.50) is accepted. The Mazuma (0.9.51) passes the
+  process but goes back for a fix round (0.9.52): lamps and tips upright, outside the fixed box
+  (4.45 m long, roof 1.256 m), and the shape reads as a generic wedge rather than the FD.
+- `tasks/README.md`: `package.json` holds the highest version committed, so a lower-range commit
+  leaves it alone.
+
 ## 0.9.1 (2026-10-07)
 
 Brief G2 (a street racer as a Blender car), and the prop viewer grows options for it.

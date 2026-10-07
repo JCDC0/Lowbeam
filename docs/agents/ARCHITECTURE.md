@@ -83,7 +83,8 @@ The kit works in game coordinates (x right, y up, z toward the street, the front
 `tile`), `groups`, `position`, `normal`, `uv`, `colliders` (`x, z, hx, hz, y0, y1`) and `lights`
 (`x, y, z, c, range, spot`). `loadModels` and `buildLots` in `src/world/build-lots.js` load and draw
 them with the game's materials; the scatter adds their colliders and lights. Helpers: `mat`, `box`,
-`poly`, `prism`, `cylinder`, `loft`, `collider`, `light`.
+`poly`, `prism`, `cylinder` (`axis` 'y', 'z' or 'x'), `loft`, `collider`, `light`. The exporter
+reads the evaluated mesh, so modifiers count as they appear.
 
 ## Key files
 
@@ -136,7 +137,7 @@ them with the game's materials; the scatter adds their colliders and lights. Hel
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs` | Node benches and renders |
 
-## Current state (0.9.0)
+## Current state (0.9.51)
 
 301 tests pass; the type check is clean. By area:
 
@@ -209,8 +210,9 @@ Gothic One for banners, M PLUS 1p for Japanese.
   climbs to 5 and stays); heat level 1 starts on the first frame noticed and any duel adds heat; the
   roadblock reads `road.dir`, which roads do not have; spike strips never reach the car's physics;
   BUSTED and ESCAPED have no consequences yet; "in sight" is distance only; no sirens.
-- The police units, the light bar, the spike strip, the roadblock barrier and the pursuit breakers
-  have no models of their own yet (task G1 starts the props).
+- The police units, the light bar, the roadblock barrier and the pursuit breakers have no models of
+  their own yet (task G1). The spike strip (`assets/models/spike_strip.json`) and the Mazuma
+  RX-Coupe body (`rv_rotary.json`, in a fix round, G2) are exported but not used by the game yet.
 - The settings screen's key hint bar overlaps the last rows at 720 lines.
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy.
