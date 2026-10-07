@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.53 (2026-10-07)
+
+Mazuma RX-Coupe fix round (`rv_rotary`).
+
+- `tools/blender/rv_rotary.py`: resolved all 3 review findings from 0.9.52:
+  - Closed hole in the hood: underside floor clamped to y = 0.20 (preventing intrusion into the dipped hood) and clean non-wrapping topology across bilateral rings.
+  - Authentic sports car silhouette in plan view: nose tapered to 1.5004 m at lamps (z = 1.70 m), doors waist pulled in to 1.6192 m (z = 0.00 m), rear hips flaring to 1.7600 m (z = -1.28 m), tail tapered to 1.6054 m at lip (z = -2.25 m), and cabin pulled in to 1.3000 m across the roof.
+  - Eliminated the roof slab: continuous curvature profile connects the cowl seamlessly through windshield into roof peak and fastback rear glass without vertical steps or standing panels.
+  - Rear lamps: bespoke tail lamp geometry with rear-facing cap normals (-Z) to prevent backface culling in Three.js renderer.
+- `assets/models/rv_rotary.json`: body-only model (1,914 triangles, under 2,500 budget; bounds x: [-0.9750, 0.9750], y: [0.1800, 1.2150], z: [-2.2500, 2.0300]), check() clean with 0 problems.
+- `assets/models/rv_rotary_full.json`: full car with wheels (2,618 triangles, under 3,200 budget; bounds x: [-0.9750, 0.9750], y: [0.0000, 1.2150], z: [-2.2500, 2.0300]), check() clean with 0 problems.
+
 ## 0.9.52 (2026-10-07)
 
 Mazuma RX-Coupe fix round (`rv_rotary`).
