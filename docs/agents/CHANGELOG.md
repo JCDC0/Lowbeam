@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.57 (2026-10-07)
+
+Police car trial: interceptor supercar (`police_interceptor`).
+
+- `tools/blender/police_interceptor.py`: mid-engine Japanese police supercar interceptor (NSX mould):
+  - Supercar proportions: length 4.60 m (z from -2.30 to +2.30), width 2.00 m, height 1.24 m, wheelbase 2.76 m (axles at z = +-1.38 m).
+  - Forward fighter-canopy cockpit, mid-engine glass inspection cover, integrated rear wing blade on pedestals, and rear diffuser with quad chrome exhausts.
+  - Cruiser two-tone livery: white upper body carried down doors to handle height (0.76 m); black lower body, side skirts, and mid-engine intake scoops.
+  - Aerodynamic 1.32 m wide roof light bar with 0.12 m tall lenses (left red `lens-l` 0xff2a2a, right blue `lens-r` 0x2a5aff, both emissive), top strictly at 1.24 m.
+  - Wide low-profile sports wheels (radius 0.33 m, width 0.24 m), slender headlights with police star crest, and full-width taillight bar.
+- `assets/models/police_interceptor.json`: body-only model (1,702 triangles, under 1,800 budget; bounds x: [-1.0000, 1.0000], y: [0.1700, 1.2400], z: [-2.3000, 2.3000]), check() clean with 0 problems.
+- `assets/models/police_interceptor_full.json`: full model with wheels (2,406 triangles, under 2,600 budget; bounds x: [-1.0000, 1.0000], y: [0.0000, 1.2400], z: [-2.3000, 2.3000]), check() clean with 0 problems.
+
 ## 0.9.56 (2026-10-07)
 
 Police car trial: Rhino heavy SUV (`police_rhino`).
