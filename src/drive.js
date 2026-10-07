@@ -16,6 +16,7 @@ import { TollMeter } from './world/toll.js';
 import { TrafficNet } from './traffic/net.js';
 import { TrafficSim } from './traffic/sim.js';
 import { TrafficRenderer } from './traffic/render.js';
+import { DamageFx } from './traffic/damage-fx.js';
 import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
@@ -111,6 +112,7 @@ export class Drive {
     this.trafficNet = new TrafficNet(world.ground.roads);
     this.traffic = new TrafficSim(this.trafficNet);
     this.trafficView = new TrafficRenderer(world.root, world.models);
+    this.damageFx = new DamageFx(world.root);
     // The police helicopter, parked on the HQ roof until something sends it up (heli.js).
     const hq = world.ground.lots.find((p) => p.lot.kind === 'police');
     /** @type {Heli | null} */
@@ -234,7 +236,7 @@ export class Drive {
       duel: !!this.duel,
       hitPolice: happened.policeHit * 250,
       wrecked: happened.civilWrecks,
-      disabled: happened.lost,
+      destroyed: happened.destroyed,
       hiding: this.inHidingSpot(s),
       money: this.money,
       planBlock: (level) => {
@@ -320,6 +322,7 @@ export class Drive {
       roadblock: e.spikes ? 'ROADBLOCK AHEAD   SPIKE STRIP' : 'ROADBLOCK AHEAD',
       roadblockDodged: 'ROADBLOCK DODGED',
       spiked: 'TIRES SPIKED',
+      destroyed: `COP TAKEN OUT   +¥${(e.bounty || 0).toLocaleString('en-US')}`,
     }[e.type];
     if (text) this.toast(text, 2.2);
   }
@@ -331,7 +334,7 @@ export class Drive {
    * @param {any} r the pursuit report
    */
   endPursuit(r) {
-    const sheet = store.get('rapSheet', { pursuits: 0, escapes: 0, busts: 0, bounty: 0, longest: 0, disabled: 0 });
+    const sheet = store.get('rapSheet', { pursuits: 0, escapes: 0, busts: 0, bounty: 0, longest: 0, disabled: 0, destroyed: 0 });
     sheet.pursuits++;
     if (r.result === 'escaped') {
       sheet.escapes++;
@@ -339,6 +342,7 @@ export class Drive {
     } else sheet.busts++;
     sheet.longest = Math.max(sheet.longest, Math.round(r.time));
     sheet.disabled = Math.max(sheet.disabled, r.disabled);
+    sheet.destroyed = (sheet.destroyed || 0) + r.disabled;
     store.set('rapSheet', sheet);
     if (r.result === 'busted') {
       const s = this.car.state;
@@ -818,6 +822,7 @@ export class Drive {
       audio.impact(crash);
     }
     this.trafficView.update(this.traffic.agents, this.car.state, this.time);
+    this.damageFx.update(dt, this.traffic.agents, this.car.state);
     if (this.heli) {
       this.heliWorld.target = this.heliChasing ? s : null;
       this.heli.update(dt, this.heliWorld);

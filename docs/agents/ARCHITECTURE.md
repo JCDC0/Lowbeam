@@ -141,9 +141,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.54)
+## Current state (0.9.57)
 
-348 tests pass; the type check is clean. By area:
+351 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -211,7 +211,7 @@ drives on from its lane; a harder hit, or a car stranded off every lane for 6 s,
 slides at tire grip (0.7 g) until it stops. Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next (`collideAgents`). A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
-out, its speed into the wall taken, spun by an end hit, a unit wrecked above 9 m/s. Five street racers on
+out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Five street racers on
 Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
@@ -230,14 +230,21 @@ cools a level per 120 s of quiet, and a bust wipes it. Chasing units see 150 m o
 (buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round.
 Units take the lanes by the shortest route (U-turns included), drive straight at the player when
 close with a clear line, follow at the player's speed up to their own top speed (cruiser 190 km/h,
-unmarked 250, Rhino 175, interceptor 300), shove from heat 2, and wreck when hit above 9 m/s. Backup
+unmarked 250, Rhino 175, interceptor 300) and shove from heat 2. Every unit has hit points (cruiser
+100, unmarked 80, interceptor 120, Rhino 260) and loses them to every hit, by the player, other cars
+or a wall: the square of the closing speed times its share of the crash (`unitDamage`), so a Rhino
+shrugs off what hurts a cruiser and a pillar is worst. Below half it smokes and dulls, below a quarter
+it smokes black and limps at 70 % of its top speed, at zero it is destroyed: a dark burnt wreck in
+flames (`traffic/damage-fx.js`), its bar and siren dead, its kind's bounty paid into the pursuit
+(¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. Backup
 arrives one car every 1.5 s from `roster(heat)`; the helicopter flies at heat 3. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
 with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): spiked tires lose 38 %
 grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
 and decks fill it three times faster), escaped with the bounty paid. Stopped with a unit within 12 m
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
-police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals. The pursuit
+police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
+destroyed among them. The pursuit
 HUD and the markers follow the A13 contract. The patrol cruiser is Gemini's model; the other three
 units still borrow racer and SUV bodies. Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the

@@ -21,7 +21,7 @@ the same rules as the player's own car.
 - Tests: a light car loses more speed than a heavy one in the same hit; momentum is conserved; a
   glancing hit spins, a square one stops.
 
-## 2. Police cars that can be destroyed
+## 2. Police cars that can be destroyed (done in 0.9.19)
 
 - Every unit kind gets hit points (`police/units.js`): cruiser 100, unmarked 80, interceptor 120,
   Rhino 260. Damage comes from the impulse of each hit, the walls included, so a hard ram or a

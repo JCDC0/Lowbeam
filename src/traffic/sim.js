@@ -13,6 +13,7 @@ import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
 import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
 import { lightState } from './net.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
+import { DAMAGE, health, unitDamage } from '../police/units.js';
 
 /** @typedef {import('./net.js').Lane} Lane */
 /** @typedef {import('./net.js').Link} Link */
@@ -29,7 +30,7 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   nextChange: number, inertia: number,
  *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
- *   noRoute?: number, leave?: boolean
+ *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -83,8 +84,6 @@ const ROUTE_EVERY = 0.6;
 const UTURN_COST = 45;
 /** Farthest a unit will drive to reach the player before it is sent somewhere better. */
 const ROUTE_MAX = 2000;
-/** A unit hit harder than this (closing speed, m/s) is wrecked; softer, it drives on. */
-const UNIT_WRECK_HIT = 9;
 /** Seconds a unit may lose its clear line before it goes back to the lanes. */
 const BLIND_TIME = 1;
 /** Seconds a unit may be off every road before it is given up. */
@@ -150,10 +149,15 @@ export class TrafficSim {
     this.hitWorld = null;
     /** Where the searching units drive to while the police look for the player. @type {{ x: number, z: number, r: number } | null} */
     this.search = null;
-    /** Since the last `takeEvents`: units lost (wrecked or left behind), yen-worthy hits on units, civilians wrecked. */
+    /**
+     * Since the last `takeEvents`: units lost (destroyed or left behind), yen-worthy hits on units,
+     * civilians wrecked, and the kind of every unit destroyed (its hit points gone).
+     */
     this.lost = 0;
     this.policeHit = 0;
     this.civilWrecks = 0;
+    /** @type {string[]} */
+    this.destroyed = [];
     /** @type {{ lane: Lane, s: number }[]} the lanes at the player, refreshed each step while units chase. */
     this.goals = [];
     /** @type {{ lane: Lane, s: number }[]} */
@@ -480,10 +484,11 @@ export class TrafficSim {
 
   /** What happened to the units and the traffic since the last call, for the police. */
   takeEvents() {
-    const out = { lost: this.lost, policeHit: this.policeHit, civilWrecks: this.civilWrecks };
+    const out = { lost: this.lost, policeHit: this.policeHit, civilWrecks: this.civilWrecks, destroyed: this.destroyed };
     this.lost = 0;
     this.policeHit = 0;
     this.civilWrecks = 0;
+    this.destroyed = [];
     return out;
   }
 
@@ -866,7 +871,7 @@ export class TrafficSim {
    * @param {Agent} a @param {{ x: number, z: number, speed: number }} player
    */
   pursuitSpeed(a, player) {
-    const top = (a.kind.top ?? 160) / 3.6;
+    const top = ((a.kind.top ?? 160) / 3.6) * (health(a) < DAMAGE.limp ? DAMAGE.limpSpeed : 1);
     const base = a.lane.limit * a.kind.speed[1];
     if (a.pursuit === 'search') return Math.min(top, base);
     const behind = Math.hypot(player.x - a.x, player.z - a.z);
@@ -1375,8 +1380,9 @@ export class TrafficSim {
       return;
     }
     a.speed = Math.max(0, a.vx * fx + a.vz * fz);
-    if (hardest > UNIT_WRECK_HIT) {
-      if (isUnit(a.kind)) this.lost++;
+    if (isUnit(a.kind)) {
+      if (this.hurt(a, unitDamage(hardest, Infinity, a.kind.mass))) this.destroy(a);
+    } else if (hardest > CIVIL_WRECK_HIT) {
       a.mode = 'wreck';
       a.wreckAge = 0;
       a.free = false;
@@ -1386,16 +1392,21 @@ export class TrafficSim {
   }
 
   /**
-   * A hit agent: wrecked by a hit harder than its kind can take, else knocked off its line. A unit in
-   * a pursuit is only shoved: it drives on free from where it was pushed to. A parked unit stays put.
-   * @param {Agent} a @param {number} hit closing speed, m/s
+   * A hit agent. A civilian or racer is wrecked by a hit over CIVIL_WRECK_HIT, else knocked off its
+   * line. A unit loses hit points by the hit and what it hit (`unitDamage`) and is destroyed when they
+   * are gone; short of that, in a pursuit it is only shoved and drives on free from where it was
+   * pushed to, and a parked one stays put.
+   * @param {Agent} a @param {number} hit closing speed, m/s @param {number} other mass of what hit it
    */
-  knock(a, hit) {
+  knock(a, hit, other) {
     if (a.mode === 'wreck') return;
     const unit = isUnit(a.kind);
-    if (hit > (unit ? UNIT_WRECK_HIT : CIVIL_WRECK_HIT)) {
-      if (unit) this.lost++;
-      else this.civilWrecks++;
+    if (unit ? this.hurt(a, unitDamage(hit, other, a.kind.mass)) : hit > CIVIL_WRECK_HIT) {
+      if (unit) {
+        this.destroy(a);
+        return;
+      }
+      this.civilWrecks++;
       a.mode = 'wreck';
       a.wreckAge = 0;
       a.free = false;
@@ -1412,6 +1423,34 @@ export class TrafficSim {
     a.mode = 'knocked';
     a.ex = a.ez = 0;
     a.changeDuration = 0;
+  }
+
+  /**
+   * Takes `damage` hit points from a unit. True when that leaves none.
+   * @param {Agent} a @param {number} damage
+   */
+  hurt(a, damage) {
+    if (a.destroyed) return false;
+    a.hp = (a.hp ?? a.kind.hp ?? 100) - damage;
+    return a.hp <= 0;
+  }
+
+  /**
+   * A unit with no hit points left: it is a wreck, its bar and siren die with it, it is lost to the
+   * pursuit and reported by kind for the bounty. It burns where it stops (`damage-fx.js`).
+   * @param {Agent} a
+   */
+  destroy(a) {
+    a.hp = 0;
+    a.destroyed = true;
+    a.pursuit = false;
+    a.mode = 'wreck';
+    a.wreckAge = 0;
+    a.free = false;
+    a.ex = a.ez = 0;
+    a.changeDuration = 0;
+    this.lost++;
+    this.destroyed.push(a.kind.id);
   }
 
   /**
@@ -1478,7 +1517,8 @@ export class TrafficSim {
         if (hit <= 0) continue;
         this.applyBody(a, A);
         this.applyBody(o, B);
-        if (o.mode === 'drive') this.knock(o, hit);
+        if (o.mode === 'drive' || isUnit(o.kind)) this.knock(o, hit, a.kind.mass);
+        if (isUnit(a.kind)) this.knock(a, hit, o.kind.mass);
       }
     }
   }
@@ -1528,7 +1568,9 @@ export class TrafficSim {
     a.speed = Math.hypot(a.vx, a.vz);
     if (this.groundAt && a.speed > 0.05) a.y = this.groundAt(a.x, a.z, a.y);
     if (a.wreckAge > WRECK_TIME - 3) a.fade = Math.max(0, (WRECK_TIME - a.wreckAge) / 3);
-    a.brake = 1;
+    // A burnt-out unit is dark: no brake lamps, no hazards.
+    a.brake = a.destroyed ? 0 : 1;
+    if (a.destroyed) a.signal = 0;
   }
 
   /**
@@ -1549,7 +1591,7 @@ export class TrafficSim {
       hardest = Math.max(hardest, hit);
       this.applyBody(a, body);
       if (isUnit(a.kind)) this.policeHit += hit;
-      this.knock(a, hit);
+      this.knock(a, hit, spec.mass);
     }
     return hardest;
   }

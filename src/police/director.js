@@ -12,7 +12,7 @@
  */
 
 import { Heat, noticesSpeeding, noticesTrap } from './heat.js';
-import { roster } from './units.js';
+import { roster, UNIT_BY_ID } from './units.js';
 import { planSpikes, shouldSetRoadblock, tooNearBlock, hitSpikes, spikePenalty } from './roadblock.js';
 import { Pursuit } from '../race/pursuit.js';
 
@@ -47,13 +47,14 @@ const BLOCK_GONE = 600;
  *   units: UnitSight[],
  *   limit?: number, patrols?: number,
  *   heliSees?: boolean,
- *   toll?: number | null, duel?: boolean, hitPolice?: number, wrecked?: number, disabled?: number,
+ *   toll?: number | null, duel?: boolean, hitPolice?: number, wrecked?: number, destroyed?: string[],
  *   hiding?: boolean, money?: number,
  *   planBlock?: (heat: number) => any,
  * }} PoliceWorld
  *   `toll` is the km/h of a toll gate crossed this frame (one event, not a state), `hitPolice`
- *   yen of damage to police cars this frame, `wrecked` civilians wrecked, `disabled` units lost
- *   (wrecked or left behind), `planBlock` plans a roadblock on the player's route (or null).
+ *   yen of damage to police cars this frame, `wrecked` civilians wrecked, `destroyed` the kind of
+ *   every unit destroyed this frame (each pays its bounty, counts as taken out and adds a little
+ *   heat), `planBlock` plans a roadblock on the player's route (or null).
  * @typedef {{
  *   spawn: string[], chase: 'chase' | 'search' | 'patrol', search: { x: number, z: number, r: number } | null,
  *   heli: boolean, roadblock: any, spikes: any, clearRoadblock: boolean, release: boolean,
@@ -177,7 +178,13 @@ export class PoliceDirector {
       if (toll) infractions.push('tollRun');
       if ((w.hitPolice || 0) > 0) infractions.push('ram');
       if (seen && watcher && noticesSpeeding(p, watcher, w.limit ?? 100)) infractions.push('speeding');
-      for (let i = 0; i < (w.disabled || 0); i++) pursuit.disable();
+      for (const id of w.destroyed || []) {
+        const kind = UNIT_BY_ID.get(id);
+        const bounty = kind?.bounty ?? 5000;
+        pursuit.disable(bounty);
+        infractions.push('ram');
+        out.events.push({ type: 'destroyed', kind: id, name: kind?.name ?? 'UNIT', bounty });
+      }
       const events = pursuit.update(dt, {
         speed: p.speed, seen, close: nearest < BUST_RANGE, units: w.units.length, heli,
         hiding: !!w.hiding, damage: w.hitPolice || 0, wrecked: (w.wrecked || 0) > 0, events: infractions,

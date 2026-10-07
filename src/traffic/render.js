@@ -17,6 +17,7 @@ import { flareTexture } from '../render/textures.js';
 import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
 import { barFlash, barOn } from '../police/lights.js';
+import { DAMAGE, health, isUnit } from '../police/units.js';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -154,11 +155,16 @@ export class TrafficRenderer {
       _s.set(f, f, f);
       _m.compose(_p, _q, _s);
       m.mesh.setMatrixAt(i, _m);
-      m.mesh.setColorAt(i, _c.set(a.paint));
+      _c.set(a.paint);
+      // A destroyed unit is burnt black; a badly hurt one is dulled by smoke and dents.
+      if (a.destroyed) _c.multiplyScalar(0.16);
+      else if (isUnit(a.kind) && health(a) < DAMAGE.smoke) _c.multiplyScalar(0.72);
+      m.mesh.setColorAt(i, _c);
       m.brake.setX(i, a.brake);
       if (focus) {
         const d = Math.hypot(a.x - focus.x, a.z - focus.z);
-        if (d < FLARE_RANGE && a.fade > 0.2) this.near.push({ a, d });
+        // A burnt-out unit throws no light.
+        if (d < FLARE_RANGE && a.fade > 0.2 && !a.destroyed) this.near.push({ a, d });
       }
     }
     this.lamps();

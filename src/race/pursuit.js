@@ -191,10 +191,10 @@ export class Pursuit extends RaceEvent {
     out.push({ type: 'infraction', name, bounty: INFRACTION_BOUNTY[name] });
   }
 
-  /** A unit was disabled this pursuit. */
-  disable() {
+  /** A unit was taken out this pursuit, worth `bounty` yen. @param {number} [bounty] */
+  disable(bounty = UNIT_BOUNTY) {
     this.disabled++;
-    this.bounty += UNIT_BOUNTY;
+    this.bounty += bounty;
     return this.bounty;
   }
 

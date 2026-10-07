@@ -90,6 +90,30 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.19 (2026-10-07)
+
+Police cars that can be destroyed (C2 part 2).
+
+- Unit kinds have hit points and a bounty (`police/units.js`): cruiser 100 and ¥5,000, unmarked 80
+  and ¥8,000, interceptor 120 and ¥12,000, Rhino 260 and ¥20,000. `unitDamage(hit, other, own)`:
+  0.35 times the closing speed squared times the unit's share of the crash (a wall counts 1.2),
+  nothing under 2 m/s. About five rams at 30 km/h destroy a cruiser; a pillar at 70 does it at once.
+- The sim takes hit points on every hit, the player's, other cars' (`collideAgents`) and walls'
+  (`collideWorld`), replacing the old wreck threshold of 9 m/s (`hurt`, `destroy`). Below a quarter
+  of its hit points a unit limps at 70 % of its top speed. A destroyed unit is a wreck with its bar,
+  siren, lamps and hazards off, lost to the pursuit and reported by kind (`takeEvents().destroyed`).
+- The director pays each destroyed unit's bounty into the pursuit (`Pursuit.disable(bounty)`),
+  counts it as taken out, adds an infraction's worth of heat and raises a `destroyed` event, shown
+  for now as a COP TAKEN OUT toast with the bounty (the slam-in banner is part 6). The rap sheet
+  keeps a running total of units destroyed.
+- `traffic/damage-fx.js`: grey smoke from under the hood below half, black and thicker below a
+  quarter, and flames with a column of black smoke on a destroyed unit; two pooled point clouds, one
+  draw call each. A hurt unit's paint dulls, a destroyed one is burnt black.
+- Version ranges: Claude's 0.9.0 to 0.9.19 is used up; Claude goes on at 0.9.70 to 0.9.99. The
+  backend range stays reserved.
+- Tests: `tests/police-damage.test.mjs` (damage by speed squared and mass, walls worst; rams wear a
+  cruiser down to destroyed, reported by kind; the director pays the kind's bounty). 351 pass.
+
 ## 0.9.18 (2026-10-07)
 
 One set of car physics for everybody (C2 part 1).

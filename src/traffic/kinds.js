@@ -16,7 +16,7 @@ import { UNIT_KINDS, isUnit } from '../police/units.js';
  *   id: string, name: string, length: number, width: number, height: number, mass: number,
  *   accel: number, speed: [number, number], weights: Record<string, number>,
  *   paint: number[], wheels?: number, model?: string, accent?: number, lightBar?: boolean,
- *   hidden?: boolean, headOn?: boolean, top?: number, blender?: string
+ *   hidden?: boolean, headOn?: boolean, top?: number, blender?: string, hp?: number, bounty?: number
  * }} Kind
  * `top` is a police unit's own top speed in km/h: in a chase it drives as fast as the chase needs
  * up to this, whatever the road's limit. `blender` names a model in `assets/models/` (made in
