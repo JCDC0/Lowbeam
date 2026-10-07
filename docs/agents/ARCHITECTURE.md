@@ -143,7 +143,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.9.54)
 
-344 tests pass; the type check is clean. By area:
+348 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -203,7 +203,13 @@ inside the main dial (`dialLamps`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
 turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; a blinking
-indicator flares larger and the three nearest throw a small amber pool. A car off its lane
+indicator flares larger and the three nearest throw a small amber pool. Every car the player hits
+answers by mass, the same contact rules as the player's car (`vehicles/contact.js`): a kei car is
+thrown, a bus stops the player. A hit under 11 m/s closing knocks a car off its line: it slides on
+its tires (the sideways slide dies at 0.75 g, the driver brakes, the spin settles), hazards on, then
+drives on from its lane; a harder hit, or a car stranded off every lane for 6 s, is a wreck, which
+slides at tire grip (0.7 g) until it stops. Knocked cars and moving wrecks hit the other traffic, so
+one hit can push a car into the next (`collideAgents`). A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit wrecked above 9 m/s. Five street racers on
 Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`

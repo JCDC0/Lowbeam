@@ -64,6 +64,25 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.18 (2026-10-07)
+
+One set of car physics for everybody (C2 part 1).
+
+- A car the player hits is no longer wrecked by any touch. Under 11 m/s closing (about 40 km/h) it
+  is `knocked`: a free body on its tires (`stepKnocked`: the sideways slide dies at the tires' grip,
+  7.5 m/s2, the driver brakes at 4.5, the spin settles), hazards on, its place on its lane following
+  it so the cars behind see it; slow and straight on a lane facing its way, it drives on. A harder
+  hit wrecks it, and so does sitting off every lane for 6 s. A unit in a pursuit is still only
+  shoved (`knock`).
+- Knocked cars and moving wrecks collide with the rest of the traffic by the same mass-and-impulse
+  contacts as the player's car (`collideAgents`), so a hit can push one car into the next.
+- A wreck slides at the grip of sliding tires (6.8 m/s2 and a light drag) instead of stopping from
+  120 km/h in two seconds.
+- A duel ends only when the rival is wrecked, not when it is knocked.
+- Tests: `tests/traffic-knock.test.mjs` (a tap knocks a car and it drives on within 6 s, a hard hit
+  wrecks it, mass counts both ways, a knocked car knocks the next one). Checked in the game: a hatch
+  tapped at 15 km/h spins, settles and drives on 1.7 s later. 348 pass.
+
 ## 0.9.17 (2026-10-07)
 
 Gemini's models drive in traffic (C1 part 7, the first two).

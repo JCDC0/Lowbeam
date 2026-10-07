@@ -6,7 +6,7 @@ driving stay Night-Runners Prologue. Parts are in order; each is one or more com
 range, with tests for the rules and screenshots for the looks. C1 part 7 (Gemini's police and racer
 bodies into the game) goes first, so the cars being rammed and destroyed are the real models.
 
-## 1. One set of car physics for everybody
+## 1. One set of car physics for everybody (done in 0.9.18)
 
 Today traffic is kinematic: a car the player hits becomes a sliding wreck, and a police unit
 wrecks above 9 m/s. Instead, every car the player touches (civilians, racers, police) collides with

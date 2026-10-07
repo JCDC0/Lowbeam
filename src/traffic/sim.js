@@ -4,7 +4,8 @@
  * the wanted speed, brake for whatever is ahead), stops at red lights, changes lanes on
  * multi-lane roads to get past slower traffic, and now and then takes an exit or a turn.
  * Agents appear out of sight around the player and disappear when left far behind. A car
- * the player hits becomes a wreck: a free body that slides to a stop.
+ * the player hits is knocked: a free body on its tires that slides, spins and settles, then drives on
+ * from where it stopped; a hard hit wrecks it. Knocked cars and wrecks hit the other traffic too.
  */
 
 import { makeRng } from '../core/rng.js';
@@ -23,7 +24,7 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number,
- *   mode: 'drive' | 'wreck' | 'parked', age: number, wreckAge: number, laneHold: number, duel: boolean,
+ *   mode: 'drive' | 'knocked' | 'wreck' | 'parked', age: number, wreckAge: number, knockAge?: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
  *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
@@ -42,6 +43,14 @@ const SPAWN_MIN = 190;
 const SPAWN_MAX = 460;
 const KEEP = 620;
 const WRECK_TIME = 24;
+/** A civilian or racer hit harder than this (closing speed, m/s) is wrecked; a lighter hit knocks it. */
+const CIVIL_WRECK_HIT = 11;
+/**
+ * A knocked car on its tires: how fast its sideways slide dies and how hard its driver brakes (m/s2),
+ * how fast its spin settles (1/s), the speed (m/s) below which it tries its lane again, and how long
+ * it may sit off every lane before it counts as a wreck.
+ */
+const KNOCK = { grip: 7.5, brake: 4.5, spin: 2.2, rejoin: 4, stranded: 6 };
 /** Seconds between lane-change decisions for one agent. */
 const CHANGE_EVERY = 0.8;
 /** Seconds a civilian keeps the lane it just moved into before it will consider moving again. */
@@ -547,11 +556,13 @@ export class TrafficSim {
         continue;
       }
       if (a.mode === 'wreck') this.stepWreck(a, dt);
+      else if (a.mode === 'knocked') this.stepKnocked(a, dt);
       else if (a.mode === 'parked') this.stepParked(a);
       else if (a.pursuit) this.stepPursuit(a, dt, player);
       else this.stepDrive(a, dt, player);
-      if (this.hitWorld && (a.mode === 'wreck' || a.free)) this.collideWorld(a);
+      if (this.hitWorld && (a.mode === 'wreck' || a.mode === 'knocked' || a.free)) this.collideWorld(a);
     }
+    this.collideAgents();
     // Remove what was left behind, what ended and what has been a wreck long enough. A chasing
     // unit left behind is lost to the pursuit.
     const keep = [];
@@ -1374,19 +1385,138 @@ export class TrafficSim {
     }
   }
 
+  /**
+   * A hit agent: wrecked by a hit harder than its kind can take, else knocked off its line. A unit in
+   * a pursuit is only shoved: it drives on free from where it was pushed to. A parked unit stays put.
+   * @param {Agent} a @param {number} hit closing speed, m/s
+   */
+  knock(a, hit) {
+    if (a.mode === 'wreck') return;
+    const unit = isUnit(a.kind);
+    if (hit > (unit ? UNIT_WRECK_HIT : CIVIL_WRECK_HIT)) {
+      if (unit) this.lost++;
+      else this.civilWrecks++;
+      a.mode = 'wreck';
+      a.wreckAge = 0;
+      a.free = false;
+      a.ex = a.ez = 0;
+      a.changeDuration = 0;
+      return;
+    }
+    if (a.mode === 'parked') return;
+    if (unit && a.pursuit) {
+      if (a.mode === 'drive') a.free = true;
+      return;
+    }
+    if (a.mode !== 'knocked') a.knockAge = 0;
+    a.mode = 'knocked';
+    a.ex = a.ez = 0;
+    a.changeDuration = 0;
+  }
+
+  /**
+   * A knocked car: a free body on its tires. The sideways slide dies at the tires' grip, the driver
+   * brakes, the spin settles; its place on its lane follows it so the cars behind see where it is.
+   * Slow and straight enough on a lane facing its way, it drives on; stranded off every lane, it is a
+   * wreck.
+   * @param {Agent} a @param {number} dt
+   */
+  stepKnocked(a, dt) {
+    a.knockAge = (a.knockAge || 0) + dt;
+    const fx = Math.sin(a.yaw);
+    const fz = Math.cos(a.yaw);
+    let vF = a.vx * fx + a.vz * fz;
+    let vL = a.vx * fz - a.vz * fx;
+    vL -= Math.sign(vL) * Math.min(Math.abs(vL), KNOCK.grip * dt);
+    vF -= Math.sign(vF) * Math.min(Math.abs(vF), KNOCK.brake * dt);
+    a.vx = fx * vF + fz * vL;
+    a.vz = fz * vF - fx * vL;
+    a.yawRate *= Math.exp(-dt * KNOCK.spin);
+    a.x += a.vx * dt;
+    a.z += a.vz * dt;
+    a.yaw += a.yawRate * dt;
+    a.speed = Math.max(0, vF);
+    a.brake = 1;
+    a.signal = 2;
+    a.signalTimer = 0;
+    if (this.groundAt) a.y = this.groundAt(a.x, a.z, a.y);
+    const q = this.net.sample(a.lane, a.s, this._q);
+    a.s = clamp(a.s + (a.vx * q.tx + a.vz * q.tz) * dt, 0, a.lane.length);
+    if (Math.hypot(a.vx, a.vz) < KNOCK.rejoin && Math.abs(a.yawRate) < 0.35 && a.knockAge > 0.8) {
+      const at = this.net.locate(a.x, a.z, a.yaw, a.y + 0.5, 2);
+      if (at) {
+        this.net.sample(at.lane, at.s, q);
+        if (q.tx * fx + q.tz * fz > 0.8) {
+          a.mode = 'drive';
+          a.signal = 0;
+          a.speed = Math.max(0, vF);
+          this.moveTo(a, at.lane, at.s, false);
+          return;
+        }
+      }
+    }
+    if (a.knockAge > KNOCK.stranded) {
+      a.mode = 'wreck';
+      a.wreckAge = 0;
+    }
+  }
+
+  /**
+   * Knocked cars and wrecks against the rest of the traffic: the same contacts as with the player's
+   * car, so one hit can push a car into the next. Only pairs with a free body in them are tested.
+   */
+  collideAgents() {
+    const loose = this.agents.filter((a) => a.mode === 'knocked' || (a.mode === 'wreck' && a.speed > 0.3));
+    if (!loose.length) return;
+    for (const a of loose) {
+      for (const o of this.agents) {
+        if (o === a || Math.abs(o.x - a.x) > 12 || Math.abs(o.z - a.z) > 12 || Math.abs(o.y - a.y) > 2.5) continue;
+        if (o.mode === 'knocked' && o.id < a.id) continue;
+        const A = this.bodyOfAgent(a);
+        const B = this.bodyOfAgent(o);
+        const hit = collideCars(A, B);
+        if (hit <= 0) continue;
+        this.applyBody(a, A);
+        this.applyBody(o, B);
+        if (o.mode === 'drive') this.knock(o, hit);
+      }
+    }
+  }
+
+  /** @param {Agent} a */
+  bodyOfAgent(a) {
+    return {
+      x: a.x, z: a.z, yaw: a.yaw, vx: a.vx, vz: a.vz, yawRate: a.yawRate,
+      mass: a.kind.mass, inertia: a.inertia, width: a.kind.width, length: a.kind.length, offset: 0,
+    };
+  }
+
+  /** @param {Agent} a @param {ReturnType<TrafficSim['bodyOfAgent']>} b */
+  applyBody(a, b) {
+    a.x = b.x;
+    a.z = b.z;
+    a.vx = b.vx;
+    a.vz = b.vz;
+    a.yawRate = b.yawRate;
+    // What the hit left of its speed along its heading is what it drives on with.
+    a.speed = a.mode === 'wreck' ? Math.hypot(a.vx, a.vz) : Math.max(0, a.vx * Math.sin(a.yaw) + a.vz * Math.cos(a.yaw));
+  }
+
   stepWreck(a, dt) {
     // A wreck sits with its hazards on both sides until it fades.
     a.signal = 2;
     a.signalTimer = 0;
     a.signalTarget = null;
     a.wreckAge += dt;
-    const drag = Math.exp(-dt * 0.9);
+    // A wreck scrubs off its speed at about the grip of sliding tires (0.7 g), so one hit on the
+    // expressway slides a long way instead of stopping dead.
+    const drag = Math.exp(-dt * 0.15);
     a.vx *= drag;
     a.vz *= drag;
     a.yawRate *= Math.exp(-dt * 1.4);
     const sp = Math.hypot(a.vx, a.vz);
     if (sp > 0.05) {
-      const brake = Math.min(sp, 5.5 * dt);
+      const brake = Math.min(sp, 6.8 * dt);
       a.vx -= (a.vx / sp) * brake;
       a.vz -= (a.vz / sp) * brake;
     } else {
@@ -1413,33 +1543,13 @@ export class TrafficSim {
     for (const a of this.agents) {
       if (Math.abs(a.x - state.x) > 14 || Math.abs(a.z - state.z) > 14) continue;
       if (Math.abs(a.y - state.y) > 2.5) continue;
-      const body = {
-        x: a.x, z: a.z, yaw: a.yaw, vx: a.vx, vz: a.vz, yawRate: a.yawRate,
-        mass: a.kind.mass, inertia: a.inertia, width: a.kind.width, length: a.kind.length, offset: 0,
-      };
+      const body = this.bodyOfAgent(a);
       const hit = collideCars(me, body);
       if (hit <= 0) continue;
       hardest = Math.max(hardest, hit);
-      a.x = body.x;
-      a.z = body.z;
-      a.vx = body.vx;
-      a.vz = body.vz;
-      a.yawRate = body.yawRate;
-      // What the hit left of its speed along its heading is what it drives on with.
-      a.speed = Math.max(0, a.vx * Math.sin(a.yaw) + a.vz * Math.cos(a.yaw));
-      const unit = isUnit(a.kind);
-      if (unit) this.policeHit += hit;
-      if (a.mode !== 'wreck' && (unit ? hit > UNIT_WRECK_HIT : a.mode === 'drive')) {
-        if (unit) this.lost++;
-        else this.civilWrecks++;
-        a.mode = 'wreck';
-        a.wreckAge = 0;
-        a.ex = a.ez = 0;
-        a.changeDuration = 0;
-      } else if (unit && a.mode === 'drive' && a.pursuit && !a.free) {
-        // Shoved off its lane but still running: it drives on from where it was pushed to.
-        a.free = true;
-      }
+      this.applyBody(a, body);
+      if (isUnit(a.kind)) this.policeHit += hit;
+      this.knock(a, hit);
     }
     return hardest;
   }

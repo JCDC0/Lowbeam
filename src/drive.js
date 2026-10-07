@@ -461,7 +461,7 @@ export class Drive {
     const agent = this.duelAgent;
     if (!duel || !agent) return;
     const s = this.car.state;
-    if (agent.mode !== 'drive') {
+    if (agent.mode === 'wreck') {
       duel.abort();
       this.endDuel();
       return;

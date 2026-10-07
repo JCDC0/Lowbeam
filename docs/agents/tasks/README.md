@@ -38,7 +38,7 @@ and leaves `package.json` alone.
 | [G3-police-cars.md](G3-police-cars.md) | Assets | cruiser passed (0.9.54); the other three next, see its review | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
 | [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3, between racers when Claude needs it for the city | Street trees, planters, hedges, shrubs and benches for the city |
 | [G5-street-racers.md](G5-street-racers.md) | Assets | after G3 | The other eleven street racers in Blender, two cars per review |
-| [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | after C1 part 7 | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
+| [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | part 1 done (0.9.18); part 2 next | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
 | [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view
