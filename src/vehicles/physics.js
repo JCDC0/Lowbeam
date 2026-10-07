@@ -65,6 +65,8 @@ export function createVehicleState(spec) {
     wheelAngle: 0,
     fuel: spec.fuel.tank, engineOn: true,
     handbrake: false, braking: false,
+    // Spiked tires (police/roadblock.js): grip and top speed as fractions of whole tires.
+    tireGrip: 1, tireTop: 1,
   };
 }
 
@@ -376,9 +378,9 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   const v2 = speed * speed;
   const downF = sfF.loose ? 0 : spec.aero.front * v2;
   const downR = sfR.loose ? 0 : spec.aero.rear * v2;
-  const muF = spec.tire.mu * sfF.mu * (sfF.loose ? spec.tire.looseGrip : 1);
+  const muF = spec.tire.mu * sfF.mu * (sfF.loose ? spec.tire.looseGrip : 1) * s.tireGrip;
   const hb = s.handbrake ? 0.5 : 1;
-  const muR = spec.tire.mu * spec.tire.rearMu * sfR.mu * (sfR.loose ? spec.tire.looseGrip : 1);
+  const muR = spec.tire.mu * spec.tire.rearMu * sfR.mu * (sfR.loose ? spec.tire.looseGrip : 1) * s.tireGrip;
   const capF = muF * (Nf + downF);
   const capR = muR * (Nr + downR);
 
@@ -466,7 +468,8 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   let Ff = FxF * cs - FyF * sn + FxR;
   let Fl = FxF * sn + FyF * cs + FyR;
   const yawTorque = s.contact ? b * (FxF * sn + FyF * cs) - c * FyR : 0;
-  Ff -= spec.drag * vF * Math.abs(vF);
+  // Flat tires drag: the top speed falls by tireTop, so the drag grows by its inverse square.
+  Ff -= (spec.drag / (s.tireTop * s.tireTop)) * vF * Math.abs(vF);
   Fl -= spec.drag * 2 * vL * Math.abs(vL);
   if (s.contact) {
     const roll = ((sfF.roll + sfR.roll) / 2) * spec.rolling * W;

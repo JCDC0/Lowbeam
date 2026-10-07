@@ -49,9 +49,11 @@ export const INFRACTIONS = Object.keys(INFRACTION_BOUNTY);
 /**
  * @typedef {import('./event.js').RaceEventMsg} RaceEventOut
  * @typedef {{
- *   speed?: number, seen?: boolean, units?: number, heli?: boolean, hiding?: boolean,
+ *   speed?: number, seen?: boolean, close?: boolean, units?: number, heli?: boolean, hiding?: boolean,
  *   wrecked?: boolean, damage?: number, events?: string[]
  * }} PursuitWorld
+ * `close` says a unit is right beside the player (the director measures it); without it, being
+ * seen counts as close, as the first tests of this module assume.
  */
 
 /** The pursuit, from the first pair of eyes to the fine or the payout. */
@@ -74,6 +76,9 @@ export class Pursuit extends RaceEvent {
     this.cost = 0;
     this.disabled = 0;
     this.involved = 0;
+    /** Roadblocks and spike strips the player got past, counted by the director. */
+    this.roadblocks = 0;
+    this.spikes = 0;
     /** @type {string[]} */
     this.infractions = [];
     /** @type {Set<string>} */
@@ -110,6 +115,7 @@ export class Pursuit extends RaceEvent {
     this.time += dt;
     if (this.pstate === 'busted' || this.pstate === 'escaped') return [];
     const seen = !!world.seen;
+    const close = world.close ?? seen;
     const speed = world.speed ?? 0;
     this.units = world.units ?? this.units;
     this.heli = !!world.heli || this.heli;
@@ -128,9 +134,8 @@ export class Pursuit extends RaceEvent {
     // Each infraction only counts once per pursuit, and only the first time fires the event.
     for (const e of world.events || []) this.add(e, out);
 
-    // The bust: they are on top of you and you have stopped.
-    const boxed = speed < BUST_SPEED && (seen || this.units > 1);
-    if (boxed && seen) this.bust = clamp(this.bust + dt / BUST_TIME, 0, 1);
+    // The bust: a unit is on top of you and you have stopped.
+    if (speed < BUST_SPEED && close) this.bust = clamp(this.bust + dt / BUST_TIME, 0, 1);
     else this.bust = clamp(this.bust - BUST_DRAIN * dt, 0, 1);
     if (this.bust >= 1) return this.end('busted', out);
 
@@ -216,8 +221,8 @@ export class Pursuit extends RaceEvent {
       involved: this.involved,
       disabled: this.disabled,
       cost: Math.round(this.cost),
-      roadblocks: 0,
-      spikes: 0,
+      roadblocks: this.roadblocks,
+      spikes: this.spikes,
     };
     out.push({ type: how, bounty: this.report.bounty, fine, report: this.report });
     return out;
@@ -254,7 +259,7 @@ export class Pursuit extends RaceEvent {
 
   /** The same view, but keeping the fields so the HUD can show the end card. */
   reportView() {
-    const r = this.report || { result: this.pstate, time: this.time, heat: this.heat, bounty: 0, fine: 0, infractions: this.infractions, involved: this.involved, disabled: this.disabled, cost: this.cost, roadblocks: 0, spikes: 0 };
+    const r = this.report || { result: this.pstate, time: this.time, heat: this.heat, bounty: 0, fine: 0, infractions: this.infractions, involved: this.involved, disabled: this.disabled, cost: this.cost, roadblocks: this.roadblocks, spikes: this.spikes };
     return {
       state: this.pstate,
       heat: this.heat,

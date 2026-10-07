@@ -23,11 +23,17 @@ import { collideCars, bodyOf } from '../vehicles/contact.js';
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number,
- *   mode: 'drive' | 'wreck', age: number, wreckAge: number, laneHold: number, duel: boolean,
+ *   mode: 'drive' | 'wreck' | 'parked', age: number, wreckAge: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
- *   brake: number, fade: number, pursuit?: boolean
+ *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
+ *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
+ *   noRoute?: number, leave?: boolean
  * }} Agent
+ * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
+ * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
+ * were last seen) or false (patrol like traffic); `true` is read as 'chase'. A roadblock unit is
+ * `parked`. `leave` sends a unit home: it goes once it is out of sight.
  */
 
 const SCAN = 90;
@@ -62,6 +68,25 @@ const CHASE_RANGE = 120;
 const CHASE_LEAD = 1.2;
 /** How hard a unit steers toward its aim point, radians per second at the limit. */
 const CHASE_STEER = 3.4;
+/** Seconds between two route searches for one pursuing unit. */
+const ROUTE_EVERY = 0.6;
+/** A U-turn on a two-way road counts this many meters in a route. */
+const UTURN_COST = 45;
+/** Farthest a unit will drive to reach the player before it is sent somewhere better. */
+const ROUTE_MAX = 2000;
+/** A unit hit harder than this (closing speed, m/s) is wrecked; softer, it drives on. */
+const UNIT_WRECK_HIT = 9;
+/** Seconds a unit may lose its clear line before it goes back to the lanes. */
+const BLIND_TIME = 1;
+/** Seconds a unit may be off every road before it is given up. */
+const OFFROAD_TIME = 5;
+/** A unit that has gone home leaves once it is this far from the player. */
+const LEAVE_RANGE = 150;
+/** Within this many meters of the player a chasing unit holds the player's speed. */
+const CONTACT_RANGE = 6;
+/** Half the player's car, for the gap a unit keeps; and how far into it a ramming unit aims. */
+const PLAYER_HALF = 2.2;
+const RAM_REACH = 1.5;
 
 /** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] */
 function idm(v, v0, accel, gap, closing, rival = false) {
@@ -94,6 +119,25 @@ export class TrafficSim {
     this.patrolTarget = patrols;
     /** 1 to 5 while a pursuit is on: how hard the units drive, and whether they ram. */
     this.heat = 0;
+    /**
+     * Hooks the Drive sets so units respect the world (the sim stays pure; tests leave them null):
+     * `clear(unit, player)` says nothing solid stands between them, `groundAt(x, z, y)` is the
+     * road or ground height under a unit driving off its lane.
+     * @type {((a: { x: number, y: number, z: number }, b: { x: number, y?: number, z: number }) => boolean) | null}
+     */
+    this.clear = null;
+    /** @type {((x: number, z: number, y: number) => number) | null} */
+    this.groundAt = null;
+    /** Where the searching units drive to while the police look for the player. @type {{ x: number, z: number, r: number } | null} */
+    this.search = null;
+    /** Since the last `takeEvents`: units lost (wrecked or left behind), yen-worthy hits on units, civilians wrecked. */
+    this.lost = 0;
+    this.policeHit = 0;
+    this.civilWrecks = 0;
+    /** @type {{ lane: Lane, s: number }[]} the lanes at the player, refreshed each step while units chase. */
+    this.goals = [];
+    /** @type {{ lane: Lane, s: number }[]} */
+    this.searchGoals = [];
     /** Road id the player is racing on, so traffic stays off it. Null outside a rally. */
     this.rallyRoad = /** @type {string | null} */ (null);
     this.time = 0;
@@ -331,11 +375,16 @@ export class TrafficSim {
 
   /**
    * Spawns one police unit of `kindId` on a lane between `min` and `max` meters from the player,
-   * the way the motor pool sends one out. Returns the agent, or null if there was no room.
-   * @param {{ x: number, z: number }} player @param {string} kindId @param {number} min @param {number} max
+   * the way the motor pool sends one out. With `reach`, only where a route of at most that many
+   * meters leads to the player (so backup never starts on the far carriageway of Route 1).
+   * Returns the agent, or null if there was no room.
+   * @param {{ x: number, z: number, y?: number }} player @param {string} kindId @param {number} min @param {number} max
+   * @param {number} [reach]
    * @returns {Agent | null}
    */
-  spawnUnit(player, kindId, min, max) {
+  spawnUnit(player, kindId, min, max, reach = 0) {
+    const goals = reach ? this.net.lanesAt(player.x, player.z, (player.y ?? -Infinity) + 0.5, 40) : [];
+    if (reach && !goals.length) reach = 0;
     const kind = UNIT_BY_ID.get(kindId) || UNIT_BY_ID.get('police');
     for (let tries = 0; tries < 16; tries++) {
       const pick = this.pickNear(player, min, max);
@@ -346,6 +395,7 @@ export class TrafficSim {
       const d = Math.hypot(q.x - player.x, q.z - player.z);
       if (d < min || d > max) continue;
       if (this.crowded(lane, s, 30)) continue;
+      if (reach && !this.net.route(lane, s, goals, { maxCost: reach, uturn: UTURN_COST })) continue;
       const factor = this.rng.range(kind.speed[0], kind.speed[1]);
       const a = /** @type {Agent} */ ({
         id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: lane.limit * factor * 0.9, factor,
@@ -361,6 +411,60 @@ export class TrafficSim {
       return a;
     }
     return null;
+  }
+
+  /**
+   * Parks a roadblock unit at a spot planned by `planRoadblock`, across the road.
+   * @param {string} kindId @param {{ x: number, y: number, z: number, yaw: number }} spot @param {Lane} lane @param {number} s
+   * @returns {Agent}
+   */
+  spawnParked(kindId, spot, lane, s) {
+    const kind = UNIT_BY_ID.get(kindId) || UNIT_BY_ID.get('police');
+    const a = /** @type {Agent} */ ({
+      id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: 0, factor: 1,
+      x: spot.x, y: spot.y, z: spot.z, yaw: spot.yaw, vx: 0, vz: 0, yawRate: 0,
+      ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+      changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
+      mode: 'parked', age: 0, wreckAge: 0, laneHold: 0, duel: false, signal: 0, signalTimer: 0, signalTarget: null,
+      nextChange: 0, inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+      brake: 1, fade: 1, pursuit: false,
+    });
+    this.agents.push(a);
+    return a;
+  }
+
+  /**
+   * Sets every unit to chase, search or patrol. Parked units stay parked unless `unpark`. With
+   * `keep`, units past that many go home (`leave`).
+   * @param {false | 'chase' | 'search'} mode @param {{ keep?: number, unpark?: boolean }} [opts]
+   */
+  command(mode, { keep = Infinity, unpark = false } = {}) {
+    let n = 0;
+    for (const a of this.agents) {
+      if (!isUnit(a.kind) || a.mode === 'wreck') continue;
+      if (a.mode === 'parked') {
+        if (!unpark && mode) continue;
+        a.mode = 'drive';
+        a.free = true;
+      }
+      if (a.leave) continue;
+      if (++n > keep) {
+        a.leave = true;
+        a.pursuit = false;
+        continue;
+      }
+      a.pursuit = mode;
+      if (!mode && a.free) this.rejoin(a);
+    }
+  }
+
+  /** What happened to the units and the traffic since the last call, for the police. */
+  takeEvents() {
+    const out = { lost: this.lost, policeHit: this.policeHit, civilWrecks: this.civilWrecks };
+    this.lost = 0;
+    this.policeHit = 0;
+    this.civilWrecks = 0;
+    return out;
   }
 
   /** Every live police unit. @returns {Agent[]} */
@@ -411,11 +515,19 @@ export class TrafficSim {
 
   /**
    * One step. `player` is the car being driven, so traffic can see it.
-   * @param {number} dt @param {{ x: number, z: number, speed: number }} player
+   * @param {number} dt @param {{ x: number, y?: number, z: number, speed: number }} player
    */
   update(dt, player) {
     this.time += dt;
     this.sortLanes();
+    let chasing = false;
+    let searching = false;
+    for (const a of this.agents) {
+      if (a.pursuit === 'search') searching = true;
+      else if (a.pursuit) chasing = true;
+    }
+    if (chasing) this.goals = this.net.lanesAt(player.x, player.z, (player.y ?? -Infinity) + 0.5, 40);
+    if (searching && this.search) this.searchGoals = this.net.lanesAt(this.search.x, this.search.z, -Infinity, 60);
     for (const a of this.agents) {
       a.age += dt;
       if (this.rallyRoad && a.lane.road.id === this.rallyRoad && a.mode === 'drive') {
@@ -423,18 +535,19 @@ export class TrafficSim {
         a.fade -= dt * 2;
         continue;
       }
-      // A police unit that is chasing and close enough drives at the player instead of its lane.
-      const chasing = a.pursuit && Math.hypot(a.x - player.x, a.z - player.z) < CHASE_RANGE;
       if (a.mode === 'wreck') this.stepWreck(a, dt);
-      else if (chasing) this.stepChase(a, dt, player);
+      else if (a.mode === 'parked') this.stepParked(a);
+      else if (a.pursuit) this.stepPursuit(a, dt, player);
       else this.stepDrive(a, dt, player);
     }
-    // Remove what was left behind, what ended and what has been a wreck long enough.
+    // Remove what was left behind, what ended and what has been a wreck long enough. A chasing
+    // unit left behind is lost to the pursuit.
     const keep = [];
     for (const a of this.agents) {
       const far = Math.hypot(a.x - player.x, a.z - player.z);
-      const gone = a.fade <= 0 || far > KEEP || (a.mode === 'wreck' && a.wreckAge > WRECK_TIME && far > 25);
+      const gone = a.fade <= 0 || far > KEEP || (a.mode === 'wreck' && a.wreckAge > WRECK_TIME && far > 25) || (a.leave && far > LEAVE_RANGE);
       if (!gone) keep.push(a);
+      else if (a.pursuit && a.mode !== 'wreck' && isUnit(a.kind) && far > KEEP) this.lost++;
     }
     this.agents = keep;
     this.spawnTimer -= dt;
@@ -496,7 +609,7 @@ export class TrafficSim {
         }
       }
     }
-    for (const stop of lane.stops) {
+    for (const stop of a.pursuit ? [] : lane.stops) {
       const d = stop.s - a.s - half;
       if (d < -1 || d > 70) continue;
       // A give-way at a T junction: hold while anything on the through road could
@@ -528,7 +641,7 @@ export class TrafficSim {
     const tz = Math.cos(a.yaw);
     const ahead = px * tx + pz * tz;
     const side = px * tz - pz * tx;
-    if (ahead > 0 && ahead < SCAN && Math.abs(side) < 2.3) {
+    if (!a.pursuit && ahead > 0 && ahead < SCAN && Math.abs(side) < 2.3) {
       const g = ahead - half - 2.2;
       if (g < gap) {
         gap = g;
@@ -569,10 +682,14 @@ export class TrafficSim {
     // A racer in a duel stops cruising and goes for its top speed, and it will not drop
     // back to the slow lane while the duel is on.
     let v0 = a.duel ? a.lane.limit * a.kind.speed[1] : a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
+    // Sirens on: a unit drives as fast as the chase needs, up to its own top speed, whatever the
+    // limit; a search is brisk but not flat out.
+    if (a.pursuit) v0 = this.pursuitSpeed(a, player);
     if (this.time < a.capUntil) v0 = Math.min(v0, a.cap);
     v0 = Math.min(v0, this.curveSpeed(a));
-    const effAccel = rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
-    const acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, rival);
+    const fast = rival || !!a.pursuit;
+    const effAccel = a.pursuit ? a.kind.accel * 1.6 : rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
+    const acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, fast);
     a.brake = acc < -1.2 ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -9, effAccel) * dt);
     a.s += a.speed * dt;
@@ -687,7 +804,10 @@ export class TrafficSim {
     a.yaw += turn;
 
     // It drives hard, but brakes for whatever is directly in front, the way a real chase does.
-    const v0 = a.lane.limit * a.kind.speed[1] * (0.7 + 0.12 * this.heat);
+    let v0 = a.kind.top ? this.pursuitSpeed(a, player) : a.lane.limit * a.kind.speed[1] * (0.7 + 0.12 * this.heat);
+    // On the player's bumper it matches their speed: a nudge at heat 1, a shove from heat 2 up,
+    // never an engine that pushes the player's car along.
+    if (dist < CONTACT_RANGE) v0 = Math.min(v0, player.speed + (this.heat >= 2 ? 3 : 0.5));
     const aheadX = a.x + Math.sin(a.yaw) * 18;
     const aheadZ = a.z + Math.cos(a.yaw) * 18;
     let block = Infinity;
@@ -698,7 +818,15 @@ export class TrafficSim {
       const d = Math.hypot(dx, dz);
       if (d < 6) block = Math.min(block, d);
     }
-    const acc = idm(a.speed, v0, a.kind.accel * 1.6, block, a.speed);
+    let acc = idm(a.speed, v0, a.kind.accel * 1.6, block, a.speed, true);
+    // The player ahead is the car it follows: it closes fast and brakes in time instead of
+    // piling into a car that stopped. From heat 2 it aims a little into the bumper.
+    const toward = (Math.sin(a.yaw) * (player.x - a.x) + Math.cos(a.yaw) * (player.z - a.z)) / Math.max(dist, 1e-3);
+    if (toward > 0.85) {
+      const pAlong = (player.vx ?? 0) * Math.sin(a.yaw) + (player.vz ?? 0) * Math.cos(a.yaw);
+      const gap = dist - a.kind.length / 2 - PLAYER_HALF + (this.heat >= 2 ? RAM_REACH : 0);
+      acc = Math.min(acc, idm(a.speed, v0, a.kind.accel * 1.6, Math.max(0.2, gap), a.speed - pAlong, true));
+    }
     a.brake = acc < -1.2 ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -11, a.kind.accel * 1.6) * dt);
 
@@ -706,13 +834,117 @@ export class TrafficSim {
     a.vz = Math.cos(a.yaw) * a.speed;
     a.x += a.vx * dt;
     a.z += a.vz * dt;
-    // A chasing unit keeps the lane's ground height; it never climbs off the road.
+    if (this.groundAt) a.y = this.groundAt(a.x, a.z, a.y);
+  }
+
+  /**
+   * How fast a unit with its sirens on wants to go: chasing, faster than the player (more the
+   * further back it is), never past its kind's top speed; searching, a brisk patrol.
+   * @param {Agent} a @param {{ x: number, z: number, speed: number }} player
+   */
+  pursuitSpeed(a, player) {
+    const top = (a.kind.top ?? 160) / 3.6;
+    const base = a.lane.limit * a.kind.speed[1];
+    if (a.pursuit === 'search') return Math.min(top, base);
+    const behind = Math.hypot(player.x - a.x, player.z - a.z);
+    const catchUp = player.speed * (1.1 + 0.05 * this.heat) + clamp(behind / 20, 0, 15);
+    return Math.min(top, Math.max(base * (0.95 + 0.1 * this.heat), catchUp));
+  }
+
+  /**
+   * A unit with its sirens on. Close, on the same level and with a clear line, it drives straight
+   * at the player (`stepChase`); otherwise it takes the lanes, re-planning the shortest route to
+   * the player (or to the search area) every ROUTE_EVERY seconds, U-turns included.
+   * @param {Agent} a @param {number} dt @param {{ x: number, y?: number, z: number, speed: number }} player
+   */
+  stepPursuit(a, dt, player) {
+    const search = a.pursuit === 'search';
+    const d = Math.hypot(player.x - a.x, player.z - a.z);
+    const level = player.y === undefined || Math.abs(a.y - player.y) < 3;
+    if (!search && d < CHASE_RANGE && level) {
+      const clear = !this.clear || this.clear(a, player);
+      a.blind = clear ? 0 : (a.blind || 0) + dt;
+      if (clear || (a.free && a.blind < BLIND_TIME)) {
+        a.free = true;
+        a.offroad = 0;
+        this.stepChase(a, dt, player);
+        return;
+      }
+    }
+    if (a.free && !this.rejoin(a)) {
+      // Off every road (it followed the player through a car park): keep after them a while.
+      a.offroad = (a.offroad || 0) + dt;
+      if (a.offroad > OFFROAD_TIME) {
+        a.fade = 0;
+        this.lost++;
+      } else this.stepChase(a, dt, player);
+      return;
+    }
+    a.routeTimer = (a.routeTimer ?? 0) - dt;
+    if (a.routeTimer <= 0 || a.routeLane !== a.lane) this.planRoute(a, search ? this.searchGoals : this.goals, d);
+    this.stepDrive(a, dt, player);
+  }
+
+  /**
+   * Points a unit's next turn along the shortest route to `goals`. A unit with no route for a
+   * while, far from the player, is taken off the board for the director to send a better one.
+   * @param {Agent} a @param {{ lane: Lane, s: number }[]} goals @param {number} d its distance to the player
+   */
+  planRoute(a, goals, d) {
+    a.routeTimer = ROUTE_EVERY;
+    a.routeLane = a.lane;
+    if (!goals.length) return;
+    const r = this.net.route(a.lane, a.s, goals, { maxCost: ROUTE_MAX, uturn: UTURN_COST });
+    if (!r) {
+      a.noRoute = (a.noRoute || 0) + 1;
+      if (a.noRoute > 4 && d > 250) a.fade = 0;
+      return;
+    }
+    a.noRoute = 0;
+    const f = r.first;
+    if (!f) {
+      a.plan = null;
+      return;
+    }
+    if ('uturn' in f) {
+      this.moveTo(a, f.uturn, f.s, true);
+      a.routeLane = null;
+      return;
+    }
+    if (f.link.kind === 'end') {
+      a.plan = null;
+      a.end = f.link;
+    } else a.plan = f.link;
+  }
+
+  /**
+   * Puts a unit that was driving free back on the lane under it, facing its way. False when it
+   * is off every road.
+   * @param {Agent} a
+   */
+  rejoin(a) {
+    const at = this.net.locate(a.x, a.z, a.yaw, a.y + 0.5, 6);
+    if (!at) return false;
+    a.free = false;
+    a.speed = Math.hypot(a.vx, a.vz);
+    this.moveTo(a, at.lane, at.s, false);
+    a.routeLane = null;
+    return true;
+  }
+
+  /** A roadblock unit: parked, lights on, waiting. @param {Agent} a */
+  stepParked(a) {
+    a.speed = 0;
+    a.vx = 0;
+    a.vz = 0;
+    a.yawRate = 0;
+    a.brake = 1;
   }
 
   /** A slower speed for a tight bend ahead on this lane. @param {Agent} a */
   curveSpeed(a) {
     const lane = a.lane;
-    const rival = this.isRival(a);
+    const rival = this.isRival(a) || !!a.pursuit;
     if (lane.cls === 'expressway' && !rival) return Infinity;
     const grip = rival ? 8.83 : 3.2;
     const q0 = this.net.sample(lane, a.s, this._q);
@@ -1133,11 +1365,20 @@ export class TrafficSim {
       a.vx = body.vx;
       a.vz = body.vz;
       a.yawRate = body.yawRate;
-      if (a.mode === 'drive') {
+      // What the hit left of its speed along its heading is what it drives on with.
+      a.speed = Math.max(0, a.vx * Math.sin(a.yaw) + a.vz * Math.cos(a.yaw));
+      const unit = isUnit(a.kind);
+      if (unit) this.policeHit += hit;
+      if (a.mode !== 'wreck' && (unit ? hit > UNIT_WRECK_HIT : a.mode === 'drive')) {
+        if (unit) this.lost++;
+        else this.civilWrecks++;
         a.mode = 'wreck';
         a.wreckAge = 0;
         a.ex = a.ez = 0;
         a.changeDuration = 0;
+      } else if (unit && a.mode === 'drive' && a.pursuit && !a.free) {
+        // Shoved off its lane but still running: it drives on from where it was pushed to.
+        a.free = true;
       }
     }
     return hardest;

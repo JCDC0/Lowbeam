@@ -41,7 +41,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock}.js`,
+  soundtrack,passby}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - Units are meters, seconds, kilograms. North is -Z, east is +X. Yaw 0 faces +Z; forward is
@@ -91,7 +91,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | File | Role |
 |---|---|
 | `src/main.js` | Boot, the state machine (title, menu, garage, settings, controls, loading, drive, pause, map, free), `window.__lowbeam` |
-| `src/drive.js` | The drive: fixed-step loop, collisions, cameras, refuel, tow, reset, area names, tolls, duel, rally, the police step |
+| `src/drive.js` | The drive: fixed-step loop, collisions, cameras, refuel, tow, reset, area names, tolls, duel, rally; feeds the police director and carries out its orders |
 | `src/core/input.js` | Keyboard and gamepad, menu actions, `drive(dt)` with keyboard ramps, key bindings (`KEYS`, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
@@ -119,12 +119,13 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/vehicles/models.js`, `loft.js`, `bodies/*` | The lofted car bodies (player cars, racers, traffic) |
 | `src/vehicles/cockpit.js`, `dash.js`, `instruments.js`, `screens.js` | The cockpit interior and each car's instruments; the canvas painters shared with the HUD |
 | `src/vehicles/exhaust.js`, `exhaust-fx.js` | Flames, sparks, smoke |
-| `src/traffic/net.js` | Every road as directed lanes, links, traffic lights |
-| `src/traffic/sim.js` | `TrafficSim`: IDM following, lane changes with blinkers, spawn and despawn, wrecks, street racers, police units and the chase steering |
+| `src/traffic/net.js` | Every road as directed lanes, links, traffic lights; `lanesAt`, `locate` and `route` (Dijkstra over the lanes, U-turns included) |
+| `src/traffic/sim.js` | `TrafficSim`: IDM following, lane changes with blinkers, spawn and despawn, wrecks, street racers; police units that route to the player, chase free on a clear line, search, park in roadblocks |
 | `src/traffic/kinds.js`, `bodies.js`, `render.js` | Vehicle kinds, their geometry, instanced drawing with lamp flares |
 | `src/race/event.js`, `duel.js`, `rally.js`, `pacenotes.js`, `pursuit.js` | `RaceEvent` and its kinds |
 | `src/police/heli.js`, `heli-view.js` | The helicopter and its searchlight |
-| `src/police/units.js`, `heat.js`, `roadblock.js` | Police unit kinds and the roster per heat, the heat, roadblocks and spike strips |
+| `src/police/director.js` | `PoliceDirector`: the whole pursuit from the first notice to the report, as orders the Drive carries out |
+| `src/police/units.js`, `heat.js`, `roadblock.js`, `sight.js`, `pursuit-view.js` | Unit kinds and the roster per heat, attention and heat, roadblocks and spike strips, line of sight, the strip on the road |
 | `src/audio/*` | Engine synthesis (worklet), effects, ambience, pass-by, the recorded soundtrack and its moods |
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
@@ -137,9 +138,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs` | Node benches and renders |
 
-## Current state (0.9.51)
+## Current state (0.9.52)
 
-301 tests pass; the type check is clean. By area:
+321 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -184,12 +185,23 @@ Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet.
 Kuro Pass rally time attack (gates, splits, medals, pace notes, ghost, F at the start line), and the
 police pursuit.
 
-**Police.** The helicopter (Blender model, HQ roof pad, chase, searchlight that a deck blocks). Four
-unit kinds borrowing existing car bodies until their models exist; `roster(heat)` decides who is out.
-`Heat` from what a unit notices; `Pursuit` with evade, cooldown, bust, infractions and bounty;
-`stepChase` drives units at the player; roadblocks and spike strips planned at heat 4 and up. The
-pursuit HUD and the police markers on both maps follow the A13 contract. **The police logic has known
-bugs; task B1 fixes them** (see Open work).
+**Police.** Most Wanted's loop, run by `PoliceDirector` (pure, tested as whole chases). A patrol
+with a clear line notices the player within 60 m all round; 1.5 s of speeding or racing in front of
+it, two speed traps in a row, or ramming a unit starts a pursuit at heat 1 or at the heat the police
+still hold. Heat climbs a level per 90 s of pursuit and per infraction, stays after an escape and
+cools a level per 120 s of quiet, and a bust wipes it. Chasing units see 150 m on a clear line
+(buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round.
+Units take the lanes by the shortest route (U-turns included), drive straight at the player when
+close with a clear line, follow at the player's speed up to their own top speed (cruiser 190 km/h,
+unmarked 250, Rhino 175, interceptor 300), shove from heat 2, and wreck when hit above 9 m/s. Backup
+arrives one car every 1.5 s from `roster(heat)`; the helicopter flies at heat 3. From heat 4 a
+roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
+with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): spiked tires lose 38 %
+grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
+and decks fill it three times faster), escaped with the bounty paid. Stopped with a unit within 12 m
+for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
+police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals. The pursuit
+HUD and the markers follow the A13 contract. Units still borrow civilian bodies.
 
 **Audio.** Synthesized engines per layout (flat-four, V8, V12, straight-six) in an AudioWorklet, tire
 and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, eight recorded tracks
@@ -205,14 +217,12 @@ Gothic One for banners, M PLUS 1p for Japanese.
 
 ## Open work and known issues
 
-- Police (task B1): a pursuit is never cleared after an escape or a bust, so no new one can start and
-  units nearby keep chasing; one toll pass above 160 km/h keeps the trap notice on every frame (heat
-  climbs to 5 and stays); heat level 1 starts on the first frame noticed and any duel adds heat; the
-  roadblock reads `road.dir`, which roads do not have; spike strips never reach the car's physics;
-  BUSTED and ESCAPED have no consequences yet; "in sight" is distance only; no sirens.
+- Police (task B1 part 3): no sirens, no rotor sound, and the music does not switch to the pursuit
+  mood yet. A unit driving free (close to the player) can still clip a building corner; the line-of-
+  sight gate keeps that rare. The units are drawn with civilian bodies.
 - The police units, the light bar, the roadblock barrier and the pursuit breakers have no models of
-  their own yet (task G1). The spike strip (`assets/models/spike_strip.json`) and the Mazuma
-  RX-Coupe body (`rv_rotary.json`, in a fix round, G2) are exported but not used by the game yet.
+  their own yet (task G1). The Mazuma RX-Coupe body (`rv_rotary.json`, G2) is exported but not used
+  by the game yet.
 - The settings screen's key hint bar overlaps the last rows at 720 lines.
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy.

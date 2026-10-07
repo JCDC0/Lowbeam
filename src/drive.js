@@ -24,10 +24,10 @@ import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
 import { Duel, canChallenge, COUNTDOWN } from './race/duel.js';
-import { Pursuit } from './race/pursuit.js';
-import { Heat, noticesSpeeding, noticesTrap } from './police/heat.js';
-import { roster, unitFor } from './police/units.js';
-import { planRoadblock, shouldSetRoadblock, tooNearBlock, planSpikes, hitSpikes, spikePenalty } from './police/roadblock.js';
+import { PoliceDirector, SIGHT_RANGE } from './police/director.js';
+import { planRoadblock } from './police/roadblock.js';
+import { clearLine } from './police/sight.js';
+import { PursuitView } from './police/pursuit-view.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
@@ -112,29 +112,25 @@ export class Drive {
     this.heliView = new HeliView(world.models || {});
     /** Whether the helicopter is after the player; the police set it, `scrambleHeli` does for now. */
     this.heliChasing = false;
-    // The police core (A17): heat says what the police notice, the pursuit event holds the
-    // state, and the sim spawns and drives the units.
-    /** @type {Heat | null} */
-    this.heat = null;
-    /** @type {Pursuit | null} */
-    this.pursuit = null;
-    /** Infraction events collected this frame for the pursuit. @type {string[]} */
-    this.infractions = [];
-    /** Yen of damage to police cars this frame. */
-    this.policeDamage = 0;
-    /** The last speed the toll meter saw, for the speed trap. */
-    this.lastTollSpeed = 0;
-    /** @type {any} the standing roadblock, if any. */
-    this.roadblock = null;
-    /** @type {any} the spike strip laid across it, if any. */
-    this.spikes = null;
-    /** Seconds the tires have been flat. */
-    this.flatTime = 0;
-    /** Seconds since the last roadblock was laid. */
-    this.blockCooldown = 0;
-    /** Roadblocks and strips dodged, for the end-of-pursuit report. */
-    this.roadblocksDodged = 0;
-    this.spikesDodged = 0;
+    // The police (police/director.js): the director decides, the Drive tells it what is true and
+    // carries out its orders, the sim drives the units.
+    this.police = new PoliceDirector();
+    /** What the director said this frame (its view is the HUD's). @type {import('./police/director.js').PoliceOrders | null} */
+    this.policeOrders = null;
+    /** A toast held back until the pursuit's end card is gone. */
+    this.afterReport = '';
+    /** The km/h of a toll gate crossed this frame, for the speed trap; one frame only. @type {number | null} */
+    this.tollKmh = null;
+    /** The roadblock's parked units, so they can be sent after the player when it comes down. @type {any[]} */
+    this.blockUnits = [];
+    this.pursuitView3d = new PursuitView(world.models || {});
+    world.add(this.pursuitView3d.group);
+    // The units see through what the player can see through, and drive on the ground.
+    const terrain = world.ground.hf;
+    /** Whether a point hides a car: inside a building, or under the hillside. @param {number} x @param {number} z @param {number} y */
+    this.solid = (x, z, y) => this.colliders.solidAt(x, z, y) || terrain.at(x, z) > y + 0.5;
+    this.traffic.clear = (a, b) => clearLine(a, { x: b.x, y: b.y ?? a.y, z: b.z }, this.solid);
+    this.traffic.groundAt = (x, z, y) => world.ground.at(x, z, y + 1).h;
     if (this.heli && this.heliView.ok) {
       world.add(this.heliView.group);
       world.add(this.heliView.cone);
@@ -175,10 +171,7 @@ export class Drive {
    * @returns {any}
    */
   pursuitView() {
-    if (this.pursuit && (this.pursuit.pstate === 'busted' || this.pursuit.pstate === 'escaped')) {
-      return this.pursuit.reportView();
-    }
-    return this.pursuit ? this.pursuit.view() : null;
+    return this.policeOrders ? this.policeOrders.view : null;
   }
 
   /**
@@ -194,99 +187,154 @@ export class Drive {
     if (h && h.state !== 'parked') {
       out.push({ kind: 'heli', x: h.x, z: h.z, yaw: h.yaw, search: h.spot.on ? { x: h.spot.x, z: h.spot.z, r: h.spot.r } : undefined });
     }
-    const searching = this.pursuit ? this.pursuit.pstate === 'cooldown' : false;
+    const pursuit = this.police.pursuit;
+    const searching = this.police.active && pursuit?.pstate === 'cooldown';
     const units = this.traffic.units();
     for (const u of units) {
       const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw };
       if (searching) m.cone = { r: 60, half: 0.61 };
       out.push(m);
     }
-    if (out.length && searching && this.pursuit) out[0].last = { x: this.pursuit.last.x, z: this.pursuit.last.z, r: this.pursuit.last.r };
+    if (out.length && searching && pursuit) out[0].last = { x: pursuit.last.x, z: pursuit.last.z, r: pursuit.last.r };
     return out;
   }
 
   /**
-   * One frame of the police: what they notice, how hard they are trying, whether they can see
-   * the player, and the units themselves. Called from the drive frame.
+   * One frame of the police: tell the director what is true, carry out what it says. Called from
+   * the drive frame after the traffic has moved.
    * @param {number} dt @param {any} s the car state
    */
   stepPolice(dt, s) {
-    if (!this.heat) this.heat = new Heat();
-    const units = this.traffic.unitsNear(s, 200);
-    const near = units[0];
-    const speedKmh = s.speed * 3.6;
-    // What the police notice this frame.
-    const events = { speeding: false, trap: false, duel: !!this.duel };
-    if (near && noticesSpeeding(s, near.agent)) events.speeding = true;
-    if (noticesTrap(this.lastTollSpeed)) events.trap = true;
-    if (this.policeDamage > 0) events.hitPolice = true;
+    const happened = this.traffic.takeEvents();
+    const units = this.traffic.units().filter((a) => a.mode !== 'wreck').map((a) => {
+      const d = Math.hypot(a.x - s.x, a.z - s.z);
+      const clear = d < SIGHT_RANGE && Math.abs(a.y - s.y) < 6 && clearLine(a, s, this.solid);
+      return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, d, clear, kind: a.kind.id };
+    });
+    const road = this.world.ground.at(s.x, s.z, s.y).road;
+    const heli = this.heli;
+    const orders = this.police.update(dt, {
+      player: s, units,
+      limit: road?.def.limit ?? 100,
+      patrols: this.traffic.patrolTarget,
+      heliSees: !!(this.heliChasing && heli && heli.spot.sees),
+      toll: this.tollKmh,
+      duel: !!this.duel,
+      hitPolice: happened.policeHit * 250,
+      wrecked: happened.civilWrecks,
+      disabled: happened.lost,
+      hiding: this.inHidingSpot(s),
+      money: this.money,
+      planBlock: (level) => {
+        const at = this.trafficNet.locate(s.x, s.z, s.yaw, s.y + 0.5);
+        return at ? planRoadblock({ lane: at.lane, s: at.s, sample: (l, x, o) => this.trafficNet.sample(l, x, o) }, level) : null;
+      },
+    });
+    this.tollKmh = null;
+    this.policeOrders = orders;
 
-    // A pursuit starts the moment the heat reaches the first level, and runs while any unit is
-    // involved or the helicopter is up.
-    this.heat.update(dt, { ...events, pursuit: this.pursuit ? this.pursuit.pstate !== 'escaped' : false });
-    const level = this.heat.level;
-    if (!this.pursuit && level >= 1) {
-      this.pursuit = new Pursuit();
-      this.pursuit.setHeat(level, false);
+    // The units: send the backup, then tell every unit what to do.
+    for (const kind of orders.spawn) {
+      const a = this.police.active
+        ? this.traffic.spawnUnit(s, kind, 150, 420, 900)
+        : this.traffic.spawnUnit(s, kind, 120, 380);
+      if (a && this.police.active) this.police.pursuit?.involve();
     }
-    // Send more units out as the heat rises, from the roster for that level.
-    const want = level ? roster(level).length : this.traffic.patrolTarget;
-    while (this.traffic.countUnits() < want) {
-      const a = this.traffic.spawnUnit(s, level ? unitFor(level).id : 'police', 120, 380);
-      if (!a) break;
-      if (this.pursuit) this.pursuit.involve();
+    if (orders.release) {
+      this.traffic.command(false, { keep: this.traffic.patrolTarget, unpark: true });
+      this.blockUnits = [];
     }
-    // Units chase once there is a pursuit and the helicopter is up at heat 3 and over.
-    const heliUp = level >= 3;
-    if (heliUp && !this.heliChasing) this.scrambleHeli();
-    if (this.heliChasing && (this.pursuit?.pstate === 'escaped' || this.pursuit?.pstate === 'busted' || level === 0)) this.recallHeli();
-    this.heliChasing = heliUp && !!this.pursuit && this.pursuit.pstate !== 'escaped' && this.pursuit.pstate !== 'busted';
-    for (const u of units) u.agent.pursuit = !!this.pursuit;
+    this.traffic.search = orders.search;
+    if (this.police.active) this.traffic.command(orders.chase === 'search' ? 'search' : 'chase');
+    this.traffic.heat = this.police.active ? this.police.level : 0;
 
-    // Roadblocks and spike strips at heat 4 and up (A17 part 4). The block is planned on the
-    // lane ahead of the player, spawned as parked units, with a strip laid across the gap.
-    this.blockCooldown = Math.max(0, this.blockCooldown - dt);
-    if (shouldSetRoadblock(s, this.roadblock, level, this.blockCooldown) && this.pursuit) {
-      const road = this.world.ground.at(s.x, s.z, s.y).road;
-      const lane = road ? this.trafficNet.lane(road.id, road.dir > 0 ? 1 : -1, 0) : null;
-      if (lane) {
-        const aheadS = this.laneAheadS(lane, s);
-        const block = planRoadblock({ lane, s: aheadS, sample: (l, at, o) => this.trafficNet.sample(l, at, o) }, level);
-        if (block) {
-          this.roadblock = block;
-          this.spikes = planSpikes(block, level);
-          this.blockCooldown = 30;
-          this.roadblocksDodged++;
-        }
+    // The roadblock: park its units, lay the strip; send them after the player when it comes down.
+    if (orders.roadblock) {
+      const b = orders.roadblock;
+      const kind = this.police.level >= 5 ? 'police-heavy' : 'police';
+      this.blockUnits = b.units.map((u) => this.traffic.spawnParked(kind, u, b.lane, b.s));
+      for (const a of this.blockUnits) this.police.pursuit?.involve();
+    }
+    if (orders.clearRoadblock) {
+      for (const a of this.blockUnits) if (a.mode === 'parked') {
+        a.mode = 'drive';
+        a.free = true;
+        a.pursuit = this.police.active ? 'chase' : false;
+        if (!this.police.active) a.leave = true;
       }
+      this.blockUnits = [];
     }
-    // Drive over a strip and the tires go flat.
-    if (this.spikes && hitSpikes(this.spikes, s)) this.flatTime = Math.max(this.flatTime, 0.1);
-    if (this.flatTime > 0) {
-      this.flatTime += dt;
-      if (!spikePenalty(this.flatTime).active) this.flatTime = 0;
-    }
+    this.pursuitView3d.setStrip(this.police.spikes);
 
-    // In sight: a unit close enough, or the helicopter's light on the player.
-    const seen = (near && near.d < 150) || !!(this.heliChasing && this.heli.spot.sees);
-    if (this.pursuit) {
-      this.pursuit.setHeat(level, this.heliChasing);
-      if (seen) this.pursuit.lastSeen(s.x, s.z);
-      const hiding = this.inHidingSpot(s);
-      this.pursuit.update(dt, {
-        speed: s.speed, seen, units: this.traffic.countUnits(), heli: this.heliChasing,
-        hiding, damage: this.policeDamage, events: this.infractions,
-      });
+    // The helicopter goes up at heat 3 and comes home when the pursuit ends.
+    if (orders.heli && !this.heliChasing) this.scrambleHeli();
+    else if (!orders.heli && this.heliChasing) this.recallHeli();
+
+    // The tires, the money and the end of the pursuit.
+    s.tireGrip = orders.tires.grip;
+    s.tireTop = orders.tires.top;
+    for (const e of orders.events) this.policeEvent(e);
+    if (orders.money) {
+      this.money = Math.max(0, this.money + orders.money);
+      store.set('money', this.money);
     }
-    this.policeDamage = 0;
-    this.infractions.length = 0;
-    this.traffic.heat = level;
+    if (orders.report) this.endPursuit(orders.report);
+    // The end card shows the fine or the bounty; what happened to the car waits until it is gone.
+    if (this.afterReport && !orders.view) {
+      this.toast(this.afterReport, 3);
+      this.afterReport = '';
+    }
   }
 
-  /** The lane arc length of the player's position on this lane, so a roadblock can be laid ahead. @param {any} lane @param {any} s */
-  laneAheadS(lane, s) {
-    const hit = lane.road.path.nearest(s.x, s.z);
-    return hit ? hit.s : 0;
+  /** A toast for what the police just did. @param {{ type: string, [k: string]: any }} e */
+  policeEvent(e) {
+    const text = {
+      start: 'PURSUIT',
+      heat: `HEAT LEVEL ${e.level}`,
+      cooldown: 'COOLDOWN   FIND A PLACE TO HIDE',
+      roadblock: e.spikes ? 'ROADBLOCK AHEAD   SPIKE STRIP' : 'ROADBLOCK AHEAD',
+      roadblockDodged: 'ROADBLOCK DODGED',
+      spiked: 'TIRES SPIKED',
+    }[e.type];
+    if (text) this.toast(text, 2.2);
+  }
+
+  /**
+   * The pursuit ended. Busted: the fine is already taken, the car is towed to the police HQ, the
+   * tires and engine fixed. Escaped: the bounty is already paid. The HUD's end card says which;
+   * the rap sheet grows either way.
+   * @param {any} r the pursuit report
+   */
+  endPursuit(r) {
+    const sheet = store.get('rapSheet', { pursuits: 0, escapes: 0, busts: 0, bounty: 0, longest: 0, disabled: 0 });
+    sheet.pursuits++;
+    if (r.result === 'escaped') {
+      sheet.escapes++;
+      sheet.bounty += r.bounty;
+    } else sheet.busts++;
+    sheet.longest = Math.max(sheet.longest, Math.round(r.time));
+    sheet.disabled = Math.max(sheet.disabled, r.disabled);
+    store.set('rapSheet', sheet);
+    if (r.result === 'busted') {
+      const s = this.car.state;
+      const hq = this.world.ground.lots.find((p) => p.lot.kind === 'police');
+      repairEngine(s);
+      this.police.mendTires();
+      s.vx = s.vz = 0;
+      if (hq) this.placeOnRoadNear(hq.cx, hq.cz, s.yaw);
+      this.afterReport = `TOWED TO ${hq ? hq.lot.name : 'THE POLICE'}`;
+    }
+  }
+
+  /** Puts the car on the nearest road to (x, z). @param {number} x @param {number} z @param {number} yaw */
+  placeOnRoadNear(x, z, yaw) {
+    const h = this.hit;
+    if (!this.world.ground.roads.influence(x, z, 600, h)) return;
+    const p = h.road.path.sample(h.s);
+    let heading = Math.atan2(p.tx, p.tz);
+    if (Math.abs(wrapAngle(heading - yaw)) > Math.PI / 2) heading += Math.PI;
+    this.car.place(p.x, p.z, heading, this.ground);
+    this.rig.snap();
   }
 
   /** Whether the car is somewhere the police lose you: a hideout lot, under a deck, a car park. @param {any} s */
@@ -557,6 +605,7 @@ export class Drive {
     const fee = ECONOMY.towCost + repairCost(s);
     this.money = Math.max(0, this.money - fee);
     repairEngine(s);
+    this.police.mendTires();
     store.set('money', this.money);
     this.toPump(best);
     this.toast(`TOWED TO ${best.pad.name}`, 3);
@@ -606,6 +655,10 @@ export class Drive {
     const pump = s.speed < 0.6 ? this.nearPump() : null;
     const hurt = s.blown || s.damage > 0.02;
     const tankFull = s.fuel >= spec.fuel.tank - 0.05;
+    if (pump && this.police.flatTime > 0) {
+      this.police.mendTires();
+      this.toast('TIRES CHANGED', 2);
+    }
     if (pump && hurt && (s.blown || tankFull)) {
       const cost = repairCost(s);
       drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false, manual: drive.manual };
@@ -729,9 +782,8 @@ export class Drive {
       store.set('money', this.money);
       store.set('tollBest', this.tolls.best);
       const kmh = Math.round(gate.speed);
-      // A speed trap run this fast is what the police call an infraction (A17).
-      this.lastTollSpeed = gate.speed;
-      if (noticesTrap(gate.speed)) this.infractions.push('tollRun');
+      // The speed trap: one event for the police this frame, not a lasting state.
+      this.tollKmh = gate.speed;
       this.toast(`${gate.name}   ${kmh} KM/H   ¥${paid.toLocaleString('en-US')}${gate.record ? '   NEW BEST' : `   BEST ${Math.round(gate.best)}`}`, 3.2);
       audio.ui('select');
     }

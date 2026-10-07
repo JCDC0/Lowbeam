@@ -16,8 +16,10 @@ import { UNIT_KINDS, isUnit } from '../police/units.js';
  *   id: string, name: string, length: number, width: number, height: number, mass: number,
  *   accel: number, speed: [number, number], weights: Record<string, number>,
  *   paint: number[], wheels?: number, model?: string, accent?: number, lightBar?: boolean,
- *   hidden?: boolean, headOn?: boolean
+ *   hidden?: boolean, headOn?: boolean, top?: number
  * }} Kind
+ * `top` is a police unit's own top speed in km/h: in a chase it drives as fast as the chase needs
+ * up to this, whatever the road's limit.
  */
 
 const MUTED = [0xe8e8e6, 0xc9ccd0, 0x2a2d33, 0x1b1d22, 0x6b7077, 0x8a1c22, 0x24407a, 0xa89a7e, 0x3b5a46];

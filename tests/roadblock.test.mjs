@@ -73,9 +73,8 @@ test('running over a strip flattens the tires, and they mend over time', () => {
   assert.equal(hitSpikes(strip, { x: strip.x + 50, z: strip.z }), false, 'a car far from the strip misses it');
   assert.ok(hitSpikes(strip, { x: strip.x + 1, z: strip.z }), 'a car on the strip hits it');
 
-  // The instant you touch the strip the tires are fine, but a moment later they are going flat,
-  // and they mend over time.
-  const fresh = spikePenalty(2);
+  // The tires go flat within a second and a half of the strip, then mend over time.
+  const fresh = spikePenalty(0.5);
   assert.ok(fresh.active);
   assert.ok(fresh.grip < 1, 'grip is down once the tires flatten');
   assert.ok(fresh.top < 1, 'top speed is down too');

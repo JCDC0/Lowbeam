@@ -13,8 +13,8 @@ import { HELI, HELI_PARTS } from './heli.js';
 /** The three models World.create loads for it. */
 export const HELI_MODELS = ['heli', 'heli_rotor', 'heli_tail'];
 
-/** @param {import('../world/lots.js').ModelData} m */
-function meshOf(m) {
+/** A mesh of a Blender model with the game's materials. @param {import('../world/lots.js').ModelData} m */
+export function meshOf(m) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute(m.position, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(m.normal, 3));

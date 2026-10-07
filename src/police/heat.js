@@ -1,18 +1,24 @@
 /**
  * Heat: what the police notice, and how hard they come. Pure, no three.js, so a test can step it
- * and the drive loop only has to feed it what happened this frame.
+ * and the director only has to feed it what happened this frame.
  *
- * Four things draw a patrol's eye, each worth a different amount of heat: speeding past one, a
- * toll speed trap taken fast, hitting a police car, and a duel where a unit can see it. Heat is
- * 1 to 5: it rises with what they see and with every second spent in a pursuit, and it cools
- * slowly once nothing has been going on for a while. A patrol only reacts when it can see the
- * player, so the caller decides who saw what and reports it here.
+ * Two numbers, as in Need for Speed: Most Wanted (2005). `attention` (0 to 1) is a patrol making up
+ * its mind: it fills while a unit watches the player speed or race, jumps on a speed trap, and a
+ * pursuit starts when it is full. `value` is the heat itself, 0 (nobody is looking for you) or 1 to
+ * 5.99: a pursuit starts at level 1 or at the level the last one left, climbs a level for every
+ * HEAT_STEP seconds of pursuit and a little per infraction, and after an escape it stays for the
+ * session, cooling a level for every HEAT_COOL seconds of quiet. A bust wipes it.
  */
 
 import { clamp } from '../core/mathx.js';
 
 /** @typedef {{ x: number, z: number, speed?: number, limit?: number }} Seer */
-/** @typedef {{ events?: string[], pursuit?: boolean }} HeatEvents */
+/**
+ * @typedef {{
+ *   speeding?: boolean, duel?: boolean, trap?: boolean, hitPolice?: boolean, hitCivilian?: boolean,
+ *   pursuit?: boolean, infractions?: number
+ * }} HeatEvents
+ */
 
 export const HEAT_MIN = 1;
 export const HEAT_MAX = 5;
@@ -23,14 +29,18 @@ const NOTICE_RANGE = 60;
 const NOTICE_OVER = 40;
 /** A toll speed trap above this speed in km/h is a crime in itself. */
 const TRAP_SPEED = 160;
-/** Heat a single notice is worth, and the seconds it takes to notice it. */
-const NOTICE_HEAT = 0.5;
-const NOTICE_TIME = 2;
-/** Heat per second while a pursuit is running: a full five takes about a minute of running. */
-const PURSUIT_HEAT = 0.08;
-/** Heat lost per second once nothing has been noticed for COOL_TIME. */
-const COOL_HEAT = 0.05;
-const COOL_TIME = 12;
+/** Seconds a unit has to watch the player speeding or racing before it lights up. */
+export const NOTICE_TIME = 1.5;
+/** What one speed trap is worth: two in a row start a pursuit, one alone is forgotten. */
+const TRAP_ATTENTION = 0.6;
+/** Seconds of nothing before attention fades, and how fast it fades then (per second). */
+export const CALM_TIME = 12;
+const CALM_FADE = 0.1;
+/** Seconds of pursuit per heat level, and the heat each new infraction adds. */
+export const HEAT_STEP = 90;
+const INFRACTION_HEAT = 0.12;
+/** Seconds of quiet, out of a pursuit, that cool the heat by one level. */
+export const HEAT_COOL = 120;
 
 /**
  * Whether a patrol at `cop` has noticed the player speeding past. Over the limit by more than
@@ -50,57 +60,74 @@ export function noticesTrap(speedKmh) {
   return speedKmh > TRAP_SPEED;
 }
 
-/**
- * The police's attention to the player. Heat starts at 0 (nobody is looking), and the first
- * notice takes it to 1: the police only exist to the player once they have heat.
- */
+/** The police's attention to the player, and the heat once they are after them. */
 export class Heat {
   constructor() {
-    /** 0 (unnoticed) to HEAT_MAX. */
+    /** 0, or 1 to just under 6 while the police know the player: the level is its floor. */
     this.value = 0;
-    /** Seconds since anything was noticed, for the cool-down. */
-    this.calm = COOL_TIME;
-    /** Seconds the pursuit has been running, which is what the HUD shows as the clock. */
+    /** 0 to 1: a patrol making up its mind; a pursuit starts when it fills. */
+    this.attention = 0;
+    /** Seconds since anything was noticed. */
+    this.calm = CALM_TIME;
+    /** Seconds of pursuit since the heat was last wiped. */
     this.pursuitTime = 0;
   }
 
   /**
-   * Steps the heat by one frame.
+   * Steps the heat by one frame. Returns true on the frame the attention fills, which is when
+   * the caller should start a pursuit (it calls `startPursuit`).
    * @param {number} dt seconds
-   * @param {HeatEvents} [events] what happened this frame: `speeding`, `trap`, `hitPolice`,
-   *   `hitCivilian` and `duel` are each one notice; `pursuit` says a pursuit is running.
+   * @param {HeatEvents} [events] `speeding` and `duel` are watched (they fill the attention over
+   *   NOTICE_TIME while they last); `trap` is one camera flash; `hitPolice` starts a pursuit at
+   *   once; `pursuit` says one is running; `infractions` is how many new ones this frame.
    */
   update(dt, events) {
     const e = events || {};
-    let noticed = false;
-    for (const key of ['speeding', 'trap', 'hitPolice', 'hitCivilian', 'duel']) {
-      if (e[key]) noticed = true;
-    }
-    if (noticed) {
-      // A notice is worth a fixed amount of heat, but it takes a couple of seconds of being
-      // noticed to add it, so a car streaking past does not jump a whole level at once.
-      this.value += (NOTICE_HEAT * dt) / NOTICE_TIME;
-      this.calm = 0;
-    } else {
-      this.calm += dt;
-    }
+    const watched = !!(e.speeding || e.duel || e.hitCivilian);
+    const before = this.attention;
+    if (watched) this.attention += dt / NOTICE_TIME;
+    if (e.trap) this.attention += TRAP_ATTENTION;
+    if (e.hitPolice) this.attention = 1;
+    const noticed = watched || !!e.trap || !!e.hitPolice || !!e.pursuit;
+    this.calm = noticed ? 0 : this.calm + dt;
     if (e.pursuit) {
       this.pursuitTime += dt;
-      this.value += PURSUIT_HEAT * dt;
+      this.value += dt / HEAT_STEP + (e.infractions || 0) * INFRACTION_HEAT;
+      this.attention = 0;
+    } else {
+      if (this.calm > CALM_TIME) this.attention -= CALM_FADE * dt;
+      if (this.value > 0 && this.calm > CALM_TIME) {
+        this.value -= dt / HEAT_COOL;
+        if (this.value < HEAT_MIN) this.value = 0;
+      }
     }
-    if (!noticed && this.calm > COOL_TIME) this.value -= COOL_HEAT * dt;
-    this.value = clamp(this.value, 0, HEAT_MAX);
-    return this.value;
+    this.attention = clamp(this.attention, 0, 1);
+    this.value = clamp(this.value, 0, HEAT_MAX + 0.99);
+    return !e.pursuit && before < 1 && this.attention >= 1;
+  }
+
+  /** A pursuit begins: at level 1, or at the level the police still hold against the player. */
+  startPursuit() {
+    this.value = Math.max(this.value, HEAT_MIN);
+    this.attention = 0;
+    this.calm = 0;
+  }
+
+  /** Busted: the slate is wiped. */
+  wipe() {
+    this.value = 0;
+    this.attention = 0;
+    this.pursuitTime = 0;
   }
 
   /** The heat as the HUD wants it: a whole level from 1 to 5, or 0 while nobody is looking. */
   get level() {
-    if (this.value <= 0) return 0;
-    return clamp(Math.ceil(this.value), HEAT_MIN, HEAT_MAX);
+    if (this.value < HEAT_MIN) return 0;
+    return clamp(Math.floor(this.value), HEAT_MIN, HEAT_MAX);
   }
 
-  /** True once a patrol knows about the player. */
+  /** True once a patrol has the player in mind or the heat is up. */
   get noticed() {
-    return this.value > 0;
+    return this.attention > 0 || this.value > 0;
   }
 }

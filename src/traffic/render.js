@@ -179,8 +179,8 @@ export class TrafficRenderer {
         }
       }
       // A police light bar: two flares on the roof, alternating left and right at 2 Hz while
-      // the unit is chasing. A standstill patrol carries no bar until a pursuit starts.
-      if (a.kind.lightBar && a.pursuit) {
+      // the unit is chasing, searching or parked in a roadblock. A patrol carries no bar.
+      if (a.kind.lightBar && (a.pursuit || a.mode === 'parked')) {
         const beat = (this.time * 2 + a.id * 0.21) % 1;
         for (let i = 0; i < 2; i++) {
           const lit = (beat < 0.5) === (i === 0);

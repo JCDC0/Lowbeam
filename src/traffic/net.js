@@ -120,6 +120,102 @@ export class TrafficNet {
     return lane.dir > 0 ? ps : lane.road.path.length - ps;
   }
 
+  /**
+   * Every lane of the road under (x, z), with its arc length there: where a car standing at that
+   * point could be met. `y` keeps a car under a deck from finding the road on top; `reach` lets a
+   * point just off the road find it. Empty when no road is near.
+   * @param {number} x @param {number} z @param {number} [y] @param {number} [reach]
+   * @returns {{ lane: Lane, s: number }[]}
+   */
+  lanesAt(x, z, y = -Infinity, reach = 0) {
+    if (!this.network.query(x, z, _hit, reach, -Infinity, y)) return [];
+    const ps = _hit.s;
+    return (this.byRoad.get(_hit.road.id) || []).map((lane) => ({ lane, s: this.laneS(lane, ps) }));
+  }
+
+  /**
+   * The lane a car at (x, z) heading `yaw` is driving in: on the road under it, the direction
+   * that matches its heading and the lane nearest its offset. Null off the road.
+   * @param {number} x @param {number} z @param {number} yaw @param {number} [y] @param {number} [reach]
+   * @returns {{ lane: Lane, s: number } | null}
+   */
+  locate(x, z, yaw, y = -Infinity, reach = 0) {
+    let best = null;
+    let bd = Infinity;
+    const hx = Math.sin(yaw);
+    const hz = Math.cos(yaw);
+    for (const c of this.lanesAt(x, z, y, reach)) {
+      this.sample(c.lane, c.s, _s);
+      const back = _s.tx * hx + _s.tz * hz < 0 ? 100 : 0;
+      const d = Math.hypot(_s.x - x, _s.z - z) + back;
+      if (d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  /**
+   * The shortest drive on the lanes from (lane, s) to any of `goals`: Dijkstra over the links (a
+   * turn, an exit, the end of a lane), with a U-turn onto the other direction of a two-way road
+   * costing `uturn` meters when it is given. Returns the cost in meters and the first move: the
+   * link to take, a U-turn, or null when the goal is straight ahead on this lane. Null when no
+   * goal is within `maxCost`.
+   * @param {Lane} lane @param {number} s @param {{ lane: Lane, s: number }[]} goals
+   * @param {{ maxCost?: number, uturn?: number }} [opts]
+   * @returns {{ cost: number, first: null | { link: Link } | { uturn: Lane, s: number } } | null}
+   */
+  route(lane, s, goals, { maxCost = 2500, uturn = 0 } = {}) {
+    if (!goals.length) return null;
+    /** @type {Map<Lane, number[]>} */
+    const goalAt = new Map();
+    for (const g of goals) {
+      const list = goalAt.get(g.lane);
+      if (list) list.push(g.s);
+      else goalAt.set(g.lane, [g.s]);
+    }
+    const heap = new MinHeap();
+    /** @type {Map<string, number>} */
+    const best = new Map();
+    heap.push(0, { lane, s, first: null, done: false });
+    let pops = 0;
+    while (heap.size && pops++ < ROUTE_POPS) {
+      const [cost, st] = heap.pop();
+      if (cost > maxCost) return null;
+      if (st.done) return { cost, first: st.first };
+      const L = st.lane;
+      const key = `${L.id}|${Math.round(st.s / 15)}`;
+      if ((best.get(key) ?? Infinity) <= cost) continue;
+      best.set(key, cost);
+      const ahead = (at) => {
+        let ds = at - st.s;
+        if (L.closed && ds < 0) ds += L.length;
+        return ds;
+      };
+      for (const gs of goalAt.get(L) || []) {
+        const ds = ahead(gs);
+        if (ds >= -3) heap.push(cost + Math.max(0, ds), { lane: L, s: gs, first: st.first, done: true });
+      }
+      for (const link of L.mids) {
+        const ds = ahead(link.at);
+        if (ds >= 0) heap.push(cost + ds + TURN_COST, { lane: link.lane, s: link.toS, first: st.first || { link }, done: false });
+      }
+      for (const link of L.ends) {
+        const ds = ahead(link.at);
+        if (ds >= 0) heap.push(cost + ds + TURN_COST, { lane: link.lane, s: link.toS, first: st.first || { link }, done: false });
+      }
+      if (uturn && !L.oneway) {
+        const back = this.lane(L.road.id, L.dir > 0 ? -1 : 1, 0);
+        if (back) {
+          const bs = L.length - st.s;
+          heap.push(cost + uturn, { lane: back, s: bs, first: st.first || { uturn: back, s: bs }, done: false });
+        }
+      }
+    }
+    return null;
+  }
+
   /** The lanes that can be entered from a point on another road's centerline, near `ps`. */
   joinTargets(road, ps, arrive, limit = -0.3) {
     const out = [];
@@ -331,6 +427,60 @@ export class TrafficNet {
   }
 }
 
+/** Meters a turn costs on top of its length, so a route does not zigzag for nothing. */
+const TURN_COST = 8;
+/** States a route search may expand before it gives up. */
+const ROUTE_POPS = 6000;
+
+/** A binary min-heap of [cost, item] pairs. */
+class MinHeap {
+  constructor() {
+    /** @type {[number, any][]} */
+    this.a = [];
+  }
+
+  get size() {
+    return this.a.length;
+  }
+
+  /** @param {number} cost @param {any} item */
+  push(cost, item) {
+    const a = this.a;
+    a.push([cost, item]);
+    let i = a.length - 1;
+    while (i > 0) {
+      const p = (i - 1) >> 1;
+      if (a[p][0] <= a[i][0]) break;
+      [a[p], a[i]] = [a[i], a[p]];
+      i = p;
+    }
+  }
+
+  /** @returns {[number, any]} */
+  pop() {
+    const a = this.a;
+    const top = a[0];
+    const last = /** @type {[number, any]} */ (a.pop());
+    if (a.length) {
+      a[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = 2 * i + 1;
+        const r = l + 1;
+        let m = i;
+        if (l < a.length && a[l][0] < a[m][0]) m = l;
+        if (r < a.length && a[r][0] < a[m][0]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]];
+        i = m;
+      }
+    }
+    return top;
+  }
+}
+
+/** @type {import('../world/roads.js').RoadHit} */
+const _hit = { road: /** @type {any} */ (null), s: 0, d: 0, h: 0, edge: 0 };
 const _q = { x: 0, z: 0, tx: 0, tz: 1 };
 const _q2 = { x: 0, z: 0, tx: 0, tz: 1 };
 const _a = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };

@@ -29,6 +29,8 @@ const FRICTION = 0.35;
 const EDGE = WORLD_HALF - 12;
 /** Shapes are filed with this extra reach so a car circle centered in a neighbor cell still finds them. */
 const MARGIN = 1.2;
+/** Half size, both ways, of a box big enough to block a line of sight. */
+const SIGHT_SIZE = 1.5;
 
 /** @typedef {{ nx: number, nz: number, depth: number, px: number, pz: number }} Contact */
 
@@ -101,6 +103,28 @@ export class Colliders {
       }
     }
     return out.depth > 0 ? out : null;
+  }
+
+  /**
+   * Whether a point is inside something solid enough to hide a car: a box at least SIGHT_SIZE
+   * across both ways (a building, a kiosk, a landmark wall) whose height range holds y. Barriers,
+   * rails, posts and parked cars are seen past.
+   * @param {number} x @param {number} z @param {number} y
+   */
+  solidAt(x, z, y) {
+    const cell = this.cells.get(Math.floor((z + OFF) / CELL) * W + Math.floor((x + OFF) / CELL));
+    if (!cell) return false;
+    for (const i of cell.b) {
+      const b = this.boxes[i];
+      if (b.hx < SIGHT_SIZE || b.hz < SIGHT_SIZE) continue;
+      if ((b.y0 !== undefined && y < b.y0) || (b.y1 !== undefined && y > b.y1)) continue;
+      const c = Math.cos(b.yaw);
+      const s = Math.sin(b.yaw);
+      const dx = x - b.x;
+      const dz = z - b.z;
+      if (Math.abs(dx * c - dz * s) <= b.hx && Math.abs(dx * s + dz * c) <= b.hz) return true;
+    }
+    return false;
   }
 
   /** @param {Box} b @param {Contact} out */

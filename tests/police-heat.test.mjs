@@ -5,7 +5,7 @@ import { TrafficNet } from '../src/traffic/net.js';
 import { TrafficSim } from '../src/traffic/sim.js';
 import { KINDS, RIVALS, ALL_KINDS, KIND_BY_ID, UNIT_KINDS, isUnit } from '../src/traffic/kinds.js';
 import { UNIT_BY_ID, roster, unitFor } from '../src/police/units.js';
-import { Heat, HEAT_MAX, noticesSpeeding, noticesTrap } from '../src/police/heat.js';
+import { Heat, HEAT_MAX, HEAT_STEP, HEAT_COOL, CALM_TIME, NOTICE_TIME, noticesSpeeding, noticesTrap } from '../src/police/heat.js';
 import { buildKindGeometry } from '../src/traffic/bodies.js';
 
 test('the police units are kinds the renderer can draw but the civilian pool never picks', () => {
@@ -41,34 +41,66 @@ test('heat puts more and heavier units on the road as it rises', () => {
   assert.equal(unitFor(5).id, 'police-int');
 });
 
-test('heat starts unnoticed and only becomes a level once it is noticed', () => {
+test('heat starts unnoticed; a patrol watching the player fills its attention and starts a pursuit', () => {
   const h = new Heat();
   assert.equal(h.value, 0);
   assert.equal(h.level, 0, 'no level before the police notice anything');
   assert.equal(h.noticed, false);
-  for (let t = 0; t < 2; t += 1 / 30) h.update(1 / 30, { speeding: true });
-  assert.equal(h.level, 1, 'one full notice brings the heat to level 1');
-  assert.ok(h.noticed);
+  let started = -1;
+  for (let t = 0; t < 3; t += 1 / 30) {
+    if (h.update(1 / 30, { speeding: true }) && started < 0) started = t;
+  }
+  assert.ok(started > NOTICE_TIME - 0.1 && started < NOTICE_TIME + 0.1, `the pursuit starts after ${NOTICE_TIME} s of watching, at ${started.toFixed(2)}`);
+  assert.equal(h.level, 0, 'attention alone is not heat');
+  h.startPursuit();
+  assert.equal(h.level, 1, 'a fresh pursuit is heat 1');
 });
 
-test('heat rises with a pursuit and never past five', () => {
+test('one speed trap is a warning, a second soon after starts a pursuit', () => {
   const h = new Heat();
-  for (let t = 0; t < 60 * 30; t += 1 / 30) h.update(1 / 30, { pursuit: true });
-  assert.equal(h.value, HEAT_MAX, 'a long pursuit pins the heat at the top');
-  assert.equal(h.level, HEAT_MAX);
-  assert.ok(h.pursuitTime > 29, `pursuit clock ${h.pursuitTime}`);
-});
-
-test('heat cools only after a quiet spell, and never below zero', () => {
-  const h = new Heat();
-  for (let t = 0; t < 30; t += 1 / 30) h.update(1 / 30, { pursuit: true, speeding: true });
-  const hot = h.value;
-  assert.ok(hot > 1, `started hot, value ${hot}`);
+  assert.equal(h.update(1 / 30, { trap: true }), false, 'one camera flash is not a pursuit');
   for (let t = 0; t < 5; t += 1 / 30) h.update(1 / 30, {});
-  assert.equal(h.value, hot, 'heat holds for a few seconds first');
-  for (let t = 0; t < 200; t += 1 / 30) h.update(1 / 30, {});
+  assert.equal(h.update(1 / 30, { trap: true }), true, 'the second one is');
+  const g = new Heat();
+  g.update(1 / 30, { trap: true });
+  for (let t = 0; t < CALM_TIME + 10; t += 1 / 30) g.update(1 / 30, {});
+  assert.equal(g.attention, 0, 'a lone trap is forgotten after the quiet time');
+  assert.equal(g.update(1 / 30, { trap: true }), false, 'so the next one is a warning again');
+});
+
+test('ramming a police car starts a pursuit at once', () => {
+  const h = new Heat();
+  assert.equal(h.update(1 / 30, { hitPolice: true }), true);
+});
+
+test('heat climbs a level for every HEAT_STEP of pursuit and tops out at five', () => {
+  const h = new Heat();
+  h.startPursuit();
+  for (let t = 0; t < HEAT_STEP + 1; t += 1 / 30) h.update(1 / 30, { pursuit: true });
+  assert.equal(h.level, 2, 'one step of pursuit is heat 2');
+  for (let t = 0; t < 60 * 10; t += 1 / 30) h.update(1 / 30, { pursuit: true });
+  assert.equal(h.level, HEAT_MAX, 'a long pursuit pins the heat at the top');
+  assert.ok(h.value < HEAT_MAX + 1, 'and never past it');
+  assert.ok(h.pursuitTime > 600, `pursuit clock ${h.pursuitTime}`);
+});
+
+test('after an escape the heat stays, then cools a level for every HEAT_COOL of quiet', () => {
+  const h = new Heat();
+  h.startPursuit();
+  for (let t = 0; t < HEAT_STEP * 2 + 5; t += 1 / 30) h.update(1 / 30, { pursuit: true });
+  assert.equal(h.level, 3);
+  const hot = h.value;
+  for (let t = 0; t < 5; t += 1 / 30) h.update(1 / 30, {});
+  assert.equal(h.value, hot, 'heat holds for the quiet time first');
+  for (let t = 0; t < CALM_TIME + HEAT_COOL; t += 1 / 30) h.update(1 / 30, {});
+  assert.equal(h.level, 2, 'a level gone after HEAT_COOL');
+  for (let t = 0; t < HEAT_COOL * 4; t += 1 / 30) h.update(1 / 30, {});
   assert.equal(h.value, 0, 'heat falls all the way back to nothing');
   assert.equal(h.noticed, false, 'and the police forget the player');
+  h.startPursuit();
+  for (let t = 0; t < HEAT_STEP * 3; t += 1 / 30) h.update(1 / 30, { pursuit: true });
+  h.wipe();
+  assert.equal(h.level, 0, 'a bust wipes the heat');
 });
 
 test('a patrol notices speeding only well over the limit and only up close', () => {

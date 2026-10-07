@@ -26,6 +26,37 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.3 (2026-10-07)
+
+The police, rebuilt (task B1 parts 1 and 2, taken by Claude while the backend seat is empty).
+
+- New `src/police/director.js`: `PoliceDirector` runs the whole pursuit and returns orders the Drive
+  carries out (spawn, chase or search or patrol, the helicopter, a roadblock, flat tires, money, the
+  HUD view). `Drive.stepPolice` only feeds it and obeys. Fixes every bug in the B1 list: the pursuit
+  ends and clears after a 6 s report so a second one can start; a toll trap is one event, not a
+  state; heat has an attention stage (1.5 s of watching) before level 1; a duel only counts when a
+  unit sees it; roadblocks find the player's lane from the traffic network; dodged roadblocks are
+  counted when passed; spike strips reach the physics; line of sight is a real line.
+- `heat.js`: attention, then heat 1 to 5 (a level per 90 s of pursuit and per infraction), kept
+  after an escape and cooling a level per 120 s, wiped by a bust.
+- New `src/police/sight.js` and `Colliders.solidAt`: buildings and the hillside block sight.
+- `traffic/net.js`: `lanesAt`, `locate` and `route` (Dijkstra over lane links with U-turns).
+- `traffic/sim.js`: chasing units route to the player along the lanes, drive free at them when close
+  with a clear line (on the ground under them), follow the player with IDM instead of piling in,
+  shove from heat 2, search the last known position, park in roadblocks, go home when released;
+  police ignore lights; a hit sets a unit's speed from the impact and only a hard one wrecks it.
+  Unit kinds have a top speed (`top`, km/h) and chase at the player's pace up to it.
+- `roadblock.js`: blocks span the road from its center (they were centered on one lane), the strip
+  sits in the gap (an operator precedence bug put it 1.7 m off the lane), the hit test uses the
+  strip's length and depth, and tires go flat within 1.5 s.
+- `physics.js`: `tireGrip` and `tireTop` in the state scale grip and drag.
+- Busted: the fine is taken, the car towed to the police HQ and mended. Escaped: the bounty is paid.
+  Lifetime totals under `rapSheet`. The spike strip is drawn from Gemini's model
+  (`police/pursuit-view.js`); parked roadblock units flash their bars.
+- Tests: `police-director.test.mjs` (eleven whole chases on a fake world), `police-units.test.mjs`
+  (routing, chasing by the lanes, the free chase, search, roadblock units, release, hits); the heat
+  tests rewritten for the new rules. 321 pass.
+
 ## 0.9.2 (2026-10-07)
 
 Review of the asset agent's first two commits, and a kit fix the car needed.

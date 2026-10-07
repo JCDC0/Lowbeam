@@ -22,27 +22,28 @@ const INTERCEPTOR_PAINT = [0xf4f4f2];
 /**
  * The four unit kinds. `model` names an existing body in `traffic/bodies.js` until Claude's
  * police models land; `lightBar` and `headOn` drive the renderer's flares (a light bar, a Rhino
- * that drives straight at you from ahead).
+ * that drives straight at you from ahead); `top` is the unit's top speed in km/h, which is what
+ * the player has to beat to outrun it.
  * @type {Kind[]}
  */
 export const UNIT_KINDS = [
   {
-    id: 'police', name: 'Patrol cruiser', length: 4.7, width: 1.8, height: 1.45, mass: 1500, accel: 2.7,
+    id: 'police', name: 'Patrol cruiser', length: 4.7, width: 1.8, height: 1.45, mass: 1500, accel: 2.7, top: 190,
     speed: [1.0, 1.25], paint: CRUISER_PAINT, accent: 0x14161c, model: 'rv-hothatch', lightBar: true,
     weights: { expressway: 3, arterial: 2, street: 3, ramp: 1, mountain: 0 },
   },
   {
-    id: 'police-fast', name: 'Unmarked fast unit', length: 4.5, width: 1.85, height: 1.34, mass: 1400, accel: 4.6,
+    id: 'police-fast', name: 'Unmarked fast unit', length: 4.5, width: 1.85, height: 1.34, mass: 1400, accel: 4.6, top: 250,
     speed: [1.5, 1.9], paint: UNMARKED_PAINT, accent: 0x0b0c10, model: 'rv-wide', lightBar: true, hidden: true,
     weights: { expressway: 3, arterial: 1, street: 1, ramp: 1, mountain: 0 },
   },
   {
-    id: 'police-heavy', name: 'Heavy SUV (Rhino)', length: 4.9, width: 2.0, height: 1.9, mass: 2400, accel: 2.2,
+    id: 'police-heavy', name: 'Heavy SUV (Rhino)', length: 4.9, width: 2.0, height: 1.9, mass: 2400, accel: 2.2, top: 175,
     speed: [1.0, 1.3], paint: CRUISER_PAINT, accent: 0x14161c, model: 'suv', lightBar: true, headOn: true,
     weights: { expressway: 3, arterial: 3, street: 3, ramp: 1, mountain: 0 },
   },
   {
-    id: 'police-int', name: 'Interceptor', length: 4.6, width: 2.0, height: 1.24, mass: 1450, accel: 5.6,
+    id: 'police-int', name: 'Interceptor', length: 4.6, width: 2.0, height: 1.24, mass: 1450, accel: 5.6, top: 300,
     speed: [1.9, 2.4], paint: INTERCEPTOR_PAINT, accent: 0x14161c, model: 'rv-hyper', lightBar: true,
     weights: { expressway: 3, arterial: 1, street: 0.5, ramp: 1, mountain: 0 },
   },
