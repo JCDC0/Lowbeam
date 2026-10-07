@@ -49,7 +49,7 @@ Heat 3: one helicopter, heat 4: two, heat 5: three, each with its own searchligh
 spread round the player so their searchlights cover different streets. The count is a setting in
 `units.js` and drops if the frame rate suffers.
 
-## 5. The pursuit HUD, Most Wanted style
+## 5. The pursuit HUD, Most Wanted style (done in 0.9.73)
 
 - One panel at the bottom center of the screen, never pulsing:
   - the evade / busted meter across it;

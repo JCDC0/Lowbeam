@@ -132,6 +132,8 @@ export class Drive {
     this.police = new PoliceDirector();
     /** What the director said this frame (its view is the HUD's). @type {import('./police/director.js').PoliceOrders | null} */
     this.policeOrders = null;
+    /** The detection bar and the units that see the player, from the last orders. @type {{ level: number, watchers: number[] } | null} */
+    this.detect = null;
     /** A toast held back until the pursuit's end card is gone. */
     this.afterReport = '';
     /** The nearest helicopter's last distance, for the rotor's Doppler. */
@@ -190,7 +192,9 @@ export class Drive {
    * @returns {any}
    */
   pursuitView() {
-    return this.policeOrders ? this.policeOrders.view : null;
+    const view = this.policeOrders ? this.policeOrders.view : null;
+    if (!view) return null;
+    return { ...view, helis: this.helisUp, nearby: this.policeOrders?.detect.watchers.length ?? 0 };
   }
 
   /**

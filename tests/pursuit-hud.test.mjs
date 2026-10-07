@@ -103,3 +103,17 @@ test('layoutPursuit marks busted and escaped as terminal states', () => {
   assert.ok(escaped.isTerminal);
   assert.equal(escaped.stateText, 'ESCAPED');
 });
+
+test('layoutPursuit counts the scene, the units in sight, the units taken out and the helicopters, and the fine on a bust', () => {
+  const res = layoutPursuit({
+    state: 'busted', heat: 4, evade: 0, cooldown: 0, bust: 1, units: 6, heli: true, helis: 2, nearby: 3, disabled: 2,
+    bounty: 52000, time: 200, report: { fine: 82000 },
+  });
+  assert.equal(res.units, 6);
+  assert.equal(res.nearby, 3);
+  assert.equal(res.destroyed, 2);
+  assert.equal(res.helis, 2);
+  assert.equal(res.fineText, '¥82,000');
+  assert.equal(res.isTerminal, true);
+  assert.equal(layoutPursuit({ state: 'pursuit', heat: 3, evade: 0, cooldown: 0, bust: 0, units: 1, heli: true, bounty: 0, time: 0 }).helis, 1, 'an old view with only `heli` shows one');
+});

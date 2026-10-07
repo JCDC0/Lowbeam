@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.73 (2026-10-07)
+
+The Most Wanted pursuit HUD (C2 part 5).
+
+- `ui/pursuit.js` and its styles rewritten: one panel at the bottom center (470 px, under the prompt
+  line, between the minimap and the speedometer), every word and number in Michroma. The heat as five
+  marks and the pursuit's time; the bounty in large amber digits, counting up as it grows; the evade
+  and busted meter split from the middle, green to the left and red to the right, turning into a
+  blue COOLDOWN bar while the police search; the units on the scene, the units in sight, the units
+  taken out (the kill count) and a helicopter icon for each one up; at the end a BUSTED or ESCAPED
+  card with the fine or the bounty, the meter hidden so the panel stays short.
+- Before a pursuit, while a patrol watches, only the detection bar shows: amber, red past two thirds.
+- No fades and no pulses. The panel shows only on the drive screen: the garage, the menus and the map
+  no longer carry a pursuit HUD over them (the bug Jc saw entering a garage).
+- `layoutPursuit` gains `helis`, `nearby`, `destroyed` and `fineText`; the Drive's `pursuitView` adds
+  the helicopters up and the units in sight.
+- Tests: the new layout fields. Checked in the game at heat 4 (7 on scene, 2 in sight, 2 taken out,
+  2 helicopters), in cooldown, busted, and in the garage with a pursuit running. 359 pass.
+
 ## 0.9.72 (2026-10-07)
 
 More helicopters (C2 part 4).

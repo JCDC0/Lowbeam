@@ -246,7 +246,9 @@ function frame(now) {
   if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
   if (drive?.car) tracker.update(drive.car, dt);
   rHud.update(tracker, dt);
-  pursuit.update(pursuitMock ?? (/** @type {any} */ (drive)?.pursuitView?.() ?? null), dt);
+  // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.
+  const driving = state === 'drive';
+  pursuit.update(pursuitMock ?? (driving ? /** @type {any} */ (drive)?.pursuitView?.() ?? null : null), dt, driving ? drive?.detect ?? null : null);
   input.endFrame();
   requestAnimationFrame(frame);
 }

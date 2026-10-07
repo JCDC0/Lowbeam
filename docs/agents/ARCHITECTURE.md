@@ -141,9 +141,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.72)
+## Current state (0.9.73)
 
-358 tests pass; the type check is clean. By area:
+359 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -254,7 +254,12 @@ and decks fill it three times faster), escaped with the bounty paid. Stopped wit
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
 police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
 destroyed among them. The pursuit
-HUD and the markers follow the A13 contract. The four units are Gemini's models (cruiser, unmarked
+HUD (`ui/pursuit.js`) is Most Wanted's: one panel at the bottom center, in Michroma, with the heat
+marks and the time, the bounty counting up, the evade and busted meter split from the middle (a blue
+COOLDOWN bar while they search), the units on the scene, in sight and taken out, a helicopter icon for
+each one up, and the result card with the fine or the bounty at the end; before a pursuit only the
+detection bar shows. It never fades or pulses, and it shows only on the drive screen. The markers
+follow the A13 contract. The four units are Gemini's models (cruiser, unmarked
 car, Rhino, interceptor). Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the
 walls and the player's car; the three nearest are heard (wail, yelp up close, hi-lo in a roadblock,
