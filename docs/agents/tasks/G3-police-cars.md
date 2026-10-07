@@ -45,3 +45,20 @@ for each: `__props.check()` clean, the body under 1,800, shots at about 6 m (sid
 quarter, rear three quarter, top), and the bounds and the plan-view widths at nose, doors and tail
 quoted from the JSON. Commit each car on its own; stop after the cruiser for Claude's review, then
 do the other three.
+
+## Review of 0.9.54, the cruiser (Claude): passed
+
+A Crown-sized sedan (4.70 x 1.23 body, 1.45 m to the top of the bar) in the two-tone livery, 1,630
+body triangles, check() clean against the brief's budget. The lenses are right: `lens-l` red on the
+car's left (+x), `lens-r` blue on its right, which is what `police/lights.js` flashes. Two notes to
+carry into the other three, no fix round:
+
+1. **The bar reads thin.** From the chase camera it is two or three pixels tall. Make the lenses about
+   0.12 m tall and the bar about 1.3 m wide, on all four cars (the unmarked car's grille lamps the
+   same size), so the red and blue read at a distance.
+2. **The doors are black to the windows.** A Japanese patrol car is white above the waist line (the
+   upper doors, the pillars, the roof) and black below it. On the cruiser, carry the white down the
+   doors to about the height of the door handles.
+
+Next: the unmarked car, the Rhino and the interceptor, one commit each (0.9.55 to 0.9.57), stopping
+for review after all three. G5 follows.

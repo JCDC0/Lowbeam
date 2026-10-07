@@ -52,6 +52,12 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.15 (2026-10-07)
+
+Review of Gemini's 0.9.54 police cruiser: passes (`G3-police-cars.md`). Two notes for the other three
+cars: taller light bar lenses, and the white livery carried down the doors. The rest of G3 comes
+before G5, so the police can be wired in together.
+
 ## 0.9.14 (2026-10-07)
 
 The Kurogane Line, a Shuto-style elevated expressway over the city (C1 part 5, the expressway).
