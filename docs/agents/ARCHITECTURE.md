@@ -173,7 +173,10 @@ car so the road shows from 5 m.
 
 **Instruments.** Each car has its own cockpit instruments (`DASHES`): Hayate classic black dials with
 an aftermarket racing tach and boost gauge (`tuner` face), Rampart cream dials, Vespera yellow dials,
-Tsurugi a modern LCD, Hikari a 1984 fluorescent display. The HUD speedometer in the outside views is
+Tsurugi a modern LCD, Hikari a 1984 fluorescent display. In the cockpit they are small and set back
+as in a real car (`BINNACLE` in `cockpit.js`): the binnacle stands on the dash top under the
+windshield at 58 % size, its dials at the back of a short hooded tunnel, the steering wheel framing it
+from below; they read as moving needles and bars, not numbers. The HUD speedometer in the outside views is
 the car's own style drawn with the same painters (`cluster-styles.js`): `tuner`, `twin`, `sport`,
 `digital`, `vfd`, and the original `classic`; Settings can lock one style for every car. Every style
 stands upright on a 300 by 400 canvas: the main dial at the bottom right, the small gauges climbing an

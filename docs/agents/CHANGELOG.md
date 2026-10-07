@@ -26,6 +26,20 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.11 (2026-10-07)
+
+Small, recessed cockpit instruments, from Jc's sketch (C1 part 4, the cockpit).
+
+- The cluster binnacle moved from the dash lip (about a third of a meter from the camera, raised into
+  view, a third of the frame) onto the dash top under the windshield, 0.12 m past the lip, at 58 %
+  size (`BINNACLE` in `cockpit.js`; `podFrame` takes a scale). Its hood is a short dark tunnel with
+  sides and a sill, so the dials sit in a recess. The dash-top boost gauge and the center stack
+  shrink to 80 %.
+- The steering wheel rises into view: its rim sits just under the binnacle as the camera sees it,
+  so the wheel frames the cluster from below. `COCKPIT_VIEW.gauges` is gone.
+- Checked in the game for all five cars (analog: two to four small dials; digital: a wide low
+  screen). 335 tests pass.
+
 ## 0.9.10 (2026-10-07)
 
 The HUD clusters stand upright, from Jc's sketch (C1 part 4, the outside view).

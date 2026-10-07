@@ -23,12 +23,20 @@ export { DASHES, gaugeScale, needleAngle };
 export const STEER_RATIO = 4.5;
 /**
  * The cockpit camera, solved per car (`cockpitCamera`): the road shows from `road` meters ahead
- * over the cowl, the camera never closer than `headroom` to the roof liner, it pitches down `pitch`
- * radians so the horizon sits about a third of the way down the frame, and the binnacle is raised
- * until its gauges sit `gauges` radians below the camera's level, so they stay in frame under the
- * road instead of being cut off by the bottom edge.
+ * over the cowl, the camera never closer than `headroom` to the roof liner, and it pitches down
+ * `pitch` radians so the horizon sits about a third of the way down the frame.
  */
-export const COCKPIT_VIEW = { road: 5, forward: 0.25, headroom: 0.09, pitch: 0.17, gauges: 0.46 };
+export const COCKPIT_VIEW = { road: 5, forward: 0.25, headroom: 0.09, pitch: 0.17 };
+
+/**
+ * The instruments are small and set back, as in a real car: the cluster binnacle stands on the dash
+ * top `ahead` meters past the dash lip, under the windshield, everything in it scaled by `scale`,
+ * its hood a short dark tunnel `tunnel` (pod units) deep so the dials sit in a recess and read as
+ * moving needles more than numbers. The other pods (a boost gauge on the dash, a center stack)
+ * shrink by `others`. The wheel's rim rises to `wheelGap` radians under the binnacle as the camera
+ * sees it, so the wheel frames the cluster from below.
+ */
+export const BINNACLE = { ahead: 0.12, scale: 0.58, tunnel: 0.15, others: 0.8, wheelGap: 0.085 };
 
 /**
  * Where the cockpit camera sits for a car, in body space (y is the height above the ground):
@@ -83,22 +91,27 @@ function textTexture(w, h, font = FONT.display, align = 'center') {
   };
 }
 
-/** A group whose local axes are u (driver's right), v (up) and n (toward the eye). */
-function podFrame(center, eye) {
+/**
+ * A group whose local axes are u (driver's right), v (up) and n (toward the eye), scaled by `scale`.
+ * @param {THREE.Vector3} center @param {THREE.Vector3} eye @param {number} [scale]
+ */
+function podFrame(center, eye, scale = 1) {
   const n = new THREE.Vector3().subVectors(eye, center).normalize();
   const u = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), n).normalize();
   const v = new THREE.Vector3().crossVectors(n, u);
   const grp = new THREE.Group();
   grp.matrixAutoUpdate = false;
-  grp.matrix.makeBasis(u, v, n).setPosition(center);
+  grp.matrix.makeBasis(u.multiplyScalar(scale), v.multiplyScalar(scale), n.multiplyScalar(scale)).setPosition(center);
   return grp;
 }
 
 /**
  * The pod shell in pod space: a backing plate, sides buried back into the dash, and a hood
- * arched over the top that reaches toward the driver.
+ * arched over the top that reaches `hood` toward the driver. With `tunnel` the sides and a sill
+ * also come forward that far, so the dials sit at the back of a recess.
+ * @param {number} w @param {number} h @param {number} hood @param {boolean} [tunnel]
  */
-function podShell(w, h, hood) {
+function podShell(w, h, hood, tunnel = false) {
   const b = new MeshBuilder();
   const hw = w / 2 + 0.02;
   const hh = h / 2 + 0.02;
@@ -121,6 +134,16 @@ function podShell(w, h, hood) {
       const [x1, y1] = arch[i + 1];
       b.quad('pod', [x0, y0, back], [x1, y1, back], [x1, y1, front], [x0, y0, front]);
       b.quad('pod', [x0, y0 - 0.012, front], [x1, y1 - 0.012, front], [x1, y1, front], [x0, y0, front]);
+    }
+    if (tunnel) {
+      const sx = hw + 0.012;
+      const top = hh - 0.03;
+      for (const s of [1, -1]) {
+        b.quad('pod', [s * sx, -hh, 0], [s * sx, -hh, front], [s * sx, top, front], [s * sx, top, 0]);
+        b.quad('pod', [s * sx, -hh, front], [s * (sx + 0.012), -hh, front], [s * (sx + 0.012), top, front], [s * sx, top, front]);
+      }
+      b.quad('pod', [-sx, -hh, 0], [sx, -hh, 0], [sx, -hh, front], [-sx, -hh, front]);
+      b.quad('pod', [-sx, -hh - 0.012, front], [sx, -hh - 0.012, front], [sx, -hh, front], [-sx, -hh, front]);
     }
   }
   return b;
@@ -256,23 +279,29 @@ export function buildCockpit(model) {
   let warn = null;
   /** @type {ReturnType<typeof makeScreen> | null} */
   let screen = null;
+  /** The cluster binnacle's center and half height, for the wheel. */
+  let binnacle = null;
   for (const pod of DASHES[spec.id] || DASHES.hayate) {
     let center;
     let hood = 0;
+    let scale = BINNACLE.others;
     if (pod.pod === 'cluster') {
-      // A binnacle on the dash top, as high as it needs to be for the camera to see it under the road.
-      const z = dashBack - 0.06;
-      const y = Math.max(beltY - 0.065, cam.y - (z - cam.z) * Math.tan(COCKPIT_VIEW.gauges));
-      center = new THREE.Vector3(dx, Math.min(y, beltY + 0.07), z);
-      hood = 0.07;
+      // A small binnacle standing on the dash top under the windshield, its gauges in a recess.
+      scale = BINNACLE.scale;
+      const z = dashBack + BINNACLE.ahead;
+      const t = (z - dashBack) / Math.max(0.05, cowlZ + 0.02 - dashBack);
+      const top = beltY + (cowlY - beltY) * Math.min(1, t);
+      center = new THREE.Vector3(dx, top + ((pod.h + 0.04) / 2) * scale, z);
+      hood = BINNACLE.tunnel;
+      binnacle = { center, half: ((pod.h + 0.04) / 2) * scale };
     } else if (pod.pod === 'top') {
       center = new THREE.Vector3(dx * 0.35, beltY + 0.05, dashBack + 0.08);
       hood = 0.03;
     } else {
       center = new THREE.Vector3(0, beltY - 0.13, dashBack - 0.07);
     }
-    const frame = podFrame(center, eye);
-    const pb = podShell(pod.w, pod.h, hood);
+    const frame = podFrame(center, eye, scale);
+    const pb = podShell(pod.w, pod.h, hood, pod.pod === 'cluster');
     const pm = pb.mesh({ pod: mats.pod });
     geos.push(pm.geometry);
     frame.add(pm);
@@ -334,11 +363,15 @@ export function buildCockpit(model) {
 
   // Steering wheel: a rim with three spokes and a hub.
   const wheel = new THREE.Group();
-  // Its rim's top sits just under the gauges as the camera sees them, so the rim frames the cluster.
-  // The tilt brings the rim's top 0.18 sin 0.4 toward the driver and 0.18 cos 0.4 above the hub.
+  // Its rim's top sits just under the binnacle as the camera sees it, so the wheel frames the
+  // cluster from below. The tilt brings the rim's top 0.18 sin 0.4 toward the driver and 0.18 cos 0.4
+  // above the hub.
   const tilt = -0.4;
   const topZ = cam.z + 0.2;
-  const topY = cam.y - (topZ - cam.z) * Math.tan(COCKPIT_VIEW.gauges + 0.36);
+  const under = binnacle
+    ? Math.atan2(cam.y - (binnacle.center.y - binnacle.half), binnacle.center.z - cam.z) + BINNACLE.wheelGap
+    : 0.6;
+  const topY = cam.y - (topZ - cam.z) * Math.tan(under);
   wheel.position.set(dx, topY - 0.18 * Math.cos(tilt), topZ - 0.18 * Math.sin(tilt));
   wheel.rotation.x = tilt;
   const spin = new THREE.Group();
