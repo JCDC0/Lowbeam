@@ -3,9 +3,8 @@
  * Pure data, no three.js: the kinds are handed to the traffic sim to spawn agents, the renderer
  * draws them, and `unitFor` tells the sim what a given heat level fields.
  *
- * Until Claude's police models land (the patrol car with its light bar, the Rhino, the unmarked
- * car, the interceptor), every unit borrows an existing body through its `model` id and wears the
- * police paint, so the swap to a proper model later is one line per kind. The unit kinds are kept
+ * Each unit is drawn with Gemini's Blender model (`KIND_MODELS` in `traffic/kinds.js`); its `model`
+ * id is the body it falls back to until that has loaded. The unit kinds are kept
  * out of the civilian `KINDS` pool so the traffic weights never pick them by accident; the sim
  * spawns them deliberately.
  */

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.70 (2026-10-07)
+
+All four police units drive with Gemini's models (C1 part 7), and G3 passes review.
+
+- `KIND_MODELS` adds the unmarked car (`police_unmarked_full`), the Rhino (`police_rhino_full`) and
+  the interceptor (`police_interceptor_full`) to the cruiser and the Mazuma. The bar flares find each
+  model's red lens, so the unmarked car flashes from its grille.
+- Review of Gemini's 0.9.55 to 0.9.57 in `G3-police-cars.md`: all three pass with both notes from
+  the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
+- First version in Claude's new range (0.9.70 to 0.9.99).
+
 ## 0.9.57 (2026-10-07)
 
 Police car trial: interceptor supercar (`police_interceptor`).

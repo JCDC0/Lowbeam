@@ -86,6 +86,12 @@ export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
  * `_full` export carries its own wheels, which is all traffic needs (its wheels do not turn).
  * @type {Record<string, string>}
  */
-export const KIND_MODELS = { 'rv-rotary': 'rv_rotary_full', police: 'police_cruiser_full' };
+export const KIND_MODELS = {
+  'rv-rotary': 'rv_rotary_full',
+  police: 'police_cruiser_full',
+  'police-fast': 'police_unmarked_full',
+  'police-heavy': 'police_rhino_full',
+  'police-int': 'police_interceptor_full',
+};
 for (const k of ALL_KINDS) if (KIND_MODELS[k.id]) k.blender = KIND_MODELS[k.id];
 for (const k of RIVALS) KIND_BY_ID.set(k.id, k);

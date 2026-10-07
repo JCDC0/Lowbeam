@@ -62,3 +62,13 @@ carry into the other three, no fix round:
 
 Next: the unmarked car, the Rhino and the interceptor, one commit each (0.9.55 to 0.9.57), stopping
 for review after all three. G5 follows.
+
+## Review of 0.9.55 to 0.9.57 (Claude): passed, G3 done
+
+The unmarked car (1,524 body triangles), the Rhino (1,568) and the interceptor (1,702), check()
+clean. Both notes from the cruiser's review are in: the lenses are 0.12 m tall on 1.32 m bars (the
+unmarked car's grille lamps the same height), and the marked cars are white down to the door
+handles. The lens sides are right on all three. In the game (0.9.70) all four units now drive with
+their own bodies, the bar flares sitting on each model's red lens, the unmarked car's in its grille.
+Next for Gemini: G5, the street racers, two cars per review.
+
