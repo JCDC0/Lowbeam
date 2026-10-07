@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.52 (2026-10-07)
+
+Mazuma RX-Coupe fix round (`rv_rotary`).
+
+- `tools/blender/rv_rotary.py`: reshaped to authentic FD RX-7 proportions addressing all 5 review findings:
+  - Tail lamps (two per side, radius 0.06 m) and twin exhaust tips (with dark bores) now face rearward using `cylinder(..., axis='z')`.
+  - Dimensions strictly bounded inside the required box: x in [-0.9750, 0.9750] (body width 1.76 m, mirrors to 0.975 m), y in [0.1800, 1.2150] (roof peak 1.215 m <= 1.22 m), z in [-2.2500, 2.0300].
+  - Reshaped body: front fenders rise above a dipped hood center, Coke-bottle waist dips into wide rear hips (0.88 m half-width), integrated paint ducktail lip curves from the rear deck, bubble rear window wraps into quarter glass, low rounded nose with oval mouth and tucked chin lip.
+- `assets/models/rv_rotary.json`: body-only model (1,895 triangles, well under 2,500 budget; size 1.95 x 1.04 x 4.28 m), verified clean in props viewer.
+- `assets/models/rv_rotary_full.json`: full model with wheels (2,599 triangles, well under 3,200 budget; size 1.95 x 1.22 x 4.28 m), verified clean in props viewer.
+
 ## 0.9.51 (2026-10-07)
 
 Racer car trial: Mazuma RX-Coupe (`rv_rotary`).
