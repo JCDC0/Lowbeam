@@ -92,27 +92,27 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
 Street racers: Kagero Hot-GT (`rv_hothatch`).
 
 - `tools/blender/rv_hothatch.py`: 90s Japanese 3-door hot hatch (Civic EK9 Type R mould):
-  - Proportions: length 4.00 m (z from -2.18 to +1.82), width 1.70 m (x from -0.85 to +0.85, mirrors to +-0.9000 m), height 1.37 m, wheelbase 2.62 m (axles at z = +1.00 m and -1.62 m), wheel radius 0.30 m.
-  - Plan view sports hatch silhouette: tapered nose 1.4600 m at bumper, front flared arches 1.6600 m, doors waist 1.5800 m, wide blister rear hips 1.7000 m, tapered tail 1.5526 m, cabin pulled in to 1.2800 m across roof.
+  - Proportions: length 4.00 m (z from -2.18 to +1.82), width 1.70 m (x from -0.85 to +0.85, mirrors to +-0.8950 m), height 1.37 m, wheelbase 2.62 m (axles at z = +1.00 m and -1.62 m), wheel radius 0.30 m.
+  - Plan view sports hatch silhouette: tapered nose 1.4000 m at bumper, front flared arches 1.6600 m, doors waist 1.5800 m, wide blister rear hips 1.7000 m, tapered tail 1.5500 m, cabin pulled in to 1.2800 m across roof.
   - Aerodynamic roof spoiler wing extending over rear hatch, with wing blade and endplates reaching peak height of exactly 1.3700 m.
-  - Front styling: slim rectangular headlights with chrome bezels and white emissive `lamp` lenses (strictly at z = 1.796 m > 0), sports mesh grille, deep lower air dam intake, chin splitter, and front plate.
-  - Rear styling: block taillight clusters with emissive red `tail` lenses (strictly at z = -2.172 m < 0) and chrome reverse inserts, rear plate, rear diffuser, and large cannon chrome sports exhaust.
+  - Front styling: slim rectangular headlights with chrome bezels and white emissive `lamp` lenses (strictly at z = 1.802 m > 0), sports mesh grille, deep lower air dam intake, chin splitter, and front plate.
+  - Rear styling: block taillight clusters with emissive red `tail` lenses (strictly at z in [-2.157, -2.148] m < 0) and chrome reverse inserts, rear plate, rear diffuser, and large cannon chrome sports exhaust.
   - Real wheel openings with dark inner wells (`under`), sports side skirts, and 4 wheels for the viewer (`wheel-*`, radius 0.30 m).
-- `assets/models/rv_hothatch.json`: body-only model (1,532 triangles, under 1,800 budget; bounds x: [-0.9000, 0.9000], y: [0.1900, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
-- `assets/models/rv_hothatch_full.json`: full model with wheels (2,236 triangles, under 2,600 budget; bounds x: [-0.9000, 0.9000], y: [0.0000, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
+- `assets/models/rv_hothatch.json`: body-only model (1,424 triangles, under 1,800 budget; bounds x: [-0.8950, 0.8950], y: [0.1900, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
+- `assets/models/rv_hothatch_full.json`: full model with wheels (2,128 triangles, under 2,600 budget; bounds x: [-0.8950, 0.8950], y: [0.0000, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
 
 ## 0.9.58 (2026-10-07)
 
 Street racers: Hoshi Kei-S (`rv_kei`).
 
 - `tools/blender/rv_kei.py`: tiny front-engine Japanese kei sports car (Cappuccino / Beat mould):
-  - Proportions: length 3.30 m (z from -1.69 to +1.61), width 1.48 m (x from -0.74 to +0.74, mirrors to +-0.7975 m), height 1.18 m, wheelbase 2.24 m (axles at z = +1.06 m and -1.18 m), wheel radius 0.27 m.
-  - Plan view Coke-bottle silhouette: tapered nose 1.2400 m at bumper, doors waist 1.3866 m, wide rear hips 1.4800 m, tapered tail 1.3304 m, cabin pulled in to 1.1200 m across hardtop roof.
-  - Front styling: round headlights (chrome bezel with white emissive `lamp` lens at z = 1.603 m > 0), oval grille intake, chin splitter, and front plate.
-  - Rear styling: dual round taillights per side (emissive `tail` lenses at z = -1.684 m < 0), rear plate, rear diffuser, and single chrome sports exhaust tip with dark bore.
+  - Proportions: length 3.30 m (z from -1.69 to +1.61), width 1.48 m (x from -0.74 to +0.74, mirrors to +-0.7925 m), height 1.18 m, wheelbase 2.24 m (axles at z = +1.06 m and -1.18 m), wheel radius 0.27 m.
+  - Plan view Coke-bottle silhouette: tapered nose 1.1600 m at bumper, front fenders 1.4300 m, doors waist 1.3866 m, wide rear hips 1.4800 m, tapered tail 1.3300 m, cabin pulled in to 1.1200 m across hardtop roof.
+  - Front styling: round headlights (chrome bezel with white emissive `lamp` lens at z = 1.606 m > 0), oval grille intake, chin splitter, and front plate.
+  - Rear styling: dual round taillights per side (emissive `tail` lenses at z in [-1.677, -1.660] m < 0), rear plate, rear diffuser, and single chrome sports exhaust tip with dark bore.
   - Real wheel openings with dark inner wells (`under`), side mirrors, sports side skirts, and 4 wheels for the viewer (`wheel-*`, radius 0.27 m).
-- `assets/models/rv_kei.json`: body-only model (1,762 triangles, under 1,800 budget; bounds x: [-0.7975, 0.7975], y: [0.1750, 1.1796], z: [-1.6900, 1.6120]), check() clean with 0 problems.
-- `assets/models/rv_kei_full.json`: full model with wheels (2,466 triangles, under 2,600 budget; bounds x: [-0.7975, 0.7975], y: [0.0000, 1.1796], z: [-1.6900, 1.6120]), check() clean with 0 problems.
+- `assets/models/rv_kei.json`: body-only model (1,514 triangles, under 1,800 budget; bounds x: [-0.7925, 0.7925], y: [0.1750, 1.1796], z: [-1.6900, 1.6100]), check() clean with 0 problems.
+- `assets/models/rv_kei_full.json`: full model with wheels (2,218 triangles, under 2,600 budget; bounds x: [-0.7925, 0.7925], y: [0.0000, 1.1796], z: [-1.6900, 1.6100]), check() clean with 0 problems.
 
 ## 0.9.57 (2026-10-07)
 

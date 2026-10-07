@@ -6,7 +6,7 @@ Run after kit.py.
 
 Dimensions (from G5 specification table):
 - Length: 3.30 m (nose z = +1.61, tail z = -1.69)
-- Width: 1.48 m (x from -0.74 to +0.74, mirrors to +-0.815)
+- Width: 1.48 m (x from -0.74 to +0.74, mirrors to +-0.795)
 - Height: 1.18 m (roof y = 1.18, hood ~0.74, nose ~0.58, deck ~0.78)
 - Axles: front z = +1.06, rear z = -1.18 (wheelbase 2.24 m)
 - Wheels: radius 0.27 m, width 0.18 m, centers at x = +-0.65, y = 0.27, z = +1.06 and -1.18
@@ -42,35 +42,35 @@ PLATE = mat('plate', 0xe8e6d8)       # License plate
 TIRE = mat('tire', 0x151515)         # Viewer wheel tire
 RIM = mat('rim', 0xb0b4bc)           # Viewer wheel rim
 
-# Z stations along the car from tail (-1.69) to nose (+1.61)
+# Z stations along the car body hull from z = -1.65 to z = +1.58
+# Front bumper and nose details reach exactly +1.610; rear bumper and exhaust reach -1.690.
 Z_STATIONS = [
-    -1.69, -1.66, -1.60, -1.48, -1.34,
-    -1.24, -1.18, -1.12, -1.00, -0.85,
-    -0.65, -0.45, -0.25, -0.05, 0.15,
-    0.35, 0.55, 0.72, 0.88, 1.00,
-    1.06, 1.14, 1.26, 1.40, 1.54, 1.61
+    -1.65, -1.58, -1.48, -1.34, -1.22,
+    -1.18, -1.10, -0.98, -0.80, -0.55,
+    -0.30, -0.05, 0.20, 0.45, 0.65,
+    0.85, 1.00, 1.06, 1.14, 1.26,
+    1.38, 1.48, 1.54, 1.58
 ]
 
 def get_profile(z):
     # Authentic plan view:
     # Nose bumper (z=1.61): width ~1.24m (w=0.62)
-    # Headlamps (z=1.48): width ~1.30m (w=0.65)
-    # Front axle (z=1.06): width ~1.42m (w=0.71)
+    # Front axle (z=1.06): width ~1.43m (w=0.715)
     # Doors waist (z=0.00): width ~1.38m (w=0.69)
     # Rear hips (z=-1.18): width 1.48m (w=0.74)
-    # Tail bumper (z=-1.69): width ~1.32m (w=0.66)
+    # Tail bumper (z=-1.69): width ~1.33m (w=0.665)
     if z > FRONT_AXLE:
-        t = (z - FRONT_AXLE) / (1.61 - FRONT_AXLE)
-        w_body = 0.710 - 0.090 * (t ** 1.15)
+        t = (z - FRONT_AXLE) / (1.58 - FRONT_AXLE)
+        w_body = 0.715 - 0.090 * (t ** 1.15)
     elif z > 0.0:
         t = z / FRONT_AXLE
-        w_body = 0.690 + 0.020 * math.sin(t * math.pi / 2)
+        w_body = 0.690 + 0.025 * math.sin(t * math.pi / 2)
     elif z > REAR_AXLE:
         t = (-z) / (-REAR_AXLE)
         w_body = 0.690 + 0.050 * math.sin(t * math.pi / 2)
     else:
-        t = (REAR_AXLE - z) / (REAR_AXLE - (-1.69))
-        w_body = 0.740 - 0.080 * (t ** 1.10)
+        t = (REAR_AXLE - z) / (REAR_AXLE - (-1.65))
+        w_body = 0.740 - 0.075 * (t ** 1.10)
 
     # Rocker & wheel arch cutout
     y_rocker = 0.18
@@ -84,26 +84,26 @@ def get_profile(z):
     # Fender line & Hood / Deck heights
     if z > 0.55:
         # Sloping hood to nose
-        t = (z - 0.55) / (1.61 - 0.55)
-        y_fender = 0.730 - 0.170 * (t ** 1.10)
+        t = (z - 0.55) / (1.58 - 0.55)
+        y_fender = 0.730 - 0.155 * (t ** 1.10)
         # Gentle center dip between front fenders
         y_center = y_fender - 0.020 * math.sin(t * math.pi)
     elif z > -0.05:
         # Waist section
         y_fender = 0.740
         y_center = 0.740
-    elif z > -0.85:
+    elif z > -0.80:
         # Behind waist into rear quarter
         y_fender = 0.755
         y_center = 0.755
     else:
-        # Rear deck curving gently into ducktail lip at -1.69
-        t = (-0.85 - z) / (1.69 - 0.85)
-        y_fender = 0.760 + 0.035 * (t ** 1.5)
+        # Rear deck curving gently to ducktail
+        t = (-0.80 - z) / (1.65 - 0.80)
+        y_fender = 0.760 + 0.025 * (t ** 1.5)
         y_center = y_fender - 0.010
 
-    # Greenhouse (Cockpit / Hardtop): z from -0.85 to 0.55
-    has_cabin = (-0.85 < z < 0.55)
+    # Greenhouse (Cockpit / Hardtop): z from -0.80 to 0.55
+    has_cabin = (-0.80 < z < 0.55)
     if has_cabin:
         if z > 0.15:
             # Raked windshield from cowl (z=0.55, y=0.74) to roof header (z=0.15, y=1.17)
@@ -116,8 +116,8 @@ def get_profile(z):
             y_roof = 1.180 - 0.010 * (t ** 2)
             w_roof = 0.560
         else:
-            # Fastback rear coupe glass down to rear deck (z=-0.85, y=0.76)
-            t = (-0.35 - z) / (0.85 - 0.35)
+            # Fastback rear coupe glass down to rear deck (z=-0.80, y=0.76)
+            t = (-0.35 - z) / (0.80 - 0.35)
             y_roof = 1.170 - 0.410 * (t ** 1.15)
             w_roof = 0.560 - 0.050 * t
     else:
@@ -166,13 +166,10 @@ def make_ring_pts(z):
     side_l = [(-p[0], p[1]) for p in reversed(side_r)]
 
     pts = []
-    # 7 points along right flank (rocker to roof edge)
     for i in range(7):
         pts.append({'x': side_r[i][0], 'y': side_r[i][1]})
-    # 5 points across crowned top
     for i in range(5):
         pts.append({'x': top_pts[i][0], 'y': top_pts[i][1]})
-    # 7 points down left flank (roof edge to rocker)
     for i in range(7):
         pts.append({'x': side_l[i][0], 'y': side_l[i][1]})
 
@@ -199,25 +196,22 @@ def add_tri(bm, v0, v1, v2):
 
 def get_segment_material(zm, k):
     if 6 <= k <= 11:
-        # Top surface: hood, windshield, hardtop roof, rear window, rear deck
         if 0.15 <= zm <= 0.55:
             return 'glass'   # Windshield
-        elif -0.85 <= zm <= -0.35:
+        elif -0.80 <= zm <= -0.35:
             return 'glass'   # Rear coupe glass
         elif -0.35 < zm < 0.15:
             return 'accent'  # Hardtop roof panel in accent
         else:
-            return 'paint'   # Hood (zm > 0.55), rear deck (zm < -0.85)
+            return 'paint'   # Hood or rear deck
     elif k in (4, 5, 12, 13):
-        # Greenhouse sides: side windows or painted pillars/fenders
         if -0.70 <= zm <= 0.20:
             return 'glass'   # Side windows
-        elif -0.85 <= zm <= 0.35:
+        elif -0.80 <= zm <= 0.35:
             return 'accent'  # A-pillar & C-pillar in accent hardtop
         else:
             return 'paint'   # Fenders
     else:
-        # Lower body and flanks
         return 'paint'
 
 # Quads between rings for all 18 segments
@@ -243,42 +237,27 @@ for i in range(len(rings) - 1):
     pB_l = (B['pts'][18]['x'], 0.18, B['z'])
     add_quad(bm_u, pA_l, pA_r, pB_r, pB_l)
 
-def cap_fascia_grid(bm, pts, z, is_front=True):
-    # Generates a regular quad grid across the end cap with planar Z normals
-    cols = 4
-    for k in range(6):
-        R0 = pts[k]
-        L0 = pts[18 - k]
-        R1 = pts[k + 1]
-        L1 = pts[18 - (k + 1)]
-        for c in range(cols):
-            f0 = c / cols
-            f1 = (c + 1) / cols
-            p00 = (R0['x'] * (1 - f0) + L0['x'] * f0, R0['y'] * (1 - f0) + L0['y'] * f0, z)
-            p01 = (R0['x'] * (1 - f1) + L0['x'] * f1, R0['y'] * (1 - f1) + L0['y'] * f1, z)
-            p11 = (R1['x'] * (1 - f1) + L1['x'] * f1, R1['y'] * (1 - f1) + L1['y'] * f1, z)
-            p10 = (R1['x'] * (1 - f0) + L1['x'] * f0, R1['y'] * (1 - f0) + L1['y'] * f0, z)
-            if is_front:
-                add_quad(bm, p00, p01, p11, p10)
-            else:
-                add_quad(bm, p01, p00, p10, p11)
-
-    # Top bridge row
-    for i in range(6):
-        t0 = (pts[6 + i]['x'], pts[6 + i]['y'], z)
-        t1 = (pts[6 + i + 1]['x'], pts[6 + i + 1]['y'], z)
-        f0 = i / 6
-        f1 = (i + 1) / 6
-        b0 = (pts[6]['x'] * (1 - f0) + pts[12]['x'] * f0, pts[6]['y'] * (1 - f0) + pts[12]['y'] * f0, z)
-        b1 = (pts[6]['x'] * (1 - f1) + pts[12]['x'] * f1, pts[6]['y'] * (1 - f1) + pts[12]['y'] * f1, z)
+def cap_ring_fan(bm, pts, z, is_front=True):
+    cy = (pts[0]['y'] + pts[9]['y']) / 2.0
+    c = (0.0, cy, z)
+    n = len(pts) - 1
+    for k in range(n):
+        p = (pts[k]['x'], pts[k]['y'], z)
+        q = (pts[k + 1]['x'], pts[k + 1]['y'], z)
         if is_front:
-            add_quad(bm, b0, b1, t1, t0)
+            add_tri(bm, c, q, p)
         else:
-            add_quad(bm, b1, b0, t0, t1)
+            add_tri(bm, c, p, q)
+    p_bot = (pts[18]['x'], pts[18]['y'], z)
+    q_bot = (pts[0]['x'], pts[0]['y'], z)
+    if is_front:
+        add_tri(bm, c, q_bot, p_bot)
+    else:
+        add_tri(bm, c, p_bot, q_bot)
 
-# Cap front nose and rear tail seamlessly
-cap_fascia_grid(mat_bms['paint'], rings[-1]['pts'], 1.61, is_front=True)
-cap_fascia_grid(mat_bms['paint'], rings[0]['pts'], -1.69, is_front=False)
+# Cap front at z = 1.58 and rear at z = -1.65 cleanly
+cap_ring_fan(mat_bms['paint'], rings[-1]['pts'], 1.58, is_front=True)
+cap_ring_fan(mat_bms['paint'], rings[0]['pts'], -1.65, is_front=False)
 
 # Inner wheel arch liners
 bm_u = mat_bms['under']
@@ -302,72 +281,63 @@ for key, bm in mat_bms.items():
     mat_obj = PAINT if key == 'paint' else ACCENT if key == 'accent' else GLASS if key == 'glass' else UNDER
     _obj(f'body_{key}', bm, mat_obj)
 
+# --- Front Nose Bumper & Front Details ---
+box('front_bumper_nose', PAINT, 0, 0.22, 1.595, 1.16, 0.28, 0.028)
+box('front_bumper_center', PAINT, 0, 0.25, 1.602, 0.65, 0.22, 0.014)
+
+# Front license plate mounted on nose at z = 1.608 (max z = 1.610)
+box('plate_front', PLATE, 0, 0.32, 1.608, 0.28, 0.12, 0.004)
+
+# Front smile grille opening & dark intake mesh
+box('front_grille_mesh', TRIM, 0, 0.27, 1.592, 0.46, 0.11, 0.020)
+box('front_intake_under', UNDER, 0, 0.28, 1.590, 0.42, 0.09, 0.016)
+
+# Front chin splitter lip
+box('front_lip', TRIM, 0, 0.18, 1.588, 1.12, 0.03, 0.020)
+
 # --- Round Headlights (Cappuccino style round lamps with chrome rings) ---
 for s in (1, -1):
     cx = s * 0.44
     cy = 0.54
-    cz = 1.590
-    # Chrome outer bezel ring
-    cylinder(f'headlight_ring_{s}', CHROME, cx, cy, cz, 0.080, 0.020, sides=14, axis='z')
-    # Round emissive headlamp lens (facing forward +Z, z > 0)
-    cylinder(f'headlight_lens_{s}', LAMP, cx, cy, cz + 0.004, 0.068, 0.018, sides=14, axis='z')
-    # Inner dark housing
-    cylinder(f'headlight_inner_{s}', TRIM, cx, cy, cz - 0.008, 0.074, 0.015, sides=14, axis='z')
-
-# --- Front Oval Grille & Intake Mouth ---
-box('front_grille_mesh', TRIM, 0, 0.28, 1.595, 0.48, 0.12, 0.02)
-box('front_intake_under', UNDER, 0, 0.29, 1.590, 0.44, 0.10, 0.03)
-# Front chin splitter lip
-box('front_lip', TRIM, 0, 0.18, 1.57, 1.15, 0.03, 0.06)
-# Front license plate at z = 1.608
-box('plate_front', PLATE, 0, 0.32, 1.608, 0.28, 0.12, 0.004)
+    cz = 1.582
+    cylinder(f'headlight_ring_{s}', CHROME, cx, cy, cz, 0.080, 0.024, sides=12, axis='z')
+    cylinder(f'headlight_lens_{s}', LAMP, cx, cy, cz + 0.002, 0.068, 0.023, sides=12, axis='z')
 
 # --- Side Mirrors ---
 for s in (1, -1):
     box(f'mirror_stalk_{s}', TRIM, s * 0.70, 0.75, 0.42, 0.025, 0.025, 0.025)
-    box(f'mirror_body_{s}', PAINT, s * 0.76, 0.76, 0.42, 0.075, 0.055, 0.09)
-    box(f'mirror_glass_{s}', GLASS, s * 0.76, 0.765, 0.375, 0.060, 0.042, 0.004)
+    box(f'mirror_body_{s}', PAINT, s * 0.755, 0.76, 0.42, 0.075, 0.055, 0.09)
+    box(f'mirror_glass_{s}', GLASS, s * 0.755, 0.765, 0.375, 0.060, 0.042, 0.004)
 
 # --- Side Skirts ---
 for s in (1, -1):
     box(f'skirt_{s}', TRIM, s * 0.69, 0.175, -0.06, 0.025, 0.035, 1.35)
 
-# --- Round Taillights (Two per side: outer red stop/tail, inner indicator/reverse) ---
-def make_round_tail_lamp(name, cx, cy, cz, r, mat_type, depth=0.012):
-    bm = bmesh.new()
-    sides = 14
-    front_vs = []
-    back_vs = []
-    for i in range(sides):
-        a = 2 * math.pi * i / sides
-        x = cx + math.sin(a) * r
-        y = cy + math.cos(a) * r
-        back_vs.append(bm.verts.new(g2b(x, y, cz - depth)))
-        front_vs.append(bm.verts.new(g2b(x, y, cz)))
-    bm.faces.new(back_vs)
-    for i in range(sides):
-        j = (i + 1) % sides
-        bm.faces.new([back_vs[i], back_vs[j], front_vs[j], front_vs[i]])
-    bm.faces.ensure_lookup_table()
-    bm.normal_update()
-    return _obj(name, bm, mat_type)
+# --- Rear Fascia, Taillights, Bumper & Diffuser ---
+box('ducktail_lip', PAINT, 0, 0.755, -1.663, 1.08, 0.035, 0.022)
 
+# Rear bumper extending from z = -1.652 back to strictly z = -1.690
+box('rear_bumper', PAINT, 0, 0.22, -1.671, 1.25, 0.30, 0.038)
+box('rear_bumper_center', PAINT, 0, 0.24, -1.679, 0.75, 0.24, 0.020)
+
+# Tail trim recess panel behind the lamps
 for s in (1, -1):
-    # Tail bezel recess in trim
-    box(f'tail_recess_{s}', TRIM, s * 0.45, 0.64, -1.675, 0.34, 0.14, 0.015)
-    # Outer red tail lamp (emissive, z < 0)
-    make_round_tail_lamp(f'tail_outer_{s}', s * 0.52, 0.64, -1.678, 0.052, TAIL, depth=0.012)
-    # Inner round lamp
-    make_round_tail_lamp(f'tail_inner_{s}', s * 0.38, 0.64, -1.678, 0.046, TAIL, depth=0.012)
+    box(f'tail_recess_{s}', TRIM, s * 0.45, 0.63, -1.657, 0.34, 0.14, 0.010)
 
-# Rear license plate in rear bumper recess
-box('plate_rear', PLATE, 0, 0.48, -1.686, 0.28, 0.12, 0.004)
+# Dual round taillights per side: cylinder facing backward (-z)
+for s in (1, -1):
+    cylinder(f'tail_outer_{s}', TAIL, s * 0.52, 0.63, -1.660, 0.052, -0.017, sides=12, axis='z')
+    cylinder(f'tail_inner_{s}', TAIL, s * 0.38, 0.63, -1.660, 0.046, -0.017, sides=12, axis='z')
 
-# --- Rear Diffuser & Single Sports Exhaust ---
-box('rear_diffuser', TRIM, 0, 0.19, -1.63, 0.95, 0.05, 0.10)
-# Single sports exhaust pipe exiting on left (x = -0.30)
-cylinder('exhaust_tip', CHROME, -0.30, 0.22, -1.60, 0.036, -0.088, sides=12, axis='z')
-cylinder('exhaust_bore', UNDER, -0.30, 0.22, -1.686, 0.030, -0.003, sides=12, axis='z')
+# Rear license plate mounted in bumper recess at z = -1.685
+box('plate_rear', PLATE, 0, 0.38, -1.685, 0.28, 0.12, 0.004)
+
+# Rear diffuser below bumper
+box('rear_diffuser', TRIM, 0, 0.19, -1.656, 0.95, 0.05, 0.012)
+
+# Single sports exhaust pipe on left (x = -0.30) ending at strictly z = -1.690
+cylinder('exhaust_tip', CHROME, -0.30, 0.22, -1.56, 0.036, -0.130, sides=10, axis='z')
+cylinder('exhaust_bore', UNDER, -0.30, 0.22, -1.686, 0.029, -0.003, sides=10, axis='z')
 
 # --- Four Wheels for Viewer (named wheel-*) ---
 def make_wheel(name, cx, cz):
