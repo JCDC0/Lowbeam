@@ -71,6 +71,20 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.59 (2026-10-07)
+
+Street racers: Kagero Hot-GT (`rv_hothatch`).
+
+- `tools/blender/rv_hothatch.py`: 90s Japanese 3-door hot hatch (Civic EK9 Type R mould):
+  - Proportions: length 4.00 m (z from -2.18 to +1.82), width 1.70 m (x from -0.85 to +0.85, mirrors to +-0.9000 m), height 1.37 m, wheelbase 2.62 m (axles at z = +1.00 m and -1.62 m), wheel radius 0.30 m.
+  - Plan view sports hatch silhouette: tapered nose 1.4600 m at bumper, front flared arches 1.6600 m, doors waist 1.5800 m, wide blister rear hips 1.7000 m, tapered tail 1.5526 m, cabin pulled in to 1.2800 m across roof.
+  - Aerodynamic roof spoiler wing extending over rear hatch, with wing blade and endplates reaching peak height of exactly 1.3700 m.
+  - Front styling: slim rectangular headlights with chrome bezels and white emissive `lamp` lenses (strictly at z = 1.796 m > 0), sports mesh grille, deep lower air dam intake, chin splitter, and front plate.
+  - Rear styling: block taillight clusters with emissive red `tail` lenses (strictly at z = -2.172 m < 0) and chrome reverse inserts, rear plate, rear diffuser, and large cannon chrome sports exhaust.
+  - Real wheel openings with dark inner wells (`under`), sports side skirts, and 4 wheels for the viewer (`wheel-*`, radius 0.30 m).
+- `assets/models/rv_hothatch.json`: body-only model (1,532 triangles, under 1,800 budget; bounds x: [-0.9000, 0.9000], y: [0.1900, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
+- `assets/models/rv_hothatch_full.json`: full model with wheels (2,236 triangles, under 2,600 budget; bounds x: [-0.9000, 0.9000], y: [0.0000, 1.3700], z: [-2.1800, 1.8200]), check() clean with 0 problems.
+
 ## 0.9.58 (2026-10-07)
 
 Street racers: Hoshi Kei-S (`rv_kei`).
