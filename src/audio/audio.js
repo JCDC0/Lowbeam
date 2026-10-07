@@ -106,6 +106,8 @@ function noiseBuffer(ctx, seconds, kind) {
 /** Peak gain of a siren right beside the player, and of the rotor overhead. */
 const SIREN_LEVEL = 0.16;
 const ROTOR_LEVEL = 0.9;
+/** The nitrous hiss while it flows. */
+const N2O_LEVEL = 0.14;
 
 export class AudioSystem {
   constructor() {
@@ -143,6 +145,7 @@ export class AudioSystem {
     this.lastBlow = 0;
     this.lastGear = 1;
     this.lastThrottle = 0;
+    this.lastN2o = false;
     this.pumping = false;
     this.music = null;
     /** Watches the nearby traffic for cars going past the player. */
@@ -307,6 +310,8 @@ export class AudioSystem {
       scrub: layer(white, bq('bandpass', 950, 1.3)),
       squeal: layer(white, bq('bandpass', 1250, 14)),
       squeal2: layer(white, bq('bandpass', 2150, 9)),
+      // Nitrous: a high hiss from the lines while it flows.
+      n2o: layer(white, bq('highpass', 3400, 0.7)),
     };
     const pumpHum = c.createOscillator();
     pumpHum.type = 'triangle';
@@ -541,6 +546,14 @@ export class AudioSystem {
     }
     this.lastGear = s.gear;
     this.lastThrottle = load;
+    const n2o = !!s.n2oOn;
+    glide(this.fx.n2o.gain.gain, n2o ? N2O_LEVEL : 0, t, n2o ? 0.03 : 0.08);
+    // The solenoid: a thunk as it opens, a short purge as it closes.
+    if (n2o !== this.lastN2o) {
+      this.lastN2o = n2o;
+      if (n2o) this.noiseBurst(t, { f: 300, q: 0.8, dur: 0.06, gain: 0.5, type: 'lowpass' });
+      else this.noiseBurst(t, { f: 4200, q: 0.9, dur: 0.35, gain: 0.35, type: 'highpass' });
+    }
 
     const speed = s.speed;
     const loose = LOOSE.has(s.surfRear) || LOOSE.has(s.surfFront);

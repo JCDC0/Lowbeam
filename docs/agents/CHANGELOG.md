@@ -38,6 +38,27 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.12 (2026-10-07)
+
+Nitrous, as Jc asked: more heat, a little engine damage, a real risk of over-revving (C1 part 6).
+
+- `src/vehicles/nitrous.js` (pure): `NITROUS` (8 s a bottle, 45 % of peak torque, from half
+  throttle, 2.6 C a second, damage 0.004 a second plus 0.012 near the limiter, ¥6,000 a bottle),
+  `stepNitrous` and `refillCost`. The state gains `n2o` (the bottle) and `n2oOn`.
+- `physics.js` adds the nitrous torque after the rev limiter's cut, so held through a gear it drives
+  the revs past the redline into over-rev (and its own damage). Bench: 0-160 km/h 0.6 to 4.0 s
+  quicker; a clean run costs 4 to 6 % damage and 10 C; held in 3rd from 90 km/h, 600 to 1,400 rpm
+  past the redline and 11 to 22 % damage a bottle. The dry bars do not move.
+- Input: `nitrous` on N and right Shift, L3 on a pad; in the controls list and the briefing.
+- Pump: once the tank is full, HOLD F TO FILL NITROUS for the empty part of the bottle.
+- HUD: a bottle bar with its symbol beside the main dial in every style (`paintNitrous`, `N2O_BAR`;
+  lower on the tall digital screens), glowing while it flows, the symbol blinking when empty. The
+  cockpit binnacle gets a thin blue strip at its right edge. A new `nitrous` icon in `paintIcon`.
+- A long blue exhaust flame while it flows (`fx.n2o`), a high hiss, a solenoid thunk on and a purge
+  off.
+- Tests: `tests/nitrous.test.mjs` (5): when it flows, the bottle's length, heat and damage, every car
+  quicker, the over-rev when held on the limiter, the refill price. 340 pass.
+
 ## 0.9.11 (2026-10-07)
 
 Small, recessed cockpit instruments, from Jc's sketch (C1 part 4, the cockpit).

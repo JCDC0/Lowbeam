@@ -56,7 +56,7 @@ driving free at the player cuts through a block, a car shoved off its lane ends 
 - Greenery in the city: street trees in grates along the avenues, hedges and shrubs in the medians and
   at building fronts, a few pocket parks, from Gemini's G4 models once they pass, placed by the scatter.
 
-## 6. Nitrous
+## 6. Nitrous (done in 0.9.12)
 
 A bottle per car, refilled at a pump for a fee. Held (a new rebindable key), it adds torque for as
 long as it lasts, about 8 s a bottle, and the cost is real:

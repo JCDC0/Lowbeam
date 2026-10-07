@@ -10,7 +10,7 @@ import { BOOST_MIN, EXH_MAX, EXH_MIN, INTAKE_MIN, TEMP_MAX, TEMP_MIN, TEMP_RED }
 import { clamp } from '../core/mathx.js';
 import { FONT as FACES } from '../render/fonts.js';
 import { store } from '../core/store.js';
-import { CLUSTER_H, CLUSTER_W, MAIN, arcSpot, clusterStyleOf, dialLamps, drawStyled, warningLamps } from './cluster-styles.js';
+import { CLUSTER_H, CLUSTER_W, MAIN, arcSpot, clusterStyleOf, dialLamps, drawStyled, paintNitrous, warningLamps } from './cluster-styles.js';
 import { paintDial } from '../vehicles/instruments.js';
 
 export { CLUSTER_STYLES, clusterStyleOf } from './cluster-styles.js';
@@ -426,5 +426,6 @@ export class Cluster {
     this.t += dt;
     if (this.style === 'classic') drawCluster(this.g, gs, this.spec, this.t, W, H, false);
     else drawStyled(this.g, this.style, gs, this.spec, this.t, this.dial);
+    paintNitrous(this.g, gs, this.t, this.style);
   }
 }

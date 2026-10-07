@@ -25,8 +25,12 @@ const SMOKE = 40;
 const SPARK_RATE = 80;
 const SMOKE_RATE = 16;
 
-/** Two crossed fins pointing down -Z: hot yellow at the pipe, fading to black (invisible when added). */
-function flameGeometry() {
+/**
+ * Two crossed fins pointing down -Z: hot yellow at the pipe, fading to black (invisible when added).
+ * With `blue`, the nitrous flame: white-blue at the pipe, a long blue tongue.
+ * @param {boolean} [blue]
+ */
+function flameGeometry(blue = false) {
   const pos = [];
   const col = [];
   const fin = (hot, len, w, vertical) => {
@@ -36,8 +40,13 @@ function flameGeometry() {
     col.push(...hot, ...hot, 0, 0, 0);
   };
   for (const v of [false, true]) {
-    fin([1, 0.55, 0.12], 1, 0.13, v);
-    fin([1, 0.95, 0.75], 0.55, 0.07, v);
+    if (blue) {
+      fin([0.15, 0.4, 1], 1, 0.11, v);
+      fin([0.75, 0.9, 1], 0.5, 0.06, v);
+    } else {
+      fin([1, 0.55, 0.12], 1, 0.13, v);
+      fin([1, 0.95, 0.75], 0.55, 0.07, v);
+    }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -83,14 +92,17 @@ export class ExhaustFx {
     this.flameMat = patchPsx(new THREE.MeshBasicMaterial({
       vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false,
     }));
-    this.flames = this.tips.map((t) => {
-      const m = new THREE.Mesh(this.flameGeo, this.flameMat);
+    this.n2oGeo = flameGeometry(true);
+    const tipMesh = (geo) => this.tips.map((t) => {
+      const m = new THREE.Mesh(geo, this.flameMat);
       m.position.copy(t);
       m.visible = false;
       m.frustumCulled = false;
       model.bodyRoot.add(m);
       return m;
     });
+    this.flames = tipMesh(this.flameGeo);
+    this.n2oFlames = tipMesh(this.n2oGeo);
 
     this.sparkPos = new Float32Array(SPARKS * 3).fill(0);
     this.sparkCol = new Float32Array(SPARKS * 3).fill(0);
@@ -152,6 +164,14 @@ export class ExhaustFx {
       if (lit) {
         const flick = 0.75 + 0.5 * this.rand();
         m.scale.set(0.6 + 0.6 * fx.flame, 0.6 + 0.6 * fx.flame, (0.35 + 1.15 * fx.flame) * flick);
+      }
+    }
+    const blue = fx.n2o > 0.03;
+    for (const m of this.n2oFlames) {
+      m.visible = blue;
+      if (blue) {
+        const flick = 0.85 + 0.3 * this.rand();
+        m.scale.set(0.7 + 0.3 * fx.n2o, 0.7 + 0.3 * fx.n2o, (0.4 + 1.6 * fx.n2o) * flick);
       }
     }
     const wantSparks = fx.sparks > 0.01;
@@ -274,8 +294,9 @@ export class ExhaustFx {
   }
 
   dispose() {
-    this.model.bodyRoot.remove(...this.flames);
+    this.model.bodyRoot.remove(...this.flames, ...this.n2oFlames);
     this.flameGeo.dispose();
+    this.n2oGeo.dispose();
     this.flameMat.dispose();
     this.sparkGeo.dispose();
     this.sparkMat.dispose();

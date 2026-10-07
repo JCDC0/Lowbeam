@@ -20,6 +20,7 @@ import { padPoint } from './world/scatter.js';
 import { wrapAngle } from './core/mathx.js';
 import { createGauges, stepGauges } from './vehicles/gauges.js';
 import { repairCost, repairEngine, TEMP_RED } from './vehicles/thermal.js';
+import { refillCost } from './vehicles/nitrous.js';
 import { Cluster } from './ui/cluster.js';
 import { audio } from './audio/audio.js';
 import { EnvMap } from './audio/env.js';
@@ -49,6 +50,8 @@ function fmtTime(t) {
 const INTERACT_KEY = 'F';
 /** Seconds the interact key is held at a pump to repair the engine. */
 const REPAIR_TIME = 1.5;
+/** Seconds the interact key is held at a pump to fill the nitrous bottle. */
+const N2O_FILL_TIME = 1.5;
 /** Liters per second while holding the pump. */
 const REFUEL_RATE = 3;
 /** How close the car's center must be to a pump to use it. */
@@ -713,6 +716,26 @@ export class Drive {
         prompt = `REFUELING  ${this.fueled.toFixed(1)} L  ¥${Math.round(this.fueled * ECONOMY.fuelPrice).toLocaleString('en-US')}`;
       } else {
         prompt = this.money >= 1 ? `HOLD ${INTERACT_KEY} TO REFUEL  ¥${ECONOMY.fuelPrice} / L` : 'NO MONEY FOR FUEL';
+      }
+    } else if (pump && s.n2o < 0.99) {
+      const cost = refillCost(s);
+      drive = { ...drive, nitrous: false };
+      if (this.money < cost) {
+        prompt = `NITROUS ¥${cost.toLocaleString('en-US')}   NOT ENOUGH MONEY`;
+        this.repairTimer = 0;
+      } else if (input.held('interact')) {
+        this.repairTimer += dt;
+        prompt = `FILLING NITROUS  ${Math.min(100, Math.round((this.repairTimer / N2O_FILL_TIME) * 100))} %`;
+        if (this.repairTimer >= N2O_FILL_TIME) {
+          this.money -= cost;
+          store.set('money', this.money);
+          s.n2o = 1;
+          this.repairTimer = 0;
+          this.toast(`NITROUS FILLED  ¥${cost.toLocaleString('en-US')}`, 2.5);
+        }
+      } else {
+        this.repairTimer = 0;
+        prompt = `TANK FULL   HOLD ${INTERACT_KEY} TO FILL NITROUS  ¥${cost.toLocaleString('en-US')}`;
       }
     } else if (pump && s.fuel >= spec.fuel.tank - 0.05) {
       prompt = 'TANK FULL';

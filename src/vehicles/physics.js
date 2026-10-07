@@ -22,6 +22,7 @@ import { surface, slipFactor } from './surfaces.js';
 import { clamp, approach, lerp } from '../core/mathx.js';
 import { LIMP_RPM, healthScale, stepEngineHealth, thermalDerate, TEMP_START, EXH_START } from './thermal.js';
 import { createFx, stepExhaust } from './exhaust.js';
+import { stepNitrous } from './nitrous.js';
 
 export const G = 9.81;
 export const DT = 1 / 120;
@@ -40,7 +41,7 @@ const WHEEL_INERTIA = 2.2;
 const DEFAULT_ENGINE_INERTIA = 0.25;
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
-/** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number, shiftUp?: boolean, shiftDown?: boolean, manual?: boolean }} DriveInput */
+/** @typedef {{ throttle: number, brake: number, steer: number, handbrake: number, shiftUp?: boolean, shiftDown?: boolean, manual?: boolean, nitrous?: boolean }} DriveInput */
 /** @typedef {(x: number, z: number, y?: number) => { h: number, surface: string }} GroundFn */
 
 /** @param {CarSpec} spec */
@@ -67,6 +68,8 @@ export function createVehicleState(spec) {
     handbrake: false, braking: false,
     // Spiked tires (police/roadblock.js): grip and top speed as fractions of whole tires.
     tireGrip: 1, tireTop: 1,
+    // Nitrous (nitrous.js): the bottle 0..1 and whether it flows this step.
+    n2o: 1, n2oOn: false,
   };
 }
 
@@ -358,6 +361,10 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   }
   s.limiter = Math.max(0, s.limiter - dt);
   if (s.limiter > 0) torque = 0;
+  // Nitrous comes in after the limiter's cut on purpose: held through a gear it drives the revs past
+  // the redline into over-rev, and on to the blow limit.
+  if (s.shiftTimer <= 0 || dir === 0) torque += stepNitrous(s, spec, !!input.nitrous, accel, rpm, dt);
+  else s.n2oOn = false;
   torque *= thermalDerate(s.temp) * healthScale(s);
   const wheelForce = (torque * total * spec.efficiency) / r;
   let drive = wheelForce * dir;

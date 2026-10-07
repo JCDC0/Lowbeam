@@ -281,6 +281,8 @@ export function buildCockpit(model) {
   let screen = null;
   /** The cluster binnacle's center and half height, for the wheel. */
   let binnacle = null;
+  /** The nitrous strip at the binnacle's right edge: its fill grows up from the bottom. */
+  let n2oFill = null;
   for (const pod of DASHES[spec.id] || DASHES.hayate) {
     let center;
     let hood = 0;
@@ -305,6 +307,16 @@ export function buildCockpit(model) {
     const pm = pb.mesh({ pod: mats.pod });
     geos.push(pm.geometry);
     frame.add(pm);
+    if (pod.pod === 'cluster') {
+      const len = pod.h * 0.7;
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(0.009, len + 0.004), psxBasic({ color: 0x06080c }));
+      back.position.set(pod.w / 2 - 0.008, 0, 0.005);
+      const fillGeo = new THREE.PlaneGeometry(0.006, len).translate(0, len / 2, 0);
+      n2oFill = new THREE.Mesh(fillGeo, psxBasic({ color: 0x2a7cff }));
+      n2oFill.position.set(pod.w / 2 - 0.008, -len / 2, 0.006);
+      frame.add(back, n2oFill);
+      extras.push(back.material, back.geometry, n2oFill.material, fillGeo);
+    }
     if (pod.screen) {
       // One display instead of dials: it draws the gear, the shift light and the warnings itself.
       screen = makeScreen(pod.screen, spec, pod.w / pod.h);
@@ -421,6 +433,11 @@ export function buildCockpit(model) {
         screen.draw(readingOf(g, spec, time));
       }
       if (gear) gear.set(g.gear, g.blown ? '#ff3020' : gearColor);
+      if (n2oFill) {
+        n2oFill.visible = g.n2o > 0.001;
+        n2oFill.scale.y = Math.max(0.001, g.n2o);
+        /** @type {THREE.MeshBasicMaterial} */ (n2oFill.material).color.set(g.n2oOn ? 0x8fd8ff : 0x2a7cff);
+      }
       if (speedLcd) speedLcd.set(String(Math.round(g.kmh)), '#f4f8ff');
       if (shiftLamp) /** @type {THREE.MeshBasicMaterial} */ (shiftLamp.material).color.set(g.limiter && Math.floor(time * 12) % 2 ? 0x101010 : g.shift || g.limiter ? 0xff2a10 : 0x1a0c08);
       if (warn) {

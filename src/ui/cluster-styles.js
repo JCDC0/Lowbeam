@@ -79,6 +79,49 @@ export function warningLamps(gs, t) {
   ];
 }
 
+/** The nitrous bar's blue, and the brighter blue while it flows. */
+export const N2O_BLUE = '#2a7cff';
+export const N2O_FLOW = '#8fd8ff';
+/**
+ * Where every style's nitrous bar stands: up the right edge, beside the main dial. The tall screens
+ * keep their top right for the gear, so their bar starts at `tallY0`.
+ */
+export const N2O_BAR = { x: 282, y0: 200, tallY0: 270, y1: 372, w: 9 };
+
+/**
+ * The nitrous bottle, the same in every style: a thin upright bar beside the main dial with the
+ * bottle symbol on top. It glows while it flows and blinks the symbol when the bottle is empty.
+ * @param {CanvasRenderingContext2D} g @param {Gauges} gs @param {number} t @param {string} [style]
+ */
+export function paintNitrous(g, gs, t, style = 'classic') {
+  const { x, y1, w } = N2O_BAR;
+  const y0 = style === 'digital' || style === 'vfd' ? N2O_BAR.tallY0 : N2O_BAR.y0;
+  const level = Math.max(0, Math.min(1, gs.n2o ?? 1));
+  const flow = !!gs.n2oOn;
+  g.save();
+  g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  g.fillRect(x - w / 2 - 2, y0 - 2, w + 4, y1 - y0 + 4);
+  const top = y1 - (y1 - y0) * level;
+  g.fillStyle = flow ? N2O_FLOW : N2O_BLUE;
+  g.shadowColor = N2O_FLOW;
+  g.shadowBlur = flow ? 10 : 0;
+  g.fillRect(x - w / 2, top, w, y1 - top);
+  g.shadowBlur = 0;
+  g.strokeStyle = 'rgba(160, 200, 255, 0.5)';
+  g.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = y1 - ((y1 - y0) * i) / 4;
+    g.beginPath();
+    g.moveTo(x - w / 2, y);
+    g.lineTo(x + w / 2, y);
+    g.stroke();
+  }
+  const empty = level <= 0.001;
+  const lit = flow || (empty ? Math.floor(t * 3) % 2 === 0 : level > 0);
+  paintIcon(g, 'nitrous', x, y0 - 16, 20, empty ? (lit ? LAMP_AMBER : '#3a3a3a') : flow ? N2O_FLOW : N2O_BLUE, flow ? 8 : 0);
+  g.restore();
+}
+
 /** The colors of a lit warning symbol. */
 export const LAMP_AMBER = '#ffa020';
 export const LAMP_RED = '#ff3a2a';

@@ -9,6 +9,8 @@
  *  - smoke 0 to 1: a puff the moment the engine blows, then dense smoke for as long as it
  *    stays blown; thin smoke from a badly damaged engine.
  *  - pops: counter, +1 for every bang; `level` is the size of the last one.
+ *  - n2o 0 to 1: the long blue flame while nitrous flows (`nitrous.js`); it lights in a tenth
+ *    of a second and dies in a quarter.
  */
 
 import { clamp, lerp } from '../core/mathx.js';
@@ -23,7 +25,7 @@ const PUFF_TIME = 1.8;
 
 export function createFx() {
   return {
-    flame: 0, sparks: 0, smoke: 0, pops: 0, level: 0,
+    flame: 0, sparks: 0, smoke: 0, pops: 0, level: 0, n2o: 0,
     burst: 0, puff: 0, queue: 0, gap: 0, crackle: 0, peak: 0, shifts: 0, blows: 0, seed: 1,
   };
 }
@@ -84,6 +86,7 @@ export function stepExhaust(s, spec, dt) {
     }
   }
 
+  fx.n2o = s.n2oOn ? Math.min(1, fx.n2o + dt * 10) : Math.max(0, fx.n2o - dt * 4);
   fx.burst = Math.max(0, fx.burst - dt);
   fx.flame = Math.max(0, fx.flame - dt * 9);
   if (fx.burst > 0) fx.flame = Math.max(fx.flame, 0.7 + 0.3 * rand(fx));

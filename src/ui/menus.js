@@ -603,7 +603,8 @@ export function controlsScreen(ui, initialInput = null) {
             <b>KEY REBINDING:</b> Select a slot with <b>W/S</b> and <b>A/D</b> (or click), then press <b>Enter</b> to rebind. Press the new key, or <b>Esc</b> to cancel. If a key is already assigned, it will swap places automatically.<br><br>
             <b>MANUAL GEARS:</b> Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. Mind the tachometer: over-rev downshifts cause thermal damage.<br><br>
             <b>COCKPIT VIEW:</b> Press <b>C</b> to cycle camera views. Cockpit features tachometer needle, digital speed, boost gauge, water temp, and sequential shift lamps.<br><br>
-            <b>HIGHWAY DUELS:</b> Press <b>H</b> while tailing a rival on Route 1 or the Bayshore Line to challenge them to a street race.
+            <b>HIGHWAY DUELS:</b> Press <b>H</b> while tailing a rival on Route 1 or the Bayshore Line to challenge them to a street race.<br><br>
+            <b>NITROUS:</b> Hold <b>N</b> at full throttle for a shot of torque. It heats the engine and wears it a little; held on the limiter it over-revs and hurts it. Shift up in time. Refill at any pump.
           </div>
         </div>
       </div>

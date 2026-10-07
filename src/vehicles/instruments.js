@@ -32,7 +32,8 @@ export const FACES = {
 /**
  * The warning and gauge symbols, drawn as strokes so they read at any size: `engine` (check
  * engine), `wrench` (damage), `overrev` (a gauge pinned), `battery` (engine off: no charge), `temp`
- * (a thermometer in coolant), `fuel` (a pump), `turbo` (a snail). Centered on (x, y), `size` across.
+ * (a thermometer in coolant), `fuel` (a pump), `turbo` (a snail), `nitrous` (a bottle with its
+ * valve). Centered on (x, y), `size` across.
  * @param {CanvasRenderingContext2D} g @param {IconName} name @param {number} x @param {number} y
  * @param {number} size @param {string} color @param {number} [glow] blur of the glow, 0 for none
  */
@@ -95,6 +96,11 @@ export function paintIcon(g, name, x, y, size, color, glow = 0) {
     g.strokeRect(x - 9 * u, y - 9 * u, 11 * u, 19 * u);
     g.fillRect(x - 7 * u, y - 7 * u, 7 * u, 5 * u);
     path([[2, -5], [6, -5], [8, -3], [8, 6], [6, 8]], false);
+  } else if (name === 'nitrous') {
+    path([[-4, -5], [-5, -3], [-5, 10], [5, 10], [5, -3], [4, -5], [2, -6], [-2, -6]]);
+    g.fillRect(x - 2 * u, y - 9 * u, 4 * u, 3 * u);
+    path([[0, -9], [0, -11], [6, -11]], false);
+    path([[-5, 2], [5, 2]], false);
   } else {
     g.beginPath();
     g.arc(x, y, 9 * u, 0, Math.PI * 1.6);
@@ -109,7 +115,7 @@ export function paintIcon(g, name, x, y, size, color, glow = 0) {
   g.lineJoin = 'miter';
 }
 
-/** @typedef {'engine' | 'wrench' | 'overrev' | 'battery' | 'temp' | 'fuel' | 'turbo'} IconName */
+/** @typedef {'engine' | 'wrench' | 'overrev' | 'battery' | 'temp' | 'fuel' | 'turbo' | 'nitrous'} IconName */
 
 /** The symbol for a gauge's label. @type {Partial<Record<import('./dash.js').GaugeType, IconName>>} */
 const GAUGE_ICON = { fuel: 'fuel', temp: 'temp', boost: 'turbo' };

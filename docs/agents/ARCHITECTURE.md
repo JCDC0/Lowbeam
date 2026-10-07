@@ -41,7 +41,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Stage your own files by name. Never `git add -A`. Never commit another agent's uncommitted work.
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
-  physics,gauges,thermal,exhaust,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
+  physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
   soundtrack,passby,siren}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
@@ -115,7 +115,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/collision.js` | Circles and oriented boxes in a grid; the car as three circles |
 | `src/world/world.js` | `World.create(step)` builds the scene in stages; `update(camera, focus)` |
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
-| `src/vehicles/physics.js`, `surfaces.js`, `thermal.js` | 120 Hz bicycle model, gearbox N R 1..n, wheel slip, engine heat, over-rev, damage, limp mode |
+| `src/vehicles/physics.js`, `surfaces.js`, `thermal.js`, `nitrous.js` | 120 Hz bicycle model, gearbox N R 1..n, wheel slip, engine heat, over-rev, damage, limp mode, the nitrous bottle |
 | `src/vehicles/gauges.js` | The readings every gauge shows, from the physics |
 | `src/vehicles/models.js`, `loft.js`, `bodies/*` | The lofted car bodies (player cars, racers, traffic) |
 | `src/vehicles/cockpit.js`, `dash.js`, `instruments.js`, `screens.js` | The cockpit interior and each car's instruments; the canvas painters shared with the HUD |
@@ -139,9 +139,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.52)
+## Current state (0.9.53)
 
-335 tests pass; the type check is clean. By area:
+340 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -168,7 +168,13 @@ about 124 draw calls and 500k triangles.
 Engine rpm comes from the driven wheels (wheelspin climbs to the limiter, a spin does not swing the
 tach). Gearbox N, R, 1..n, auto or manual, any shift allowed: past 11,000 rpm the engine blows (money
 shift) into limp mode, repaired at a pump or by tow. Heat, over-rev and damage are real. Exhaust
-flames, sparks and smoke. Cameras chase, car, hood, bumper, cockpit; the cockpit camera is solved per
+flames, sparks and smoke. Nitrous (`nitrous.js`, held on N, L3 on a pad): an 8 s bottle of 45 % extra
+peak torque at half throttle or more, 0.6 to 4 s off 0-160 km/h; it heats the engine about 10 C a
+bottle and wears it a little (4 % a bottle on a clean run). Its torque is not cut by the rev limiter,
+so held through a gear it drives the revs 600 to 1,400 rpm past the redline, over-revving and
+wearing the engine three to five times faster. A blue flame, a hiss, a bar beside every HUD
+speedometer and a strip on the cockpit binnacle; refilled at a pump (¥6,000 a bottle) once the tank
+is full. Cameras chase, car, hood, bumper, cockpit; the cockpit camera is solved per
 car so the road shows from 5 m.
 
 **Instruments.** Each car has its own cockpit instruments (`DASHES`): Hayate classic black dials with

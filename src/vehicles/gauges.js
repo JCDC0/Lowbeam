@@ -46,6 +46,9 @@ export function createGauges(spec) {
     shift: false,
     limiter: false,
     engineOn: true,
+    /** The nitrous bottle 0..1 and whether it flows. */
+    n2o: 1,
+    n2oOn: false,
   };
 }
 
@@ -79,6 +82,8 @@ export function stepGauges(g, spec, s, dt) {
   g.overrev = s.overrev;
   g.damage = s.damage;
   g.blown = s.blown;
+  g.n2o = s.n2o;
+  g.n2oOn = s.n2oOn;
 
   const rpmFrac = clamp(s.rpm / eng.redline, 0, 1);
   const vacuum = on ? -0.55 - 0.2 * rpmFrac : 0;

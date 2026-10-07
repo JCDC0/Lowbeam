@@ -16,6 +16,7 @@ export const KEYS = {
   handbrake: ['Space', ''],
   shiftUp: ['ShiftLeft', 'KeyE'],
   shiftDown: ['ControlLeft', 'KeyQ'],
+  nitrous: ['KeyN', 'ShiftRight'],
   camera: ['KeyC', ''],
   reset: ['KeyR', ''],
   interact: ['KeyF', ''],
@@ -37,6 +38,7 @@ export const CONTROL_ACTIONS = /** @type {const} */ ([
   'handbrake',
   'shiftUp',
   'shiftDown',
+  'nitrous',
   'camera',
   'reset',
   'interact',
@@ -54,6 +56,7 @@ export const ACTION_LABELS = {
   handbrake: 'HANDBRAKE',
   shiftUp: 'SHIFT UP',
   shiftDown: 'SHIFT DOWN',
+  nitrous: 'NITROUS',
   camera: 'CYCLE CAMERA',
   reset: 'RESET / TOW',
   interact: 'REFUEL & REPAIR',
@@ -71,6 +74,7 @@ export const PAD_LABELS = {
   handbrake: 'A / X BUTTON',
   shiftUp: 'RIGHT BUMPER [RB]',
   shiftDown: 'LEFT BUMPER [LB]',
+  nitrous: 'L3 (LEFT STICK CLICK)',
   camera: 'Y BUTTON',
   reset: 'BACK BUTTON',
   interact: 'HOLD B BUTTON',
@@ -98,6 +102,7 @@ export const PAD = {
   map: [8, 2],
   shiftUp: [5],
   shiftDown: [4],
+  nitrous: [10],
 };
 
 /**
@@ -282,7 +287,7 @@ export class Input {
 
   /**
    * Driving axes for this frame. Throttle and brake are 0 to 1, steer is -1 (left) to 1
-   * (right), handbrake 0 or 1.
+   * (right), handbrake 0 or 1, nitrous while its key is held.
    * @param {number} dt
    * @returns {import('../vehicles/physics.js').DriveInput}
    */
@@ -315,7 +320,8 @@ export class Input {
     const manual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
     const shiftUp = this.pressed('shiftUp');
     const shiftDown = this.pressed('shiftDown');
-    return { throttle, brake, steer, handbrake, shiftUp, shiftDown, manual };
+    const nitrous = this.held('nitrous');
+    return { throttle, brake, steer, handbrake, shiftUp, shiftDown, manual, nitrous };
   }
 
   /** True on the frame this key code went down. @param {string} code */
