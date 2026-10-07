@@ -328,6 +328,74 @@ html, body {
   border-left: 3px solid var(--amber);
   transition: opacity 0.3s;
 }
+.toast.show { animation: toast-in 0.18s ease-out; }
+@keyframes toast-in {
+  from { transform: translateX(-62%); clip-path: inset(0 100% 0 0); }
+  to { transform: translateX(-50%); clip-path: inset(0 0 0 0); }
+}
+
+/* Event banners (C2 part 6): slam in, hold, leave; never pulse. */
+.banner {
+  --tone: var(--amber);
+  --tone2: var(--amber);
+  position: absolute;
+  left: 50%;
+  top: 21vh;
+  transform: translateX(-50%);
+  display: none;
+  text-align: center;
+  pointer-events: none;
+  z-index: 16;
+  font-family: var(--font-display);
+  white-space: nowrap;
+}
+.banner[data-tone='police'] { --tone: #ff2b3d; --tone2: #2b7fff; }
+.banner[data-tone='good'] { --tone: #4ce07a; --tone2: #4ce07a; }
+.banner[data-tone='bad'] { --tone: var(--red); --tone2: var(--red); }
+.banner[data-tone='cool'] { --tone: var(--cyan); --tone2: var(--cyan); }
+.banner b {
+  display: block;
+  padding: 7px 40px;
+  font-weight: 400;
+  font-size: 32px;
+  letter-spacing: 0.2em;
+  color: #fff;
+  text-shadow: 0 2px 0 #000;
+  background: linear-gradient(90deg, transparent, rgba(8, 11, 18, 0.88) 14%, rgba(8, 11, 18, 0.88) 86%, transparent);
+  border-top: 2px solid var(--tone);
+  border-bottom: 2px solid var(--tone2);
+}
+.banner span {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  color: var(--tone);
+  text-shadow: 0 1px 0 #000;
+}
+.banner.in { display: block; animation: banner-slam 0.2s cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.banner.out { display: block; animation: banner-out 0.16s ease-in both; }
+@keyframes banner-slam {
+  from { opacity: 0; transform: translateX(-50%) scale(1.9); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+@keyframes banner-out {
+  from { opacity: 1; transform: translateX(-50%) scaleY(1); }
+  to { opacity: 0; transform: translateX(-50%) scaleY(0.15); }
+}
+.flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 17;
+  background: #fff;
+  opacity: 0;
+}
+.flash.go { animation: flash-go 0.28s ease-out both; }
+@keyframes flash-go {
+  from { opacity: 0.85; }
+  to { opacity: 0; }
+}
 
 @media (max-width: 720px) {
   #garage .card { width: 92vw; right: 4vw; top: auto; bottom: 9vh; transform: none; padding: 14px 16px; }

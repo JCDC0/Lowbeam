@@ -66,12 +66,19 @@ export class Drive {
    * @param {{ world: import('./world/world.js').World, stage: any, input: import('./core/input.js').Input,
    *           hud: import('./ui/hud.js').Hud, toast: (text: string, seconds?: number) => void }} deps
    */
-  constructor({ world, stage, input, hud, toast }) {
+  /**
+   * @param {{ world: any, stage: any, input: any, hud: any, toast: (text: string, seconds?: number) => void,
+   *   banner?: import('./ui/menus.js').Banner, flash?: () => void }} o
+   */
+  constructor({ world, stage, input, hud, toast, banner, flash }) {
     this.world = world;
     this.stage = stage;
     this.input = input;
     this.hud = hud;
     this.toast = toast;
+    /** The big event banner (pursuits, takedowns, a blown engine); a toast where there is none. */
+    this.banner = banner || ((text, o = {}) => toast(o.sub ? `${text}   ${o.sub}` : text, o.seconds));
+    this.flash = flash || (() => {});
     this.colliders = new Colliders(world.scatter.circles, world.scatter.boxes);
     this.ground = world.ground.fn;
     this.minimap = new Minimap(hud.mapSlot, world.ground);
@@ -334,18 +341,29 @@ export class Drive {
     return rotorSound(d, closing);
   }
 
-  /** A toast for what the police just did. @param {{ type: string, [k: string]: any }} e */
+  /** The banner for what the police just did, and the hit of a unit taken out. @param {{ type: string, [k: string]: any }} e */
   policeEvent(e) {
-    const text = {
-      start: 'PURSUIT',
-      heat: `HEAT LEVEL ${e.level}`,
-      cooldown: 'COOLDOWN   FIND A PLACE TO HIDE',
-      roadblock: e.spikes ? 'ROADBLOCK AHEAD   SPIKE STRIP' : 'ROADBLOCK AHEAD',
-      roadblockDodged: 'ROADBLOCK DODGED',
-      spiked: 'TIRES SPIKED',
-      destroyed: `COP TAKEN OUT   +¥${(e.bounty || 0).toLocaleString('en-US')}`,
-    }[e.type];
-    if (text) this.toast(text, 2.2);
+    const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;
+    /** @type {Record<string, [string, { sub?: string, tone?: import('./ui/menus.js').BannerTone, seconds?: number }]>} */
+    const banners = {
+      start: ['PURSUIT', { sub: `HEAT LEVEL ${e.heat ?? 1}`, tone: 'police' }],
+      heat: [`HEAT LEVEL ${e.level}`, { sub: 'MORE UNITS RESPONDING', tone: 'police' }],
+      cooldown: ['COOLDOWN', { sub: 'FIND A PLACE TO HIDE', tone: 'cool' }],
+      roadblock: ['ROADBLOCK AHEAD', { sub: e.spikes ? 'SPIKE STRIP' : '', tone: 'bad' }],
+      roadblockDodged: ['ROADBLOCK DODGED', { tone: 'good' }],
+      spiked: ['TIRES SPIKED', { sub: 'GET TO A PUMP', tone: 'bad' }],
+      destroyed: ['COP TAKEN OUT', { sub: `+${yen(e.bounty)}   ${String(e.name || '').toUpperCase()}`, tone: 'police', seconds: 2.4 }],
+      escaped: ['ESCAPED', { sub: `BOUNTY ${yen(e.bounty)}`, tone: 'good', seconds: 3 }],
+      busted: ['BUSTED', { sub: `FINE ${yen(e.fine)}`, tone: 'bad', seconds: 3 }],
+    };
+    const b = banners[e.type];
+    if (b) this.banner(b[0], b[1]);
+    if (e.type === 'destroyed') {
+      // Most Wanted's takedown: a white flash, a jolt and a crunch.
+      this.flash();
+      this.rig.bump(12);
+      audio.takedown();
+    }
   }
 
   /**
@@ -452,7 +470,7 @@ export class Drive {
     this.duelEndTimer = 0;
     this.duelEnd = '';
     agent.duel = true;
-    this.toast(`DUEL  ${agent.kind.name}`, 2.5);
+    this.banner('DUEL', { sub: agent.kind.name, tone: 'amber' });
   }
 
   /** Ends the duel, pays the prize if it was won, and puts the rival back on cruise. */
@@ -815,7 +833,7 @@ export class Drive {
     if (s.blowCount !== this.blowsSeen) {
       this.blowsSeen = s.blowCount;
       this.rig.bump(9);
-      this.toast('ENGINE BLOWN   MONEY SHIFT', 3.5);
+      this.banner('ENGINE BLOWN', { sub: 'MONEY SHIFT', tone: 'bad', seconds: 3 });
     }
     if (s.temp >= TEMP_RED + 3 && !this.hotWarned && !s.blown) {
       this.hotWarned = true;

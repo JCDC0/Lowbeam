@@ -64,7 +64,7 @@ spread round the player so their searchlights cover different streets. The count
   no fade that lingers or pulses over the next screen. The bug today: the panel keeps pulsing when
   the player enters a garage.
 
-## 6. Banners with flair
+## 6. (done in 0.9.74) Banners with flair
 
 - The toasts and pursuit banners become a small set of styles: a slam-in banner (fast scale and
   slide, a hold, a quick exit) for events, and a quiet line for information. No pulse in and out.

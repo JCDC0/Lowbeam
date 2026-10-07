@@ -141,7 +141,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.73)
+## Current state (0.9.74)
 
 359 tests pass; the type check is clean. By area:
 
@@ -258,7 +258,10 @@ HUD (`ui/pursuit.js`) is Most Wanted's: one panel at the bottom center, in Michr
 marks and the time, the bounty counting up, the evade and busted meter split from the middle (a blue
 COOLDOWN bar while they search), the units on the scene, in sight and taken out, a helicopter icon for
 each one up, and the result card with the fine or the bounty at the end; before a pursuit only the
-detection bar shows. It never fades or pulses, and it shows only on the drive screen. The markers
+detection bar shows. It never fades or pulses, and it shows only on the drive screen. Events (a pursuit, a heat level,
+a roadblock, a unit taken out, escaped, busted, a blown engine, a duel) are banners (`bannerer` in
+`ui/menus.js`) that slam in, hold and leave, ruled by tone; a unit taken out also flashes the
+screen white, jolts the camera and plays `audio.takedown()`. The markers
 follow the A13 contract. The four units are Gemini's models (cruiser, unmarked
 car, Rhino, interceptor). Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the

@@ -9,7 +9,7 @@ import { createStage, DEFAULT_LINES } from './render/stage.js';
 import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
 import { Hud } from './ui/hud.js';
-import { controlsScreen, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
+import { bannerer, controlsScreen, flasher, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
 import { mapScreen } from './ui/map.js';
 import { pursuitHud } from './ui/pursuit.js';
 import { statsOverlay } from './ui/stats.js';
@@ -49,6 +49,8 @@ const pause = pauseScreen(ui);
 const map = mapScreen(ui);
 const pursuit = pursuitHud(ui);
 const toast = toaster(ui);
+const banner = bannerer(ui);
+const flash = flasher(ui);
 const tracker = new RouteTracker(null);
 const rHud = routeHud(ui);
 const stats = statsOverlay(ui, stage, () => drive?.traffic?.agents?.length ?? 0);
@@ -114,7 +116,7 @@ async function enterWorld() {
       await paint();
     });
     console.log(`world built in ${world.buildMs.toFixed(0)} ms`);
-    drive = new Drive({ world, stage, input, hud, toast });
+    drive = new Drive({ world, stage, input, hud, toast, banner, flash });
     map.setWorld(world);
   }
   drive.start(garage.spec, garage.model.paintIndex);

@@ -49,7 +49,8 @@ export function loadingScreen(ui) {
 }
 
 /**
- * A short message near the top of the screen that fades on its own.
+ * A short line of information near the top of the screen (a refuel, a toll, a camera): it slides
+ * in and fades on its own.
  * @param {HTMLElement} ui
  */
 export function toaster(ui) {
@@ -62,8 +63,64 @@ export function toaster(ui) {
   return (text, seconds = 2.2) => {
     el.textContent = text;
     el.style.opacity = '1';
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
     clearTimeout(timer);
     timer = window.setTimeout(() => (el.style.opacity = '0'), seconds * 1000);
+  };
+}
+
+/**
+ * @typedef {'police' | 'good' | 'bad' | 'amber' | 'cool'} BannerTone
+ * @typedef {(head: string, opts?: { sub?: string, tone?: BannerTone, seconds?: number }) => void} Banner
+ */
+
+/**
+ * The event banner, after Most Wanted's: a big line in the middle of the screen that slams in
+ * (scaled down from large in a fifth of a second), holds, and leaves in a sixth; a colored rule
+ * above and below it by `tone` (police red over blue, green, red, amber, cyan) and an optional
+ * second line. No pulsing: a new banner replaces the one showing.
+ * @param {HTMLElement} ui
+ * @returns {Banner}
+ */
+export function bannerer(ui) {
+  const el = document.createElement('div');
+  el.className = 'banner';
+  el.innerHTML = '<b></b><span></span>';
+  ui.appendChild(el);
+  const head = /** @type {HTMLElement} */ (el.querySelector('b'));
+  const sub = /** @type {HTMLElement} */ (el.querySelector('span'));
+  let timer = 0;
+  return (text, { sub: line = '', tone = 'amber', seconds = 2.2 } = {}) => {
+    head.textContent = text;
+    sub.textContent = line;
+    sub.style.display = line ? 'block' : 'none';
+    el.dataset.tone = tone;
+    el.classList.remove('in', 'out');
+    void el.offsetWidth;
+    el.classList.add('in');
+    clearTimeout(timer);
+    timer = window.setTimeout(() => {
+      el.classList.remove('in');
+      el.classList.add('out');
+    }, seconds * 1000);
+  };
+}
+
+/**
+ * A white flash over the whole screen, for a hit that matters (a unit taken out).
+ * @param {HTMLElement} ui
+ * @returns {() => void}
+ */
+export function flasher(ui) {
+  const el = document.createElement('div');
+  el.className = 'flash';
+  ui.appendChild(el);
+  return () => {
+    el.classList.remove('go');
+    void el.offsetWidth;
+    el.classList.add('go');
   };
 }
 

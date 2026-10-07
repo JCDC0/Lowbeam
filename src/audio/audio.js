@@ -667,6 +667,15 @@ export class AudioSystem {
     o.stop(t + dur + 0.05);
   }
 
+  /** A unit taken out: the crash, a deep boom under it and a ring of torn metal. @param {number} [at] */
+  takedown(at) {
+    if (!this.built) return;
+    const t = at ?? this.ctx.currentTime;
+    this.impact(20, t);
+    this.blip(t + 0.02, { f: 95, f2: 28, dur: 0.65, gain: 1.0, type: 'sine', dest: this.bus.view });
+    this.noiseBurst(t + 0.03, { f: 3400, q: 12, dur: 0.55, gain: 0.25 });
+  }
+
   /** A crash. `speed` is the closing speed in m/s. @param {number} speed @param {number} [at] */
   impact(speed, at) {
     if (!this.built) return;

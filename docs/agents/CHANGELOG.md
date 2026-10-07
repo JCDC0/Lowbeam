@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.74 (2026-10-07)
+
+Banners with flair and the takedown hit (C2 part 6).
+
+- `bannerer` in `ui/menus.js`: a big Michroma line in the middle of the screen that slams in (from
+  1.9 times its size in 0.2 s), holds, and folds away; a rule above and below it by tone (police red
+  over blue, green, red, amber, cyan) and an optional second line. A new banner replaces the one
+  showing; nothing pulses.
+- The police events, ESCAPED, BUSTED, ENGINE BLOWN and DUEL are banners now; toasts keep the small
+  news (refuels, tolls, cameras) and slide in.
+- A unit taken out: COP TAKEN OUT with the bounty and the unit, a white flash (`flasher`, 0.28 s), a
+  camera jolt and `audio.takedown()` (the crash, a deep boom and a ring of torn metal).
+- Reviewed Gemini's 0.9.58 (Hoshi Kei-S) and 0.9.59 (Kagero Hot-GT): both pass, under the 2,600
+  triangle budget for a full car. Not yet in `KIND_MODELS`.
+- Checked in the game with a takedown at 100 km/h.
+
 ## 0.9.73 (2026-10-07)
 
 The Most Wanted pursuit HUD (C2 part 5).
