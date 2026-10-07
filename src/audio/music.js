@@ -321,7 +321,7 @@ export class MusicPlayer {
     /** Track ids that failed to load; their mood falls back to another file, then the synth. */
     this.broken = new Set();
     this.moods = new MoodTracker();
-    this.scene = { kmh: 0, mountain: false, rival: Infinity, rally: false };
+    this.scene = { kmh: 0, mountain: false, rival: Infinity, rally: false, pursuit: false };
     this.mode = /** @type {import('./audio.js').Mode} */ ('title');
     this.turn = 0;
     this.lastId = /** @type {string | null} */ (null);
@@ -385,13 +385,14 @@ export class MusicPlayer {
   }
 
   /**
-   * What the driving looks like, for the mood: whether the car is on the pass and how far
-   * the nearest street racer is (meters, Infinity for none).
-   * @param {boolean} mountain @param {number} rival
+   * What the driving looks like, for the mood: whether the car is on the pass, how far the
+   * nearest street racer is (meters, Infinity for none), and whether the police are after it.
+   * @param {boolean} mountain @param {number} rival @param {boolean} [pursuit]
    */
-  setScene(mountain, rival) {
+  setScene(mountain, rival, pursuit = false) {
     this.scene.mountain = mountain;
     this.scene.rival = rival;
+    this.scene.pursuit = pursuit;
   }
 
   /** The mood the music should be in right now. @returns {import('./soundtrack.js').Mood} */

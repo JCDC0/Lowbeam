@@ -18,6 +18,7 @@
  * same code runs live and in an OfflineAudioContext for rendering and tests.
  */
 
+import { SIREN_VOICES } from './siren.js';
 import { store } from '../core/store.js';
 import { clamp } from '../core/mathx.js';
 import { MusicPlayer } from './music.js';
@@ -101,6 +102,10 @@ function noiseBuffer(ctx, seconds, kind) {
   }
   return buf;
 }
+
+/** Peak gain of a siren right beside the player, and of the rotor overhead. */
+const SIREN_LEVEL = 0.16;
+const ROTOR_LEVEL = 0.9;
 
 export class AudioSystem {
   constructor() {
@@ -372,6 +377,39 @@ export class AudioSystem {
     hum2.connect(g(0.4)).connect(amb.pad);
     amb.pad.connect(bus.modeAmb);
 
+    // Three police sirens: a square and a slightly detuned saw through a band-pass (the horn) into
+    // a panner, through the camera low-pass so the cockpit muffles them like the tires.
+    this.sirenSlots = Array.from({ length: SIREN_VOICES }, () => {
+      const osc = c.createOscillator();
+      osc.type = 'square';
+      osc.frequency.value = 700;
+      const osc2 = c.createOscillator();
+      osc2.type = 'sawtooth';
+      osc2.frequency.value = 704;
+      const horn = bq('bandpass', 1500, 0.8);
+      const soft = bq('lowpass', 3600, 0.7);
+      const gain = g(0);
+      const pan = c.createStereoPanner ? c.createStereoPanner() : g(1);
+      osc.connect(horn);
+      osc2.connect(g(0.5)).connect(horn);
+      horn.connect(soft).connect(gain).connect(pan).connect(bus.view);
+      osc.start();
+      osc2.start();
+      return { osc, osc2, gain, pan, key: -1 };
+    });
+    // The rotor: low noise chopped by the blade pass.
+    {
+      const chop = g(0.5);
+      const lfoOsc = c.createOscillator();
+      lfoOsc.type = 'triangle';
+      lfoOsc.frequency.value = 11;
+      lfoOsc.connect(g(0.5)).connect(chop.gain);
+      lfoOsc.start();
+      const level = g(0);
+      loop(pink).connect(bq('lowpass', 170, 0.9)).connect(chop).connect(level).connect(bus.view);
+      this.rotor = { lfo: lfoOsc, level };
+    }
+
     this.built = true;
     this.applyChannels(0);
     this.setMode(this.mode, 0);
@@ -460,7 +498,9 @@ export class AudioSystem {
    * One drive frame. `f.state` is the vehicle state, `f.boost` the gauge boost in bar,
    * `f.env` the EnvMap result around the car. `f.mountain` (on the pass) and `f.rival` (meters
    * to the nearest street racer) set the music's mood.
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[] }} f
+   * `f.sirens` are the police sirens heard this frame and `f.rotor` the helicopter (siren.js);
+   * `f.pursuit` says the police are after the player, for the music.
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[], sirens?: ReturnType<typeof import('./siren.js').sirenVoices>, rotor?: { rate: number, gain: number }, pursuit?: boolean }} f
    * @param {number} [at]
    */
   update(f, at) {
@@ -470,7 +510,8 @@ export class AudioSystem {
     const spec = f.spec;
     this.setView(/** @type {any} */ (f.view), t);
     this.music?.setSpeed(f.state.speed * 3.6, t);
-    this.music?.setScene(!!f.mountain, f.rival ?? Infinity);
+    this.music?.setScene(!!f.mountain, f.rival ?? Infinity, !!f.pursuit);
+    this.sirens(f.sirens || [], f.rotor || { rate: 0, gain: 0 }, t);
     if (f.traffic) for (const ev of this.passby.update(s, f.traffic)) this.passbyVoice(ev, t);
 
     const e = this.engine;
@@ -528,6 +569,36 @@ export class AudioSystem {
     glide(a.water.gain, env.water * 0.65 * quiet, t, 0.5);
     glide(a.town.gain, env.town * 0.06, t, 0.5);
     glide(a.pad.gain, f.pad ? 0.05 : 0, t, 0.3);
+  }
+
+  /**
+   * The police sirens and the helicopter rotor for this frame. Each siren voice follows one unit
+   * (by its key) so a car's sweep does not jump between voices; a voice with no unit fades out.
+   * @param {ReturnType<typeof import('./siren.js').sirenVoices>} voices
+   * @param {{ rate: number, gain: number }} rotor @param {number} t
+   */
+  sirens(voices, rotor, t) {
+    const slots = this.sirenSlots;
+    if (!slots) return;
+    const used = new Set();
+    for (const v of voices) {
+      let slot = slots.find((s) => s.key === v.key);
+      if (!slot) slot = slots.find((s) => !used.has(s) && !voices.some((w) => w.key === s.key));
+      if (!slot) continue;
+      used.add(slot);
+      slot.key = v.key;
+      glide(slot.osc.frequency, v.pitch, t, 0.012);
+      glide(slot.osc2.frequency, v.pitch * 1.006, t, 0.012);
+      glide(slot.gain.gain, v.gain * SIREN_LEVEL, t, 0.05);
+      if ('pan' in slot.pan) glide(slot.pan.pan, v.pan * 0.8, t, 0.05);
+    }
+    for (const s of slots) {
+      if (used.has(s)) continue;
+      s.key = -1;
+      glide(s.gain.gain, 0, t, 0.15);
+    }
+    glide(this.rotor.lfo.frequency, Math.max(1, rotor.rate), t, 0.2);
+    glide(this.rotor.level.gain, rotor.gain * ROTOR_LEVEL, t, 0.2);
   }
 
   /** @param {boolean} on @param {number} [at] */

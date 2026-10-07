@@ -5,8 +5,9 @@
  *
  * Their lamps: every car within FLARE_RANGE gets four flares (one more draw call for all of
  * them), white at the headlamps and red at the tail lamps, brighter when braking, found from the
- * body's own `lamp` vertices so they sit on the modeled lamps. The cars nearest the player also
- * throw a headlight beam onto the road through the world shader (`uBeamPos` in psx.js).
+ * body's own `lamp` vertices so they sit on the modeled lamps. The world shader's moving lights
+ * (`uBeamPos` in psx.js) go first to the police light bars nearest the player, then to the lit
+ * indicators, then to the headlight beams of the nearest cars.
  */
 
 import * as THREE from 'three';
@@ -15,6 +16,7 @@ import { psxPhong } from '../render/psx.js';
 import { flareTexture } from '../render/textures.js';
 import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
+import { barFlash, barOn } from '../police/lights.js';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -32,10 +34,28 @@ const TAIL = new THREE.Color(0.85, 0.06, 0.04);
 const TAIL_BRAKE = new THREE.Color(1.6, 0.12, 0.06);
 /** An indicator: amber, at the same brightness as a head lamp flare. */
 const SIGNAL = new THREE.Color(1.5, 0.62, 0.06);
-/** A police light bar: a bright red flash on the roof, left then right. */
-const BAR = new THREE.Color(2.2, 0.16, 0.1);
-/** The unlit half of a light bar: the flare mesh is still there, so it is scaled to nothing. */
+/** A police light bar: red on the car's left, blue on its right, flashing (police/lights.js). */
+const BAR_RED = new THREE.Color(2.6, 0.18, 0.12);
+const BAR_BLUE = new THREE.Color(0.25, 0.45, 2.8);
+/** The unlit half of a light bar (and a bar light between pulses): black adds nothing. */
 const BAR_OFF = new THREE.Color(0, 0, 0);
+/** How big a lit bar flare is against a head lamp's, and the indicator flare when it blinks. */
+const BAR_SIZE = 1.9;
+const SIGNAL_GROW = 1.35;
+/**
+ * What a bar throws on its surroundings: a light above the roof shining down and out, wide enough
+ * to reach the walls beside it, on the nearest BAR_POOLS units.
+ */
+const BAR_LIGHT = { range: 18, cos: -0.35, lift: 1.2 };
+const BAR_POOLS = 4;
+const BAR_RED_LIGHT = new THREE.Color(1.5, 0.08, 0.05);
+const BAR_BLUE_LIGHT = new THREE.Color(0.12, 0.3, 1.7);
+/** A lit indicator's small amber pool at the front corner, on the nearest SIGNAL_POOLS. */
+const SIGNAL_LIGHT = { range: 6.5, cos: 0.1 };
+const SIGNAL_POOLS = 3;
+const SIGNAL_LIGHT_COLOR = new THREE.Color(1.1, 0.48, 0.04);
+/** A headlight beam's color. */
+const HEAD_LIGHT = new THREE.Color(1.0, 0.94, 0.8);
 /** Seconds on and off for an indicator, so a queue does not blink in unison. */
 const BLINK = 0.33;
 /** A headlight beam: range (m), where its cone ends (cosine) and how far down it aims. */
@@ -107,6 +127,8 @@ export class TrafficRenderer {
     this.root.add(this.flares);
     /** @type {{ a: import('./sim.js').Agent, d: number }[]} */
     this.near = [];
+    /** The player, whom the light bars face. @type {{ x: number, z: number } | undefined} */
+    this.focus = undefined;
   }
 
   /**
@@ -116,6 +138,7 @@ export class TrafficRenderer {
    */
   update(agents, focus, time = 0) {
     this.time = time;
+    this.focus = focus;
     for (const m of this.meshes.values()) m.n = 0;
     this.near.length = 0;
     for (const a of agents) {
@@ -145,13 +168,29 @@ export class TrafficRenderer {
     }
   }
 
-  /** Flares for the cars near the player, and beams for the nearest of them. */
+  /**
+   * Flares for the cars near the player, and the moving lights of the world shader: first the
+   * light bars of the nearest units (red or blue as they flash, lighting the road, the walls and
+   * the player's car), then the lit indicators nearest (a small amber pool at the corner), then
+   * headlight beams for the nearest cars, until the slots run out.
+   */
   lamps() {
     this.near.sort((p, q) => p.d - q.d);
     const beamPos = psxUniforms.uBeamPos.value;
     const beamDir = psxUniforms.uBeamDir.value;
+    const beamCol = psxUniforms.uBeamCol.value;
     let f = 0;
     let beams = 0;
+    /** @param {number} x @param {number} y @param {number} z @param {number} range @param {number} dx @param {number} dy @param {number} dz @param {number} cos @param {THREE.Color} col */
+    const beam = (x, y, z, range, dx, dy, dz, cos, col) => {
+      if (beams >= BEAMS) return;
+      beamPos[beams].set(x, y, z, range);
+      beamDir[beams].set(dx, dy, dz, cos);
+      beamCol[beams].set(col.r, col.g, col.b, 0);
+      beams++;
+    };
+    const bars = [];
+    const signals = [];
     for (const { a } of this.near) {
       const m = this.meshes.get(a.kind.id);
       if (!m || f + FLARES_PER_CAR > MAX_FLARE_CARS * FLARES_PER_CAR) break;
@@ -170,37 +209,54 @@ export class TrafficRenderer {
           const side = i === 0 ? -1 : 1;
           const amber = on && (sig === 2 || sig === side);
           world(p);
-          _s.set(size * k, size * k, size * k);
+          const grow = amber ? SIGNAL_GROW : 1;
+          _s.set(size * k * grow, size * k * grow, size * k * grow);
           _m.compose(_p, _q.identity(), _s);
           this.flares.setMatrixAt(f, _m);
           this.flares.setColorAt(f, amber ? SIGNAL : color);
           this.flareDir.setXYZ(f, s * dir, 0, c * dir);
           f++;
+          if (amber && dir > 0 && signals.length < SIGNAL_POOLS) signals.push([_p.x, _p.y, _p.z]);
         }
       }
-      // A police light bar: two flares on the roof, alternating left and right at 2 Hz while
-      // the unit is chasing, searching or parked in a roadblock. A patrol carries no bar.
-      if (a.kind.lightBar && (a.pursuit || a.mode === 'parked')) {
-        const beat = (this.time * 2 + a.id * 0.21) % 1;
+      // A police light bar: red on the car's left, blue on its right, in the quad flash.
+      if (a.kind.lightBar && barOn(a)) {
+        const flash = barFlash(this.time, a.id);
         for (let i = 0; i < 2; i++) {
-          const lit = (beat < 0.5) === (i === 0);
-          world([(i === 0 ? 1 : -1) * 0.42, a.kind.height + 0.06, 0.1]);
-          _s.set(size * 0.8, size * 0.8, size * 0.8);
+          const red = i === 0;
+          const lit = red ? flash.red : flash.blue;
+          world([(red ? 1 : -1) * 0.42, a.kind.height + 0.06, 0.1]);
+          const k = lit ? BAR_SIZE : 0.35;
+          _s.set(size * k, size * k, size * k);
           _m.compose(_p, _q.identity(), _s);
           this.flares.setMatrixAt(f, _m);
-          this.flares.setColorAt(f, lit ? BAR : BAR_OFF);
-          this.flareDir.setXYZ(f, 0, 0.25, 0);
+          this.flares.setColorAt(f, lit ? (red ? BAR_RED : BAR_BLUE) : BAR_OFF);
+          // A bar is seen from every side: it faces whoever is watching, the player.
+          const fx = this.focus ? this.focus.x - _p.x : 0;
+          const fz = this.focus ? this.focus.z - _p.z : 0;
+          const fl = Math.hypot(fx, fz) || 1;
+          this.flareDir.setXYZ(f, (fx / fl) * 0.85, 0.5, (fz / fl) * 0.85);
           f++;
         }
+        if (bars.length < BAR_POOLS) {
+          world([0, a.kind.height + BAR_LIGHT.lift, 0]);
+          bars.push([_p.x, _p.y, _p.z, flash.red ? BAR_RED_LIGHT : flash.blue ? BAR_BLUE_LIGHT : BAR_OFF]);
+        }
       }
-      if (beams < BEAMS) {
-        const h = m.lamps.head;
-        world([(h[0][0] + h[1][0]) / 2, (h[0][1] + h[1][1]) / 2, (h[0][2] + h[1][2]) / 2]);
-        beamPos[beams].set(_p.x, _p.y, _p.z, BEAM.range);
-        const cp = Math.cos(BEAM.pitch);
-        beamDir[beams].set(s * cp, Math.sin(BEAM.pitch), c * cp, BEAM.cos);
-        beams++;
-      }
+    }
+    for (const [x, y, z, col] of bars) beam(x, y, z, BAR_LIGHT.range, 0, -1, 0, BAR_LIGHT.cos, col);
+    for (const [x, y, z] of signals) beam(x, y + 0.5, z, SIGNAL_LIGHT.range, 0, -1, 0, SIGNAL_LIGHT.cos, SIGNAL_LIGHT_COLOR);
+    for (const { a } of this.near) {
+      if (beams >= BEAMS) break;
+      const m = this.meshes.get(a.kind.id);
+      if (!m) continue;
+      const c = Math.cos(a.yaw);
+      const s = Math.sin(a.yaw);
+      const h = m.lamps.head;
+      const lx = (h[0][0] + h[1][0]) / 2;
+      const lz = (h[0][2] + h[1][2]) / 2;
+      const cp = Math.cos(BEAM.pitch);
+      beam(a.x + lx * c + lz * s, a.y + (h[0][1] + h[1][1]) / 2, a.z - lx * s + lz * c, BEAM.range, s * cp, Math.sin(BEAM.pitch), c * cp, BEAM.cos, HEAD_LIGHT);
     }
     for (let b = beams; b < BEAMS; b++) beamPos[b].w = 0;
     this.flares.count = f;

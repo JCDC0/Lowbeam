@@ -27,12 +27,55 @@ export const psxUniforms = {
   /** 1 once installPools has run; until then baked materials use the `bake` attribute. */
   uPoolsOn: { value: 0 },
   /**
-   * Headlight beams of the traffic nearest the player (traffic/render.js): position and range,
-   * then direction and the cosine where the cone ends. A range of 0 is an empty slot.
+   * Moving lights (traffic/render.js, heli-view.js): headlight beams, police light bars, lit
+   * indicators, the searchlight. Position and range, then direction and the cosine where the cone
+   * ends, then the color (rgb). A range of 0 ends the list; a black slot is a light that is off.
    */
   uBeamPos: { value: Array.from({ length: BEAMS }, () => new THREE.Vector4()) },
   uBeamDir: { value: Array.from({ length: BEAMS }, () => new THREE.Vector4()) },
+  uBeamCol: { value: Array.from({ length: BEAMS }, () => new THREE.Vector4(1, 0.94, 0.8, 0)) },
 };
+
+/**
+ * Adds the moving lights (the beams) at a point to a light color and direction, the way the world
+ * shader lights a surface there, so the player's car takes the red and blue of a light bar beside
+ * it. `dir` is a unit vector toward the light, blended by how much each beam adds.
+ * @param {number} x @param {number} y @param {number} z @param {THREE.Color} color @param {THREE.Vector3} dir
+ */
+export function addBeamLight(x, y, z, color, dir) {
+  const pos = psxUniforms.uBeamPos.value;
+  const bd = psxUniforms.uBeamDir.value;
+  const col = psxUniforms.uBeamCol.value;
+  const base = color.r + color.g + color.b;
+  let wx = dir.x * base;
+  let wy = dir.y * base;
+  let wz = dir.z * base;
+  for (let b = 0; b < BEAMS; b++) {
+    const B = pos[b];
+    if (B.w <= 0) break;
+    const dx = B.x - x;
+    const dy = B.y - y;
+    const dz = B.z - z;
+    const d = Math.hypot(dx, dy, dz);
+    if (d >= B.w || d < 1e-3) continue;
+    const toward = -(dx * bd[b].x + dy * bd[b].y + dz * bd[b].z) / d;
+    const lo = bd[b].w;
+    const hi = lo + (1 - lo) * 0.45;
+    const t = Math.min(1, Math.max(0, (toward - lo) / (hi - lo)));
+    const r = d / B.w;
+    const e = t * t * (3 - 2 * t) * (1 - r) * (1 - r) * 1.6;
+    if (e <= 0) continue;
+    color.r += col[b].x * e;
+    color.g += col[b].y * e;
+    color.b += col[b].z * e;
+    const k = e * (col[b].x + col[b].y + col[b].z) / d;
+    wx += dx * k;
+    wy += dy * k;
+    wz += dz * k;
+  }
+  const n = Math.hypot(wx, wy, wz);
+  if (n > 1e-6) dir.set(wx / n, wy / n, wz / n);
+}
 
 /**
  * The pools in the fragment shader. A light with `spot` 1 is a street lamp head: it lights a
@@ -48,6 +91,7 @@ uniform vec4 uPoolGrid;
 uniform float uPoolsOn;
 uniform vec4 uBeamPos[BEAMS];
 uniform vec4 uBeamDir[BEAMS];
+uniform vec4 uBeamCol[BEAMS];
 varying vec3 vPoolPos;
 varying vec3 vPoolN;
 vec3 beamLight(vec3 p, vec3 n) {
@@ -63,7 +107,7 @@ vec3 beamLight(vec3 p, vec3 n) {
     float r = d / B.w;
     float e = cone * (1.0 - r) * (1.0 - r) * 1.6;
     e = floor(e * POOL_BANDS + 0.35) / POOL_BANDS;
-    sum += vec3(1.0, 0.94, 0.8) * e * clamp((dot(n, l) + 0.3) / 1.3, 0.0, 1.0);
+    sum += uBeamCol[b].rgb * e * clamp((dot(n, l) + 0.3) / 1.3, 0.0, 1.0);
   }
   return sum;
 }
@@ -128,7 +172,7 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false, pain
     let fs = shader.fragmentShader;
     let extra = '';
     if (baked) {
-      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir']) shader.uniforms[k] = psxUniforms[k];
+      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir', 'uBeamCol']) shader.uniforms[k] = psxUniforms[k];
       vs = 'attribute vec3 bake;\nvarying vec3 vBake;\nvarying vec3 vPoolPos;\nvarying vec3 vPoolN;\n' + vs;
       vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
 vBake = bake;

@@ -82,6 +82,8 @@ export const SWELL = {
   rivalFloor: 0.55,
   /** A rally run holds the track up here, so it is never silent on the stage. */
   rallyFloor: 0.7,
+  /** A police pursuit holds it higher still, through cooldown, whatever the speed. */
+  pursuitFloor: 0.85,
 };
 
 /** Smooth 0 to 1 between a and b. @param {number} a @param {number} b @param {number} x */
@@ -102,7 +104,7 @@ export class SpeedSwell {
 
   /**
    * @param {number} dt seconds since the last call
-   * @param {{ kmh: number, mountain: boolean, rival: number, rally?: boolean }} scene
+   * @param {{ kmh: number, mountain: boolean, rival: number, rally?: boolean, pursuit?: boolean }} scene
    * @returns {number} the level
    */
   update(dt, scene) {
@@ -110,6 +112,7 @@ export class SpeedSwell {
     let want = smooth(S.quiet, scene.mountain ? S.fullMountain : S.full, scene.kmh);
     if (scene.rival < MOOD_RULES.rivalNear) want = Math.max(want, S.rivalFloor);
     if (scene.rally) want = Math.max(want, S.rallyFloor);
+    if (scene.pursuit) want = Math.max(want, S.pursuitFloor);
     if (want >= this.level) {
       this.below = 0;
       this.level = Math.min(want, this.level + S.rise * dt);
@@ -143,8 +146,9 @@ export class MoodTracker {
 
   /**
    * @param {number} dt seconds since the last call
-   * @param {{ kmh: number, mountain: boolean, rival: number }} scene `rival` is the distance to
-   *   the nearest street racer in meters (Infinity for none)
+   * @param {{ kmh: number, mountain: boolean, rival: number, pursuit?: boolean }} scene `rival` is
+   *   the distance to the nearest street racer in meters (Infinity for none); `pursuit` is a police
+   *   pursuit running (cooldown included), which is the intense mood at once, even on the pass
    * @returns {Mood}
    */
   update(dt, scene) {
@@ -158,7 +162,8 @@ export class MoodTracker {
     this.offPass = scene.mountain ? 0 : this.offPass + dt;
     if (this.onPass >= R.mountainIn) this.mountain = true;
     else if (this.offPass >= R.mountainOut) this.mountain = false;
-    this.mood = this.mountain ? 'mountain' : this.intense ? 'intense' : 'cruise';
+    if (scene.pursuit) this.intense = true;
+    this.mood = scene.pursuit ? 'intense' : this.mountain ? 'mountain' : this.intense ? 'intense' : 'cruise';
     return this.mood;
   }
 

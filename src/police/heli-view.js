@@ -105,6 +105,7 @@ export class HeliView {
     const reach = Math.min(HELI.lightRange * 2, len * 3.6);
     beamPos[slot].set(_o.x, _o.y, _o.z, reach);
     beamDir[slot].set(_d.x, _d.y, _d.z, Math.cos(Math.atan2(sp.r * 1.25, len)));
+    psxUniforms.uBeamCol.value[slot].set(1.05, 1.0, 0.92, 0);
     this.slot = slot;
     this.lastW = reach;
   }

@@ -26,6 +26,29 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.8 (2026-10-07)
+
+Lights and sirens (C1 part 2, and B1 part 3).
+
+- The world shader's moving lights take a color each (`uBeamCol` in `psx.js`). The traffic renderer
+  fills them in order: the light bars of the four nearest units (red or blue as they flash, a wide
+  light above the roof that reaches the road and the walls), the three nearest blinking
+  indicators (a small amber pool), then headlight beams. `addBeamLight` puts the same light on the
+  player's car.
+- `police/lights.js`: Most Wanted's quad flash, red twice on the car's left, blue twice on its right,
+  a phase per car. The bar flares are red and blue, larger, and face the player (they were two red
+  dots facing the sky, so they showed at a seventh of their size from the side). A blinking
+  indicator's flare grows by a third.
+- `audio/siren.js`: the three nearest units with their bars on are heard: wail far, yelp within 70 m,
+  hi-lo for a roadblock; Doppler from the closing speed; gain by distance to 380 m; panned. The
+  helicopter's rotor by distance with its own Doppler. Three siren voices and the rotor are built in
+  `audio.js` and play through the effects channel, muffled in the cockpit.
+- A pursuit puts the music in the `intense` mood at once (even on the pass) and holds the swell at
+  0.85 through cooldown.
+- `tools/render-sirens.mjs` writes a check WAV: a unit closing from 300 m, passing, pulling away, then
+  a roadblock. `tests/sirens.test.mjs`: the flash pattern, the patterns' range, Doppler, gain, the
+  voice choice and panning, the rotor, the pursuit mood. 332 pass.
+
 ## 0.9.7 (2026-10-07)
 
 Other cars hit the world (C1 part 1).

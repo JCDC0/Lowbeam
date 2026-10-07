@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { Ground } from './ground.js';
 import { scatterWorld } from './scatter.js';
 import { LightGrid, sampleLight } from '../render/bake.js';
-import { psxUniforms } from '../render/psx.js';
+import { addBeamLight, psxUniforms } from '../render/psx.js';
 import { installPools } from '../render/pools.js';
 import { WORLD_HALF } from './layout.js';
 import { buildTerrain, buildWater } from './build-terrain.js';
@@ -123,6 +123,7 @@ export class World {
     for (const c of this.groundChunks) c.mesh.visible = Math.hypot(c.x - p.x, c.z - p.z) < GROUND_DRAW;
     if (focus) {
       sampleLight(this.grid, focus.x, focus.y + 0.8, focus.z, psxUniforms.uLocalColor.value, _dir);
+      addBeamLight(focus.x, focus.y + 0.8, focus.z, psxUniforms.uLocalColor.value, _dir);
       psxUniforms.uLocalDir.value.copy(_dir).transformDirection(camera.matrixWorldInverse);
     }
   }

@@ -28,6 +28,7 @@ import { PoliceDirector, SIGHT_RANGE } from './police/director.js';
 import { planRoadblock } from './police/roadblock.js';
 import { clearLine } from './police/sight.js';
 import { PursuitView } from './police/pursuit-view.js';
+import { sirenVoices, rotorSound } from './audio/siren.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
@@ -119,6 +120,8 @@ export class Drive {
     this.policeOrders = null;
     /** A toast held back until the pursuit's end card is gone. */
     this.afterReport = '';
+    /** The helicopter's last distance, for the rotor's Doppler. */
+    this.heliDist = Infinity;
     /** The km/h of a toll gate crossed this frame, for the speed trap; one frame only. @type {number | null} */
     this.tollKmh = null;
     /** The roadblock's parked units, so they can be sent after the player when it comes down. @type {any[]} */
@@ -288,6 +291,19 @@ export class Drive {
       this.toast(this.afterReport, 3);
       this.afterReport = '';
     }
+  }
+
+  /** The helicopter's rotor as the player hears it, from its distance and how fast that closes. @param {number} dt @param {any} s */
+  rotorSound(dt, s) {
+    const h = this.heli;
+    if (!h || h.state === 'parked') {
+      this.heliDist = Infinity;
+      return { rate: 0, gain: 0 };
+    }
+    const d = Math.hypot(h.x - s.x, h.y - s.y, h.z - s.z);
+    const closing = Number.isFinite(this.heliDist) && dt > 0 ? (this.heliDist - d) / dt : 0;
+    this.heliDist = d;
+    return rotorSound(d, closing);
   }
 
   /** A toast for what the police just did. @param {{ type: string, [k: string]: any }} e */
@@ -829,7 +845,11 @@ export class Drive {
     this.hud.rallyPanel(this.rallyPanel());
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
-    audio.update({ dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete', mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally, traffic: this.traffic.agents });
+    audio.update({
+      dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete',
+      mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally, traffic: this.traffic.agents,
+      sirens: sirenVoices(this.traffic.units(), s, this.time), rotor: this.rotorSound(dt, s), pursuit: this.police.active,
+    });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
     return null;
   }
