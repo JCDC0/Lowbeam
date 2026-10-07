@@ -140,7 +140,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.9.52)
 
-321 tests pass; the type check is clean. By area:
+325 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -178,7 +178,9 @@ the car's own style drawn with the same painters (`cluster-styles.js`): `tuner`,
 symbols in fixed places (`paintIcon`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
-turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams. Five street racers on
+turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams. A car off its lane
+(a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
+out, its speed into the wall taken, spun by an end hit, a unit wrecked above 9 m/s. Five street racers on
 Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet.
 
 **Races.** `RaceEvent` with three kinds: the duel (Tokyo Xtreme Racer gauges, challenge with H), the
@@ -218,8 +220,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 ## Open work and known issues
 
 - Police (task B1 part 3): no sirens, no rotor sound, and the music does not switch to the pursuit
-  mood yet. A unit driving free (close to the player) can still clip a building corner; the line-of-
-  sight gate keeps that rare. The units are drawn with civilian bodies.
+  mood yet. The units are drawn with civilian bodies.
 - The police units, the light bar, the roadblock barrier and the pursuit breakers have no models of
   their own yet (task G1). The Mazuma RX-Coupe body (`rv_rotary.json`, G2) is exported but not used
   by the game yet.

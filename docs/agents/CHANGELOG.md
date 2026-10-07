@@ -26,6 +26,19 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.7 (2026-10-07)
+
+Other cars hit the world (C1 part 1).
+
+- `TrafficSim.hitWorld`, set by the Drive to `Colliders.probe`: every car off its lane (a wreck, a
+  police unit driving free at the player) collides as three circles along its length, is pushed
+  out, loses its speed into the wall (a 0.2 bounce, a 0.35 scrape along it) and is spun by a hit
+  at the nose or the tail. A unit that hits a wall above 9 m/s is wrecked and lost to the pursuit.
+  Lane followers are not tested (their lanes are clear), so the traffic costs nothing more.
+- Wrecks keep to the ground under them as they slide.
+- `tests/traffic-walls.test.mjs`: a sliding wreck stops at a building's face, an angled hit spins,
+  a free unit aimed through a block stops and wrecks, lane followers are untouched. 325 pass.
+
 ## 0.9.6 (2026-10-07)
 
 Briefs G5 (the other eleven street racers in Blender, with their fixed dimensions from

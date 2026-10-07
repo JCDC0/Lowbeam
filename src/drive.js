@@ -131,6 +131,10 @@ export class Drive {
     this.solid = (x, z, y) => this.colliders.solidAt(x, z, y) || terrain.at(x, z) > y + 0.5;
     this.traffic.clear = (a, b) => clearLine(a, { x: b.x, y: b.y ?? a.y, z: b.z }, this.solid);
     this.traffic.groundAt = (x, z, y) => world.ground.at(x, z, y + 1).h;
+    this.traffic.hitWorld = (x, z, r, y) => {
+      const c = this.colliders.probe(x, z, r, y);
+      return c && { nx: c.nx, nz: c.nz, depth: c.depth, px: c.px, pz: c.pz };
+    };
     if (this.heli && this.heliView.ok) {
       world.add(this.heliView.group);
       world.add(this.heliView.cone);

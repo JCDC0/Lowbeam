@@ -82,6 +82,10 @@ const BLIND_TIME = 1;
 const OFFROAD_TIME = 5;
 /** A unit that has gone home leaves once it is this far from the player. */
 const LEAVE_RANGE = 150;
+/** A car against a wall: the part of its speed into the wall it bounces back with, the part along the wall it loses, and how much an end hit spins it. */
+const WALL_BOUNCE = 0.2;
+const WALL_SCRAPE = 0.35;
+const WALL_SPIN = 0.4;
 /** Within this many meters of the player a chasing unit holds the player's speed. */
 const CONTACT_RANGE = 6;
 /** Half the player's car, for the gap a unit keeps; and how far into it a ramming unit aims. */
@@ -128,6 +132,13 @@ export class TrafficSim {
     this.clear = null;
     /** @type {((x: number, z: number, y: number) => number) | null} */
     this.groundAt = null;
+    /**
+     * The deepest contact of a circle with the world's walls, barriers and posts at height y, or
+     * null (`Colliders.probe`). With it set, every car off its lane (a wreck, a unit driving free)
+     * hits what it meets instead of passing through it.
+     * @type {((x: number, z: number, r: number, y: number) => { nx: number, nz: number, depth: number, px: number, pz: number } | null) | null}
+     */
+    this.hitWorld = null;
     /** Where the searching units drive to while the police look for the player. @type {{ x: number, z: number, r: number } | null} */
     this.search = null;
     /** Since the last `takeEvents`: units lost (wrecked or left behind), yen-worthy hits on units, civilians wrecked. */
@@ -539,6 +550,7 @@ export class TrafficSim {
       else if (a.mode === 'parked') this.stepParked(a);
       else if (a.pursuit) this.stepPursuit(a, dt, player);
       else this.stepDrive(a, dt, player);
+      if (this.hitWorld && (a.mode === 'wreck' || a.free)) this.collideWorld(a);
     }
     // Remove what was left behind, what ended and what has been a wreck long enough. A chasing
     // unit left behind is lost to the pursuit.
@@ -1315,6 +1327,53 @@ export class TrafficSim {
   }
 
   /** @param {Agent} a @param {number} dt */
+  /**
+   * A car off its lane against the world: three circles along its length, like the player's car.
+   * Each contact pushes it out, takes its speed into the wall with a little bounce and some
+   * scrape, and spins it by where along the car it hit. A unit hit hard enough is wrecked and lost
+   * to the pursuit; a free unit keeps what is left of its speed along its heading.
+   * @param {Agent} a
+   */
+  collideWorld(a) {
+    const hit = /** @type {NonNullable<TrafficSim['hitWorld']>} */ (this.hitWorld);
+    const r = a.kind.width / 2;
+    const reach = Math.max(0, a.kind.length / 2 - r);
+    const fx = Math.sin(a.yaw);
+    const fz = Math.cos(a.yaw);
+    let hardest = 0;
+    for (const along of [reach, 0, -reach]) {
+      const c = hit(a.x + fx * along, a.z + fz * along, r, a.y);
+      if (!c) continue;
+      a.x += c.nx * c.depth;
+      a.z += c.nz * c.depth;
+      const vn = a.vx * c.nx + a.vz * c.nz;
+      if (vn >= 0) continue;
+      hardest = Math.max(hardest, -vn);
+      const tx = -c.nz;
+      const tz = c.nx;
+      const vt = (a.vx * tx + a.vz * tz) * (1 - WALL_SCRAPE);
+      const vOut = -vn * WALL_BOUNCE;
+      a.vx = tx * vt + c.nx * vOut;
+      a.vz = tz * vt + c.nz * vOut;
+      // A hit at the nose or the tail turns the car; one at its middle only stops it.
+      a.yawRate += WALL_SPIN * (along / a.kind.length) * (fz * c.nx - fx * c.nz) * -vn;
+    }
+    if (!hardest) return;
+    if (a.mode === 'wreck') {
+      a.speed = Math.hypot(a.vx, a.vz);
+      return;
+    }
+    a.speed = Math.max(0, a.vx * fx + a.vz * fz);
+    if (hardest > UNIT_WRECK_HIT) {
+      if (isUnit(a.kind)) this.lost++;
+      a.mode = 'wreck';
+      a.wreckAge = 0;
+      a.free = false;
+      a.ex = a.ez = 0;
+      a.changeDuration = 0;
+    }
+  }
+
   stepWreck(a, dt) {
     // A wreck sits with its hazards on both sides until it fades.
     a.signal = 2;
@@ -1337,6 +1396,7 @@ export class TrafficSim {
     a.z += a.vz * dt;
     a.yaw += a.yawRate * dt;
     a.speed = Math.hypot(a.vx, a.vz);
+    if (this.groundAt && a.speed > 0.05) a.y = this.groundAt(a.x, a.z, a.y);
     if (a.wreckAge > WRECK_TIME - 3) a.fade = Math.max(0, (WRECK_TIME - a.wreckAge) / 3);
     a.brake = 1;
   }
