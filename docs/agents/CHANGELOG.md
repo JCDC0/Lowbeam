@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.56 (2026-10-07)
+
+Police car trial: Rhino heavy SUV (`police_rhino`).
+
+- `tools/blender/police_rhino.py`: heavy boxy pursuit SUV in Japanese police two-tone (Land Cruiser / Patrol mould):
+  - Proportions: length 4.90 m (z from -2.45 to +2.45), width 2.00 m, height 1.90 m, wheelbase 2.94 m (axles at z = +-1.47 m).
+  - Heavy steel push bar / bull bar on the nose with rubberized push pads, cross tubes, and headlight protectors.
+  - Cruiser two-tone livery: white upper body carried down doors to handle height (~1.08 m); black lower body, lower doors, flared wheel arches, and bumpers.
+  - High-visibility roof light bar: 1.32 m wide, 0.12 m tall lenses (left red `lens-l` 0xff2a2a, right blue `lens-r` 0x2a5aff, both emissive), top strictly at 1.90 m.
+  - Large SUV all-terrain wheels (radius 0.38 m, width 0.26 m), roof rails, rear step bumper, tow hitch, and vertical tail clusters.
+- `assets/models/police_rhino.json`: body-only model (1,568 triangles, under 1,800 budget; bounds x: [-1.0800, 1.0800], y: [0.3000, 1.9000], z: [-2.4500, 2.4500]), check() clean with 0 problems.
+- `assets/models/police_rhino_full.json`: full model with wheels (2,272 triangles, under 2,600 budget; bounds x: [-1.0800, 1.0800], y: [0.0000, 1.9000], z: [-2.4500, 2.4500]), check() clean with 0 problems.
+
 ## 0.9.55 (2026-10-07)
 
 Police car trial: unmarked fast sedan (`police_unmarked`).
