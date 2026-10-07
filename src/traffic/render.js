@@ -28,8 +28,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** Cars this close to the player show their lamp flares, meters. */
 const FLARE_RANGE = 420;
 const MAX_FLARE_CARS = 60;
-/** Flares per car: four lamps, plus two on the roof of a police car with a light bar. */
-const FLARES_PER_CAR = 6;
+/** Flares per car: four lamps, two on the roof of a police car with a light bar, and its watch mark. */
+const FLARES_PER_CAR = 7;
+/** The mark over a unit that sees the player before a pursuit: amber, red once the bar is nearly full. */
+const WATCH = new THREE.Color(2.2, 1.3, 0.2);
+const WATCH_HOT = new THREE.Color(2.6, 0.35, 0.15);
 const HEAD = new THREE.Color(1.0, 0.92, 0.72);
 const TAIL = new THREE.Color(0.85, 0.06, 0.04);
 const TAIL_BRAKE = new THREE.Color(1.6, 0.12, 0.06);
@@ -127,6 +130,9 @@ export class TrafficRenderer {
     this.flares.frustumCulled = false;
     this.flares.renderOrder = 2;
     this.flares.count = 0;
+    /** Ids of the units that see the player before a pursuit, and the detection bar (0 to 1). */
+    this.watchers = new Set();
+    this.detect = 0;
     this.flares.name = 'traffic-lamps';
     this.root.add(this.flares);
     /** @type {{ a: import('./sim.js').Agent, d: number }[]} */
@@ -253,6 +259,19 @@ export class TrafficRenderer {
           world([0, a.kind.height + BAR_LIGHT.lift, 0]);
           bars.push([_p.x, _p.y, _p.z, flash.red ? BAR_RED_LIGHT : flash.blue ? BAR_BLUE_LIGHT : BAR_OFF]);
         }
+      }
+      if (this.watchers.has(a.id)) {
+        world([0, a.kind.height + 1.15, 0]);
+        const k = (0.8 + 0.25 * Math.sin(this.time * 9)) * (0.7 + 0.5 * this.detect);
+        _s.set(size * k, size * k, size * k);
+        _m.compose(_p, _q.identity(), _s);
+        this.flares.setMatrixAt(f, _m);
+        this.flares.setColorAt(f, this.detect > 0.66 ? WATCH_HOT : WATCH);
+        const fx = this.focus ? this.focus.x - _p.x : 0;
+        const fz = this.focus ? this.focus.z - _p.z : 0;
+        const fl = Math.hypot(fx, fz) || 1;
+        this.flareDir.setXYZ(f, (fx / fl) * 0.85, 0.5, (fz / fl) * 0.85);
+        f++;
       }
     }
     for (const [x, y, z, col] of bars) beam(x, y, z, BAR_LIGHT.range, 0, -1, 0, BAR_LIGHT.cos, col);

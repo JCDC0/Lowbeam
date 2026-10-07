@@ -24,5 +24,8 @@ export function barFlash(t, id) {
   return { red: lit(RED, u), blue: lit(BLUE, u) };
 }
 
-/** Whether a unit's bar is running: chasing, searching, or parked in a roadblock. @param {{ pursuit?: any, mode?: string }} a */
-export const barOn = (a) => !!a.pursuit || a.mode === 'parked';
+/**
+ * Whether a unit's bar is running: chasing, searching, parked in a roadblock, or after a racer.
+ * @param {{ pursuit?: any, mode?: string, quarry?: any }} a
+ */
+export const barOn = (a) => !!a.pursuit || a.mode === 'parked' || !!a.quarry;

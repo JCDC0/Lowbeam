@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.71 (2026-10-07)
+
+Being noticed, provoking the police, and police chasing racers (C2 part 3).
+
+- The detection bar (`Heat.attention`) drains 1.5 s after no unit sees the player (0.4 a second),
+  never below what the speed cameras put on it, so two traps in a row still start a pursuit.
+- A near miss provokes at once: passing a unit within 3.8 m at more than 22 m/s relative
+  (`NEAR_MISS` in `director.js`; units now carry their velocity). It starts a pursuit like a ram,
+  with a `provoked` event.
+- The orders carry `detect`: the bar's level and the ids of the units that see the player. A
+  watching patrol wears an amber mark over its roof, red once the bar is two-thirds full (a seventh
+  flare per car); on the minimap patrols are grey arrows, a watching one blinks amber, pursuing ones
+  flash red and blue. The bar itself goes into the new pursuit HUD (part 5).
+- Police chase street racers (`TAIL`, `startTails`, `stepTail` in `sim.js`): while no pursuit of the
+  player is on, a patrol that sees a racer above 1.25 times the limit within 80 m takes it up 30 %
+  of the time, at most one at a time, bar and siren on, driven by the pursuit code with the racer as
+  its target, for up to 45 s or until the racer is 380 m ahead or gone. The racer pushes on 15 %
+  faster. A pursuit of the player drops it.
+- `stepPursuit` takes its target and goals, so the same code chases the player or a racer.
+- Tests: `tests/police-detect.test.mjs` (the bar fills and drains, the cameras' share holds, a near
+  miss provokes and a slow or wide pass does not, the orders name the watchers, a patrol takes up a
+  speeding racer and drops it when it is gone). Checked in the game: the bar fills in 1.5 s passing
+  a patrol at 150 km/h and the amber mark shows over it. 356 pass.
+
 ## 0.9.70 (2026-10-07)
 
 All four police units drive with Gemini's models (C1 part 7), and G3 passes review.

@@ -40,10 +40,10 @@ const BLOCK_PAST = 45;
 const BLOCK_GONE = 600;
 
 /**
- * @typedef {{ id: number, x: number, z: number, yaw: number, d: number, clear: boolean, kind?: string }} UnitSight
- *   every live unit: its distance to the player and whether nothing stands between them
+ * @typedef {{ id: number, x: number, z: number, yaw: number, d: number, clear: boolean, kind?: string, vx?: number, vz?: number }} UnitSight
+ *   every live unit: its distance to the player, whether nothing stands between them, its velocity
  * @typedef {{
- *   player: { x: number, z: number, speed: number },
+ *   player: { x: number, z: number, speed: number, vx?: number, vz?: number },
  *   units: UnitSight[],
  *   limit?: number, patrols?: number,
  *   heliSees?: boolean,
@@ -60,7 +60,9 @@ const BLOCK_GONE = 600;
  *   heli: boolean, roadblock: any, spikes: any, clearRoadblock: boolean, release: boolean,
  *   tires: { grip: number, top: number, left: number, active: boolean },
  *   money: number, report: any, events: { type: string, [k: string]: any }[], view: any,
+ *   detect: { level: number, watchers: number[] },
  * }} PoliceOrders
+ *   `detect` is the detection bar before a pursuit (0 to 1) and the units that see the player now.
  */
 
 /**
@@ -80,6 +82,9 @@ export function unitSees(u, p, mode) {
   off = Math.atan2(Math.sin(off), Math.cos(off));
   return Math.abs(off) < CONE_HALF;
 }
+
+/** A pass closer than `range` m (center to center) at more than `speed` m/s relative provokes a unit. */
+export const NEAR_MISS = { range: 3.8, speed: 22 };
 
 export class PoliceDirector {
   /** @param {{ rand?: () => number }} [opts] */
@@ -129,14 +134,19 @@ export class PoliceDirector {
     const out = {
       spawn: [], chase: 'patrol', search: null, heli: false, roadblock: null, spikes: null,
       clearRoadblock: false, release: false, tires: spikePenalty(0), money: 0, report: null, events: [], view: null,
+      detect: { level: 0, watchers: [] },
     };
     const mode = !this.active ? 'patrol' : /** @type {Pursuit} */ (this.pursuit).pstate === 'cooldown' ? 'search' : 'chase';
     let nearest = Infinity;
     let seen = false;
     let watcher = null;
+    let nearMiss = false;
     for (const u of w.units) {
+      // Shaving past a unit fast enough is as good as hitting it.
+      if (u.d < NEAR_MISS.range && Math.hypot((p.vx ?? 0) - (u.vx ?? 0), (p.vz ?? 0) - (u.vz ?? 0)) > NEAR_MISS.speed) nearMiss = true;
       if (!unitSees(u, p, mode)) continue;
       seen = true;
+      out.detect.watchers.push(u.id);
       if (u.d < nearest) {
         nearest = u.d;
         watcher = u;
@@ -163,8 +173,11 @@ export class PoliceDirector {
       const watched = watcher && noticesSpeeding(p, watcher, w.limit ?? 100);
       const start = this.heat.update(dt, {
         speeding: !!watched, duel: !!(w.duel && seen), trap: toll, hitPolice: (w.hitPolice || 0) > 0,
+        seen, provoke: nearMiss,
       });
+      if (nearMiss && start) out.events.push({ type: 'provoked', why: 'nearMiss' });
       if (start) this.begin(out);
+      else out.detect.level = this.heat.attention;
     }
 
     if (this.active) {

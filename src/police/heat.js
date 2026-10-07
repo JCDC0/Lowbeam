@@ -3,8 +3,9 @@
  * and the director only has to feed it what happened this frame.
  *
  * Two numbers, as in Need for Speed: Most Wanted (2005). `attention` (0 to 1) is a patrol making up
- * its mind: it fills while a unit watches the player speed or race, jumps on a speed trap, and a
- * pursuit starts when it is full. `value` is the heat itself, 0 (nobody is looking for you) or 1 to
+ * its mind, the detection bar: it fills while a unit watches the player speed or race, jumps on a
+ * speed trap, fills at once on a ram or a near miss, drains soon after no unit can see the player
+ * (but not below what the speed cameras put on it), and a pursuit starts when it is full. `value` is the heat itself, 0 (nobody is looking for you) or 1 to
  * 5.99: a pursuit starts at level 1 or at the level the last one left, climbs a level for every
  * HEAT_STEP seconds of pursuit and a little per infraction, and after an escape it stays for the
  * session, cooling a level for every HEAT_COOL seconds of quiet. A bust wipes it.
@@ -16,7 +17,7 @@ import { clamp } from '../core/mathx.js';
 /**
  * @typedef {{
  *   speeding?: boolean, duel?: boolean, trap?: boolean, hitPolice?: boolean, hitCivilian?: boolean,
- *   pursuit?: boolean, infractions?: number
+ *   pursuit?: boolean, infractions?: number, seen?: boolean, provoke?: boolean
  * }} HeatEvents
  */
 
@@ -36,6 +37,9 @@ const TRAP_ATTENTION = 0.6;
 /** Seconds of nothing before attention fades, and how fast it fades then (per second). */
 export const CALM_TIME = 12;
 const CALM_FADE = 0.1;
+/** Seconds out of every unit's sight before the detection bar drains, and how fast it drains then. */
+export const UNSEEN_GRACE = 1.5;
+const UNSEEN_DRAIN = 0.4;
 /** Seconds of pursuit per heat level, and the heat each new infraction adds. */
 export const HEAT_STEP = 90;
 const INFRACTION_HEAT = 0.12;
@@ -71,6 +75,10 @@ export class Heat {
     this.calm = CALM_TIME;
     /** Seconds of pursuit since the heat was last wiped. */
     this.pursuitTime = 0;
+    /** Seconds since a unit last saw the player. */
+    this.unseen = 0;
+    /** What the speed cameras put on the attention: out of sight it drains to this, not below. */
+    this.trapHold = 0;
   }
 
   /**
@@ -78,24 +86,36 @@ export class Heat {
    * the caller should start a pursuit (it calls `startPursuit`).
    * @param {number} dt seconds
    * @param {HeatEvents} [events] `speeding` and `duel` are watched (they fill the attention over
-   *   NOTICE_TIME while they last); `trap` is one camera flash; `hitPolice` starts a pursuit at
-   *   once; `pursuit` says one is running; `infractions` is how many new ones this frame.
+   *   NOTICE_TIME while they last); `trap` is one camera flash; `hitPolice` and `provoke` (a near
+   *   miss) start a pursuit at once; `seen` says a unit can see the player (left out, the bar does
+   *   not drain for want of it); `pursuit` says one is running; `infractions` is how many new ones
+   *   this frame.
    */
   update(dt, events) {
     const e = events || {};
     const watched = !!(e.speeding || e.duel || e.hitCivilian);
     const before = this.attention;
     if (watched) this.attention += dt / NOTICE_TIME;
-    if (e.trap) this.attention += TRAP_ATTENTION;
-    if (e.hitPolice) this.attention = 1;
-    const noticed = watched || !!e.trap || !!e.hitPolice || !!e.pursuit;
+    if (e.trap) {
+      this.attention += TRAP_ATTENTION;
+      this.trapHold = Math.min(1, this.trapHold + TRAP_ATTENTION);
+    }
+    if (e.hitPolice || e.provoke) this.attention = 1;
+    this.unseen = e.seen === false && !watched ? this.unseen + dt : 0;
+    if (!e.pursuit && this.unseen > UNSEEN_GRACE && this.attention > this.trapHold) {
+      this.attention = Math.max(this.trapHold, this.attention - UNSEEN_DRAIN * dt);
+    }
+    const noticed = watched || !!e.trap || !!e.hitPolice || !!e.provoke || !!e.pursuit;
     this.calm = noticed ? 0 : this.calm + dt;
     if (e.pursuit) {
       this.pursuitTime += dt;
       this.value += dt / HEAT_STEP + (e.infractions || 0) * INFRACTION_HEAT;
       this.attention = 0;
     } else {
-      if (this.calm > CALM_TIME) this.attention -= CALM_FADE * dt;
+      if (this.calm > CALM_TIME) {
+        this.attention -= CALM_FADE * dt;
+        this.trapHold = Math.max(0, this.trapHold - CALM_FADE * dt);
+      }
       if (this.value > 0 && this.calm > CALM_TIME) {
         this.value -= dt / HEAT_COOL;
         if (this.value < HEAT_MIN) this.value = 0;
@@ -110,6 +130,7 @@ export class Heat {
   startPursuit() {
     this.value = Math.max(this.value, HEAT_MIN);
     this.attention = 0;
+    this.trapHold = 0;
     this.calm = 0;
   }
 

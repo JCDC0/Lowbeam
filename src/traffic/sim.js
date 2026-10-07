@@ -30,7 +30,8 @@ import { DAMAGE, health, unitDamage } from '../police/units.js';
  *   nextChange: number, inertia: number,
  *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
- *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean
+ *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean,
+ *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -84,6 +85,13 @@ const ROUTE_EVERY = 0.6;
 const UTURN_COST = 45;
 /** Farthest a unit will drive to reach the player before it is sent somewhere better. */
 const ROUTE_MAX = 2000;
+/**
+ * Patrols chasing street racers, while no pursuit of the player is on. Every `every` seconds a patrol
+ * with a racer in sight within `range` m, going faster than `over` times the limit, takes it up with
+ * probability `chance`, at most `max` at a time. It gives up after `time` s, or when the racer is
+ * `lose` m ahead, wrecked or gone. A chased racer pushes on at `flee` times its pace.
+ */
+export const TAIL = { every: 1, range: 80, over: 1.25, chance: 0.3, max: 1, time: 45, lose: 380, flee: 1.15 };
 /** Seconds a unit may lose its clear line before it goes back to the lanes. */
 const BLIND_TIME = 1;
 /** Seconds a unit may be off every road before it is given up. */
@@ -477,6 +485,8 @@ export class TrafficSim {
         a.pursuit = false;
         continue;
       }
+      // A pursuit of the player comes first: any racer chase is dropped.
+      if (mode && a.quarry) this.endTail(a);
       a.pursuit = mode;
       if (!mode && a.free) this.rejoin(a);
     }
@@ -563,11 +573,13 @@ export class TrafficSim {
       if (a.mode === 'wreck') this.stepWreck(a, dt);
       else if (a.mode === 'knocked') this.stepKnocked(a, dt);
       else if (a.mode === 'parked') this.stepParked(a);
-      else if (a.pursuit) this.stepPursuit(a, dt, player);
+      else if (a.pursuit) this.stepPursuit(a, dt, player, a.pursuit === 'search' ? this.searchGoals : this.goals);
+      else if (a.quarry) this.stepTail(a, dt);
       else this.stepDrive(a, dt, player);
       if (this.hitWorld && (a.mode === 'wreck' || a.mode === 'knocked' || a.free)) this.collideWorld(a);
     }
     this.collideAgents();
+    this.startTails(dt);
     // Remove what was left behind, what ended and what has been a wreck long enough. A chasing
     // unit left behind is lost to the pursuit.
     const keep = [];
@@ -712,7 +724,8 @@ export class TrafficSim {
     let v0 = a.duel ? a.lane.limit * a.kind.speed[1] : a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
     // Sirens on: a unit drives as fast as the chase needs, up to its own top speed, whatever the
     // limit; a search is brisk but not flat out.
-    if (a.pursuit) v0 = this.pursuitSpeed(a, player);
+    if (a.pursuit || a.quarry) v0 = this.pursuitSpeed(a, player);
+    if (a.chasedBy != null) v0 *= TAIL.flee;
     if (this.time < a.capUntil) v0 = Math.min(v0, a.cap);
     v0 = Math.min(v0, this.curveSpeed(a));
     const fast = rival || !!a.pursuit;
@@ -885,7 +898,7 @@ export class TrafficSim {
    * the player (or to the search area) every ROUTE_EVERY seconds, U-turns included.
    * @param {Agent} a @param {number} dt @param {{ x: number, y?: number, z: number, speed: number }} player
    */
-  stepPursuit(a, dt, player) {
+  stepPursuit(a, dt, player, goals) {
     const search = a.pursuit === 'search';
     const d = Math.hypot(player.x - a.x, player.z - a.z);
     const level = player.y === undefined || Math.abs(a.y - player.y) < 3;
@@ -909,8 +922,64 @@ export class TrafficSim {
       return;
     }
     a.routeTimer = (a.routeTimer ?? 0) - dt;
-    if (a.routeTimer <= 0 || a.routeLane !== a.lane) this.planRoute(a, search ? this.searchGoals : this.goals, d);
+    if (a.routeTimer <= 0 || a.routeLane !== a.lane) this.planRoute(a, goals, d);
     this.stepDrive(a, dt, player);
+  }
+
+  /**
+   * Patrols take up racers they see speeding (`TAIL`), only while the player is not being chased.
+   * @param {number} dt
+   */
+  startTails(dt) {
+    this.tailTimer = (this.tailTimer ?? TAIL.every) - dt;
+    if (this.tailTimer > 0) return;
+    this.tailTimer = TAIL.every;
+    let tails = 0;
+    for (const a of this.agents) {
+      if (a.pursuit) return;
+      if (a.quarry) tails++;
+    }
+    for (const a of this.agents) {
+      if (tails >= TAIL.max) return;
+      if (!isUnit(a.kind) || a.mode !== 'drive' || a.quarry || a.leave) continue;
+      for (const r of this.agents) {
+        if (!this.isRival(r) || r.mode !== 'drive' || r.duel || r.chasedBy != null) continue;
+        if (Math.abs(r.x - a.x) > TAIL.range || Math.abs(r.z - a.z) > TAIL.range || Math.abs(r.y - a.y) > 3) continue;
+        if (Math.hypot(r.x - a.x, r.z - a.z) > TAIL.range || r.speed < r.lane.limit * TAIL.over) continue;
+        if (this.clear && !this.clear(a, r)) continue;
+        if (this.rng.next() > TAIL.chance) continue;
+        a.quarry = r;
+        a.tailTime = 0;
+        a.routeLane = null;
+        r.chasedBy = a.id;
+        tails++;
+        break;
+      }
+    }
+  }
+
+  /**
+   * A patrol chasing a racer: lights and siren on, driven like a pursuit with the racer as its
+   * target, until it gives up.
+   * @param {Agent} a @param {number} dt
+   */
+  stepTail(a, dt) {
+    const q = /** @type {Agent} */ (a.quarry);
+    a.tailTime = (a.tailTime || 0) + dt;
+    const gone = !this.agents.includes(q) || q.mode === 'wreck' || q.fade < 1;
+    if (gone || a.tailTime > TAIL.time || Math.hypot(q.x - a.x, q.z - a.z) > TAIL.lose) {
+      this.endTail(a);
+      return;
+    }
+    this.stepPursuit(a, dt, q, [{ lane: q.lane, s: q.s }]);
+  }
+
+  /** The patrol gives up its racer and goes back to patrolling. @param {Agent} a */
+  endTail(a) {
+    if (a.quarry) a.quarry.chasedBy = null;
+    a.quarry = null;
+    a.routeLane = null;
+    if (a.free) this.rejoin(a);
   }
 
   /**

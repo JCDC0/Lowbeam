@@ -23,7 +23,11 @@
  *   z: number,
  *   yaw: number,
  *   search?: { x: number, z: number, r: number },
+ *   active?: boolean,
+ *   sees?: boolean,
  * }} PoliceMarker
+ * `active` is a unit in a pursuit (lights on); `sees` a patrol that sees the player and is filling
+ * the detection bar.
  */
 
 /**

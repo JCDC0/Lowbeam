@@ -141,9 +141,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.70)
+## Current state (0.9.71)
 
-351 tests pass; the type check is clean. By area:
+356 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -223,9 +223,15 @@ Kuro Pass rally time attack (gates, splits, medals, pace notes, ghost, F at the 
 police pursuit.
 
 **Police.** Most Wanted's loop, run by `PoliceDirector` (pure, tested as whole chases). A patrol
-with a clear line notices the player within 60 m all round; 1.5 s of speeding or racing in front of
-it, two speed traps in a row, or ramming a unit starts a pursuit at heat 1 or at the heat the police
-still hold. Heat climbs a level per 90 s of pursuit and per infraction, stays after an escape and
+with a clear line notices the player within 60 m all round, and wears an amber mark over its roof (and
+an amber blinking arrow on the minimap) while it does; the detection bar (`Heat.attention`, in the
+orders as `detect`) fills over 1.5 s of speeding or racing in front of it and drains 1.5 s after no
+unit sees the player. Two speed traps in a row (the cameras' share does not drain), ramming a unit or
+shaving past one within 3.8 m at more than 22 m/s relative (`NEAR_MISS`) starts a pursuit at heat 1
+or at the heat the police still hold. While no pursuit is on, a patrol that sees a street racer
+speeding sometimes takes it up (`TAIL`): lights and siren on, driven like a pursuit with the racer as
+its target, for up to 45 s; the racer pushes on 15 % faster, and a chase passing the player can
+draw them in. Heat climbs a level per 90 s of pursuit and per infraction, stays after an escape and
 cools a level per 120 s of quiet, and a bust wipes it. Chasing units see 150 m on a clear line
 (buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round.
 Units take the lanes by the shortest route (U-turns included), drive straight at the player when

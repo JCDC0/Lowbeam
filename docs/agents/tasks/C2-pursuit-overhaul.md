@@ -32,7 +32,7 @@ the same rules as the player's own car.
   cruiser up to ¥20,000 a Rhino) and raises heat a little, as Most Wanted does.
 - If Gemini's models need it later: a burnt shell variant and a loose light bar (a G task).
 
-## 3. Being noticed: the detection bar
+## 3. Being noticed: the detection bar (done in 0.9.71)
 
 - A unit that can see the player (the line-of-sight rules in `sight.js`) shows a marker above it in
   the world and on the minimap, and the detection bar fills while it watches.

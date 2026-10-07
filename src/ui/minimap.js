@@ -180,8 +180,10 @@ export class Minimap {
           g.lineTo(-Math.cos(rotorAng + Math.PI / 2) * 6, -Math.sin(rotorAng + Math.PI / 2) * 6);
           g.stroke();
         } else {
-          // Police car arrow: siren blinks between red and blue with 0.4 s cycle (0.2 s alternate)
-          g.fillStyle = sirenRed ? '#ff2b3d' : '#2b7fff';
+          // Police car arrow: in a pursuit its siren blinks red and blue (0.4 s cycle); on patrol it is
+          // grey, and amber, blinking, while it watches the player.
+          const watchBlink = Math.floor(this.time * 6) % 2 === 0;
+          g.fillStyle = m.active === false ? (m.sees ? (watchBlink ? '#ffb020' : '#7a5410') : '#aab0ba') : sirenRed ? '#ff2b3d' : '#2b7fff';
           g.strokeStyle = '#fff';
           g.lineWidth = 1.2;
           g.beginPath();

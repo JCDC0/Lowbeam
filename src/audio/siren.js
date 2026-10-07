@@ -57,14 +57,14 @@ export function sirenGain(d) {
  * The sirens the player hears this frame: the nearest SIREN_VOICES units with their bars on, each
  * with its pattern, pitch, gain, pan (-1 left to 1 right of the player's heading) and voice key
  * (the unit's id, so a voice follows one car).
- * @param {{ id: number, x: number, z: number, vx: number, vz: number, pursuit?: any, mode?: string }[]} units
+ * @param {{ id: number, x: number, z: number, vx: number, vz: number, pursuit?: any, mode?: string, quarry?: any }[]} units
  * @param {{ x: number, z: number, vx: number, vz: number, yaw: number }} player
  * @param {number} t seconds
  */
 export function sirenVoices(units, player, t) {
   const heard = [];
   for (const u of units) {
-    if (!u.pursuit && u.mode !== 'parked') continue;
+    if (!u.pursuit && u.mode !== 'parked' && !u.quarry) continue;
     if (u.mode === 'wreck') continue;
     const dx = u.x - player.x;
     const dz = u.z - player.z;

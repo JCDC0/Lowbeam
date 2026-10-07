@@ -205,7 +205,7 @@ export class Drive {
     const searching = this.police.active && pursuit?.pstate === 'cooldown';
     const units = this.traffic.units();
     for (const u of units) {
-      const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw };
+      const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw, active: !!u.pursuit, sees: !this.police.active && !!this.detect?.watchers.includes(u.id) };
       if (searching) m.cone = { r: 60, half: 0.61 };
       out.push(m);
     }
@@ -223,7 +223,7 @@ export class Drive {
     const units = this.traffic.units().filter((a) => a.mode !== 'wreck').map((a) => {
       const d = Math.hypot(a.x - s.x, a.z - s.z);
       const clear = d < SIGHT_RANGE && Math.abs(a.y - s.y) < 6 && clearLine(a, s, this.solid);
-      return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, d, clear, kind: a.kind.id };
+      return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, d, clear, kind: a.kind.id, vx: a.vx, vz: a.vz };
     });
     const road = this.world.ground.at(s.x, s.z, s.y).road;
     const heli = this.heli;
@@ -288,6 +288,10 @@ export class Drive {
     s.tireGrip = orders.tires.grip;
     s.tireTop = orders.tires.top;
     for (const e of orders.events) this.policeEvent(e);
+    // The units that have seen the player and the detection bar, for the marks and the HUD.
+    this.detect = orders.detect;
+    this.trafficView.watchers = new Set(this.police.active ? [] : orders.detect.watchers);
+    this.trafficView.detect = orders.detect.level;
     if (orders.money) {
       this.money = Math.max(0, this.money + orders.money);
       store.set('money', this.money);
