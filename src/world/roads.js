@@ -111,7 +111,9 @@ export class RoadNetwork {
 
   /**
    * Overpasses. Each lift raises the road by `height` around the point `at`: full height
-   * for `flat` meters, then a cosine ease down to nothing at `half` meters from it.
+   * for `flat` meters, then a cosine ease down to `floor` (nothing by default) at `half` meters
+   * from it. A floor keeps a whole elevated road off the ground to its ends, where it meets ramps
+   * lifted to the same height.
    * @param {Road} r
    */
   applyLifts(r) {
@@ -126,7 +128,8 @@ export class RoadNetwork {
         if (p.closed) u = Math.min(u, p.length - u);
         const t = Math.min(1, Math.max(0, (u - flat) / Math.max(1, L.half - flat)));
         const e = 0.5 * (1 + Math.cos(Math.PI * t));
-        r.lift[i] = Math.max(r.lift[i], L.height * e);
+        const floor = L.floor || 0;
+        r.lift[i] = Math.max(r.lift[i], floor + (L.height - floor) * e);
       }
     }
     for (let i = 0; i < p.n; i++) r.h[i] += r.lift[i];

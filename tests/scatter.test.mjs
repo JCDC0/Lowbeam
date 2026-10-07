@@ -9,9 +9,10 @@ const w = scatterWorld(g);
 test('street lamps stand off the road and reach over it', () => {
   assert.ok(w.lamps.length > 30, `only ${w.lamps.length} lamps`);
   for (const l of w.lamps) {
-    // A pole may stand on a sidewalk, never on the carriageway.
+    // A pole may stand on a sidewalk, never on the carriageway. One on a deck's median (Route 1's
+    // viaducts, the Kurogane Line) stands above whatever road is down below.
     const hit = g.at(l.x, l.z);
-    if (hit.road) assert.ok(Math.abs(hit.d) > hit.road.hwAt(hit.s) + 0.3, `lamp pole on a road at ${l.x.toFixed(0)}, ${l.z.toFixed(0)}`);
+    if (hit.road && hit.road.heightAt(hit.s) > l.y - 2) assert.ok(Math.abs(hit.d) > hit.road.hwAt(hit.s) + 0.3, `lamp pole on a road at ${l.x.toFixed(0)}, ${l.z.toFixed(0)}`);
     assert.ok(Math.abs(Math.hypot(l.hx - l.x, l.hz - l.z) - LAMP_REACH) < 1e-6);
   }
 });

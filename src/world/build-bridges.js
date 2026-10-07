@@ -32,8 +32,10 @@ export function buildBridges(bridges, ground, grid) {
   group.name = 'bridges';
   if (!bridges.length) return group;
   const mat = psxLambert({ map: concreteTexture(), baked: true, side: THREE.DoubleSide });
-  // The underside takes no light pools: they stand on the deck, so their light never reaches under it.
-  const under = psxLambert({ map: concreteTexture(), color: 0x8a8a8a, side: THREE.DoubleSide });
+  // The underside takes no light pools: the lamps on a deck stand above it and the street lamps
+  // under one point down, away from it. A faint glow, the city's light thrown back up, keeps it
+  // reading as a ceiling over the avenue instead of a hole in the sky.
+  const under = psxLambert({ map: concreteTexture(), color: 0x8a8a8a, emissive: 0x1c1c22, side: THREE.DoubleSide });
   const b = new MeshBuilder();
   const below = (x, z) => ground.at(x, z).h;
 
@@ -81,6 +83,17 @@ export function buildBridges(bridges, ground, grid) {
     for (const pier of br.piers) {
       const height = pier.top - SLAB - SINK - pier.bottom;
       if (height < 0.5) continue;
+      if (pier.legs) {
+        const beamY = pier.top - SLAB - SINK - 0.55;
+        for (const leg of pier.legs) {
+          const h = beamY - leg.bottom;
+          b.cylinder('c', leg.x, leg.bottom + h / 2 - 0.2, leg.z, 0.6, h + 0.4, 8, 'y', { caps: false });
+        }
+        b.push(pier.x, 0, pier.z, pier.yaw);
+        b.box('c', 0, beamY, 0, (pier.span || 0) + 1.6, 1.1, 1.4);
+        b.pop();
+        continue;
+      }
       b.cylinder('c', pier.x, pier.bottom + height / 2 - 0.2, pier.z, 0.75, height + 0.4, 8, 'y', { caps: false });
       b.push(pier.x, 0, pier.z, pier.yaw);
       b.box('c', 0, pier.top - SLAB - SINK - 0.3, 0, hw * 1.35, 0.6, 1.5);

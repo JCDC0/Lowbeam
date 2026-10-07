@@ -27,7 +27,7 @@ export const CITY = { x0: -1280, x1: 1280, z0: 520, z1: 2020 };
 
 /**
  * @typedef {{ at: number[], height: number, half: number }} Bump
- * @typedef {{ at: number[], height: number, half: number, flat?: number }} Lift
+ * @typedef {{ at: number[], height: number, half: number, flat?: number, floor?: number }} Lift
  * @typedef {{ from?: number[], to?: number[], all?: boolean, every: number, side?: number, offset?: number }} LampRun
  * @typedef {{
  *   id: string, name: string, surface: string, hw: number, closed?: boolean,
@@ -322,6 +322,116 @@ const CITY_FRAME = [
   { ...CITY_ARTERIAL, id: 'sotokan', name: 'SOTOKAN RING', hw: 6.2, priority: 2.72, closed: true, points: SOTOKAN_POINTS, lamps: lampsAll(38) },
 ];
 
+/**
+ * The Kurogane Line, the city's second layer after the Shuto Expressway: a two-lane-each-way
+ * elevated road 12 m up. It leaves the inner carriageway of Route 1 on the south side west of the
+ * Harbor interchange, climbs north over the port streets and the outer ring, turns east onto
+ * Kurogane-dori and runs above the avenue's middle across downtown, then turns south and comes back
+ * to Route 1 east of the Harbor interchange. Both ends are junctions on the inner carriageway, which
+ * has its exits and entries on the city side, so no ramp has to cross the loop: an exit and an entry
+ * 550 m apart, each ramp turning a quarter circle and climbing to 6 m where it meets the line, whose
+ * own deck eases from 6 m at its ends to 12 m. Everything under it stays on the ground: the avenue,
+ * the streets that pass beneath, its piers (portal frames on the avenue's sidewalks).
+ * @returns {{ roads: RoadDef[], ramps: RoadDef[] }}
+ */
+function kuroganeLine() {
+  const C1R = new Path(C1[1].points, { closed: true, step: 2 });
+  const dori = new Path(DORI_POINTS, { step: 2 });
+  /** Radius of the ramps' quarter turn, and of the line's bends onto the avenue. */
+  const TURN = 90;
+  const BEND = 260;
+  const RAMP_LIFT = 6;
+  const half = C3_HW + C1_MEDIAN / 2;
+  /** @param {'exit' | 'entry'} kind @param {number} nose @returns {import('./merge.js').SlipOptions} */
+  const slipAt = (kind, nose) => ({ kind, nose, carriageHw: C1_HW, hw: C3_HW });
+  /** Where an exit from the inner carriageway at `nose` heads north after a quarter turn to the left. */
+  const turnedNorth = (nose) => {
+    const pts = slipRamp(C1R, slipAt('exit', nose));
+    const e = pts[pts.length - 1];
+    const f = heading(pts[pts.length - 2], e);
+    return [e[0] + TURN * (f[0] + f[1]), e[1] + TURN * (f[1] - f[0])];
+  };
+  const NOSE = { swExit: 2700, swEntry: 3250, seExit: 4520, seEntry: 5070 };
+  const swF = turnedNorth(NOSE.swExit);
+  const seR = turnedNorth(NOSE.seExit);
+  const start = [swF[0] + half, swF[1]];
+  const end = [seR[0] + half, seR[1]];
+  const onDori = (x) => {
+    const c = pathCrossing(dori, 'x', x);
+    return { p: [c.x, c.z], t: [c.tx, c.tz], s: c.s };
+  };
+  const dw = onDori(start[0] + BEND);
+  const de = onDori(end[0] - BEND);
+  const kw = [start[0], dw.p[1] + BEND];
+  const ke = [end[0], de.p[1] + BEND];
+  /** @param {number[]} a @param {number[]} b */
+  const straight = (a, b) => {
+    const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 40));
+    return Array.from({ length: n }, (_, i) => [a[0] + ((b[0] - a[0]) * (i + 1)) / n, a[1] + ((b[1] - a[1]) * (i + 1)) / n]);
+  };
+  const along = [];
+  for (let s = dw.s + 30; s < de.s - 15; s += 30) {
+    const q = dori.sample(s);
+    along.push([q.x, q.z]);
+  }
+  const center = [
+    start, ...straight(start, kw),
+    ...biarc(kw, [0, -1], dw.p, dw.t, 12),
+    ...along,
+    de.p, ...biarc(de.p, de.t, ke, [0, 1], 12),
+    ...straight(ke, end),
+  ];
+  const path = new Path(center, { step: 2 });
+  const mid = path.sample(path.length / 2);
+  const C3 = dualCarriageway(center, {
+    id: 'c3', name: 'KUROGANE LINE', surface: 'asphalt', hw: C3_HW, median: C1_MEDIAN, closed: false,
+    // Just under Kurogane-dori's priority: the line takes the avenue's profile and rides 12 m over it.
+    priority: 2.76, smooth: 90, cls: 'expressway', lanes: 2, limit: 80, lines: 'lanes', maxGrade: 0.06,
+    lifts: [{ at: [mid.x, mid.z], height: 12, floor: RAMP_LIFT, flat: path.length - 460, half: path.length / 2 - 12 }],
+  });
+  C3[0].lamps = [{ all: true, every: 44, side: -1, offset: C3_HW + C1_MEDIAN / 2 }];
+  const [fwd, rev] = C3;
+  const fLen = new Path(fwd.points, { step: 2 }).length;
+  const rLen = new Path(rev.points, { step: 2 }).length;
+  const base = {
+    surface: 'asphalt', hw: C3_HW, priority: 2.9, smooth: 80, maxGrade: 0.06, cls: /** @type {const} */ ('ramp'),
+    lanes: 2, limit: 60, lines: /** @type {const} */ ('lanes'), name: 'KUROGANE JCT', oneway: true,
+  };
+  /** @param {number[]} p */
+  const lift = (p) => [{ at: p, height: RAMP_LIFT, flat: 40, half: 220 }];
+  /** @type {RoadDef[]} */
+  const ramps = [];
+  /** An exit from the inner carriageway at `nose` up to the start of `road`. */
+  const exit = (id, nose, road) => {
+    const o = slipAt('exit', nose);
+    const pts = slipRamp(C1R, o);
+    const e = pts[pts.length - 1];
+    const to = road.points[0];
+    const points = [...pts, ...biarc(e, heading(pts[pts.length - 2], e), to, heading(to, road.points[1]))];
+    const m = slipMeta(points, C1R, 'c1-r', o);
+    ramps.push({ ...base, id, points, lifts: lift(to), taper: m.taper, slip: m.slip,
+      link: { from: { id: 'c1-r', s: m.slip.attach[0] }, to: { id: road.id, s: 0 } } });
+  };
+  /** An entry from the end of `road` down into the inner carriageway at `nose`. */
+  const entry = (id, nose, road, len) => {
+    const o = slipAt('entry', nose);
+    const pts = slipRamp(C1R, o);
+    const from = road.points[road.points.length - 1];
+    const t = heading(road.points[road.points.length - 2], from);
+    const points = [from, ...biarc(from, t, pts[0], heading(pts[0], pts[1])).slice(0, -1), ...pts];
+    const m = slipMeta(points, C1R, 'c1-r', o);
+    ramps.push({ ...base, id, points, lifts: lift(from), taper: m.taper, slip: m.slip,
+      link: { from: { id: road.id, s: len }, to: { id: 'c1-r', s: m.slip.attach[1] } } });
+  };
+  exit('c3-ramp-wx', NOSE.swExit, fwd);
+  entry('c3-ramp-wn', NOSE.swEntry, rev, rLen);
+  exit('c3-ramp-ex', NOSE.seExit, rev);
+  entry('c3-ramp-en', NOSE.seEntry, fwd, fLen);
+  return { roads: C3, ramps };
+}
+const C3_HW = 3.7;
+const KUROGANE_LINE = kuroganeLine();
+
 /** @param {RoadDef} def @returns {(s: number) => boolean} where a street may cross it: not on a lift */
 function crossable(def) {
   const path = new Path(def.points, { closed: !!def.closed, step: 2 });
@@ -384,7 +494,7 @@ const STREETS = cityStreets({
   })),
   avoid: [
     ...[...C1, ...C2].map((d) => ({ path: new Path(d.points, { closed: !!d.closed, step: 2 }), clear: d.hw + 42 })),
-    ...[...interchanges, ...BAYSHORE_JCT].map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 26 })),
+    ...[...interchanges, ...BAYSHORE_JCT, ...KUROGANE_LINE.ramps].map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 26 })),
     // The pass runs on a ledge above the west side's streets: they keep clear of it.
     ...KURO.map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 30 })),
   ],
@@ -431,7 +541,7 @@ export function cityStyle(x, z) {
 }
 
 /** @type {RoadDef[]} */
-export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...KITA, ...HIGASHI, ...CITY_FRAME, ...STREETS, ...interchanges, ...BAYSHORE_JCT];
+export const ROADS = [...C1, ...C2, ...R18, ...HARBOR, ...WEST, ...EAST, ...KURO, ...KITA, ...HIGASHI, ...CITY_FRAME, ...STREETS, ...interchanges, ...BAYSHORE_JCT, ...KUROGANE_LINE.roads, ...KUROGANE_LINE.ramps];
 
 /**
  * Gas stations. Each one sits beside a road: `near` is projected onto the road to find
@@ -449,7 +559,7 @@ export const STATIONS = [
 export const TOLLS = [
   { id: 'toll-n', name: 'KITA TOLL', ...onLoop('x', 450, (p) => p.z < 0), fee: 700, road: 'c1' },
   { id: 'toll-e', name: 'HIGASHI TOLL', ...onLoop('z', 1800, (p) => p.x > 0), fee: 700, road: 'c1' },
-  { id: 'toll-s', name: 'MINATO TOLL', ...onLoop('x', -700, (p) => p.z > 1000), fee: 700, road: 'c1' },
+  { id: 'toll-s', name: 'MINATO TOLL', ...onLoop('x', -160, (p) => p.z > 1000), fee: 700, road: 'c1' },
   { id: 'toll-bayshore', name: 'BAYSHORE TOLL', x: crossC2Toll.x, z: crossC2Toll.z, s: crossC2Toll.s, yaw: Math.atan2(crossC2Toll.tx, crossC2Toll.tz), fee: 600, road: 'c2' },
 ];
 
@@ -473,6 +583,8 @@ export const AREA_JP = {
   'ROUTE 1 RAMP': '1号線ランプ',
   'BAYSHORE LINE': '湾岸線',
   'BAYSHORE JCT': '湾岸ジャンクション',
+  'KUROGANE LINE': '黒鉄線',
+  'KUROGANE JCT': '黒鉄ジャンクション',
   'ROUTE 18': '国道18号',
   'HARBOR AVE': '港通り',
   'WEST AVE': '西通り',

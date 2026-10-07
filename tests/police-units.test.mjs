@@ -33,14 +33,16 @@ test('the network finds a lane route to a spot across the city, U-turns included
   const p = streetPlayer(3);
   const goals = net.lanesAt(p.x, p.z, p.y + 0.5);
   assert.ok(goals.length >= 1, 'the player is on a road with lanes');
-  // Every lane spot 150 to 450 m from the player, every 25 m, then a seeded handful of them.
+  // Every city lane spot 150 to 450 m from the player, every 25 m, then a seeded handful of them.
+  // Expressways and their ramps are left out: from Route 1 or the Kurogane Line's deck the way to a
+  // street is through an interchange, which may be farther than the route limit.
   const ring = [];
   const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
   for (const lane of net.lanes) {
     for (let s = 0; s < lane.length; s += 25) {
       net.sample(lane, s, q);
       const d = Math.hypot(q.x - p.x, q.z - p.z);
-      if (d > 150 && d < 450) ring.push({ lane, s, d });
+      if (d > 150 && d < 450 && lane.cls !== 'expressway' && lane.cls !== 'ramp') ring.push({ lane, s, d });
     }
   }
   const rng = makeRng(9);

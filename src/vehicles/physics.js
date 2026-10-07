@@ -74,11 +74,12 @@ export function createVehicleState(spec) {
 }
 
 /**
- * Places the car at rest on the ground.
+ * Places the car at rest on the ground, or on a deck when `y` is the deck's height.
  * @param {ReturnType<typeof createVehicleState>} s @param {CarSpec} spec
  * @param {number} x @param {number} z @param {number} yaw @param {GroundFn} ground
+ * @param {number} [y] the height to look for a road at; the ground when left out
  */
-export function placeVehicle(s, spec, x, z, yaw, ground) {
+export function placeVehicle(s, spec, x, z, yaw, ground, y = -Infinity) {
   s.x = x;
   s.z = z;
   s.yaw = yaw;
@@ -89,8 +90,8 @@ export function placeVehicle(s, spec, x, z, yaw, ground) {
   s.air = false;
   s.airTime = 0;
   s.aLong = s.aLat = 0;
-  // Placed on the ground, never on a deck above it.
-  s.y = -Infinity;
+  // Placed on the ground unless a height is given, never on a deck above that height.
+  s.y = y;
   s.y = groundAt(s, spec, ground).y;
 }
 

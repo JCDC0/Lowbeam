@@ -241,12 +241,16 @@ export class TrafficNet {
     for (const lane of this.byRoad.get(road.id) || []) {
       this.sample(lane, lane.length, _a);
       const arrive = { tx: _a.tx, tz: _a.tz };
-      const pEnd = road.path.sample(lane.dir > 0 ? road.path.length : 0, _q2);
+      const endS = lane.dir > 0 ? road.path.length : 0;
+      const pEnd = road.path.sample(endS, _q2);
+      const hEnd = road.heightAt(endS);
       for (const other of this.network.roads) {
         if (other === road || other.id === road.def.twin || other.def.cls === 'expressway') continue;
         if (cls === 'ramp' && road.def.link && other.id === road.def.link.from.id) continue;
         const hit = other.path.nearest(pEnd.x, pEnd.z);
-        if (Math.hypot(pEnd.x - hit.x, pEnd.z - hit.z) > JOIN || other.liftAt(hit.s) > 2) continue;
+        // Heights, not lifts: a road ending under a deck must not join it, but an elevated road
+        // ending on a ramp lifted to meet it (the Kurogane Line) must.
+        if (Math.hypot(pEnd.x - hit.x, pEnd.z - hit.z) > JOIN || Math.abs(other.heightAt(hit.s) - hEnd) > 2) continue;
         const nearEnd = hit.s < JOIN || other.path.length - hit.s < JOIN;
         if (!nearEnd && other.def.cls !== 'ramp') {
           const throughLanes = this.byRoad.get(other.id) || [];

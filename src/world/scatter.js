@@ -145,8 +145,13 @@ const WALL_SEGMENT = 6;
  * the wall segments along both edges and the piers under it, with colliders at the right
  * height so a car underneath never touches them.
  *
- * @typedef {{ road: import('./roads.js').Road, i0: number, i1: number,
- *   piers: { x: number, z: number, top: number, bottom: number, yaw: number }[] }} Bridge
+ * Where a deck runs along a road on the ground (the Kurogane Line over Kurogane-dori) a pier would
+ * stand in the traffic, so it is a portal frame instead: two `legs` on that road's sidewalks and a
+ * crossbeam `span` meters long under the deck.
+ *
+ * @typedef {{ x: number, z: number, top: number, bottom: number, yaw: number,
+ *   legs?: { x: number, z: number, bottom: number }[], span?: number }} Pier
+ * @typedef {{ road: import('./roads.js').Road, i0: number, i1: number, piers: Pier[] }} Bridge
  * @param {Ground} ground @param {Circle[]} circles @param {Box[]} boxes
  * @returns {Bridge[]}
  */
@@ -193,7 +198,16 @@ function placeBridges(ground, circles, boxes) {
     for (const s of spots) {
       p.sample(s, q);
       if (road.liftAt(s) < ELEVATED + 1.5) continue;
-      if (ground.roads.query(q.x, q.z, hit, -SKIRT)) continue;
+      if (ground.roads.query(q.x, q.z, hit, -SKIRT)) {
+        // One portal per deck: a dual carriageway's forward half stands it for both.
+        if (road.def.twin) continue;
+        const portal = portalOver(ground, road, s, q, hit);
+        if (portal) {
+          b.piers.push(portal);
+          for (const leg of portal.legs) circles.push({ x: leg.x, z: leg.z, r: PORTAL_LEG, y1: portal.top - 0.8 });
+        }
+        continue;
+      }
       const top = road.heightAt(s);
       const bottom = ground.at(q.x, q.z).h;
       b.piers.push({ x: q.x, z: q.z, top, bottom, yaw: Math.atan2(q.tx, q.tz) });
@@ -201,6 +215,37 @@ function placeBridges(ground, circles, boxes) {
     }
   }
   return out;
+}
+
+/** Radius of a portal frame's legs. */
+const PORTAL_LEG = 0.6;
+
+/**
+ * A portal frame under a deck at arc length `s` that stands over the road `hit` found: only where
+ * that road runs along the deck (a street crossing under it is left alone, the piers either side
+ * carry the deck), with both legs on its sidewalks and neither in another road.
+ * @param {Ground} ground @param {import('./roads.js').Road} road @param {number} s
+ * @param {{ x: number, z: number, tx: number, tz: number }} q @param {import('./roads.js').RoadHit} hit
+ * @returns {Pier | null}
+ */
+function portalOver(ground, road, s, q, hit) {
+  const below = hit.road;
+  if (!below.walk) return null;
+  const t = below.path.sample(hit.s);
+  if (Math.abs(t.tx * q.tx + t.tz * q.tz) < 0.9) return null;
+  const reach = below.hwAt(hit.s) + below.walk / 2;
+  const legHit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
+  const legs = [];
+  for (const side of [1, -1]) {
+    const x = t.x + t.tz * reach * side;
+    const z = t.z - t.tx * reach * side;
+    if (ground.roads.query(x, z, legHit, -SKIRT) && (legHit.road !== below || Math.abs(legHit.d) < below.hwAt(hit.s))) return null;
+    legs.push({ x, z, bottom: ground.at(x, z).h });
+  }
+  return {
+    x: t.x, z: t.z, top: road.heightAt(s), bottom: Math.min(legs[0].bottom, legs[1].bottom),
+    yaw: Math.atan2(t.tx, t.tz), legs, span: reach * 2,
+  };
 }
 
 /** True when (x, z) is clear of every road surface, skirt and pad by `margin`. */

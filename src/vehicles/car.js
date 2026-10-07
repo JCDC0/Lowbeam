@@ -48,9 +48,12 @@ export class Car {
     return lights;
   }
 
-  /** @param {number} x @param {number} z @param {number} yaw @param {GroundFn} ground */
-  place(x, z, yaw, ground) {
-    placeVehicle(this.state, this.spec, x, z, yaw, ground);
+  /**
+   * @param {number} x @param {number} z @param {number} yaw @param {GroundFn} ground
+   * @param {number} [y] a deck's height to place the car on; the ground when left out
+   */
+  place(x, z, yaw, ground, y = -Infinity) {
+    placeVehicle(this.state, this.spec, x, z, yaw, ground, y);
     this.state.gear = 1;
     this.state.rpm = this.spec.engine.idle;
     this.save();

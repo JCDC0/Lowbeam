@@ -52,6 +52,33 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.14 (2026-10-07)
+
+The Kurogane Line, a Shuto-style elevated expressway over the city (C1 part 5, the expressway).
+
+- `layout.js` `kuroganeLine()`: a dual carriageway (`c3-f`, `c3-r`, two lanes each way, 80 km/h)
+  from Route 1's south side up over the port streets and the outer ring, 12 m above the middle of
+  Kurogane-dori across downtown, and back down to Route 1. Its junctions are on the inner
+  carriageway, which has its slips on the city side, so no ramp crosses the loop: an exit and an
+  entry 550 m apart at each end (`c3-ramp-wx`, `wn`, `ex`, `en`, KUROGANE JCT). The south side was
+  the only stretch of the inner carriageway with room for both; Minato Toll moved from x -700 to
+  x -160, between the Harbor ramps, to clear the south-west entry.
+- Its priority sits just under Kurogane-dori's, so before the lifts it takes the avenue's profile and
+  rides exactly 12 m over it. A new lift `floor` (`roads.js`) keeps the deck at 6 m to its ends,
+  where the ramps, lifted to 6 m at theirs, meet it with no lip.
+- Streets pass under it with no junction (lifted roads never form one) and buildings keep out from
+  under it. Over the avenue the deck stands on portal frames, two legs on the sidewalks and a
+  crossbeam (`portalOver`, drawn in `build-bridges.js`); elsewhere on round piers. The longest span
+  is 68 m. The underside has a faint glow so it reads as a ceiling from the avenue.
+- `net.js`: a road end joins a road it touches when their heights match, not when the other is
+  unlifted, so the deck's ends link to the lifted ramps (and a road under a deck still does not).
+- A reset (R) on a deck, the Kurogane Line or Route 1's viaducts, puts the car back on the deck
+  instead of the road below (`placeVehicle` takes a height).
+- Tests: `tests/kurogane-line.test.mjs` (the deck 12 m over the avenue, streets under it with no
+  junction, routes on and off at both ends both ways); the ramp count is 24; the lamp test checks a
+  pole on a deck's median against the deck; the cross-city route test samples city lanes only (the
+  seeded player now stands by the south-east junction). 343 pass.
+
 ## 0.9.13 (2026-10-07)
 
 Review of Gemini's 0.9.53 fix round: the Mazuma RX-Coupe passes (`G2-racer-car-trial.md`). The

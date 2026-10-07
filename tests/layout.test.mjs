@@ -145,7 +145,7 @@ test('no grade breaks or lips at road joins', () => {
 
 test('slip roads grow out of Route 1 from a sliver and share its edge and height up to the nose', () => {
   const ramps = g.roads.roads.filter((r) => r.def.cls === 'ramp');
-  assert.equal(ramps.length, 20);
+  assert.equal(ramps.length, 24);
   for (const ramp of ramps) {
     const sl = ramp.def.slip;
     assert.ok(sl, `ramp ${ramp.id} has no slip data`);

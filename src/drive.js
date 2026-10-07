@@ -54,6 +54,8 @@ const REPAIR_TIME = 1.5;
 const N2O_FILL_TIME = 1.5;
 /** Liters per second while holding the pump. */
 const REFUEL_RATE = 3;
+/** How far past a deck's edge a reset still puts the car back on the deck. */
+const DECK_RESET = 12;
 /** How close the car's center must be to a pump to use it. */
 const PUMP_REACH = 3.6;
 const MAX_STEPS = 12;
@@ -407,11 +409,14 @@ export class Drive {
   resetToRoad() {
     const s = this.car.state;
     const h = this.hit;
-    if (!this.world.ground.roads.influence(s.x, s.z, 600, h)) return;
+    const roads = this.world.ground.roads;
+    // On a deck (a viaduct, the Kurogane Line) the car goes back on the deck, not the road below it.
+    const deck = roads.query(s.x, s.z, h, DECK_RESET, -Infinity, s.y + 1) && (h.lift || 0) > 2;
+    if (!deck && !roads.influence(s.x, s.z, 600, h)) return;
     const p = h.road.path.sample(h.s);
     let yaw = Math.atan2(p.tx, p.tz);
     if (Math.abs(wrapAngle(yaw - s.yaw)) > Math.PI / 2) yaw += Math.PI;
-    this.car.place(p.x, p.z, yaw, this.ground);
+    this.car.place(p.x, p.z, yaw, this.ground, deck ? h.road.heightAt(h.s) + 0.5 : -Infinity);
     this.rig.snap();
   }
 
