@@ -26,6 +26,13 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.4 (2026-10-07)
+
+Review of the Mazuma fix round (0.9.52), in the G2 brief: the lamps, the tips and the box are fixed;
+a hole in the hood, a rectangular plan view and a slab on the roof go to a second fix round (0.9.53).
+The task list also records Jc's instrument rework: vertical HUD gauges with the small dials curving
+round the main one and the warning lamps inside it, and small recessed cockpit instruments.
+
 ## 0.9.3 (2026-10-07)
 
 The police, rebuilt (task B1 parts 1 and 2, taken by Claude while the backend seat is empty).

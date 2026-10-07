@@ -33,7 +33,7 @@ and leaves `package.json` alone.
 |---|---|---|---|
 | [B1-police-repair.md](B1-police-repair.md) | Backend | parts 1 and 2 done by Claude (0.9.3); part 3 (sirens, rotor, music) open | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
 | [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | started; finish after G2 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
-| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | fix round committed (0.9.52), waiting for Claude's review | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
+| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | second fix round (0.9.53), see "Review of 0.9.52" | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
 | Claude | Claude | after G1 and G2 | Fit the G2 car into the traffic renderer with the game's wheels, then the G1 props; then the police car models; the Most Wanted pursuit HUD extras (`archive/A18-pursuit-mw.md`); the settings hint bar at 720 lines |
 | Claude | Claude | next | Instruments, from Jc's sketch: (1) the outside-view HUD gauges stack vertically, the small gauges curve along the side of the main dial as the first `classic` speedometer does, and the warning lamps sit inside the main dial; (2) the cockpit instruments become small and recessed in a binnacle under the windshield, above the wheel, legible only as moving needles and the fuel line: a digital car a wide low screen with small panels, an analog car three small round dials |
 

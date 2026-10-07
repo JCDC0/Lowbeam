@@ -110,6 +110,23 @@ The fix round is 0.9.52: re-export both models, the shots `g2b-side`, `g2b-front
 `g2b-rear`, `g2b-top` and `g2b-all-with-car` beside the Hayate, one commit, and a report with
 before and after pairs.
 
+## Review of 0.9.52 (Claude)
+
+Better: the tail lamps are round and face back, the tips end at the tail, the car is inside its box
+(1.95 x 1.22 x 4.28 m), check() is clean at 1,895 body triangles. Three things before it goes in:
+
+1. **A hole in the hood.** From above (`__props.view(0.2, 1.2, 4.5)`) the middle of the hood is open
+   and shows the dark underside: missing or inward-facing faces where the hood dips.
+2. **From above it is a rectangle.** The nose and the tail are as wide as the doors and the hips are
+   no wider than the cabin, so the Coke-bottle shape and the hips the changelog lists do not show.
+   Taper the nose to about 1.5 m wide at the lamps, the tail to about 1.6 m, and pull the cabin in
+   above the waist (about 1.3 m wide at the roof) so the hips stand out.
+3. **A slab on the roof.** Seen from the side and the front three quarter, a flat paint panel stands
+   up at the front of the roof above the windshield's top edge; the roof should flow into the glass.
+
+Fix round 0.9.53, same shots plus the top view, and quote the plan-view widths at the nose, the
+doors, the hips and the tail from the JSON.
+
 ## Done when
 
 - `tools/blender/rv_rotary.py`, `assets/models/rv_rotary.json` and `rv_rotary_full.json`, check()
