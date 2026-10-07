@@ -8,6 +8,13 @@ of distinct cars, each sold to you by three bars (Top Speed, Handling, Accelerat
 
 This file is the plan. `docs/agents/ARCHITECTURE.md` describes the code as it is.
 
+**Inspirations, and what each one governs.** Need for Speed: Most Wanted (2005) sets the police
+and the pursuit: how a chase starts, heat and its levels, roadblocks, spike strips, helicopters,
+busted and escaped, the bounty, cops taken out, and the look of the pursuit HUD, its banners and the
+heat on the radar. Night-Runners Prologue sets everything else: the night city and its roads, the
+PS1-era rendering, the driving and the cars, the cockpits, the traffic. Tokyo Xtreme Racer gives the
+highway duels. When a choice is open, follow the game that governs that part.
+
 **Where this is going.** The full game is an open-world street racer in the line of
 Night-Runners Prologue and Need for Speed: Most Wanted (2005). This first build tests
 the limits of the stack with one level: one valley, three cars, three gas stations and

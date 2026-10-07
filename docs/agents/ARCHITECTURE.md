@@ -13,7 +13,9 @@ a bay, Route 1 (an expressway loop with toll plazas and two viaducts) round it, 
 mountain pass, a forest and a lake, four gas stations, seven landmark lots (police HQ, three garages,
 three hideouts). Five cars: Hayate RS-4 (rally tuner), Rampart 440 (muscle), Vespera GT (exotic),
 Tsurugi GT-X (modern GT), Hikari 300ZR (1984 turbo coupe). Traffic, street racers with duels, a rally
-time attack, the police helicopter and a first police pursuit are in.
+time attack, the police helicopter and a first police pursuit are in. The police, the pursuit and
+its HUD follow Most Wanted (2005); the world, the rendering and the driving follow Night-Runners
+Prologue (`docs/DESIGN.md`).
 
 ## Commands
 

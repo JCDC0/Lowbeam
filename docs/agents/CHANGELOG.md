@@ -52,6 +52,15 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.16 (2026-10-07)
+
+The plan for Jc's pursuit requests: `docs/agents/tasks/C2-pursuit-overhaul.md` (one set of car
+physics for every car, destructible police and a kill count, the detection bar, police chasing
+racers, more helicopters, a Most Wanted pursuit HUD at the bottom center, banners with flair, a
+bigger minimap with the heat on it, the audio expansion). `docs/DESIGN.md` and `ARCHITECTURE.md`
+now say what each inspiration governs: Most Wanted (2005) the police and the pursuit, Night-Runners
+Prologue the world, the rendering and the driving.
+
 ## 0.9.15 (2026-10-07)
 
 Review of Gemini's 0.9.54 police cruiser: passes (`G3-police-cars.md`). Two notes for the other three
