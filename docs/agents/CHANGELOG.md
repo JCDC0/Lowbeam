@@ -38,6 +38,12 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.13 (2026-10-07)
+
+Review of Gemini's 0.9.53 fix round: the Mazuma RX-Coupe passes (`G2-racer-car-trial.md`). The
+hood is closed, the roof flows into the glass, the nose and tail taper. G3 (the police cars, the
+cruiser first) is Gemini's next task; the Mazuma goes into the game with C1 part 7.
+
 ## 0.9.12 (2026-10-07)
 
 Nitrous, as Jc asked: more heat, a little engine damage, a real risk of over-revving (C1 part 6).

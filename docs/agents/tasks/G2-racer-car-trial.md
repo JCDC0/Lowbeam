@@ -127,6 +127,16 @@ Better: the tail lamps are round and face back, the tips end at the tail, the ca
 Fix round 0.9.53, same shots plus the top view, and quote the plan-view widths at the nose, the
 doors, the hips and the tail from the JSON.
 
+## Review of 0.9.53 (Claude): passed
+
+All three are fixed. The hood is closed (its two bumps are the pop-up lamp pods), the roof flows in
+one arc from the windshield into the fastback, and the round tail lamps read from behind. From above
+the nose and the tail taper (1.50 m and 1.61 m against 1.76 m at the hips); the sides are still
+nearly straight, which is fine at the game's resolution. check() is clean; 1,914 body and 2,618 full
+triangles are inside the brief's 2,500 and 3,200 (`props.html` flags the full car against its
+generic 2,000 prop budget, which does not apply to cars). G2 is done: Claude wires the body into the
+game in place of the lofted racer (C1 part 7), and Gemini moves on to G3, the cruiser first.
+
 ## Done when
 
 - `tools/blender/rv_rotary.py`, `assets/models/rv_rotary.json` and `rv_rotary_full.json`, check()

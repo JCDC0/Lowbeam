@@ -33,9 +33,9 @@ and leaves `package.json` alone.
 |---|---|---|---|
 | [B1-police-repair.md](B1-police-repair.md) | Claude | done (0.9.3, part 3 with C1 part 2 in 0.9.8) | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
 | [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | spike strip done; the rest after G3 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
-| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | second fix round (0.9.53), see "Review of 0.9.52" | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
+| [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | done, passed in 0.9.53; Claude wires it in (C1 part 7) | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
 | [C1-claude-queue.md](C1-claude-queue.md) | Claude | parts 1 to 4 and 6 done (0.9.7 to 0.9.12); part 5 next (the city expressway and greenery) | In order: other cars hit the world; red and blue light bars, lit blinkers and sirens; the music swell at 75 km/h and a track manifest; the instrument rework from Jc's sketch; a second-layer city expressway and greenery; nitrous; Gemini's models into the game |
-| [G3-police-cars.md](G3-police-cars.md) | Assets | after G2 passes | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
+| [G3-police-cars.md](G3-police-cars.md) | Assets | next: the cruiser first | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
 | [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3, between racers when Claude needs it for the city | Street trees, planters, hedges, shrubs and benches for the city |
 | [G5-street-racers.md](G5-street-racers.md) | Assets | after G3's cruiser | The other eleven street racers in Blender, two cars per review |
 | [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
