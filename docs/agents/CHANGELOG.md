@@ -71,6 +71,19 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.58 (2026-10-07)
+
+Street racers: Hoshi Kei-S (`rv_kei`).
+
+- `tools/blender/rv_kei.py`: tiny front-engine Japanese kei sports car (Cappuccino / Beat mould):
+  - Proportions: length 3.30 m (z from -1.69 to +1.61), width 1.48 m (x from -0.74 to +0.74, mirrors to +-0.7975 m), height 1.18 m, wheelbase 2.24 m (axles at z = +1.06 m and -1.18 m), wheel radius 0.27 m.
+  - Plan view Coke-bottle silhouette: tapered nose 1.2400 m at bumper, doors waist 1.3866 m, wide rear hips 1.4800 m, tapered tail 1.3304 m, cabin pulled in to 1.1200 m across hardtop roof.
+  - Front styling: round headlights (chrome bezel with white emissive `lamp` lens at z = 1.603 m > 0), oval grille intake, chin splitter, and front plate.
+  - Rear styling: dual round taillights per side (emissive `tail` lenses at z = -1.684 m < 0), rear plate, rear diffuser, and single chrome sports exhaust tip with dark bore.
+  - Real wheel openings with dark inner wells (`under`), side mirrors, sports side skirts, and 4 wheels for the viewer (`wheel-*`, radius 0.27 m).
+- `assets/models/rv_kei.json`: body-only model (1,762 triangles, under 1,800 budget; bounds x: [-0.7975, 0.7975], y: [0.1750, 1.1796], z: [-1.6900, 1.6120]), check() clean with 0 problems.
+- `assets/models/rv_kei_full.json`: full model with wheels (2,466 triangles, under 2,600 budget; bounds x: [-0.7975, 0.7975], y: [0.0000, 1.1796], z: [-1.6900, 1.6120]), check() clean with 0 problems.
+
 ## 0.9.57 (2026-10-07)
 
 Police car trial: interceptor supercar (`police_interceptor`).
