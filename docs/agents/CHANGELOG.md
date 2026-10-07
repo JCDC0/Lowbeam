@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.55 (2026-10-07)
+
+Police car trial: unmarked fast sedan (`police_unmarked`).
+
+- `tools/blender/police_unmarked.py`: sporty 4-door pursuit sedan in dark metallic paint (`paint` 0x14161c):
+  - Proportions: length 4.50 m (z from -2.25 to +2.25), width 1.85 m, height 1.34 m, wheelbase 2.70 m (axles at z = +-1.35 m).
+  - Clean unmarked body without roof bar: sports chin splitter, rear lip spoiler, diffuser, dual chrome exhausts.
+  - Emergency flasher strobes behind front grille: left red lens (`lens-l` 0xff2a2a, x > 0) and right blue lens (`lens-r` 0x2a5aff, x < 0), both 0.12 m tall and emissive for long-distance visibility.
+  - Wheel arches with dark wells (`under`), side mirrors, and 4 wheels for the viewer (`wheel-*`, radius 0.32 m).
+- `assets/models/police_unmarked.json`: body-only model (1,524 triangles, under 1,800 budget; bounds x: [-1.0000, 1.0000], y: [0.1900, 1.3394], z: [-2.2500, 2.2500]), check() clean with 0 problems.
+- `assets/models/police_unmarked_full.json`: full model with wheels (2,228 triangles, under 2,600 budget; bounds x: [-1.0000, 1.0000], y: [0.0000, 1.3394], z: [-2.2500, 2.2500]), check() clean with 0 problems.
+
 ## 0.9.54 (2026-10-07)
 
 Police car trial: Japanese police cruiser sedan (`police_cruiser`).
