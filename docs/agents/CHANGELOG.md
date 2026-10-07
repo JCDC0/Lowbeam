@@ -26,6 +26,12 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.6 (2026-10-07)
+
+Briefs G5 (the other eleven street racers in Blender, with their fixed dimensions from
+`bodies/racers.js`) and G6 (the fourteen traffic kinds remade and seven new ones). The Gemini order
+is G2, G3's cruiser, G5 two cars at a time, the rest of G3, G1, G4, G6.
+
 ## 0.9.5 (2026-10-07)
 
 The plan after the police rebuild, from Jc's requests: `C1-claude-queue.md` (other cars hit the
