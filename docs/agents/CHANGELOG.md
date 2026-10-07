@@ -26,6 +26,20 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.9 (2026-10-07)
+
+The music comes in earlier and new tracks drop in without code (C1 part 3).
+
+- The swell: silent below 30 km/h, full at 75, 60 on the pass (was 50, 140 and 100).
+- `assets/music/tracks.json` lists the tracks (id, title, file, mood, loudness, `vocal`, optional
+  `enabled: false`); `MusicPlayer` loads it at start through `parseManifest` and `setSoundtrack`,
+  and keeps the built-in list when the file is missing or leaves a mood without a track.
+- `npm run music` (`tools/music-manifest.mjs`) builds it from the folder: measures each new file's
+  loudness with ffmpeg, keeps the moods, titles and flags already set, adds new files as `cruise`
+  for Jc to set, drops files that are gone, and warns about a mood with no track.
+- Tests: the swell at the new speeds; the manifest names real files and covers every mood; defaults,
+  skipped entries and a refused list. 334 pass.
+
 ## 0.9.8 (2026-10-07)
 
 Lights and sirens (C1 part 2, and B1 part 3).

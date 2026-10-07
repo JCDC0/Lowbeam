@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { SOUNDTRACK, TARGET_LUFS, MoodTracker, MOOD_RULES, SpeedSwell, SWELL, nextTrack, trackGain } from '../src/audio/soundtrack.js';
+import { SOUNDTRACK, TARGET_LUFS, MOODS, MoodTracker, MOOD_RULES, SpeedSwell, SWELL, nextTrack, trackGain, parseManifest, setSoundtrack } from '../src/audio/soundtrack.js';
 
 test('every track has its file, and each mood has two tracks to rotate', () => {
   for (const t of SOUNDTRACK) assert.ok(fs.existsSync(new URL(`../assets/music/${t.file}`, import.meta.url)), `missing ${t.file}`);
@@ -57,20 +57,23 @@ test('the pass brings in the mountain tracks after a few seconds and lets them g
   assert.equal(run(1.5, { kmh: 80, mountain: false, rival: Infinity }), 'intense');
 });
 
-test('the music stays silent below 50 km/h and swells in slowly with speed', () => {
+test('the music stays silent below 30 km/h, swells in slowly and is full by 75', () => {
   const w = new SpeedSwell();
   const run = (seconds, scene) => {
     for (let t = 0; t < seconds; t += 0.1) w.update(0.1, scene);
     return w.level;
   };
   const road = (kmh) => ({ kmh, mountain: false, rival: Infinity });
-  assert.equal(run(30, road(45)), 0);
+  assert.equal(run(30, road(28)), 0);
   const early = run(2, road(180));
   assert.ok(early > 0.15 && early < 0.4, `two seconds in ${early}`);
   assert.ok(run(8, road(180)) > 0.99);
   const half = new SpeedSwell();
-  for (let t = 0; t < 30; t += 0.1) half.update(0.1, road(95));
-  assert.ok(half.level > 0.4 && half.level < 0.6, `95 km/h ${half.level}`);
+  for (let t = 0; t < 30; t += 0.1) half.update(0.1, road(52.5));
+  assert.ok(half.level > 0.4 && half.level < 0.6, `52 km/h ${half.level}`);
+  const full = new SpeedSwell();
+  for (let t = 0; t < 30; t += 0.1) full.update(0.1, road(75));
+  assert.ok(full.level > 0.99, `75 km/h is full, ${full.level}`);
 });
 
 test('the swell holds through a short braking zone and fades out slowly after it', () => {
@@ -88,9 +91,37 @@ test('the swell holds through a short braking zone and fades out slowly after it
 
 test('the pass reaches full swell sooner, and a racer close by keeps the music up', () => {
   const pass = new SpeedSwell();
-  for (let t = 0; t < 20; t += 0.1) pass.update(0.1, { kmh: 100, mountain: true, rival: Infinity });
+  for (let t = 0; t < 20; t += 0.1) pass.update(0.1, { kmh: 60, mountain: true, rival: Infinity });
   assert.ok(pass.level > 0.99);
   const duel = new SpeedSwell();
-  for (let t = 0; t < 20; t += 0.1) duel.update(0.1, { kmh: 40, mountain: false, rival: 80 });
+  for (let t = 0; t < 20; t += 0.1) duel.update(0.1, { kmh: 20, mountain: false, rival: 80 });
   assert.ok(Math.abs(duel.level - SWELL.rivalFloor) < 1e-9);
+});
+
+test('the track list in assets/music/tracks.json names real files and covers every mood', () => {
+  const json = JSON.parse(fs.readFileSync(new URL('../assets/music/tracks.json', import.meta.url), 'utf8'));
+  const { tracks, skipped } = parseManifest(json);
+  assert.deepEqual(skipped, [], 'every entry is usable');
+  for (const t of tracks) assert.ok(fs.existsSync(new URL(`../assets/music/${t.file}`, import.meta.url)), `missing ${t.file}`);
+  for (const mood of MOODS) assert.ok(tracks.some((t) => t.mood === mood), `no ${mood} track`);
+});
+
+test('a manifest entry gets defaults, a bad one is skipped, and a list without a mood is refused', () => {
+  const { tracks, skipped } = parseManifest({ tracks: [
+    { file: 'new-song.mp3', mood: 'cruise' },
+    { file: 'odd.mp3', mood: 'disco' },
+    { mood: 'menu' },
+    { file: 'off.mp3', mood: 'menu', enabled: false },
+    { file: 'new-song.mp3', mood: 'intense' },
+  ] });
+  assert.equal(tracks.length, 1);
+  assert.deepEqual(tracks[0], { id: 'new-song', file: 'new-song.mp3', mood: 'cruise', title: 'new-song', lufs: TARGET_LUFS, vocal: false });
+  assert.equal(skipped.length, 4);
+  const before = SOUNDTRACK.slice();
+  assert.equal(setSoundtrack(tracks), false, 'cruise alone leaves three moods silent');
+  assert.deepEqual(SOUNDTRACK, before, 'so the list stays');
+  const full = MOODS.map((mood) => ({ id: mood, file: `${mood}.mp3`, mood, title: mood, lufs: -16 }));
+  assert.equal(setSoundtrack(full), true);
+  assert.equal(nextTrack('mountain', null).id, 'mountain');
+  setSoundtrack(before);
 });

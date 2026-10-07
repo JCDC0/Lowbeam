@@ -25,6 +25,7 @@ time attack, the police helicopter and a first police pursuit are in.
 | Type-check (the lint step) | `npm run check` (`tsc`, JSDoc types, no emit) |
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
+| Music track list | `npm run music` (`node tools/music-manifest.mjs`; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
 Three.js r185 is vendored in `vendor/`. `tools/devserver.mjs` serves with no-store caching, answers
@@ -134,13 +135,13 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON) |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
-| `assets/music/` | The recorded soundtrack, eight MP3s |
+| `assets/music/` | The recorded soundtrack and `tracks.json`, the list the game plays from (mood, title, measured loudness, vocal) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
-| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs` | Node benches and renders |
+| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
 ## Current state (0.9.52)
 
-332 tests pass; the type check is clean. By area:
+334 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -211,7 +212,10 @@ with Doppler); the helicopter's rotor thumps by distance; a pursuit is the inten
 
 **Audio.** Synthesized engines per layout (flat-four, V8, V12, straight-six) in an AudioWorklet, tire
 and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, eight recorded tracks
-in four moods with crossfades and a swell that follows the speed. Police sirens (three voices, a
+in four moods with crossfades and a swell that follows the speed: silent below 30 km/h, full at 75
+(60 on the pass). The tracks come from `assets/music/tracks.json`: drop a file in the folder, run
+`npm run music` (it measures the loudness with ffmpeg and keeps the moods already set), set the new
+file's mood in the JSON; the game keeps its built-in list if a mood would have no track. Police sirens (three voices, a
 square and a saw through a band-pass, panned, muffled in the cockpit) and the helicopter's rotor
 (`siren.js`; `node tools/render-sirens.mjs` writes a check WAV).
 

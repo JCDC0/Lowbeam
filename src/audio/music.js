@@ -14,7 +14,7 @@
  */
 
 import { composeTrack, midiToHz, LAYERS, TRACKS } from './songs.js';
-import { SOUNDTRACK, ENERGY, MoodTracker, SpeedSwell, nextTrack, trackGain } from './soundtrack.js';
+import { SOUNDTRACK, ENERGY, MANIFEST, MoodTracker, SpeedSwell, nextTrack, parseManifest, setSoundtrack, trackGain } from './soundtrack.js';
 import { clamp } from '../core/mathx.js';
 
 /**
@@ -329,6 +329,21 @@ export class MusicPlayer {
     this.switchedAt = -Infinity;
 
     if (this.live) this.timer = window.setInterval(() => this.tick(), TICK_MS);
+    if (this.recorded) this.loadManifest();
+  }
+
+  /** Reads the track list (assets/music/tracks.json) and plays from it from the next track on. */
+  async loadManifest() {
+    try {
+      const res = await fetch(MANIFEST, { cache: 'no-store' });
+      if (!res.ok) return;
+      const { tracks, skipped } = parseManifest(await res.json());
+      if (skipped.length) console.warn(`music: ${MANIFEST} skipped ${skipped.join(', ')}`);
+      if (!setSoundtrack(tracks)) console.warn(`music: ${MANIFEST} leaves a mood with no track; keeping the built-in list`);
+    } catch (err) {
+      // No manifest, or one that does not parse: the built-in list plays.
+      console.warn('music: no track list', err);
+    }
   }
 
   /** @param {import('./audio.js').Mode} mode @param {number} [at] */

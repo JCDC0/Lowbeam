@@ -1,0 +1,68 @@
+{
+  "tracks": [
+    {
+      "id": "dirt-to-crown",
+      "title": "Dirt to Crown",
+      "file": "dirt-to-crown.mp3",
+      "mood": "intense",
+      "lufs": -15,
+      "vocal": false
+    },
+    {
+      "id": "midnight-expressway",
+      "title": "Midnight Expressway",
+      "file": "midnight-expressway.mp3",
+      "mood": "cruise",
+      "lufs": -14.9,
+      "vocal": false
+    },
+    {
+      "id": "night-highway-drift",
+      "title": "Night Highway Drift",
+      "file": "night-highway-drift.mp3",
+      "mood": "cruise",
+      "lufs": -16.7,
+      "vocal": false
+    },
+    {
+      "id": "redline-pact",
+      "title": "Redline Pact",
+      "file": "redline-pact.mp3",
+      "mood": "intense",
+      "lufs": -15.9,
+      "vocal": false
+    },
+    {
+      "id": "shibuya-rain-vocal",
+      "title": "Shibuya Rain (Vocal)",
+      "file": "shibuya-rain-vocal.mp3",
+      "mood": "menu",
+      "lufs": -17.5,
+      "vocal": true
+    },
+    {
+      "id": "shibuya-rain",
+      "title": "Shibuya Rain",
+      "file": "shibuya-rain.mp3",
+      "mood": "menu",
+      "lufs": -16.3,
+      "vocal": false
+    },
+    {
+      "id": "touge-overdrive",
+      "title": "Touge Overdrive",
+      "file": "touge-overdrive.mp3",
+      "mood": "mountain",
+      "lufs": -13.1,
+      "vocal": false
+    },
+    {
+      "id": "touge-rush",
+      "title": "Touge Rush",
+      "file": "touge-rush.mp3",
+      "mood": "mountain",
+      "lufs": -13.4,
+      "vocal": false
+    }
+  ]
+}

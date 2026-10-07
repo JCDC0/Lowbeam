@@ -8,14 +8,21 @@
  */
 
 /** @typedef {'menu' | 'cruise' | 'intense' | 'mountain'} Mood */
-/** @typedef {{ id: string, title: string, file: string, mood: Mood, lufs: number }} Track */
+/** @typedef {{ id: string, title: string, file: string, mood: Mood, lufs: number, vocal?: boolean }} Track */
 
 /** Every track is played back at this loudness (LUFS). */
 export const TARGET_LUFS = -16;
 
+/** The track list the game reads at start (written by `npm run music`, moods edited by hand). */
+export const MANIFEST = 'assets/music/tracks.json';
+/** The moods a track can belong to. */
+export const MOODS = /** @type {const} */ (['menu', 'cruise', 'intense', 'mountain']);
+
 /**
  * The tracks in assets/music/. `lufs` is the measured integrated loudness
- * (`ffmpeg -af ebur128`), used to level them against each other.
+ * (`ffmpeg -af ebur128`), used to level them against each other; `vocal` marks a track with
+ * lyrics. This list is what plays until the manifest loads (and if it cannot), and
+ * `setSoundtrack` replaces it in place with the manifest's.
  * @type {Track[]}
  */
 export const SOUNDTRACK = [
@@ -28,6 +35,47 @@ export const SOUNDTRACK = [
   { id: 'touge-rush', title: 'Touge Rush', file: 'touge-rush.mp3', mood: 'mountain', lufs: -13.4 },
   { id: 'touge-overdrive', title: 'Touge Overdrive', file: 'touge-overdrive.mp3', mood: 'mountain', lufs: -13.1 },
 ];
+
+/**
+ * The tracks of a manifest, checked: each needs a file and a known mood; the id defaults to the
+ * file name, the title to the id, the loudness to TARGET_LUFS (not measured yet). Entries that are
+ * not usable are left out and named in `skipped`.
+ * @param {any} json the parsed tracks.json: `{ tracks: [...] }` or the array itself
+ * @returns {{ tracks: Track[], skipped: string[] }}
+ */
+export function parseManifest(json) {
+  const list = Array.isArray(json) ? json : json && Array.isArray(json.tracks) ? json.tracks : [];
+  /** @type {Track[]} */
+  const tracks = [];
+  const skipped = [];
+  const ids = new Set();
+  for (const e of list) {
+    const file = e && typeof e.file === 'string' ? e.file : '';
+    const id = e && typeof e.id === 'string' && e.id ? e.id : file.replace(/\.[a-z0-9]+$/i, '');
+    if (!file || !MOODS.includes(e.mood) || ids.has(id) || e.enabled === false) {
+      skipped.push(file || String(e && e.id));
+      continue;
+    }
+    ids.add(id);
+    tracks.push({
+      id, file, mood: e.mood,
+      title: typeof e.title === 'string' && e.title ? e.title : id,
+      lufs: Number.isFinite(e.lufs) ? e.lufs : TARGET_LUFS,
+      vocal: !!e.vocal,
+    });
+  }
+  return { tracks, skipped };
+}
+
+/**
+ * Plays these tracks from now on, if every mood still has one; otherwise keeps the list it has.
+ * @param {Track[]} tracks @returns {boolean} whether the list was taken
+ */
+export function setSoundtrack(tracks) {
+  if (!MOODS.every((m) => tracks.some((t) => t.mood === m))) return false;
+  SOUNDTRACK.splice(0, SOUNDTRACK.length, ...tracks);
+  return true;
+}
 
 /** Linear gain that brings a track to TARGET_LUFS. @param {Track} t */
 export function trackGain(t) {
@@ -67,15 +115,15 @@ export const MOOD_RULES = {
 /**
  * How the music follows the speed while driving, the way Night-Runners does it: silent below
  * `quiet` km/h, swelling in as the car gets faster until it is full at `full` (`fullMountain`
- * on the pass, where nobody does 140). It rises slowly (`rise` per second, about 8 s from
- * silence to full) and falls slower still, and only after `holdDown` seconds of lower speed,
+ * on the pass, where the bends keep the speed down). It rises slowly (`rise` per second, about
+ * 8 s from silence to full) and falls slower still, and only after `holdDown` seconds of lower speed,
  * so a braking zone does not cut the track. A street racer close by keeps it at least at
  * `rivalFloor`.
  */
 export const SWELL = {
-  quiet: 50,
-  full: 140,
-  fullMountain: 100,
+  quiet: 30,
+  full: 75,
+  fullMountain: 60,
   rise: 0.13,
   fall: 0.06,
   holdDown: 3,
