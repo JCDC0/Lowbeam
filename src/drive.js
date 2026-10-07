@@ -113,13 +113,20 @@ export class Drive {
     this.traffic = new TrafficSim(this.trafficNet);
     this.trafficView = new TrafficRenderer(world.root, world.models);
     this.damageFx = new DamageFx(world.root);
-    // The police helicopter, parked on the HQ roof until something sends it up (heli.js).
+    // The police helicopters (heli.js): the first parked on the HQ roof, two more as backup that fly
+    // in from out of town over the west and east hills at heat 4 and 5 and leave the same way.
     const hq = world.ground.lots.find((p) => p.lot.kind === 'police');
-    /** @type {Heli | null} */
-    this.heli = hq ? new Heli(helipadOf(hq)) : null;
-    this.heliView = new HeliView(world.models || {});
-    /** Whether the helicopter is after the player; the police set it, `scrambleHeli` does for now. */
-    this.heliChasing = false;
+    const hf0 = world.ground.hf;
+    const sky = (x, z) => ({ x, y: hf0.at(x, z) + 140, z, yaw: 0 });
+    /** @type {Heli[]} */
+    this.helis = hq ? [
+      new Heli(helipadOf(hq)),
+      new Heli(sky(-2600, 900), { slot: 1, sky: true }),
+      new Heli(sky(2600, 900), { slot: 2, sky: true }),
+    ] : [];
+    this.heliViews = this.helis.map(() => new HeliView(world.models || {}));
+    /** How many helicopters the police have sent after the player. */
+    this.helisUp = 0;
     // The police (police/director.js): the director decides, the Drive tells it what is true and
     // carries out its orders, the sim drives the units.
     this.police = new PoliceDirector();
@@ -127,7 +134,7 @@ export class Drive {
     this.policeOrders = null;
     /** A toast held back until the pursuit's end card is gone. */
     this.afterReport = '';
-    /** The helicopter's last distance, for the rotor's Doppler. */
+    /** The nearest helicopter's last distance, for the rotor's Doppler. */
     this.heliDist = Infinity;
     /** The km/h of a toll gate crossed this frame, for the speed trap; one frame only. @type {number | null} */
     this.tollKmh = null;
@@ -145,10 +152,12 @@ export class Drive {
       const c = this.colliders.probe(x, z, r, y);
       return c && { nx: c.nx, nz: c.nz, depth: c.depth, px: c.px, pz: c.pz };
     };
-    if (this.heli && this.heliView.ok) {
-      world.add(this.heliView.group);
-      world.add(this.heliView.cone);
-      this.heliView.update(this.heli);
+    if (this.helis.length && this.heliViews[0].ok) {
+      this.helis.forEach((h, i) => {
+        world.add(this.heliViews[i].group);
+        world.add(this.heliViews[i].cone);
+        this.heliViews[i].update(h);
+      });
       const roofs = [...world.scatter.buildings, ...world.ground.lots.map((p) => {
         const m = world.models?.[p.lot.model];
         return { x: p.cx, z: p.cz, y: p.h, w: m ? m.size[0] : 0, d: m ? m.size[2] : 0, h: m ? m.size[1] : 0 };
@@ -162,21 +171,17 @@ export class Drive {
         // A car under a deck is out of the light.
         covered: (x, z, y) => world.ground.roads.query(x, z, deck, 0, -Infinity, Infinity) && (deck.lift || 0) > 2 && deck.h > y + 2.5,
       };
-    } else this.heli = null;
+    } else this.helis = [];
   }
 
-  /** Sends the helicopter up after the player (a stand-in until the police core decides). */
-  scrambleHeli() {
-    if (!this.heli) return;
-    this.heliChasing = true;
-    this.heli.launch();
-  }
-
-  /** Sends the helicopter home to land. */
-  recallHeli() {
-    if (!this.heli) return;
-    this.heliChasing = false;
-    this.heli.recall();
+  /**
+   * Puts `n` helicopters after the player and sends the rest home: the HQ's first, then the backup.
+   * @param {number} n
+   */
+  setHelis(n) {
+    if (n === this.helisUp) return;
+    this.helis.forEach((h, i) => (i < n ? h.launch() : h.recall()));
+    this.helisUp = Math.min(n, this.helis.length);
   }
 
   /**
@@ -197,8 +202,8 @@ export class Drive {
   policeMarkers() {
     /** @type {any[]} */
     const out = [];
-    const h = this.heli;
-    if (h && h.state !== 'parked') {
+    for (const h of this.helis) {
+      if (h.state === 'parked') continue;
       out.push({ kind: 'heli', x: h.x, z: h.z, yaw: h.yaw, search: h.spot.on ? { x: h.spot.x, z: h.spot.z, r: h.spot.r } : undefined });
     }
     const pursuit = this.police.pursuit;
@@ -226,12 +231,12 @@ export class Drive {
       return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, d, clear, kind: a.kind.id, vx: a.vx, vz: a.vz };
     });
     const road = this.world.ground.at(s.x, s.z, s.y).road;
-    const heli = this.heli;
+
     const orders = this.police.update(dt, {
       player: s, units,
       limit: road?.def.limit ?? 100,
       patrols: this.traffic.patrolTarget,
-      heliSees: !!(this.heliChasing && heli && heli.spot.sees),
+      heliSees: this.helis.some((h, i) => i < this.helisUp && h.spot.sees),
       toll: this.tollKmh,
       duel: !!this.duel,
       hitPolice: happened.policeHit * 250,
@@ -280,9 +285,8 @@ export class Drive {
     }
     this.pursuitView3d.setStrip(this.police.spikes);
 
-    // The helicopter goes up at heat 3 and comes home when the pursuit ends.
-    if (orders.heli && !this.heliChasing) this.scrambleHeli();
-    else if (!orders.heli && this.heliChasing) this.recallHeli();
+    // One helicopter goes up at heat 3, two at 4, three at 5; they go home when the pursuit ends.
+    this.setHelis(orders.helis);
 
     // The tires, the money and the end of the pursuit.
     s.tireGrip = orders.tires.grip;
@@ -304,10 +308,19 @@ export class Drive {
     }
   }
 
-  /** The helicopter's rotor as the player hears it, from its distance and how fast that closes. @param {number} dt @param {any} s */
+  /** The nearest helicopter's rotor as the player hears it, from its distance and how fast that closes. @param {number} dt @param {any} s */
   rotorSound(dt, s) {
-    const h = this.heli;
-    if (!h || h.state === 'parked') {
+    let h = null;
+    let best = Infinity;
+    for (const c of this.helis) {
+      if (c.state === 'parked') continue;
+      const dc = Math.hypot(c.x - s.x, c.y - s.y, c.z - s.z);
+      if (dc < best) {
+        best = dc;
+        h = c;
+      }
+    }
+    if (!h) {
       this.heliDist = Infinity;
       return { rate: 0, gain: 0 };
     }
@@ -827,10 +840,10 @@ export class Drive {
     }
     this.trafficView.update(this.traffic.agents, this.car.state, this.time);
     this.damageFx.update(dt, this.traffic.agents, this.car.state);
-    if (this.heli) {
-      this.heliWorld.target = this.heliChasing ? s : null;
-      this.heli.update(dt, this.heliWorld);
-      this.heliView.update(this.heli);
+    for (let i = 0; i < this.helis.length; i++) {
+      this.heliWorld.target = i < this.helisUp ? s : null;
+      this.helis[i].update(dt, this.heliWorld);
+      this.heliViews[i].update(this.helis[i]);
     }
     const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
     if (gate) {

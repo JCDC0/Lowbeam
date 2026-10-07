@@ -28,6 +28,17 @@ export const HELI = {
   lightRange: 190, spotR: 7, spotFollow: 2.2,
 };
 
+/**
+ * Where each helicopter of a pursuit holds station on the target, by slot: `behind` meters back along
+ * its heading (negative is ahead), `side` meters to its right. The first sits behind as before, the
+ * others ahead on the left and wide on the right, so three searchlights cover different streets.
+ */
+export const HELI_SLOTS = [
+  { behind: HELI.behind, side: HELI.side },
+  { behind: -45, side: -26 },
+  { behind: 8, side: 48 },
+];
+
 /** @typedef {{ x: number, y: number, z: number, vx: number, vz: number }} HeliTarget */
 /**
  * What the helicopter needs from the world each step.
@@ -109,9 +120,16 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
  * @typedef {'parked' | 'spinup' | 'takeoff' | 'chase' | 'return' | 'landing' | 'spindown'} HeliState
  */
 export class Heli {
-  /** @param {{ x: number, y: number, z: number, yaw: number }} pad */
-  constructor(pad) {
+  /**
+   * @param {{ x: number, y: number, z: number, yaw: number }} pad
+   * @param {{ slot?: number, sky?: boolean }} [opts] `slot` picks where it holds station
+   *   (`HELI_SLOTS`); a `sky` helicopter has no helipad: `pad` is a point in the sky it flies in from
+   *   and back to, and it is put away there instead of landing.
+   */
+  constructor(pad, { slot = 0, sky = false } = {}) {
     this.pad = pad;
+    this.slot = slot;
+    this.sky = sky;
     this.x = pad.x;
     this.y = pad.y;
     this.z = pad.z;
@@ -140,6 +158,15 @@ export class Heli {
 
   /** Scrambles: spins up on the pad, or turns round if it was flying home. */
   launch() {
+    if (this.sky && this.state === 'parked') {
+      // Backup from out of town: it arrives already flying.
+      this.x = this.pad.x;
+      this.y = this.pad.y;
+      this.z = this.pad.z;
+      this.rotor = 1;
+      this.state = 'chase';
+      return;
+    }
     if (this.state === 'parked' || this.state === 'spindown') this.state = 'spinup';
     else if (this.state === 'return' || this.state === 'landing') this.state = 'chase';
   }
@@ -175,12 +202,22 @@ export class Heli {
         const sp = Math.hypot(t.vx, t.vz);
         const dx = sp > 3 ? t.vx / sp : Math.sin(this.yaw);
         const dz = sp > 3 ? t.vz / sp : Math.cos(this.yaw);
-        const gx = t.x + t.vx * HELI.lead - dx * HELI.behind + dz * HELI.side;
-        const gz = t.z + t.vz * HELI.lead - dz * HELI.behind - dx * HELI.side;
+        const st = HELI_SLOTS[this.slot] || HELI_SLOTS[0];
+        const gx = t.x + t.vx * HELI.lead - dx * st.behind + dz * st.side;
+        const gz = t.z + t.vz * HELI.lead - dz * st.behind - dx * st.side;
         this.fly(dt, w, gx, w.groundAt(gx, gz) + HELI.cruise, gz, t);
         break;
       }
       case 'return': {
+        if (this.sky) {
+          this.fly(dt, w, P.x, P.y, P.z, null);
+          if (Math.hypot(this.x - P.x, this.z - P.z) < 40) {
+            this.state = 'parked';
+            this.rotor = 0;
+            this.vx = this.vy = this.vz = 0;
+          }
+          break;
+        }
         this.fly(dt, w, P.x, P.y + HELI.hover, P.z, null);
         if (Math.hypot(this.x - P.x, this.z - P.z) < 5 && Math.hypot(this.vx, this.vz) < 2.5) this.state = 'landing';
         break;

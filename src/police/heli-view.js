@@ -69,6 +69,8 @@ export class HeliView {
   update(h) {
     if (!this.ok) return;
     const g = this.group;
+    // A backup helicopter put away in the sky is not drawn.
+    g.visible = !(h.sky && h.state === 'parked');
     g.position.set(h.x, h.y, h.z);
     g.rotation.set(h.pitch, h.yaw, h.roll);
     this.rotor.rotation.y = h.rotorAngle;

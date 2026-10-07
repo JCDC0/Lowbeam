@@ -97,5 +97,8 @@ export function unitDamage(hit, other, own) {
 /** What is left of a unit, 0..1. @param {{ hp?: number, kind: Kind }} a */
 export const health = (a) => Math.max(0, (a.hp ?? a.kind.hp ?? 100) / (a.kind.hp ?? 100));
 
+/** Helicopters up at each heat level, after Most Wanted: one at 3, two at 4, three at 5. @param {number} heat */
+export const helisFor = (heat) => Math.max(0, Math.min(3, Math.floor(heat) - 2));
+
 /** True for any police unit kind, whatever heat level it belongs to. */
 export const isUnit = (kind) => kind.id.startsWith('police');

@@ -43,7 +43,7 @@ the same rules as the player's own car.
   pursues it with lights and sirens and gives up after a while. A racer chase that comes near the
   player can draw the player in.
 
-## 4. More helicopters
+## 4. More helicopters (done in 0.9.72)
 
 Heat 3: one helicopter, heat 4: two, heat 5: three, each with its own searchlight and rotor sound,
 spread round the player so their searchlights cover different streets. The count is a setting in

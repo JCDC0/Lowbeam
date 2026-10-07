@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.72 (2026-10-07)
+
+More helicopters (C2 part 4).
+
+- `helisFor(heat)` (`police/units.js`): one helicopter at heat 3, two at 4, three at 5. The orders
+  carry `helis`; the Drive keeps a list (`helis`, `heliViews`, `setHelis`) instead of one.
+- The first takes off from the HQ's roof as before. The other two are backup with no helipad
+  (`Heli` option `sky`): they arrive flying from a point 140 m over the west and east hills and,
+  recalled, fly back there and are put away out of sight.
+- Each holds its own station on the target (`HELI_SLOTS`): behind and to the right as before, ahead
+  on the left, and wide on the right, so their searchlights land on different streets.
+- The player is seen if any helicopter's light is on them; the rotor heard is the nearest one's;
+  the maps show every helicopter off its pad.
+- Tests: the count by heat; a backup helicopter arrives flying, three hold stations over 30 m apart,
+  and a recalled one is put away in the sky. Checked in the game: three up at heat 5, two seen with
+  their lights crossing on the car. 358 pass.
+
 ## 0.9.71 (2026-10-07)
 
 Being noticed, provoking the police, and police chasing racers (C2 part 3).

@@ -12,7 +12,7 @@
  */
 
 import { Heat, noticesSpeeding, noticesTrap } from './heat.js';
-import { roster, UNIT_BY_ID } from './units.js';
+import { roster, UNIT_BY_ID, helisFor } from './units.js';
 import { planSpikes, shouldSetRoadblock, tooNearBlock, hitSpikes, spikePenalty } from './roadblock.js';
 import { Pursuit } from '../race/pursuit.js';
 
@@ -57,7 +57,7 @@ const BLOCK_GONE = 600;
  *   heat), `planBlock` plans a roadblock on the player's route (or null).
  * @typedef {{
  *   spawn: string[], chase: 'chase' | 'search' | 'patrol', search: { x: number, z: number, r: number } | null,
- *   heli: boolean, roadblock: any, spikes: any, clearRoadblock: boolean, release: boolean,
+ *   heli: boolean, helis: number, roadblock: any, spikes: any, clearRoadblock: boolean, release: boolean,
  *   tires: { grip: number, top: number, left: number, active: boolean },
  *   money: number, report: any, events: { type: string, [k: string]: any }[], view: any,
  *   detect: { level: number, watchers: number[] },
@@ -132,7 +132,7 @@ export class PoliceDirector {
     const p = w.player;
     /** @type {PoliceOrders} */
     const out = {
-      spawn: [], chase: 'patrol', search: null, heli: false, roadblock: null, spikes: null,
+      spawn: [], chase: 'patrol', search: null, heli: false, helis: 0, roadblock: null, spikes: null,
       clearRoadblock: false, release: false, tires: spikePenalty(0), money: 0, report: null, events: [], view: null,
       detect: { level: 0, watchers: [] },
     };
@@ -183,7 +183,8 @@ export class PoliceDirector {
     if (this.active) {
       const pursuit = /** @type {Pursuit} */ (this.pursuit);
       const level = Math.max(1, this.heat.level);
-      const heli = level >= 3;
+      const helis = helisFor(level);
+      const heli = helis > 0;
       pursuit.setHeat(level, heli);
       if (seen) pursuit.lastSeen(p.x, p.z);
       /** @type {string[]} */
@@ -220,6 +221,7 @@ export class PoliceDirector {
         out.chase = pursuit.pstate === 'cooldown' ? 'search' : 'chase';
         out.search = pursuit.pstate === 'cooldown' ? { ...pursuit.last } : null;
         out.heli = heli;
+        out.helis = helis;
         this.stepRoadblock(dt, w, out);
         out.view = pursuit.view();
       } else {

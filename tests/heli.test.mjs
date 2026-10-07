@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Heli, HELI, Skyline } from '../src/police/heli.js';
+import { helisFor } from '../src/police/units.js';
 
 const PAD = { x: 0, y: 13, z: 0, yaw: 0 };
 const DT = 1 / 30;
@@ -128,4 +129,34 @@ test('banks into a turn and pitches nose down when it speeds up', () => {
   w.target = { x: -2000, y: 0, z: h.z, vx: 0, vz: 0 };
   run(h, w, 2, (hh) => { roll = Math.max(roll, Math.abs(hh.roll)); });
   assert.ok(roll > 0.1, `banked ${roll.toFixed(2)} rad in the turn`);
+});
+
+test('more helicopters at higher heat: one at 3, two at 4, three at 5', () => {
+  assert.deepEqual([1, 2, 3, 4, 5].map(helisFor), [0, 0, 1, 2, 3]);
+});
+
+test('a backup helicopter arrives flying, holds its own station, and is put away in the sky', () => {
+  const SKY = { x: -900, y: 140, z: 0, yaw: 0 };
+  const target = car(20, 0);
+  const w = world(target);
+  const helis = [new Heli(PAD), new Heli(SKY, { slot: 1, sky: true }), new Heli({ ...SKY, x: 900 }, { slot: 2, sky: true })];
+  for (const h of helis) h.launch();
+  assert.equal(helis[1].state, 'chase', 'a backup one is in the air at once');
+  assert.equal(helis[1].y, SKY.y);
+  for (let t = 0; t < 40; t += DT) {
+    target.move(DT);
+    for (const h of helis) h.update(DT, w);
+  }
+  for (const h of helis) assert.equal(h.state, 'chase');
+  for (let i = 0; i < 3; i++) {
+    for (let j = i + 1; j < 3; j++) {
+      const d = Math.hypot(helis[i].x - helis[j].x, helis[i].z - helis[j].z);
+      assert.ok(d > 30, `helicopters ${i} and ${j} hold apart (${d.toFixed(0)} m)`);
+    }
+  }
+  const back = helis[1];
+  back.recall();
+  run(back, world(null), 60);
+  assert.equal(back.state, 'parked', 'it went back out of town and was put away');
+  assert.ok(Math.hypot(back.x - SKY.x, back.z - SKY.z) < 60);
 });

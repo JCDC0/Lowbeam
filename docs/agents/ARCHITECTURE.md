@@ -141,9 +141,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.71)
+## Current state (0.9.72)
 
-356 tests pass; the type check is clean. By area:
+358 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -243,7 +243,10 @@ shrugs off what hurts a cruiser and a pillar is worst. Below half it smokes and 
 it smokes black and limps at 70 % of its top speed, at zero it is destroyed: a dark burnt wreck in
 flames (`traffic/damage-fx.js`), its bar and siren dead, its kind's bounty paid into the pursuit
 (¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. Backup
-arrives one car every 1.5 s from `roster(heat)`; the helicopter flies at heat 3. From heat 4 a
+arrives one car every 1.5 s from `roster(heat)`. Helicopters (`helisFor`): one at heat 3 from the
+HQ's roof, two at 4, three at 5, the backup two flying in from over the west and east hills and leaving
+the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: behind, ahead on the
+left, wide on the right) so their searchlights cover different streets. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
 with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): spiked tires lose 38 %
 grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
@@ -255,7 +258,7 @@ HUD and the markers follow the A13 contract. The four units are Gemini's models 
 car, Rhino, interceptor). Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the
 walls and the player's car; the three nearest are heard (wail, yelp up close, hi-lo in a roadblock,
-with Doppler); the helicopter's rotor thumps by distance; a pursuit is the intense music mood.
+with Doppler); the nearest helicopter's rotor thumps by distance; a pursuit is the intense music mood.
 
 **Audio.** Synthesized engines per layout (flat-four, V8, V12, straight-six) in an AudioWorklet, tire
 and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, eight recorded tracks
