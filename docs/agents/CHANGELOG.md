@@ -52,6 +52,21 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.17 (2026-10-07)
+
+Gemini's models drive in traffic (C1 part 7, the first two).
+
+- `KIND_MODELS` (`traffic/kinds.js`) names a Blender body per kind: the Mazuma RX-Coupe racer
+  (`rv_rotary_full`, G2) and the patrol cruiser (`police_cruiser_full`, G3). The world loads them
+  with the other models; `TrafficRenderer` takes them and `modelGeometry` (`traffic/bodies.js`)
+  turns each into the traffic format: the `paint` material tinted per car, `lamp` faces at the front
+  lit as head lamps and `tail` faces as tail lamps, the light bar's lenses dark with the flares set
+  on the red lens's own spot. Until a model loads, or for kinds without one, the lofted or boxy
+  body stays.
+- The C2 plan's pursuit HUD uses Michroma (`FONT.display`), Jc's choice, already bundled.
+- Tests: `tests/kind-models.test.mjs` (each named model exists, has the paint, lamp, tail and lens
+  materials, and matches its kind's size within 0.35 m). 344 pass.
+
 ## 0.9.16 (2026-10-07)
 
 The plan for Jc's pursuit requests: `docs/agents/tasks/C2-pursuit-overhaul.md` (one set of car

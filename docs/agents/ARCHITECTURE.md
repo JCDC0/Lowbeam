@@ -143,7 +143,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.9.54)
 
-343 tests pass; the type check is clean. By area:
+344 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -206,7 +206,11 @@ turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; 
 indicator flares larger and the three nearest throw a small amber pool. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit wrecked above 9 m/s. Five street racers on
-Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet.
+Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
+(`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
+`traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
+model's own lenses): the Mazuma RX-Coupe racer and the patrol cruiser so far; the rest keep their
+lofted or boxy bodies until their models pass review.
 
 **Races.** `RaceEvent` with three kinds: the duel (Tokyo Xtreme Racer gauges, challenge with H), the
 Kuro Pass rally time attack (gates, splits, medals, pace notes, ghost, F at the start line), and the
@@ -228,7 +232,8 @@ grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading
 and decks fill it three times faster), escaped with the bounty paid. Stopped with a unit within 12 m
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
 police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals. The pursuit
-HUD and the markers follow the A13 contract. Units still borrow civilian bodies. Light bars flash
+HUD and the markers follow the A13 contract. The patrol cruiser is Gemini's model; the other three
+units still borrow racer and SUV bodies. Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the
 walls and the player's car; the three nearest are heard (wail, yelp up close, hi-lo in a roadblock,
 with Doppler); the helicopter's rotor thumps by distance; a pursuit is the intense music mood.
@@ -251,10 +256,8 @@ Gothic One for banners, M PLUS 1p for Japanese.
 
 ## Open work and known issues
 
-- The police units are drawn with civilian bodies until G3's models land.
-- The police units, the light bar, the roadblock barrier and the pursuit breakers have no models of
-  their own yet (task G1). The Mazuma RX-Coupe body (`rv_rotary.json`, G2) is exported but not used
-  by the game yet.
+- The unmarked car, the Rhino and the interceptor borrow racer and SUV bodies until G3's models land.
+- The roadblock barrier and the pursuit breakers have no models yet (task G1).
 - The settings screen's key hint bar overlaps the last rows at 720 lines.
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy.

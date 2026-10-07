@@ -72,7 +72,7 @@ long as it lasts, about 8 s a bottle, and the cost is real:
   shot, the over-rev and the blow when it is held through the limiter, nothing when the bottle is
   empty; the bars in `tools/sim.mjs` stay as they are without it.
 
-## 7. Gemini's models into the game
+## 7. Gemini's models into the game (the Mazuma and the cruiser in 0.9.17; the rest as they pass)
 
 The Mazuma (G2) into the traffic renderer with the game's wheels; the G1 props; the four police cars
 (G3) in place of the borrowed civilian bodies, with their light bars driven by part 2; then the racers

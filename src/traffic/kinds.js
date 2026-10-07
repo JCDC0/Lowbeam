@@ -16,10 +16,11 @@ import { UNIT_KINDS, isUnit } from '../police/units.js';
  *   id: string, name: string, length: number, width: number, height: number, mass: number,
  *   accel: number, speed: [number, number], weights: Record<string, number>,
  *   paint: number[], wheels?: number, model?: string, accent?: number, lightBar?: boolean,
- *   hidden?: boolean, headOn?: boolean, top?: number
+ *   hidden?: boolean, headOn?: boolean, top?: number, blender?: string
  * }} Kind
  * `top` is a police unit's own top speed in km/h: in a chase it drives as fast as the chase needs
- * up to this, whatever the road's limit.
+ * up to this, whatever the road's limit. `blender` names a model in `assets/models/` (made in
+ * Blender, `tools/blender/`) drawn instead of the lofted or boxy body once it has loaded.
  */
 
 const MUTED = [0xe8e8e6, 0xc9ccd0, 0x2a2d33, 0x1b1d22, 0x6b7077, 0x8a1c22, 0x24407a, 0xa89a7e, 0x3b5a46];
@@ -79,4 +80,12 @@ export const RIVALS = [
 
 /** Every kind a renderer has to draw. */
 export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
+
+/**
+ * Bodies made in Blender, by kind: Gemini's models (tasks G2, G3, G5, G6) as they pass review. The
+ * `_full` export carries its own wheels, which is all traffic needs (its wheels do not turn).
+ * @type {Record<string, string>}
+ */
+export const KIND_MODELS = { 'rv-rotary': 'rv_rotary_full', police: 'police_cruiser_full' };
+for (const k of ALL_KINDS) if (KIND_MODELS[k.id]) k.blender = KIND_MODELS[k.id];
 for (const k of RIVALS) KIND_BY_ID.set(k.id, k);

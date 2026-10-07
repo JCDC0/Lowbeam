@@ -126,10 +126,62 @@ function lights(p, W, y, L, size = 0.28) {
 }
 
 /**
- * The geometry for a traffic kind.
- * @param {import('./kinds.js').Kind} k
+ * A body made in Blender (`assets/models/<name>.json`, see `tools/blender/kit.py`) in the traffic
+ * format: the `paint` material is white and marked for the instance tint, `lamp` faces at the front
+ * are head lamps and `tail` faces tail lamps (the `lamp` attribute), everything else keeps its color.
+ * A light bar's `lens-l` and `lens-r` stay dark (the flares light them); the middle of the red lens
+ * goes in `userData.bar` so the flares sit on it.
+ * @param {import('../world/build-lots.js').ModelData} data @param {number[]} [accent]
  */
-export function buildKindGeometry(k) {
+export function modelGeometry(data, accent) {
+  const n = data.position.length / 3;
+  const color = new Float32Array(n * 3);
+  const lamp = new Float32Array(n * 3);
+  const paint = new Float32Array(n);
+  const bar = [0, 0, 0, 0];
+  for (const grp of data.groups) {
+    const mat = data.materials[grp.material];
+    const name = mat.name;
+    const c = name === 'paint' ? PAINT : name === 'accent' && accent ? accent : new THREE.Color(mat.color).toArray();
+    const lens = name === 'lens-l' || name === 'lens-r';
+    for (let i = grp.start; i < grp.start + grp.count; i++) {
+      const k = lens ? 0.45 : 1;
+      color[i * 3] = c[0] * k;
+      color[i * 3 + 1] = c[1] * k;
+      color[i * 3 + 2] = c[2] * k;
+      paint[i] = name === 'paint' ? 1 : 0;
+      const z = data.position[i * 3 + 2];
+      const l = name === 'lamp' && z > 0 ? HEAD : name === 'tail' && z < 0 ? TAIL : null;
+      if (l) lamp.set(l, i * 3);
+      if (name === 'lens-l') {
+        bar[0] += data.position[i * 3];
+        bar[1] += data.position[i * 3 + 1];
+        bar[2] += z;
+        bar[3]++;
+      }
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(data.position, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(data.normal, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(color, 3));
+  g.setAttribute('lamp', new THREE.BufferAttribute(lamp, 3));
+  g.setAttribute('aPaint', new THREE.BufferAttribute(paint, 1));
+  g.computeBoundingSphere();
+  if (bar[3]) g.userData.bar = [bar[0] / bar[3], bar[1] / bar[3], bar[2] / bar[3]];
+  return g;
+}
+
+/**
+ * The geometry for a traffic kind: its Blender model when one has loaded, else its lofted or boxy
+ * body.
+ * @param {import('./kinds.js').Kind} k
+ * @param {Record<string, import('../world/build-lots.js').ModelData>} [models]
+ */
+export function buildKindGeometry(k, models = {}) {
+  if (k.blender && models[k.blender]) {
+    return modelGeometry(models[k.blender], k.accent != null ? new THREE.Color(k.accent).toArray() : undefined);
+  }
   const civilian = CIVILIAN_MODEL_BY_ID.get(k.id);
   const accent = k.accent != null ? new THREE.Color(k.accent).toArray() : undefined;
   if (civilian) return vehicleGeometry(civilian, civilian.body, { wheelSides: 10, accent });

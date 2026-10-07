@@ -110,7 +110,7 @@ export class Drive {
     this.tolls = new TollMeter(world.scatter.highway.plazas, store.get('tollBest', {}));
     this.trafficNet = new TrafficNet(world.ground.roads);
     this.traffic = new TrafficSim(this.trafficNet);
-    this.trafficView = new TrafficRenderer(world.root);
+    this.trafficView = new TrafficRenderer(world.root, world.models);
     // The police helicopter, parked on the HQ roof until something sends it up (heli.js).
     const hq = world.ground.lots.find((p) => p.lot.kind === 'police');
     /** @type {Heli | null} */

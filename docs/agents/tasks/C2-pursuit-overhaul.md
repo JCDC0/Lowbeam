@@ -58,10 +58,8 @@ spread round the player so their searchlights cover different streets. The count
   - units on the scene (in pursuit now), units nearby (within sight), units destroyed (the kill
     meter);
   - a helicopter symbol per helicopter up.
-- The typeface follows Most Wanted's HUD. Its own face is commercial and cannot be shipped, so the
-  plan is an OFL face with the same wide, squared look, bundled through `tools/vendor-fonts.mjs` and
-  used only by the pursuit HUD and its banners. Jc picks from two or three candidates shown side by
-  side.
+- The typeface is Michroma (`FONT.display`, `--font-display`), the wide squared face already
+  bundled, for every number and word in the pursuit HUD and its banners (Jc's choice).
 - The HUD leaves at once when the pursuit ends or the screen changes (a garage, a menu, the map):
   no fade that lingers or pulses over the next screen. The bug today: the panel keeps pulsing when
   the player enters a garage.

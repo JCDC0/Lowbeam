@@ -93,18 +93,21 @@ function lampSpots(geo, kind) {
 }
 
 export class TrafficRenderer {
-  /** @param {THREE.Object3D} parent */
-  constructor(parent) {
+  /**
+   * @param {THREE.Object3D} parent
+   * @param {Record<string, import('../world/build-lots.js').ModelData>} [models] Blender bodies by name (`KIND_MODELS`)
+   */
+  constructor(parent, models = {}) {
     this.root = new THREE.Group();
     this.root.name = 'traffic';
     parent.add(this.root);
     this.time = 0;
     this.material = psxPhong({ vertexColors: true, local: true, lamp: true, paint: true, specular: 0x303030, shininess: 34, side: THREE.DoubleSide });
-    /** @type {Map<string, { mesh: THREE.InstancedMesh, brake: THREE.InstancedBufferAttribute, max: number, n: number, lamps: ReturnType<typeof lampSpots> }>} */
+    /** @type {Map<string, { mesh: THREE.InstancedMesh, brake: THREE.InstancedBufferAttribute, max: number, n: number, lamps: ReturnType<typeof lampSpots>, bar: number[] | null }>} */
     this.meshes = new Map();
     for (const kind of ALL_KINDS) {
       const max = kind.length > 7 ? 10 : 28;
-      const geo = buildKindGeometry(kind);
+      const geo = buildKindGeometry(kind, models);
       const brake = new THREE.InstancedBufferAttribute(new Float32Array(max), 1);
       geo.setAttribute('aBrake', brake);
       const mesh = new THREE.InstancedMesh(geo, this.material, max);
@@ -113,7 +116,7 @@ export class TrafficRenderer {
       mesh.count = 0;
       mesh.name = kind.id;
       this.root.add(mesh);
-      this.meshes.set(kind.id, { mesh, brake, max, n: 0, lamps: lampSpots(geo, kind) });
+      this.meshes.set(kind.id, { mesh, brake, max, n: 0, lamps: lampSpots(geo, kind), bar: geo.userData.bar || null });
     }
     const quad = new THREE.PlaneGeometry(1, 1);
     this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * FLARES_PER_CAR * 3), 3);
@@ -225,7 +228,9 @@ export class TrafficRenderer {
         for (let i = 0; i < 2; i++) {
           const red = i === 0;
           const lit = red ? flash.red : flash.blue;
-          world([(red ? 1 : -1) * 0.42, a.kind.height + 0.06, 0.1]);
+          // On the model's own lenses when it has them, else above the roof.
+          const spot = m.bar ? [(red ? 1 : -1) * Math.abs(m.bar[0]), m.bar[1] + 0.02, m.bar[2]] : [(red ? 1 : -1) * 0.42, a.kind.height + 0.06, 0.1];
+          world(spot);
           const k = lit ? BAR_SIZE : 0.35;
           _s.set(size * k, size * k, size * k);
           _m.compose(_p, _q.identity(), _s);

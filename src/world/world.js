@@ -20,6 +20,7 @@ import { buildTrees } from './build-trees.js';
 import { buildLots, loadModels } from './build-lots.js';
 import { HELI_MODELS } from '../police/heli-view.js';
 import { PURSUIT_MODELS } from '../police/pursuit-view.js';
+import { KIND_MODELS } from '../traffic/kinds.js';
 import { loadFonts } from '../render/fonts.js';
 import { LOTS } from './layout.js';
 import { buildStations } from './gas-station.js';
@@ -43,7 +44,7 @@ export class World {
     await loadFonts();
     w.ground = new Ground();
     await step('PLACING LAMPS AND TREES');
-    const models = await loadModels([...LOTS.map((l) => l.model), ...HELI_MODELS, ...PURSUIT_MODELS]);
+    const models = await loadModels([...LOTS.map((l) => l.model), ...HELI_MODELS, ...PURSUIT_MODELS, ...Object.values(KIND_MODELS)]);
     /** Every Blender model loaded for the world (the landmarks, the police helicopter, the spike strip). */
     w.models = models;
     w.scatter = scatterWorld(w.ground, { models });
