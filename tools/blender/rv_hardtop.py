@@ -1,23 +1,27 @@
 """
 Kenro Hardtop (rv_hardtop / rv-hardtop): 70s two-door pillarless hardtop.
 In the spirit of the Nissan Skyline GT-R "Hakosuka" KPGC10, Celica 1600GT, and Laurel:
-- Pillarless greenhouse: no B-pillar, continuous side glass from A-pillar to notched C-pillar
-- Long hood, notched C-pillar fastback, short rear trunk deck
-- Chrome bumpers front and rear standing proud of the body, front chin spoiler
+- Pillarless greenhouse: no B-pillar, continuous side glass from A-pillar to wide sloping C-pillar
+- Roof about 1.25 m long (z +0.25 to -1.00, crown 1.41 m)
+- Windshield base at about z +0.95, raked about 30 degrees (to z +0.25)
+- Level belt line at about y 0.95
+- Wide C pillar sloping from roof (z -1.00) down to trunk at about z -1.75
+- Short flat trunk at about y 0.98, hood at about y 0.92, so cabin sits in a long low body
+- Chrome bumpers front and rear standing proud of body, front chin spoiler
 - Bolt-on works over-fenders on all four arches with visible rivet heads
-- Round twin headlamps per side set in a dark grille panel (lamp, z > 0)
-- Round twin tail lamps per side set in the rear fascia (tail, z < 0)
-- Twin chrome exhaust tips under the rear bumper
+- Round twin headlamps per side set in dark grille panel (lamp, z > 0)
+- Round twin tail lamps per side set in rear fascia (tail, z < 0)
+- Twin chrome exhaust tips under rear bumper to -2.430 m
 - Four viewer wheels with deep-dish rims (wheel-*, radius 0.30 m at x = +-0.70)
 Run after kit.py.
 
 Dimensions (from G5 specification table):
 - Length: 4.40 m (nose z = +1.97, tail z = -2.43)
 - Width: 1.66 m (over-fenders x = +-0.83, mirrors to +-0.885)
-- Height: 1.41 m (roof apex y = 1.410, hood ~0.86, nose ~0.76, trunk ~0.90)
+- Height: 1.41 m (roof apex y = 1.410, hood ~0.92, trunk ~0.98)
 - Axles: front z = +1.15, rear z = -1.42 (wheelbase 2.57 m)
 - Wheels: radius 0.30 m, width 0.22 m, centers at x = +-0.70, y = 0.30, z = +1.15 and -1.42
-- Body budget: at most 1,800 triangles (everything except wheels)
+- Body budget: ideally <= 1,800, never over 2,500; full <= 2,600
 """
 
 clear()
@@ -51,33 +55,40 @@ TIRE = mat('tire', 0x151515)         # Viewer wheel tire
 RIM = mat('rim', 0x2a2c30)           # Viewer wheel rim (dark deep-dish Watanabe style rim)
 
 # Z stations along the car body hull from z = -2.39 to z = +1.93
-# Front chrome bumper and chin lip reach exactly +1.970; rear chrome bumper reaches -2.430.
+# Key transitions:
+# - Nose: +1.93 (bumper to +1.97)
+# - Front axle: +1.15
+# - Windshield base / cowl: +0.95 (hood at y ~ 0.92)
+# - Roof front: +0.25
+# - Roof rear: -1.00 (roof length = 1.25 m from +0.25 to -1.00, crown 1.41 m)
+# - Rear axle: -1.42
+# - C-pillar base / trunk front: -1.75 (wide C-pillar from -1.00 to -1.75)
+# - Tail: -2.39 (bumper to -2.43, short flat trunk at y ~ 0.98)
 Z_STATIONS = [
-    -2.39, -2.32, -2.22, -2.08, -1.90,
-    -1.70, -1.55, -1.42, -1.30, -1.15,
-    -0.95, -0.65, -0.35, -0.05, 0.25,
-    0.55, 0.85, 1.05, 1.15, 1.28,
-    1.45, 1.62, 1.78, 1.88, 1.93
+    -2.39, -2.25, -2.10, -1.92, -1.75,
+    -1.58, -1.42, -1.22, -1.00,
+    -0.70, -0.38, -0.05, 0.25,
+    0.50, 0.72, 0.95,
+    1.15, 1.35, 1.55, 1.72, 1.85, 1.93
 ]
 
 def get_profile(z):
     # 70s Japanese GT Hardtop Plan View:
     # Nose bumper (z=1.97): tapered to ~1.48m (w=0.74)
     # Front axle (z=1.15): over-fenders to 1.66m (w=0.83)
-    # Doors / waist (z=-0.65 to 0.55): pulled in to ~1.54m (w=0.77)
+    # Doors / waist (z=-1.00 to 0.95): pulled in to ~1.54m (w=0.77)
     # Rear hips (z=-1.42): muscular over-fenders to 1.66m (w=0.83)
     # Tail bumper (z=-2.43): tapered to ~1.52m (w=0.76)
     if z > FRONT_AXLE:
         t = (z - FRONT_AXLE) / (1.93 - FRONT_AXLE)
         w_body = 0.830 - 0.090 * (t ** 1.15)
-    elif z > 0.55:
-        t = (z - 0.55) / (FRONT_AXLE - 0.55)
+    elif z > 0.95:
+        t = (z - 0.95) / (FRONT_AXLE - 0.95)
         w_body = 0.770 + 0.060 * math.sin(t * math.pi / 2)
-    elif z > -0.65:
-        # Waist / doors
+    elif z >= -1.00:
         w_body = 0.770
-    elif z > REAR_AXLE:
-        t = (z - REAR_AXLE) / (-0.65 - REAR_AXLE)
+    elif z >= REAR_AXLE:
+        t = (z - REAR_AXLE) / (-1.00 - REAR_AXLE)
         w_body = 0.830 - 0.060 * math.sin(t * math.pi / 2)
     else:
         t = (REAR_AXLE - z) / (REAR_AXLE - (-2.39))
@@ -93,47 +104,43 @@ def get_profile(z):
             y_rocker = max(y_rocker, arch_lift)
 
     # Beltline / Hood / Trunk heights:
-    # Long hood: z in [0.25, 1.93] (~1.68m long) sloping from cowl (y=0.86) to nose (y=0.76)
-    # Low greenhouse: z in [-1.42, 0.25]
-    # Short notched trunk: z in [-2.39, -1.42], deck sitting at y=0.90 to 0.88
-    if z > 0.25:
-        # Long hood
-        t = (z - 0.25) / (1.93 - 0.25)
-        y_fender = 0.860 - 0.100 * (t ** 1.05)
-        y_center = y_fender - 0.012 * math.sin(t * math.pi)
-    elif z > -0.95:
-        # Cabin waist
-        t = (z - (-0.95)) / 1.20
-        y_fender = 0.870 + 0.010 * t
-        y_center = y_fender
-    elif z > -1.42:
-        # Notched C-pillar transition
-        t = (z - (-1.42)) / 0.47
-        y_fender = 0.895 - 0.025 * t
+    # Hood: at about y 0.92 forward of z = 0.95
+    # Level beltline: at about y 0.95 along cabin (z in [-1.00, 0.95])
+    # Wide C-pillar: transition from roof to trunk (z in [-1.75, -1.00])
+    # Short flat trunk: at about y 0.98 (z <= -1.75)
+    if z > 0.95:
+        t = (z - 0.95) / (1.93 - 0.95)
+        y_fender = 0.930 - 0.120 * (t ** 1.10)
+        y_center = y_fender - 0.015 * math.sin(t * math.pi)
+    elif z >= -1.00:
+        y_fender = 0.950
+        y_center = 0.950
+    elif z >= -1.75:
+        t = (z - (-1.75)) / (-1.00 - (-1.75))
+        y_fender = 0.980 - 0.030 * t
         y_center = y_fender
     else:
-        # Short trunk deck
-        t = (-1.42 - z) / (2.39 - 1.42)
-        y_fender = 0.900 - 0.020 * t
+        t = (-1.75 - z) / (2.39 - 1.75)
+        y_fender = 0.980 - 0.015 * t
         y_center = y_fender
 
-    has_cabin = (-1.42 < z < 0.25)
+    has_cabin = (-1.75 < z < 0.95)
     if has_cabin:
-        if z > -0.05:
-            # Windshield
-            t = (z - (-0.05)) / (0.25 - (-0.05))
-            y_roof = 1.410 - 0.540 * (t ** 1.05)
-            w_roof = 0.630 - 0.030 * t
-        elif z > -0.95:
-            # Flat roof
-            t = (z - (-0.50)) / 0.45
+        if z > 0.25:
+            # Windshield raked ~30 degrees: base at z = +0.95 (y=0.93), top at z = +0.25 (y=1.41)
+            t = (z - 0.25) / (0.95 - 0.25)
+            y_roof = 1.410 - 0.480 * (t ** 1.05)
+            w_roof = 0.620 - 0.040 * t
+        elif z >= -1.00:
+            # Roof: 1.25 m long (z +0.25 to -1.00), crown 1.41 m
+            t = (z - (-0.375)) / 0.625
             y_roof = 1.410 - 0.005 * (t ** 2)
-            w_roof = 0.630
+            w_roof = 0.620
         else:
-            # Notched fastback-leaning rear glass
-            t = (-0.95 - z) / (1.42 - 0.95)
-            y_roof = 1.405 - 0.505 * (t ** 1.08)
-            w_roof = 0.630 - 0.040 * t
+            # Wide C pillar sloping from roof (z -1.00) down to trunk (z -1.75)
+            t = (-1.00 - z) / (1.75 - 1.00)
+            y_roof = 1.405 - 0.425 * (t ** 1.05)
+            w_roof = 0.620 - 0.060 * t
     else:
         y_roof = y_center
         w_roof = w_body * 0.72
@@ -212,23 +219,29 @@ def add_tri(bm, v0, v1, v2):
 def get_segment_material(zm, k):
     # Top surfaces (k = 6..11)
     if 6 <= k <= 11:
-        if -0.05 <= zm <= 0.25:
-            return 'glass'   # Windshield
-        elif -1.42 <= zm <= -0.95:
-            return 'glass'   # Notched rear window
-        elif -0.95 < zm < -0.05:
+        if 0.25 <= zm <= 0.95:
+            # Windshield: glass in center (7..10), A-pillars in paint (6, 11)
+            if k in (6, 11):
+                return 'paint'
+            return 'glass'
+        elif -1.75 <= zm <= -1.00:
+            # Rear window: glass in center (7..10), C-pillars in paint (6, 11)
+            if k in (6, 11):
+                return 'paint'
+            return 'glass'
+        elif -1.00 < zm < 0.25:
             return 'paint'   # Roof panel
         else:
             return 'paint'   # Long hood or trunk deck
-    # Side upper surfaces (pillars and side windows)
+    # Side upper surfaces (pillars and side windows: k in 4, 5, 12, 13)
     elif k in (4, 5, 12, 13):
-        # PILLARLESS HARDTOP: no B-pillar! One continuous glass opening!
-        if -0.95 <= zm <= -0.05:
-            return 'glass'   # Continuous pillarless side window
-        elif -1.40 <= zm < -0.95:
-            return 'paint'   # Classic notched C-pillar
-        elif -0.05 < zm <= 0.15:
-            return 'paint'   # Slender A-pillar
+        # PILLARLESS HARDTOP: one continuous side opening along level belt line at y 0.95
+        if -1.00 <= zm <= 0.75:
+            return 'glass'   # Continuous pillarless side window opening
+        elif -1.75 <= zm < -1.00:
+            return 'paint'   # Wide C-pillar sloping down to trunk
+        elif 0.75 < zm <= 0.95:
+            return 'paint'   # A-pillar base at cowl
         else:
             return 'paint'   # Fenders / rear quarters
     else:
@@ -306,14 +319,12 @@ for key, bm in mat_bms.items():
 bm_rivets = bmesh.new()
 for axle in (FRONT_AXLE, REAR_AXLE):
     for s in (1, -1):
-        # 5 visible rivet heads per arch as quad studs on the flare
         rivet_angles = [math.pi * 0.20, math.pi * 0.35, math.pi * 0.50, math.pi * 0.65, math.pi * 0.80]
         R_rivet = 0.375
         for idx, ang in enumerate(rivet_angles):
             rz = axle - R_rivet * math.cos(ang)
             ry = 0.30 + R_rivet * math.sin(ang) * 0.88
             rx = s * 0.835
-            # Small dark square rivet face
             rw_sz = 0.008
             p0 = (rx, ry - rw_sz, rz - rw_sz)
             p1 = (rx, ry + rw_sz, rz - rw_sz)
@@ -324,66 +335,51 @@ for axle in (FRONT_AXLE, REAR_AXLE):
             else:
                 add_quad(bm_rivets, p0, p1, p2, p3)
 
-        # Over-fender flare arch band
         box(f'flare_band_{axle}_{s}', ACCENT, s * 0.825, 0.30, axle, 0.020, 0.32, 0.72)
 
 _obj('overfender_rivets', bm_rivets, ACCENT)
 
 # --- Front Fascia: Chrome Bumper, Chin Spoiler, Dark Grille & Round Twin Headlamps ---
-# Front chrome bumper standing proud at z ~ 1.950 to 1.968
 box('front_bumper_chrome', CHROME, 0, 0.44, 1.952, 1.54, 0.08, 0.030)
-# Front bumper guards / overriders
 for s in (1, -1):
     box(f'bumper_guard_f_{s}', CHROME, s * 0.32, 0.42, 1.956, 0.035, 0.12, 0.022)
 
-# Front chin spoiler under chrome bumper (in accent black)
 box('front_chin_spoiler', ACCENT, 0, 0.20, 1.948, 1.52, 0.06, 0.036)
-
-# Front license plate at z = 1.968 (max z = 1.970)
 box('plate_front', PLATE, 0, 0.28, 1.968, 0.32, 0.13, 0.004)
 
-# Dark front grille surround & mesh panel
 box('grille_surround', CHROME, 0, 0.64, 1.936, 1.44, 0.16, 0.012)
 box('grille_mesh', UNDER, 0, 0.64, 1.938, 1.40, 0.14, 0.008)
 
-# Round twin headlamps per side (4 lamps total) with chrome bezels and emissive lamp lenses (z > 0)
 headlamp_x = [0.42, 0.58]
 for s in (1, -1):
     for idx, hx in enumerate(headlamp_x):
         cylinder(f'headlight_ring_{s}_{idx}', CHROME, s * hx, 0.64, 1.936, 0.070, 0.018, sides=8, axis='z')
         cylinder(f'headlight_lens_{s}_{idx}', LAMP, s * hx, 0.64, 1.950, 0.060, 0.010, sides=8, axis='z')
 
-# Fender mirrors (classic Japanese fender mirrors mounted on front fenders at z ~ 1.35)
 for s in (1, -1):
-    box(f'fender_stalk_{s}', CHROME, s * 0.72, 0.84, 1.35, 0.02, 0.07, 0.02)
-    cylinder(f'fender_mirror_{s}', CHROME, s * 0.72, 0.91, 1.35, 0.045, 0.014, sides=8, axis='z')
-    cylinder(f'fender_glass_{s}', GLASS, s * 0.72, 0.91, 1.346, 0.040, 0.004, sides=8, axis='z')
+    box(f'fender_stalk_{s}', CHROME, s * 0.72, 0.88, 1.35, 0.02, 0.07, 0.02)
+    cylinder(f'fender_mirror_{s}', CHROME, s * 0.72, 0.95, 1.35, 0.045, 0.014, sides=8, axis='z')
+    cylinder(f'fender_glass_{s}', GLASS, s * 0.72, 0.95, 1.346, 0.040, 0.004, sides=8, axis='z')
 
-# Door handles
 for s in (1, -1):
-    box(f'handle_{s}', CHROME, s * 0.774, 0.86, -0.30, 0.012, 0.025, 0.10)
+    box(f'handle_{s}', CHROME, s * 0.774, 0.92, -0.30, 0.012, 0.025, 0.10)
 
 # --- Rear Fascia: Chrome Bumper, Round Twin Taillights & Twin Exhausts ---
-# Rear chrome bumper standing proud at z ~ -2.408 to -2.430
 box('rear_bumper_chrome', CHROME, 0, 0.46, -2.415, 1.56, 0.08, 0.030)
 for s in (1, -1):
     box(f'bumper_guard_r_{s}', CHROME, s * 0.32, 0.44, -2.418, 0.035, 0.12, 0.022)
 
-# Rear license plate at z = -2.426 (tub at -2.405)
-box('tailgate_tub', TRIM, 0, 0.64, -2.405, 0.36, 0.16, 0.016)
-box('plate_rear', PLATE, 0, 0.64, -2.426, 0.32, 0.14, 0.004)
+box('tailgate_tub', TRIM, 0, 0.68, -2.405, 0.36, 0.16, 0.016)
+box('plate_rear', PLATE, 0, 0.68, -2.426, 0.32, 0.14, 0.004)
 
-# Dark rear taillight backplate panel
-box('taillight_panel', TRIM, 0, 0.72, -2.400, 1.44, 0.15, 0.014)
+box('taillight_panel', TRIM, 0, 0.74, -2.400, 1.44, 0.15, 0.014)
 
-# Round twin tail lamps per side (4 lamps total) with chrome bezels and red emissive tail lenses (z < 0)
 taillamp_x = [0.42, 0.58]
 for s in (1, -1):
     for idx, tx in enumerate(taillamp_x):
-        cylinder(f'taillight_ring_{s}_{idx}', CHROME, s * tx, 0.72, -2.398, 0.068, -0.018, sides=8, axis='z')
-        cylinder(f'taillight_lens_{s}_{idx}', TAIL, s * tx, 0.72, -2.412, 0.058, -0.010, sides=8, axis='z')
+        cylinder(f'taillight_ring_{s}_{idx}', CHROME, s * tx, 0.74, -2.398, 0.068, -0.018, sides=8, axis='z')
+        cylinder(f'taillight_lens_{s}_{idx}', TAIL, s * tx, 0.74, -2.412, 0.058, -0.010, sides=8, axis='z')
 
-# Twin chrome sports exhaust tips on the right side under rear bumper (x = 0.45, 0.55) extending to z = -2.430
 for ex in (0.46, 0.56):
     cylinder(f'exhaust_tip_{ex}', CHROME, ex, 0.26, -2.31, 0.036, -0.120, sides=8, axis='z')
     cylinder(f'exhaust_bore_{ex}', UNDER, ex, 0.26, -2.426, 0.029, -0.004, sides=8, axis='z')
@@ -404,7 +400,6 @@ def make_wheel(name, cx, cz):
     x_in_tread = cx - sgn * (rw / 2.0 - shoulder)
     x_out_tread = cx + sgn * (rw / 2.0 - shoulder)
     x_out_side = cx + sgn * (rw / 2.0)
-    # Deep-dish rim configuration: step in deep to the hub
     x_seat = cx + sgn * (rw / 2.0 - 0.055)
     x_hub = cx + sgn * (rw / 2.0 - 0.088)
 

@@ -244,6 +244,14 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.64 (2026-10-08)
+
+Street racers: Kenro Hardtop rework (`rv_hardtop`).
+
+- `tools/blender/rv_hardtop.py`: Cabin proportions corrected per review: roof length extended to 1.25 m (z from +0.25 to -1.00 m, crown at y = 1.410 m); windshield raked ~33 degrees from base at z = +0.95 (cowl at y ~ 0.93) to roof front at z = +0.25; level belt line at y = 0.95 with one continuous pillarless side glass opening; wide C-pillar sloping down from roof (z = -1.00) to short flat trunk deck (y = 0.98, z from -1.75 to -2.39); hood at y ~ 0.92, giving the car a long low body.
+- 1,662 body triangles (budget <= 1,800), 2,366 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_hardtop.json` and `assets/models/rv_hardtop_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.63 (2026-10-08)
 
 Street racers: Kenro Hardtop (`rv_hardtop`).
