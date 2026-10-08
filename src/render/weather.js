@@ -24,10 +24,10 @@ const lerp = (a, b, t) => a + (b - a) * t;
 /**
  * What a level of rain looks like.
  * @param {number} level 0 to 1
- * @returns {{ wet: number, fogNear: number, fogFar: number, streaks: number, fall: number, wind: number, alpha: number }}
+ * @returns {{ wet: number, fogNear: number, fogFar: number, streaks: number, fall: number, wind: number, alpha: number, cloud: number }}
  *   `wet` how soaked the roads are (they soak before the rain is heavy and stay so), the fog's
- *   distances, how many streaks are drawn, the fall speed (m/s), the sideways wind (m/s) and the
- *   streaks' brightness
+ *   distances, how many streaks are drawn, the fall speed (m/s), the sideways wind (m/s), the
+ *   streaks' brightness and the cloud cover (a few wisps when clear, a solid sky in a storm)
  */
 export function weatherLook(level) {
   const t = Math.max(0, Math.min(1, level));
@@ -39,6 +39,7 @@ export function weatherLook(level) {
     fall: lerp(11, 17, t),
     wind: lerp(0.5, 4, t),
     alpha: lerp(0.22, 0.5, t),
+    cloud: Math.min(1, 0.18 + t * 1.1),
   };
 }
 

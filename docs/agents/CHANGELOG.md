@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.10.5 (2026-10-09)
+
+A day and night cycle, and clouds that come with the rain.
+
+- `render/daylight.js` (pure): the hour and the cloud cover become the sky's colors, the fog, the
+  hemisphere and key light (the sun by day, the moon by night), the stars, the sun and moon, and how
+  bright the lamps and the lit windows are. Settings has a TIME OF DAY row: night (the default), dusk,
+  dawn, day or a cycle that runs a day in 24 minutes from dusk; `__lowbeam.time(...)`.
+- `render/sky.js` is now `SkyView`: the dome is a shader with banded clouds that drift, a glow round
+  the sun, the town's glow on the horizon at night, the stars, and the moon and the sun crossing the
+  sky (the moon used to stand still).
+- `psx.js`: `uLamp` scales the street lamp, shop and neon pools and the wet reflections, `uWindows` the
+  lit windows (a material with an `emissiveMap`); headlight pools and lamp flares keep 30 % by day, so
+  a day looks like a day with the lamps out. The player's local light follows the lamps too.
+- `world.js`: `setTime`, `startCycle`, `applySky` (hemisphere, key light, fog, background, uniforms)
+  and `stepSky`, run each frame while driving.
+- The weather brings the cloud (`weatherLook(...).cloud`: wisps when clear, 0.64 in a drizzle, a solid
+  sky in rain and a storm): rain greys the sky and the fog, puts the stars and the moon out and dims
+  the sun.
+- Docs: the final milestone, shipping to GitHub Pages by hand once, not on every commit
+  (`docs/DESIGN.md` section 12, the task list); `B3-wet-weather.md` gains part 4, what the hour does to
+  the traffic, the racers, the police and the sound; `C5-weather.md` lists what is left of the look.
+- `tests/daylight.test.mjs`: 10 tests (the sun's path, noon against midnight, the lamps at dusk,
+  clouds, every hour finite and smooth, the weather's cloud, the clock). 441 pass.
+
 ## 0.10.4 (2026-10-09)
 
 Review of Gemini's 0.9.67 and 0.9.68; the Vespera Zero and the Kenro Sakura S in the game.

@@ -40,8 +40,8 @@ and leaves `package.json` alone.
 | [G5-street-racers.md](G5-street-racers.md) | Assets | 10 of 11 built and in the game (0.9.58 to 0.9.68); the last car (0.9.69) next, then G7 | The other eleven street racers in Blender, two cars per review |
 | [B2-driving-patch.md](B2-driving-patch.md) | Backend (Gemini) | done (0.9.20 to 0.9.28) | From Jc's test drive: tougher cars, bumped cars that drive on or get out of the way, every car solid (no phasing into roadblocks), racers that brake, police that drive like people, the assigned pool and reinforcements, helicopters that refuel, louder traffic and exhaust |
 | [C3-patch-queue.md](C3-patch-queue.md) | Claude | done (0.9.81 to 0.9.96; part 7's banners came with B2) | From the same drive: the Kurogane Line median, Most Wanted's radar, the pursuit HUD after Jc's sketch, the HUD fishnet, vignette and blur, skid marks and smoke, more stations, hideouts and garages; then Route 1's sign gantries, the traffic signals, zebra crossings, vending machines, utility poles, direction signs |
-| [C5-weather.md](C5-weather.md) | Claude | the look is done (0.10.3: wet roads, rain, fog, Settings); the sky and the lamps' halos next | Rain for the night drive, as visuals first |
-| [B3-wet-weather.md](B3-wet-weather.md) | Backend (Gemini) | after G5 | What rain does to the drive: grip, sound, traffic and the police |
+| [C5-weather.md](C5-weather.md) | Claude | rain done (0.10.3), the day and night cycle with clouds done (0.10.5); what is left of the look is in the brief | Rain and a day and night cycle, as visuals first |
+| [B3-wet-weather.md](B3-wet-weather.md) | Backend (Gemini) | after G5 | What rain and the hour do to the drive: grip, sound, traffic, the racers and the police |
 | [C4-kurogane-ramps.md](C4-kurogane-ramps.md) | Claude (and the backend for the links) | planned | The Kurogane Line's ramps down to downtown: slips off a deck, parapets, portals, streets, links |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
 | [G7-police-station.md](G7-police-station.md) | Assets | after the G5 batch in hand (0.10.50 on) | A district police station with a roof pad, and the roadblock barrier |
@@ -50,6 +50,33 @@ and leaves `package.json` alone.
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view
 contract (`archive/A13-pursuit-hud.md`) and the Most Wanted design for the police
 (`archive/A17-police.md`, section "The target").
+
+## The final milestone: shipping to GitHub Pages
+
+The game is a static page: `index.html`, `src/`, `assets/` and the vendored `vendor/`, no build
+step and no server code (the dev server's `/__shot` and `/__file` endpoints are for development only
+and the game must not need them). The last milestone is to ship it to GitHub Pages so anyone can play
+it in a browser.
+
+It is the last milestone on purpose. Every push to a repository that publishes with Pages (or that has
+an Actions workflow) makes GitHub run a job, and this repository takes a commit every few minutes
+while the agents work. So until the game is finished there is no `.github/workflows/` and Pages stays
+off; at the milestone, deployment is one manual step (a `workflow_dispatch` workflow, or a push of a
+release branch by hand), never a job on every commit.
+
+Before it ships:
+- The page works from a subpath (`https://<user>.github.io/Lowbeam/`): every path relative, the
+  import map in `index.html` too (check it with the dev server's page moved to a subfolder).
+- Size and loading: `assets/` is about 41 MB (the recorded soundtrack is most of it); the loading
+  screen has to cover it on a slow line, and Pages' limits (1 GB, 100 MB a file) hold.
+- Audio starts only after a click or key (browser autoplay rules): the title screen's first input does it.
+- `localStorage` saves (`lowbeam.v1`) survive a version bump, with defaults for anything missing.
+- No reference images (`concepts/` stays out of git) and nothing whose license is not clear: the
+  music tracks, the fonts (`assets/fonts/` are OFL) and any model that came from outside.
+- A playthrough in Chrome, Firefox and Safari at 1280 by 720 and at a laptop's size; the frame rate on
+  a mid-range machine (nothing has been measured on real hardware yet).
+
+Nobody sets this up before Jc says the game is done. It is not a task for any agent until then.
 
 ## Working in the shared tree
 

@@ -224,4 +224,31 @@ docs/           DESIGN.md (this plan), agents/ARCHITECTURE.md, agents/CHANGELOG.
 ## 11. Later (not in v0.1)
 
 Traffic and police (the obvious Most Wanted step), more stages and weather, upgrades, a day/night clock, tunnels and the expressway, gamepad
-rumble, a proper save slot.
+rumble, a proper save slot. (Traffic, police, the expressway, rain and a day/night clock are in since
+0.9.x to 0.10.5; see the changelog.)
+
+## 12. Shipping: GitHub Pages, the final milestone
+
+The game is a static page: `index.html`, `src/`, `assets/` and the vendored `vendor/`, no build
+step and no server code (the dev server's `/__shot` and `/__file` endpoints are for development only
+and the game must not need them). The last milestone is to ship it to GitHub Pages so anyone can play
+it in a browser.
+
+It is the last milestone on purpose. Every push to a repository that publishes with Pages (or that has
+an Actions workflow) makes GitHub run a job, and this repository takes a commit every few minutes
+while the agents work. So until the game is finished there is no `.github/workflows/` and Pages stays
+off; at the milestone, deployment is one manual step (a `workflow_dispatch` workflow, or a push of a
+release branch by hand), never a job on every commit.
+
+Before it ships:
+- The page works from a subpath (`https://<user>.github.io/Lowbeam/`): every path relative, the
+  import map in `index.html` too (check it with the dev server's page moved to a subfolder).
+- Size and loading: `assets/` is about 41 MB (the recorded soundtrack is most of it); the loading
+  screen has to cover it on a slow line, and Pages' limits (1 GB, 100 MB a file) hold.
+- Audio starts only after a click or key (browser autoplay rules): the title screen's first input does it.
+- `localStorage` saves (`lowbeam.v1`) survive a version bump, with defaults for anything missing.
+- No reference images (`concepts/` stays out of git) and nothing whose license is not clear: the
+  music tracks, the fonts (`assets/fonts/` are OFL) and any model that came from outside.
+- A playthrough in Chrome, Firefox and Safari at 1280 by 720 and at a laptop's size; the frame rate on
+  a mid-range machine (nothing has been measured on real hardware yet).
+

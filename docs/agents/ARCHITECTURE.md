@@ -44,7 +44,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - A test that needs the island (the ground, the traffic net, the scatter) takes it from
@@ -113,7 +113,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/render/fonts.js` | `FONT` (display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, awaited before any canvas is drawn |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shop signs, awnings, noise |
 | `src/render/cameras.js` | `CameraRig`: chase, car, hood, bumper, cockpit |
-| `src/render/sky.js` | Gradient dome, stars, moon |
+| `src/render/sky.js`, `daylight.js` | The sky (`SkyView`: a gradient dome with banded clouds, stars, moon, sun) and the clock (`skyLook(hour, cloud)`: palettes, light, fog, lamps) |
 | `src/world/layout.js` | Authored data: roads, viaducts, the city frame, ramps, stations, tolls, lots, zones, rally, `AREA_JP` |
 | `src/world/roads.js`, `spline.js`, `ground.js` | Road profiles (smoothing, grade clamp, lifts, junction blending), the arc-length path, `Ground.at(x, z, y)` |
 | `src/world/heightfield.js`, `island.js` | Terrain and the coast |
@@ -158,9 +158,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.3)
+## Current state (0.10.5)
 
-431 tests pass; the type check is clean. By area:
+441 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -272,8 +272,18 @@ model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hosh
 Kagero Hot-GT, Kagero Lancer-X, Halden Drifter, Tsurugi Wedge, Kenro Hardtop, Hoshi Beat and Kagero
 RS-Wide, Vespera Zero and Kenro Sakura S racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
 
+**Time of day.** Night (the default), dusk, dawn, day or a cycle (`render/daylight.js`; Settings,
+saved as `time`; `__lowbeam.time('day' | 18.5 | 'cycle')`). A cycle runs from 17:36 and a day takes 24
+minutes. `skyLook(hour, cloud)` gives the dome's colors, the fog, the hemisphere and key light (the sun
+by day, the moon by night, whichever is brighter), the stars, and how bright the lamps and the lit
+windows are (`uLamp`, `uWindows`: street lamps, shops and windows are out by day and come on at dusk;
+headlight pools and flares keep 30 %). The dome is a shader (`SkyView`) with banded clouds, a sun and
+a moon that cross the sky, a glow round the sun and the town's glow on the horizon at night. The world
+applies it each frame (`World.stepSky`).
+
 **Weather.** Clear, drizzle, rain or storm (`render/weather.js`; Settings, saved as `weather`;
-`__lowbeam.weather('storm')`). A level from 0 to 1 sets how wet the roads are (`uWet`: roads, lanes,
+`__lowbeam.weather('storm')`). The weather sets the cloud cover (a few wisps when clear, a solid grey
+sky in rain: the stars and the moon go out, the sun dims, the sky and the fog turn grey). A level from 0 to 1 sets how wet the roads are (`uWet`: roads, lanes,
 shoulders, sidewalks, zebras and stop lines darken and every street lamp throws a bright, stretched
 reflection toward the viewer along the road), how far the fog closes in (420 m dry, 230 m in a storm),
 and how many one-pixel rain streaks fall in a box round the camera (`RainView`, up to 3,200, placed in
@@ -365,7 +375,7 @@ square and a saw through a band-pass, panned, muffled in the cockpit) and the he
 (`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs).
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
-speedometer style, the weather, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
+speedometer style, the weather, the time of day, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
 routing, a 220 px minimap after Most Wanted's radar (the sea and the lake in blue, grey roads, the
 places as round badges; the heat as a flame and "x N" at the top left and an amber rim arc filling
 with the progress to the next level; police cars as small chevrons flashing red and blue, grey on
@@ -384,6 +394,8 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The GPS route test measures planning time and can fail when the machine is busy.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
 - Nothing has been checked at real frame rates on a gaming desktop yet.
+- The game is not published. Shipping it to GitHub Pages is the last milestone (`docs/DESIGN.md`
+  section 12), done by hand once, not on every commit: no workflows until then.
 - The steepest streets climb 12.6 % over 10 m (Minatomachi and Shinmachi, just off the Sotokan
   ring); the Route 18 ramps climb at 6.5 %.
 - The Kurogane Line joins only Route 1's inner carriageway (the outer one would need ramps flying

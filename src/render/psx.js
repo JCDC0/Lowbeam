@@ -28,6 +28,9 @@ export const psxUniforms = {
   uPoolsOn: { value: 0 },
   /** How wet the road surfaces are, 0 dry to 1 soaked (`render/weather.js`). */
   uWet: { value: 0 },
+  /** How bright the world's lamps and the lit windows are, 1 at night to 0 by day (`render/daylight.js`). */
+  uLamp: { value: 1 },
+  uWindows: { value: 1 },
   /**
    * Moving lights (traffic/render.js, heli-view.js): headlight beams, police light bars, lit
    * indicators, the searchlight. Position and range, then direction and the cosine where the cone
@@ -88,6 +91,7 @@ export function addBeamLight(x, y, z, color, dir) {
  */
 const POOL_FRAGMENT = /* glsl */ `
 uniform float uWet;
+uniform float uLamp;
 vec3 gWet = vec3(0.0);
 void wetStreak(vec3 p, vec3 n, vec3 lp, float range, vec3 col, float e) {
   if (uWet <= 0.001 || n.y < 0.9 || e <= 0.0) return;
@@ -103,7 +107,7 @@ void wetStreak(vec3 p, vec3 n, vec3 lp, float range, vec3 col, float e) {
   float puddle = smoothstep(0.5 - uWet * 0.35, 0.8, 0.5 + 0.5 * sin(p.x * 0.13 + 2.0 * sin(p.z * 0.11)) * sin(p.z * 0.17 + 2.0 * sin(p.x * 0.09)));
   float s = exp(-(c * c) / (width * width)) * along * clamp(e * 6.0, 0.0, 1.0) * mix(0.5, 1.0, puddle);
   s = floor(s * 4.0 + 0.5) / 4.0;
-  gWet += col * s * uWet * 2.2;
+  gWet += col * s * uWet * 2.2 * uLamp * uLamp;
 }
 uniform sampler2D uPoolLights;
 uniform sampler2D uPoolCells;
@@ -127,7 +131,7 @@ vec3 beamLight(vec3 p, vec3 n) {
     float r = d / B.w;
     float e = cone * (1.0 - r) * (1.0 - r) * 1.6;
     e = floor(e * POOL_BANDS + 0.35) / POOL_BANDS;
-    sum += uBeamCol[b].rgb * e * clamp((dot(n, l) + 0.3) / 1.3, 0.0, 1.0);
+    sum += uBeamCol[b].rgb * e * clamp((dot(n, l) + 0.3) / 1.3, 0.0, 1.0) * (0.3 + 0.7 * uLamp);
   }
   return sum;
 }
@@ -159,7 +163,7 @@ vec3 poolLight(vec3 p, vec3 n) {
       }
       e = floor(e * POOL_BANDS + 0.35) / POOL_BANDS;
       wetStreak(p, n, L0.xyz, L0.w, L1.rgb, e);
-      sum += L1.rgb * e * lam;
+      sum += L1.rgb * e * lam * uLamp;
     }
   }
   return sum;
@@ -194,7 +198,7 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false, pain
     let fs = shader.fragmentShader;
     let extra = '';
     if (baked) {
-      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir', 'uBeamCol', 'uWet']) shader.uniforms[k] = psxUniforms[k];
+      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir', 'uBeamCol', 'uWet', 'uLamp']) shader.uniforms[k] = psxUniforms[k];
       vs = 'attribute vec3 bake;\nvarying vec3 vBake;\nvarying vec3 vPoolPos;\nvarying vec3 vPoolN;\n' + vs;
       vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
 vBake = bake;
@@ -228,11 +232,16 @@ vPoolN = normalize(mat3(modelMatrix) * poolN);`);
       fs = 'uniform vec3 uLocalColor;\nuniform vec3 uLocalDir;\n' + fs;
       extra += '\ntotalEmissiveRadiance += uLocalColor * diffuseColor.rgb * (0.3 + 0.7 * max(dot(normal, uLocalDir), 0.0));';
     }
+    if (mat.emissiveMap) {
+      shader.uniforms.uWindows = psxUniforms.uWindows;
+      fs = 'uniform float uWindows;\n' + fs;
+      extra = '\ntotalEmissiveRadiance *= uWindows;' + extra;
+    }
     fs = fs.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>' + extra);
     shader.vertexShader = vs;
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}${wet ? '-wet' : ''}`;
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}${wet ? '-wet' : ''}${mat.emissiveMap ? '-win' : ''}`;
   return mat;
 }
 
@@ -282,11 +291,12 @@ export function psxLine(params = {}) {
  */
 export function psxFlare(map, far) {
   return new THREE.ShaderMaterial({
-    uniforms: { map: { value: map }, uFar: { value: far }, uSnap: psxUniforms.uSnap, uSnapOn: psxUniforms.uSnapOn },
+    uniforms: { map: { value: map }, uFar: { value: far }, uSnap: psxUniforms.uSnap, uSnapOn: psxUniforms.uSnapOn, uLamp: psxUniforms.uLamp },
     vertexShader: /* glsl */ `
       uniform vec2 uSnap;
       uniform float uSnapOn;
       uniform float uFar;
+      uniform float uLamp;
       attribute vec3 aDir;
       varying vec2 vUv;
       varying vec3 vTint;
@@ -305,7 +315,7 @@ export function psxFlare(map, far) {
           gl_Position.xy = floor(gl_Position.xy / gl_Position.w * grid + 0.5) / grid * gl_Position.w;
         }
         vUv = uv;
-        vTint = instanceColor * (0.25 + 0.75 * facing) * fade;
+        vTint = instanceColor * (0.25 + 0.75 * facing) * fade * (0.3 + 0.7 * uLamp);
       }`,
     fragmentShader: /* glsl */ `
       uniform sampler2D map;

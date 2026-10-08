@@ -41,6 +41,23 @@ Versions: the backend range, one commit per part, stop for Claude's review after
 - Police units' grip falls like the player's (part 1), so pursuits in the rain are closer.
 - Tests: a unit loses a player at a distance in a storm that it keeps in the dry.
 
+## 4. The hour of the day (after parts 1 to 3)
+
+Claude made the day and night cycle (0.10.5; `render/daylight.js`; `world.hour`, `world.look.day`,
+`world.look.lamp`). What the hour should do to the game:
+
+- Street racers only on the road after dusk (`look.day` under 0.3): by day the five on Route 1 are
+  replaced by ordinary traffic, and they return as the lamps come on. Their count is unchanged at
+  night.
+- Traffic density by hour: about 30 % more civilians by day, a little over half at night (a
+  `TRAFFIC` count factor in `traffic/sim.js`), and a short rush at about 8:00 and 18:00.
+- Police sight: a unit sees 150 m on a clear line at night as today and 180 m by day; a helicopter's
+  searchlight only works when `look.lamp` is over 0.5 (by day it follows with no light and sees by line
+  of sight to 200 m).
+- Audio: crickets and a night wind by night, cicadas and distant traffic by day, the ambience
+  crossfading with `look.lamp`; the soundtrack's `night` mood stays a night one.
+- Tests on the pure parts (the factors for an hour) and a measured count of agents by hour.
+
 ## Report
 
 After each part: the commit hash, what changed, test counts, the numbers measured before and after

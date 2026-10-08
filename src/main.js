@@ -21,7 +21,8 @@ import { audio } from './audio/audio.js';
 import { store } from './core/store.js';
 import { applyNet, speedFx } from './ui/screen-fx.js';
 import { LEVELS } from './render/weather.js';
-import { currentWeather } from './ui/weather-setting.js';
+import { HOURS } from './render/daylight.js';
+import { applyTime, currentTime, currentWeather } from './ui/weather-setting.js';
 import { placeSignals, SIGNAL } from './world/signals.js';
 import { SignalView } from './world/build-signals.js';
 
@@ -132,6 +133,7 @@ async function enterWorld() {
     map.setWorld(world);
   }
   world.setWeather(LEVELS[currentWeather()]);
+  applyTime(world, currentTime());
   drive.start(garage.spec, garage.model.paintIndex);
   setState('drive');
 }
@@ -276,7 +278,10 @@ function frame(now) {
   }
   if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
   if (signals && drive) signals.update(drive.traffic.time, stage.camera.position);
-  if (world) world.stepWeather(dt, state === 'drive' && drive?.car ? drive.car.state : undefined);
+  if (world) {
+    world.stepWeather(dt, state === 'drive' && drive?.car ? drive.car.state : undefined);
+    if (state === 'drive' || state === 'free') world.stepSky(dt);
+  }
   if (drive?.car) tracker.update(drive.car, dt);
   rHud.update(tracker, dt);
   // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.
@@ -312,6 +317,11 @@ window.__lowbeam = {
   /** Sets the weather by name ('clear', 'drizzle', 'rain', 'storm') or by level, 0 to 1. @param {string | number} w */
   weather(w) {
     world.setWeather(typeof w === 'number' ? w : LEVELS[w] ?? 0);
+  },
+  /** Fixes the time of day by hour (0 to 24) or by name ('night', 'dusk', 'dawn', 'day'), or runs it ('cycle'). @param {string | number} t */
+  time(t) {
+    if (t === 'cycle') world.startCycle();
+    else world.setTime(typeof t === 'number' ? t : HOURS[t] ?? HOURS.night);
   },
   /** Puts the free camera somewhere and draws one frame. */
   fly(x, y, z, yaw = fly.yaw, pitch = fly.pitch) {
