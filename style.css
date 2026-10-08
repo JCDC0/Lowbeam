@@ -1257,3 +1257,34 @@ html, body {
 #pursuit-hud .ph-result span { font-size: 13px; letter-spacing: 0.1em; color: var(--amber); }
 #pursuit-hud .ph-panel[data-state='escaped'] .ph-result b { color: #4ce07a; }
 #pursuit-hud .ph-panel[data-state='busted'] .ph-result b { color: var(--red); }
+
+/* Screen FX (C3 part 4): the settings row's three pills, and the fishnet over the HUD panels. */
+.ac-pills { display: flex; gap: 6px; }
+.ac-pill.off { opacity: 0.45; }
+.ac-pill.focus { outline: 1px solid var(--amber); outline-offset: 2px; }
+.hud-net #pursuit-hud .ph-panel,
+.hud-net .banner b,
+.hud-net .toast,
+.hud-net #hud .prompt { position: relative; }
+.hud-net #pursuit-hud .ph-panel::after,
+.hud-net .banner b::after,
+.hud-net .toast::after,
+.hud-net #hud .prompt::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 7px);
+}
+/* The settings and controls frames: the key hint bar flows after the body instead of sitting on
+   the screen's bottom edge over the last rows, and the body scrolls when the screen is short. */
+.ac-frame .hints { position: static; margin-top: 10px; flex: none; }
+.ac-frame .ac-body { min-height: 0; overflow-y: auto; }
+.ac-row .ac-pills { grid-column: 2 / 4; }
+@media (max-height: 820px) {
+  .ac-header { margin-bottom: 10px; }
+  .ac-settings-table { gap: 6px; }
+  .ac-row { padding: 7px 14px; }
+}

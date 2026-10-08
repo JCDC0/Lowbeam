@@ -1,5 +1,8 @@
 import { audio, CHANNELS } from '../audio/audio.js';
 import { store } from '../core/store.js';
+import { SCREEN_FX, fxOn, setFx } from './screen-fx.js';
+
+const FX_LABELS = { net: 'NET', vignette: 'VIGNETTE', blur: 'BLUR' };
 import { RENDER_HEIGHTS, DEFAULT_LINES } from '../render/stage.js';
 import { CLUSTER_STYLES } from './cluster-styles.js';
 import { CONTROL_ACTIONS, ACTION_LABELS, PAD_LABELS, KEYS, keyLabel, rebind } from '../core/input.js';
@@ -29,7 +32,7 @@ export function titleScreen(ui, version) {
   return screen(
     ui,
     'title',
-    `<div class="logo"><h1>LOWBEAM</h1><div class="sub-jp">黒鉄ナイトラン</div><h2>KIRIGAOKA NIGHT RALLY</h2></div>
+    `<div class="logo"><h1>LOWBEAM</h1><div class="sub-jp">黒鉄ナイトラン</div><h2>KUROGANE NIGHT RUN</h2></div>
      <div class="press">PRESS ENTER</div>
      <div class="foot">v${version} &nbsp; ALL MODELS, TEXTURES AND SOUNDS MADE IN CODE</div>`
   );
@@ -284,6 +287,10 @@ export function settingsScreen(ui, stage = null) {
             <span class="ac-pill click" data-act="toggle-cluster" id="set-cluster-val">PER CAR</span>
             <span class="hints-inline">PER CAR / CLASSIC / RACING / TWIN / SPORT / DIGITAL / VFD</span>
           </div>
+          <div class="ac-row click" data-row="fx">
+            <span class="ac-rlabel">SCREEN FX</span>
+            <span class="ac-pills">${SCREEN_FX.map((f) => `<span class="ac-pill click" data-act="toggle-fx" data-fx="${f}" id="set-fx-${f}">${FX_LABELS[f]}</span>`).join('')}</span>
+          </div>
           <div class="ac-row click" data-row="controls">
             <span class="ac-rlabel">CONTROLS</span>
             <span class="ac-pill click" data-act="open-controls">CONFIGURE</span>
@@ -310,6 +317,7 @@ export function settingsScreen(ui, stage = null) {
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
           <div class="ac-info-row"><span class="k">SPEEDOMETER</span><span class="v">PER CAR / 6 STYLES</span></div>
+          <div class="ac-info-row"><span class="k">SCREEN FX</span><span class="v">NET / VIGNETTE / BLUR</span></div>
           <div class="ac-info-row"><span class="k">CONTROLS</span><span class="v">KEY BINDINGS</span></div>
           <div class="ac-notice">
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
@@ -332,6 +340,10 @@ export function settingsScreen(ui, stage = null) {
   const CLUSTER_CHOICES = ['car', ...CLUSTER_STYLES];
   const CLUSTER_LABELS = { car: 'PER CAR', classic: 'CLASSIC', tuner: 'RACING TACH', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
   let sel = 0;
+  /** Which of the SCREEN FX row's three pills A and D point at. */
+  let fxSel = 0;
+  /** @type {string | null} */
+  let clickedFx = null;
   /** @type {string | null} */
   let clickedAction = null;
   /** @type {string | null} */
@@ -339,7 +351,13 @@ export function settingsScreen(ui, stage = null) {
   /** @type {number | null} */
   let clickedStep = null;
 
-  const mark = () => rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
+  const mark = () => {
+    rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
+    SCREEN_FX.forEach((f, i) => /** @type {HTMLElement} */ (s.el.querySelector(`#set-fx-${f}`)).classList.toggle('focus', rows[sel]?.dataset.row === 'fx' && i === fxSel));
+  };
+  const FX_ROW = rows.findIndex((r) => r.dataset.row === 'fx');
+  const AUDIO_ROW = rows.findIndex((r) => r.dataset.row === CHANNELS[0]);
+  const CONTROLS_ROW = rows.findIndex((r) => r.dataset.row === 'controls');
 
   function setRenderHeight(h) {
     store.set('renderHeight', h);
@@ -374,6 +392,12 @@ export function settingsScreen(ui, stage = null) {
     clusterEl.classList.toggle('cyan', curCluster !== 'car');
     clusterEl.classList.toggle('on', curCluster === 'car');
 
+    for (const f of SCREEN_FX) {
+      const pill = /** @type {HTMLElement} */ (s.el.querySelector(`#set-fx-${f}`));
+      pill.classList.toggle('on', fxOn(f));
+      pill.classList.toggle('off', !fxOn(f));
+    }
+
     for (const c of CHANNELS) {
       const setting = audio.settings[c];
       const pill = /** @type {HTMLElement | null} */ (s.el.querySelector(`#set-pill-${c}`));
@@ -404,6 +428,7 @@ export function settingsScreen(ui, stage = null) {
     if (act) {
       clickedAction = (/** @type {HTMLElement} */ (act)).dataset.act || null;
       clickedCh = (/** @type {HTMLElement} */ (act)).dataset.ch || null;
+      clickedFx = (/** @type {HTMLElement} */ (act)).dataset.fx || null;
       return;
     }
     const row = target.closest('.ac-row');
@@ -467,7 +492,12 @@ export function settingsScreen(ui, stage = null) {
         clickedCh = null;
         clickedStep = null;
 
-        if (action === 'toggle-trans') {
+        if (action === 'toggle-fx' && clickedFx) {
+          setFx(/** @type {import('./screen-fx.js').ScreenFx} */ (clickedFx));
+          clickedFx = null;
+          audio.ui('select');
+          sync();
+        } else if (action === 'toggle-trans') {
           const cur = store.get('transmission', /** @type {string} */ ('auto'));
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
@@ -515,7 +545,11 @@ export function settingsScreen(ui, stage = null) {
         mark();
       }
       if (input.pressed('left')) {
-        if (sel === 0) {
+        if (sel === FX_ROW) {
+          fxSel = (fxSel + SCREEN_FX.length - 1) % SCREEN_FX.length;
+          audio.ui('move');
+          mark();
+        } else if (sel === 0) {
           const cur = store.get('transmission', /** @type {string} */ ('auto'));
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
@@ -532,8 +566,8 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + CLUSTER_CHOICES.length - 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
-        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 4];
+        } else if (sel >= AUDIO_ROW && sel < AUDIO_ROW + CHANNELS.length) {
+          const ch = CHANNELS[sel - AUDIO_ROW];
           const curV = audio.settings[ch].volume;
           const nextV = Math.max(0, Math.round((curV - 0.1) * 10) / 10);
           audio.setVolume(ch, nextV);
@@ -542,7 +576,11 @@ export function settingsScreen(ui, stage = null) {
         }
       }
       if (input.pressed('right')) {
-        if (sel === 0) {
+        if (sel === FX_ROW) {
+          fxSel = (fxSel + 1) % SCREEN_FX.length;
+          audio.ui('move');
+          mark();
+        } else if (sel === 0) {
           const cur = store.get('transmission', /** @type {string} */ ('auto'));
           store.set('transmission', cur === 'auto' ? 'manual' : 'auto');
           audio.ui('select');
@@ -559,8 +597,8 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
-        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 4];
+        } else if (sel >= AUDIO_ROW && sel < AUDIO_ROW + CHANNELS.length) {
+          const ch = CHANNELS[sel - AUDIO_ROW];
           const curV = audio.settings[ch].volume;
           const nextV = Math.min(1, Math.round((curV + 0.1) * 10) / 10);
           if (!audio.settings[ch].on && nextV > 0) audio.setOn(ch, true);
@@ -587,11 +625,15 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('select');
-        } else if (sel === 3) {
+        } else if (sel === FX_ROW) {
+          setFx(SCREEN_FX[fxSel]);
+          audio.ui('select');
+          sync();
+        } else if (sel === CONTROLS_ROW) {
           audio.ui('select');
           return 'controls';
-        } else if (sel >= 4 && sel < 4 + CHANNELS.length) {
-          const ch = CHANNELS[sel - 4];
+        } else if (sel >= AUDIO_ROW && sel < AUDIO_ROW + CHANNELS.length) {
+          const ch = CHANNELS[sel - AUDIO_ROW];
           audio.toggle(ch);
           audio.ui('select');
           sync();

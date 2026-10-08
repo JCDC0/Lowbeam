@@ -4,6 +4,10 @@
  * The scene renders into a small target (240 lines by default). A full-screen pass
  * then upscales it with nearest filtering, converts to sRGB, applies a 4x4 ordered
  * dither and quantizes to 5 bits per channel, which is the PS1 framebuffer look.
+ *
+ * At speed the same pass closes a vignette in from the corners (`uVig`) and smears the frame
+ * outward from the center (`uBlur`, a zoom blur of six taps); both are 0 when off or slow, and
+ * both are dithered with the rest.
  */
 
 import * as THREE from 'three';
@@ -23,6 +27,8 @@ uniform sampler2D tColor;
 uniform vec2 uRes;
 uniform float uPsx;
 uniform float uFade;
+uniform float uVig;
+uniform float uBlur;
 varying vec2 vUv;
 
 float bayer4(vec2 p) {
@@ -38,7 +44,18 @@ vec3 toSRGB(vec3 c) {
 }
 
 void main() {
-  vec3 c = toSRGB(texture2D(tColor, vUv).rgb);
+  vec3 lin = texture2D(tColor, vUv).rgb;
+  if (uBlur > 0.001) {
+    vec2 dir = vUv - 0.5;
+    vec3 acc = lin;
+    for (int i = 1; i < 6; i++) acc += texture2D(tColor, vUv - dir * (float(i) / 5.0) * uBlur * 0.045).rgb;
+    lin = acc / 6.0;
+  }
+  vec3 c = toSRGB(lin);
+  if (uVig > 0.001) {
+    vec2 d = (vUv - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+    c *= 1.0 - uVig * 0.62 * smoothstep(0.32, 0.95, length(d));
+  }
   if (uPsx > 0.5) {
     vec2 px = floor(vUv * uRes);
     c += bayer4(px) / 31.0;
@@ -79,6 +96,8 @@ export function createStage(canvas) {
       uRes: { value: new THREE.Vector2(320, 240) },
       uPsx: { value: 1 },
       uFade: { value: 1 },
+      uVig: { value: 0 },
+      uBlur: { value: 0 },
     },
     depthTest: false,
     depthWrite: false,
@@ -143,5 +162,14 @@ export function createStage(canvas) {
     return res.json();
   }
 
-  return { renderer, scene, camera, target, post, render, resize, configure, shot, settings };
+  /**
+   * The speed effects for the next frames, 0 to 1 each (`ui/screen-fx.js` decides them).
+   * @param {{ vignette: number, blur: number }} fx
+   */
+  function setSpeedFx(fx) {
+    post.uniforms.uVig.value = fx.vignette;
+    post.uniforms.uBlur.value = fx.blur;
+  }
+
+  return { renderer, scene, camera, target, post, render, resize, configure, shot, settings, setSpeedFx };
 }

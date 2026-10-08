@@ -134,7 +134,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
 | `src/ui/minimap.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route |
-| `src/ui/pursuit.js`, `stats.js` | Pursuit HUD, F3 stats |
+| `src/ui/pursuit.js`, `stats.js`, `screen-fx.js` | Pursuit HUD, F3 stats, the screen effects and their toggles |
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON) |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.84)
+## Current state (0.9.85)
 
 375 tests pass; the type check is clean. By area:
 
@@ -292,12 +292,14 @@ square and a saw through a band-pass, panned, muffled in the cockpit) and the he
 (`siren.js`; `node tools/render-sirens.mjs` writes a check WAV).
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
-speedometer style, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
+speedometer style, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
 routing, a 220 px minimap after Most Wanted's radar (the sea and the lake in blue, grey roads, the
 places as round badges; the heat as a flame and "x N" at the top left and an amber rim arc filling
 with the progress to the next level; police cars as small chevrons flashing red and blue, grey on
 patrol and amber while watching, each with its sight as a red or blue cone fading with distance and a
-white ring when it sees the player; helicopters as a disc with a tail and the searchlight's glow), area names with their Japanese names, F3 stats.
+white ring when it sees the player; helicopters as a disc with a tail and the searchlight's glow), area names with their Japanese names, F3 stats. Screen effects (`ui/screen-fx.js`, each a toggle
+under SCREEN FX, on by default): a fishnet over the HUD panels, a vignette closing in from 120 km/h
+(full at 260) and a slight radial blur from 200 km/h (full at 300), the last two in the post pass.
 Typefaces: Michroma (`Lowbeam Display`) for labels and the area name, Orbitron for headings, Teko for
 race numbers, Share Tech Mono for readouts and body text, DSEG7 and DSEG14 for segment digits, Dela
 Gothic One for banners, M PLUS 1p for Japanese.
@@ -305,7 +307,6 @@ Gothic One for banners, M PLUS 1p for Japanese.
 ## Open work and known issues
 
 - The roadblock barrier and the pursuit breakers have no models yet (task G1).
-- The settings screen's key hint bar overlaps the last rows at 720 lines.
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).

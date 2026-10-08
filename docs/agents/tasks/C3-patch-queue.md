@@ -16,7 +16,7 @@ models are G5 and G7.
    with an icon each (cruiser, unmarked, interceptor, Rhino) and the helicopters; in the panel the
    units on the scene, the units assigned (B2 part 6; a dash until it lands) and the units
    destroyed, the meter along the bottom; a REINFORCEMENTS line when they come.
-4. **HUD overlay.** A fine fishnet (a diagonal mesh) over the HUD panels, a vignette that closes in
+4. **HUD overlay** (done in 0.9.85). A fine fishnet (a diagonal mesh) over the HUD panels, a vignette that closes in
    at high speed and a slight radial blur past about 200 km/h; each a toggle in Settings (on by
    default), saved with the settings.
 5. **Skid marks and tire smoke** for every car: the player's, the traffic's, the racers' and the

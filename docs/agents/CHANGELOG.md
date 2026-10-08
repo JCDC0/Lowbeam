@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.85 (2026-10-08)
+
+The HUD fishnet, the speed vignette and blur, with toggles (C3 part 4).
+
+- `ui/screen-fx.js`: three effects, each on by default and saved: `net` puts a fine diagonal mesh
+  (two crossing hairline gradients) over the pursuit panel, the banners, the toasts and the prompt
+  line; `vignette` darkens the corners by up to 62 % from 120 km/h, full at 260; `blur` smears the
+  frame outward from the center (a six-tap zoom blur, at most 4.5 % of the distance to the center)
+  from 200 km/h, full at 300. Both ramps are smoothstepped.
+- The vignette and the blur are uniforms in the post pass (`stage.setSpeedFx`), so they are dithered
+  and quantized with the frame; off the drive screen both are 0.
+- Settings: a SCREEN FX row with three pills, NET, VIGNETTE and BLUR, each clicked to toggle, or A and
+  D to pick one and Enter to toggle it. The keyboard rows are addressed by their ids now.
+- Fixed: the settings screen's key hint bar sat on the screen's bottom edge over the last rows at 720
+  lines (a known issue): it flows after the table now, the body scrolls on a short screen and the rows
+  tighten under 820 px.
+- Fixed: the title still read KIRIGAOKA NIGHT RALLY, the old map's name; it reads KUROGANE NIGHT RUN.
+- Tests: the ramps (nothing slow, full fast, smooth, no blur under 200 km/h, off is off) and the
+  toggles. Checked at 266 km/h (vignette full, blur 0.73) and in Settings at 720 lines.
+
 ## 0.9.84 (2026-10-08)
 
 The pursuit HUD after Jc's sketch (C3 part 3).

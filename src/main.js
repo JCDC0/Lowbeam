@@ -19,6 +19,7 @@ import { World } from './world/world.js';
 import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
 import { store } from './core/store.js';
+import { applyNet, speedFx } from './ui/screen-fx.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
 const ui = /** @type {HTMLElement} */ (document.getElementById('ui'));
@@ -41,6 +42,7 @@ for (const type of ['keydown', 'pointerdown']) {
 const title = titleScreen(ui, version);
 const menu = mainMenuScreen(ui);
 const settings = settingsScreen(ui, stage);
+applyNet();
 const controls = controlsScreen(ui, input);
 const loading = loadingScreen(ui);
 const garage = new Garage(ui);
@@ -266,6 +268,7 @@ function frame(now) {
   rHud.update(tracker, dt);
   // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.
   const driving = state === 'drive';
+  stage.setSpeedFx(driving && drive?.car ? speedFx(drive.car.state.speed * 3.6) : { vignette: 0, blur: 0 });
   pursuit.update(pursuitMock ?? (driving ? withKinds(/** @type {any} */ (drive)?.pursuitView?.() ?? null) : null), dt, driving ? drive?.detect ?? null : null);
   input.endFrame();
   requestAnimationFrame(frame);
