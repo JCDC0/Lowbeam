@@ -88,6 +88,8 @@ export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
  */
 export const KIND_MODELS = {
   'rv-rotary': 'rv_rotary_full',
+  'rv-kei': 'rv_kei_full',
+  'rv-hothatch': 'rv_hothatch_full',
   police: 'police_cruiser_full',
   'police-fast': 'police_unmarked_full',
   'police-heavy': 'police_rhino_full',

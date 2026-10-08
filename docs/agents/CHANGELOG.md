@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.75 (2026-10-08)
+
+The Hoshi Kei-S and the Kagero Hot-GT race with Gemini's models.
+
+- `KIND_MODELS` gains `rv-kei` (`rv_kei_full`) and `rv-hothatch` (`rv_hothatch_full`), reviewed with
+  Gemini's fix fd6f6cb (lamps and exhaust tips proud of the body, the hatch's tailgate). Checked in
+  the game: both painted per car, lamps lit, at the size they collide with.
+- Gemini's next pair is the Kagero Lancer-X and the Halden Drifter (0.9.60, 0.9.61).
+
 ## 0.9.74 (2026-10-07)
 
 Banners with flair and the takedown hit (C2 part 6).
