@@ -34,7 +34,7 @@ import { sirenVoices, rotorSound } from './audio/siren.js';
 import { Rally, COUNTDOWN as RALLY_COUNTDOWN } from './race/rally.js';
 import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
-import { Heli, Skyline, helipadOf } from './police/heli.js';
+import { Heli, Skyline, helipadOf, nearestStation } from './police/heli.js';
 import { HeliView } from './police/heli-view.js';
 
 /** How close to the rally start the car has to be stopped to begin a run. */
@@ -122,7 +122,9 @@ export class Drive {
     this.damageFx = new DamageFx(world.root);
     // The police helicopters (heli.js): the first parked on the HQ roof, two more as backup that fly
     // in from out of town over the west and east hills at heat 4 and 5 and leave the same way.
-    const hq = world.ground.lots.find((p) => p.lot.kind === 'police');
+    const policeLots = world.ground.lots.filter((p) => p.lot.kind === 'police');
+    const hq = policeLots[0];
+    const stationPads = policeLots.map((p) => helipadOf(p));
     const hf0 = world.ground.hf;
     const sky = (x, z) => ({ x, y: hf0.at(x, z) + 140, z, yaw: 0 });
     /** @type {Heli[]} */
@@ -179,6 +181,8 @@ export class Drive {
         groundAt: (x, z) => world.ground.at(x, z).h,
         // A car under a deck is out of the light.
         covered: (x, z, y) => world.ground.roads.query(x, z, deck, 0, -Infinity, Infinity) && (deck.lift || 0) > 2 && deck.h > y + 2.5,
+        stations: stationPads,
+        solid: this.solid,
       };
     } else this.helis = [];
   }
@@ -201,7 +205,7 @@ export class Drive {
   pursuitView() {
     const view = this.policeOrders ? this.policeOrders.view : null;
     if (!view) return null;
-    const units = this.traffic.units().filter((a) => a.mode !== 'wreck');
+    const units = this.traffic.units().filter((a) => a.mode !== 'wreck' && a.pursuit);
     const byKind = {
       police: 0,
       'police-fast': 0,
@@ -214,7 +218,7 @@ export class Drive {
     }
     return {
       ...view,
-      helis: this.helisUp,
+      helis: this.police.active ? this.helis.filter((h, i) => i < this.helisUp && h.airborne && !h.refueling).length : 0,
       nearby: this.policeOrders?.detect.watchers.length ?? 0,
       assigned: this.police.assigned,
       byKind,
@@ -314,7 +318,13 @@ export class Drive {
     this.pursuitView3d.setStrip(this.police.spikes);
 
     // One helicopter goes up at heat 3, two at 4, three at 5; they go home when the pursuit ends.
-    this.setHelis(orders.helis);
+    // When no player pursuit is on, a police tail on a street racer may call one helicopter.
+    const tailedRacer = !this.police.active ? (this.traffic.agents.find((a) => a.quarry)?.quarry ?? null) : null;
+    if (this.police.active) {
+      this.setHelis(orders.helis);
+    } else {
+      this.setHelis(tailedRacer ? 1 : 0);
+    }
 
     // The tires, the money and the end of the pursuit.
     s.tireGrip = orders.tires.grip;
@@ -373,6 +383,8 @@ export class Drive {
       destroyed: ['COP TAKEN OUT', { sub: `+${yen(e.bounty)}   ${String(e.name || '').toUpperCase()}`, tone: 'police', seconds: 2.4 }],
       escaped: ['ESCAPED', { sub: `BOUNTY ${yen(e.bounty)}`, tone: 'good', seconds: 3 }],
       busted: ['BUSTED', { sub: `FINE ${yen(e.fine)}`, tone: 'bad', seconds: 3 }],
+      heliLeaving: ['CHOPPER BREAKING OFF', { sub: 'LOW ON FUEL', tone: 'good' }],
+      heliBack: ['CHOPPER BACK', { sub: 'REFUELED', tone: 'police' }],
     };
     const b = banners[e.type];
     if (b) this.banner(b[0], b[1]);
@@ -385,9 +397,9 @@ export class Drive {
   }
 
   /**
-   * The pursuit ended. Busted: the fine is already taken, the car is towed to the police HQ, the
-   * tires and engine fixed. Escaped: the bounty is already paid. The HUD's end card says which;
-   * the rap sheet grows either way.
+   * The pursuit ended. Busted: the fine is already taken, the car is towed to the nearest police
+   * station, the tires and engine fixed. Escaped: the bounty is already paid. The HUD's end card says
+   * which; the rap sheet grows either way.
    * @param {any} r the pursuit report
    */
   endPursuit(r) {
@@ -403,12 +415,12 @@ export class Drive {
     store.set('rapSheet', sheet);
     if (r.result === 'busted') {
       const s = this.car.state;
-      const hq = this.world.ground.lots.find((p) => p.lot.kind === 'police');
+      const st = nearestStation(s.x, s.z, this.world.ground.lots, 'police');
       repairEngine(s);
       this.police.mendTires();
       s.vx = s.vz = 0;
-      if (hq) this.placeOnRoadNear(hq.cx, hq.cz, s.yaw);
-      this.afterReport = `TOWED TO ${hq ? hq.lot.name : 'THE POLICE'}`;
+      if (st) this.placeOnRoadNear(st.cx, st.cz, s.yaw);
+      this.afterReport = `TOWED TO ${st ? st.lot.name : 'THE POLICE'}`;
     }
   }
 
@@ -710,6 +722,20 @@ export class Drive {
     return null;
   }
 
+  /** The garage lot the car is parked on, if stopped on one. */
+  nearGarage() {
+    const s = this.car.state;
+    for (const p of this.world.ground.lots) {
+      if (p.lot?.kind !== 'garage') continue;
+      const dx = s.x - p.cx;
+      const dz = s.z - p.cz;
+      const u = Math.abs(dx * p.ux + dz * p.uz);
+      const v = Math.abs(dx * p.vx + dz * p.vz);
+      if (u <= p.hw + 2 && v <= p.hd + 2) return p;
+    }
+    return null;
+  }
+
   /** @param {number} x @param {number} y @param {number} z */
   areaName(x, y, z) {
     const g = this.world.ground.at(x, z, y);
@@ -742,13 +768,14 @@ export class Drive {
     let prompt = '';
     let refueling = false;
     const pump = s.speed < 0.6 ? this.nearPump() : null;
+    const garage = s.speed < 0.6 && !pump ? this.nearGarage() : null;
     const hurt = s.blown || s.damage > 0.02;
     const tankFull = s.fuel >= spec.fuel.tank - 0.05;
-    if (pump && this.police.flatTime > 0) {
+    if ((pump || garage) && this.police.flatTime > 0) {
       this.police.mendTires();
       this.toast('TIRES CHANGED', 2);
     }
-    if (pump && hurt && (s.blown || tankFull)) {
+    if ((pump && hurt && (s.blown || tankFull)) || (garage && hurt)) {
       const cost = repairCost(s);
       drive = { throttle: 0, brake: 0, steer: 0, handbrake: 0, shiftUp: false, shiftDown: false, manual: drive.manual };
       if (this.money < cost) {
@@ -812,7 +839,7 @@ export class Drive {
       this.fueled = 0;
     }
     if (!s.engineOn && !pump) prompt = `OUT OF FUEL   R  TOW TO A STATION  ¥${ECONOMY.towCost.toLocaleString('en-US')}`;
-    else if (s.blown && !pump) prompt = `ENGINE BLOWN   LIMP TO A PUMP OR  R  TOW  ¥${(ECONOMY.towCost + repairCost(s)).toLocaleString('en-US')}`;
+    else if (s.blown && !pump && !garage) prompt = `ENGINE BLOWN   LIMP TO A PUMP OR  R  TOW  ¥${(ECONOMY.towCost + repairCost(s)).toLocaleString('en-US')}`;
     if (!prompt) {
       const rival = this.traffic.nearestRival(s, 220);
       if (rival) {
@@ -880,10 +907,21 @@ export class Drive {
     }
     this.trafficView.update(this.traffic.agents, this.car.state, this.time);
     this.damageFx.update(dt, this.traffic.agents, this.car.state);
+    const tailedRacer = !this.police.active ? (this.traffic.agents.find((a) => a.quarry)?.quarry ?? null) : null;
     for (let i = 0; i < this.helis.length; i++) {
-      this.heliWorld.target = i < this.helisUp ? s : null;
-      this.helis[i].update(dt, this.heliWorld);
-      this.heliViews[i].update(this.helis[i]);
+      const h = this.helis[i];
+      if (this.police.active) {
+        this.heliWorld.target = i < this.helisUp ? s : null;
+      } else if (i === 0 && tailedRacer) {
+        this.heliWorld.target = tailedRacer;
+      } else {
+        this.heliWorld.target = null;
+      }
+      const evs = h.update(dt, this.heliWorld);
+      for (const e of evs || []) {
+        this.policeEvent(typeof e === 'string' ? { type: e } : e);
+      }
+      this.heliViews[i].update(h);
     }
     const gate = this.tolls.step({ x: x0, z: z0 }, s, s.speed * 3.6, this.time);
     if (gate) {

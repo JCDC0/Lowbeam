@@ -305,14 +305,19 @@ in `drive.js` reports `assigned` and `byKind` (`police`, `police-fast`, `police-
 Helicopters (`helisFor`): one at heat 3 from the
 HQ's roof, two at 4, three at 5, the backup two flying in from over the west and east hills and leaving
 the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: behind, ahead on the
-left, wide on the right) so their searchlights cover different streets. From heat 4 a
+left, wide on the right) so their searchlights cover different streets. Each helicopter has 100 s of pursuit fuel
+(115 s total, `heli.js`); at 15 s left it breaks off (CHOPPER BREAKING OFF) to the nearest of the three police stations
+(HQ, Kitamachi, Toge, each with a pad via `helipadOf`) to refuel for 40 s, returning (CHOPPER BACK) if heat warrants
+(0.9.26). Searchlights lose sight under decks and behind dense building blocks. While no player pursuit is active,
+a patrol tailing a street racer may summon one helicopter, with player pursuits taking precedence. The five landmark
+garages repair the engine, damage and tires at pump prices without selling fuel or nitrous. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
 with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): a parked unit stays
 immovable against impacts up to 6 m/s closing speed, moving and knocking only when hit harder (0.9.22);
-spiked tires lose 38 % grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
+spiked tires lose 38 % grip and 28 % top speed for 22 s or until a pump, garage or tow. Out of sight: evading, cooldown (hideouts
 and decks fill it three times faster), escaped with the bounty paid. Stopped with a unit within 12 m
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
-police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
+nearest police station. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
 destroyed among them. The pursuit
 HUD (`ui/pursuit.js`) is Most Wanted's after Jc's sketch: at the bottom center, in Michroma, a row of
 the units on the scene by kind (cruiser, unmarked, interceptor, Rhino, each with its icon) and the

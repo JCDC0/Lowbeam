@@ -685,6 +685,22 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.26 (2026-10-08)
+
+Helicopters run out of fuel, police stations with helipads, garages repair, and pursuit byKind fix (B2 part 7).
+
+- `Heli` in `src/police/heli.js`: tracks fuel (115 s total, 100 s pursuit flight). At 15 s left it breaks off with a CHOPPER BREAKING OFF banner (`heliLeaving`) and returns to the nearest police station helipad to refuel for 40 s (`HELI.refuelTime`), returning with a CHOPPER BACK banner (`heliBack`) if target remains active. Searchlights lose line of sight when blocked by building colliders or under decks.
+- Police stations and pads: `helipadOf` and `nearestStation` support all three police stations (HQ, Kitamachi, Toge). Busted pursuits tow to the nearest station rather than always HQ.
+- Garages: all five landmark garage lots repair engine damage, blown engines, and tires at pump repair prices without offering fuel or nitrous.
+- Racer tails: when no player pursuit is active, a patrol unit chasing a street racer can summon one helicopter; player pursuits take priority.
+- `pursuitView()` fix in `src/drive.js`: filters `byKind` counts to include only units in the active pursuit (`u.pursuit`), ignoring idle patrols across town.
+- Measured before and after:
+  - Pursuit HUD byKind: previously counted all island units (including idle patrols across town); now counts only units in this pursuit (`u.pursuit`).
+  - Helicopter fuel: 115 s total fuel; breaks off after 100 s chase at 15 s reserve; refuels on pad for 40 s before returning to pursuit.
+  - Busted tow destination: player busted near Kitamachi or Kuro Pass tows to KITAMACHI POLICE STATION or KURO PASS POLICE STATION instead of KUROGANE POLICE HQ.
+  - Garage repair: damaged car repairs at 5 landmark garages (damage 0.5 repaired for ¥4,000 in 1.5 s).
+- Tests: `tests/heli.test.mjs` (fuel runs out and returns, dense block sight loss, nearest station tow), `tests/garage.test.mjs` (five garages verified with repair pricing).
+
 ## 0.9.25 (2026-10-08)
 
 The pursuit's numbers, Most Wanted's: assigned pool by heat level, reinforcements on low points, and on-scene unit counts by kind for the HUD (B2 part 6).

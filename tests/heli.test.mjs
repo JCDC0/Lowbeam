@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Heli, HELI, Skyline } from '../src/police/heli.js';
+import { Heli, HELI, Skyline, nearestStation } from '../src/police/heli.js';
 import { helisFor } from '../src/police/units.js';
 
 const PAD = { x: 0, y: 13, z: 0, yaw: 0 };
@@ -159,4 +159,72 @@ test('a backup helicopter arrives flying, holds its own station, and is put away
   run(back, world(null), 60);
   assert.equal(back.state, 'parked', 'it went back out of town and was put away');
   assert.ok(Math.hypot(back.x - SKY.x, back.z - SKY.z) < 60);
+});
+
+test('fuel runs out and the helicopter leaves and returns', () => {
+  const h = new Heli(PAD);
+  const target = car(20);
+  const w = world(target);
+  h.launch();
+  run(h, w, 20);
+  assert.equal(h.state, 'chase');
+  h.fuel = 16;
+  let left = false;
+  let returned = false;
+  for (let t = 0; t < 2; t += DT) {
+    const evs = h.update(DT, w);
+    if (evs.some((e) => e.type === 'heliLeaving')) left = true;
+  }
+  assert.ok(left, 'chopper broke off due to low fuel');
+  assert.equal(h.state, 'return');
+  assert.ok(h.refueling);
+
+  let landed = false;
+  for (let t = 0; t < 60; t += DT) {
+    h.update(DT, w);
+    if (h.state === 'parked') {
+      landed = true;
+      break;
+    }
+  }
+  assert.ok(landed, 'landed on pad');
+  assert.ok(h.refueling, 'now refueling on pad');
+
+  for (let t = 0; t < HELI.refuelTime + 1; t += DT) {
+    const evs = h.update(DT, w);
+    if (evs.some((e) => e.type === 'heliBack')) returned = true;
+  }
+  assert.ok(returned, 'chopper returned after refueling');
+  assert.equal(h.fuel, HELI.fuel, 'fuel restored');
+  assert.equal(h.refueling, false);
+});
+
+test('the searchlight loses sight behind a dense building block', () => {
+  const h = new Heli(PAD);
+  const target = car(0, 50);
+  const w = world(target);
+  w.solid = (x, z) => Math.hypot(x - 50, z - 20) < 5;
+  h.launch();
+  run(h, w, 30);
+  assert.equal(h.spot.sees, false);
+});
+
+test('the nearest station is used for a tow', () => {
+  const mockLots = [
+    { cx: 2400, cz: -2150, lot: { id: 'police', name: 'KUROGANE POLICE HQ', kind: 'police' } },
+    { cx: -321, cz: -862, lot: { id: 'police-kita', name: 'KITAMACHI POLICE STATION', kind: 'police' } },
+    { cx: -2258, cz: -2045, lot: { id: 'police-toge', name: 'KURO PASS POLICE STATION', kind: 'police' } },
+    { cx: 0, cz: 0, lot: { id: 'garage-tsurugi', name: 'TSURUGI WORKS', kind: 'garage' } },
+  ];
+  const kita = nearestStation(-300, -850, mockLots, 'police');
+  assert.equal(kita?.lot.id, 'police-kita');
+  assert.equal(kita?.lot.name, 'KITAMACHI POLICE STATION');
+
+  const toge = nearestStation(-2200, -2000, mockLots, 'police');
+  assert.equal(toge?.lot.id, 'police-toge');
+  assert.equal(toge?.lot.name, 'KURO PASS POLICE STATION');
+
+  const hq = nearestStation(2300, -2100, mockLots, 'police');
+  assert.equal(hq?.lot.id, 'police');
+  assert.equal(hq?.lot.name, 'KUROGANE POLICE HQ');
 });

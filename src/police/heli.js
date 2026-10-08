@@ -12,6 +12,7 @@
  */
 
 import { lotFrame, toWorld } from '../world/lots.js';
+import { clearLine } from './sight.js';
 
 /** Where the parts sit on the body, from tools/blender/heli.py. */
 export const HELI_PARTS = { mast: [0, 2.95, 0.15], tail: [0.3, 2.05, -6.15], light: [0, 0.3, 2.1] };
@@ -26,6 +27,7 @@ export const HELI = {
   cruise: 55, clear: 28, maxSpeed: 75, accel: 9, vAccel: 5, vMax: 10, yawRate: 1.0, gain: 0.55,
   lead: 1.2, behind: 32, side: 14, lookahead: 2.5,
   lightRange: 190, spotR: 7, spotFollow: 2.2,
+  fuel: 115, fuelBreak: 15, refuelTime: 40,
 };
 
 /**
@@ -43,14 +45,36 @@ export const HELI_SLOTS = [
 /**
  * What the helicopter needs from the world each step.
  * @typedef {{ target: HeliTarget | null, skyline: Skyline, groundAt: (x: number, z: number) => number,
- *   covered: (x: number, z: number, y: number) => boolean }} HeliWorld
+ *   covered?: (x: number, z: number, y: number) => boolean,
+ *   stations?: { x: number, y: number, z: number, yaw: number }[],
+ *   solid?: (x: number, z: number, y: number) => boolean }} HeliWorld
  */
 
-/** The helipad on the HQ in world space. @param {import('../world/lots.js').LotPad} hq */
-export function helipadOf(hq) {
-  const f = lotFrame(hq);
-  const [x, z] = toWorld(f, HELIPAD.x, HELIPAD.z);
-  return { x, y: f.y + HELIPAD.y, z, yaw: f.yaw };
+/** The helipad on a police station in world space. @param {any} st */
+export function helipadOf(st) {
+  const f = lotFrame(st);
+  const isHq = st.lot?.model === 'police_hq' || !st.lot;
+  const pos = isHq ? HELIPAD : { x: 0, y: 7.5, z: -6 };
+  const [x, z] = toWorld(f, pos.x, pos.z);
+  return { x, y: f.y + pos.y, z, yaw: f.yaw };
+}
+
+/**
+ * The nearest landmark lot of `kind` to (x, z).
+ * @param {number} x @param {number} z @param {import('../world/lots.js').LotPad[]} lots @param {string} [kind]
+ */
+export function nearestStation(x, z, lots, kind = 'police') {
+  const matching = lots.filter((p) => p.lot?.kind === kind);
+  let best = matching[0] || null;
+  let bd = Infinity;
+  for (const p of matching) {
+    const d = Math.hypot(p.cx - x, p.cz - z);
+    if (d < bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best;
 }
 
 /**
@@ -122,14 +146,18 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export class Heli {
   /**
    * @param {{ x: number, y: number, z: number, yaw: number }} pad
-   * @param {{ slot?: number, sky?: boolean }} [opts] `slot` picks where it holds station
+   * @param {{ slot?: number, sky?: boolean, fuel?: number }} [opts] `slot` picks where it holds station
    *   (`HELI_SLOTS`); a `sky` helicopter has no helipad: `pad` is a point in the sky it flies in from
    *   and back to, and it is put away there instead of landing.
    */
-  constructor(pad, { slot = 0, sky = false } = {}) {
+  constructor(pad, { slot = 0, sky = false, fuel = HELI.fuel } = {}) {
     this.pad = pad;
+    this.basePad = pad;
     this.slot = slot;
     this.sky = sky;
+    this.fuel = fuel;
+    this.refuelTimer = 0;
+    this.refueling = false;
     this.x = pad.x;
     this.y = pad.y;
     this.z = pad.z;
@@ -158,8 +186,8 @@ export class Heli {
 
   /** Scrambles: spins up on the pad, or turns round if it was flying home. */
   launch() {
+    if (this.refueling) return;
     if (this.sky && this.state === 'parked') {
-      // Backup from out of town: it arrives already flying.
       this.x = this.pad.x;
       this.y = this.pad.y;
       this.z = this.pad.z;
@@ -173,6 +201,8 @@ export class Heli {
 
   /** Sends it home to land. */
   recall() {
+    if (this.refueling) return;
+    if (this.sky) this.pad = this.basePad;
     if (this.state === 'spinup') this.state = 'spindown';
     else if (this.state === 'takeoff' || this.state === 'chase') this.state = 'return';
   }
@@ -180,6 +210,41 @@ export class Heli {
   /** @param {number} dt @param {HeliWorld} w */
   update(dt, w) {
     this.time += dt;
+    /** @type {{ type: string }[]} */
+    const events = [];
+    if (this.state === 'chase') {
+      this.fuel = Math.max(0, this.fuel - dt);
+      if (this.fuel <= HELI.fuelBreak && !this.refueling) {
+        this.refueling = true;
+        this.state = 'return';
+        events.push({ type: 'heliLeaving' });
+        if (w.stations && w.stations.length) {
+          let best = w.stations[0];
+          let bd = Math.hypot(best.x - this.x, best.z - this.z);
+          for (let i = 1; i < w.stations.length; i++) {
+            const st = w.stations[i];
+            const d = Math.hypot(st.x - this.x, st.z - this.z);
+            if (d < bd) {
+              bd = d;
+              best = st;
+            }
+          }
+          this.pad = best;
+        }
+      }
+    }
+    if (this.state === 'parked' && this.refueling) {
+      this.refuelTimer += dt;
+      if (this.refuelTimer >= HELI.refuelTime) {
+        this.fuel = HELI.fuel;
+        this.refueling = false;
+        this.refuelTimer = 0;
+        if (w.target) {
+          this.launch();
+          events.push({ type: 'heliBack' });
+        }
+      }
+    }
     const P = this.pad;
     switch (this.state) {
       case 'parked':
@@ -209,7 +274,7 @@ export class Heli {
         break;
       }
       case 'return': {
-        if (this.sky) {
+        if (this.sky && !this.refueling) {
           this.fly(dt, w, P.x, P.y, P.z, null);
           if (Math.hypot(this.x - P.x, this.z - P.z) < 40) {
             this.state = 'parked';
@@ -249,6 +314,7 @@ export class Heli {
     this.rotorAngle = (this.rotorAngle + this.rotor * dt * Math.PI * 2 * 5.5) % (Math.PI * 2);
     this.tailAngle = (this.tailAngle + this.rotor * dt * Math.PI * 2 * 23) % (Math.PI * 2);
     this.light(dt, w);
+    return events;
   }
 
   /**
@@ -331,7 +397,8 @@ export class Heli {
     sp.z += (tz - sp.z) * k;
     sp.y = t && this.state === 'chase' && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 2 ? t.y : w.groundAt(sp.x, sp.z);
     const range = Math.hypot(sp.x - this.x, sp.y - this.y, sp.z - this.z);
-    sp.sees = !!t && this.state === 'chase' && range < HELI.lightRange && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 1.2 && !w.covered(t.x, t.z, t.y);
+    const clear = !w.solid || (clearLine(sp, t, w.solid) && clearLine({ x: this.x, y: this.y, z: this.z }, t, w.solid));
+    sp.sees = !!t && this.state === 'chase' && range < HELI.lightRange && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 1.2 && !(w.covered && w.covered(t.x, t.z, t.y)) && clear;
     this.lost = sp.sees ? 0 : this.lost + dt;
   }
 }
