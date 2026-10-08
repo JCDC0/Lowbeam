@@ -162,6 +162,22 @@ Jc wants the traffic heard much more:
   car: a V8 a deep thump, a flat-four a crackle, the V12 a sharp crack; on a lift at high revs and
   on every upshift past 85 % of the redline. Render a check WAV with `node tools/render-engines.mjs`.
 
+Review (Claude, after 0.9.26 and 0.9.27): both pass, and so do the two owed fixes (`byKind`
+counts only `u.pursuit` units; a failed spawn leaves the pool alone, with its test). Checked: the
+banners' wording is the brief's; the district stations' pad height (7.5 m) is the garage model's
+roof; the tow goes to the nearest of the three stations; garages repair without selling fuel;
+`shiftTo > shiftFrom` makes only upshifts throw a flame. Two fixes owed in `heli.js`, with a test:
+
+- The tank refills only after a break-off. A helicopter that chased 80 s, was recalled and landed at
+  home still holds 43 s of fuel, so in the next pursuit it breaks off after 28 s of chase (measured).
+  A helicopter parked at home, or a backup put away in the sky, should be full again.
+- After refueling, `pad` stays the station it refueled at. The HQ helicopter then lives at that
+  station for good, and a backup from the sky is hidden on the roof while parked (`heli-view.js`
+  hides a parked sky helicopter) and reappears in the air there when it relaunches. Put `pad` back
+  to `basePad` once the refuel is done.
+
+Also: `unitSpawned()` in `director.js` needs a doc comment (exported API).
+
 ## Later (after review)
 
 - The Hikari among the street racers (`RIVALS` leaves it out because two lane change tests sit near

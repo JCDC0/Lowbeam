@@ -28,8 +28,8 @@ models are G5 and G7.
    the map and the minimap with their icons. B2 part 7 makes the police use the nearest station.
 7. **Banners for B2's events**: reinforcements, a helicopter leaving to refuel and coming back. The
    banner table is in `drive.js`, the backend's file, so the wording is in the B2 brief (parts 6 and
-   7) and Gemini adds the lines; Claude checks them in review. REINFORCEMENTS is in (0.9.25); the
-   helicopter's two come with part 7.
+   7) and Gemini adds the lines; Claude checks them in review. REINFORCEMENTS is in (0.9.25), the
+   helicopter's two in 0.9.26 (done).
 
 While Gemini works through B2, Claude takes the open items in its own files that wait on no one:
 

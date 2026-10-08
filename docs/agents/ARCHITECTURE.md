@@ -153,9 +153,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.97)
+## Current state (0.10.0)
 
-412 tests pass; the type check is clean. By area:
+424 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.0 (2026-10-08)
+
+Review of Gemini's 0.9.26 and 0.9.27, the end of B2.
+
+- Both pass, with the two fixes owed from part 6 (the HUD's units by kind, the pool on a failed
+  spawn). Two small fixes owed in `heli.js`: the tank refills only after a break-off, so a
+  helicopter that ended one pursuit low breaks off 28 s into the next; and after refueling it keeps
+  the station as its home. Recorded in the B2 brief. C3 is done (its part 7 banners came with B2).
+
 ## 0.9.99 (2026-10-08)
 
 A second fix owed in B2 part 6, found in the game.
