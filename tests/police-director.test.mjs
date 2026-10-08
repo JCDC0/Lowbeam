@@ -220,6 +220,7 @@ test('assigned pool falls as units go out, destroyed units do not come back', ()
   const oStart = dir.update(DT, world({ x: 0, z: 0, speed: 20 }, [{ x: 3, z: 0 }], { hitPolice: 3000 }));
   assert.ok(dir.active, 'pursuit starts');
   assert.equal(oStart.spawn.length, 1, 'first backup unit dispatched');
+  dir.unitSpawned();
   assert.equal(dir.assigned, 9, 'assigned pool falls from 10 to 9 when first unit goes out');
 
   const units = [{ x: 8, z: 0 }, { x: 0, z: -30 }];
@@ -228,6 +229,7 @@ test('assigned pool falls as units go out, destroyed units do not come back', ()
     const o = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
     if (o.spawn.length > 0) {
       spawned = true;
+      dir.unitSpawned();
       units.push({ x: 0, z: -60, kind: o.spawn[0] });
     }
   }
@@ -237,6 +239,18 @@ test('assigned pool falls as units go out, destroyed units do not come back', ()
   const oDestroy = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units, { destroyed: ['police'] }));
   assert.equal(dir.assigned, 8, 'destroyed unit does not come back to the pool');
   assert.ok(oDestroy.events.some((e) => e.type === 'destroyed'), 'destroyed event emitted');
+});
+
+test('failed spawns leave the pool alone', () => {
+  const dir = new PoliceDirector();
+  speedPast(dir);
+  assert.ok(dir.active, 'pursuit active');
+  assert.equal(dir.assigned, 10, 'assigned pool starts at 10');
+  const units = [{ x: 0, z: -30 }];
+  for (let t = 0; t < 6; t += DT) {
+    dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
+  }
+  assert.equal(dir.assigned, 10, 'failed spawns leave assigned pool alone');
 });
 
 test('reinforcements fire once per low point', () => {

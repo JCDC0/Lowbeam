@@ -289,7 +289,10 @@ export class Drive {
       const a = this.police.active
         ? this.traffic.spawnUnit(s, kind, 150, 420, 900)
         : this.traffic.spawnUnit(s, kind, 120, 380);
-      if (a && this.police.active) this.police.pursuit?.involve();
+      if (a && this.police.active) {
+        this.police.unitSpawned();
+        this.police.pursuit?.involve();
+      }
     }
     if (orders.release) {
       this.traffic.command(false, { keep: this.traffic.patrolTarget, unpark: true });

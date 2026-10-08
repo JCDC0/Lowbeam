@@ -298,8 +298,8 @@ then smoothly to limp speed (70 %) below 25 % with no step; at zero it is destro
 flames (`traffic/damage-fx.js`), its bar and siren dead, its kind's bounty paid into the pursuit
 (¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. The
 director maintains an assigned pool for the pursuit (10 at heat 1, 20 at 2, 35 at 3, 50 at 4, 60 at 5,
-raised as heat climbs; 0.9.25), decremented as each backup car is dispatched from `roster(heat)` every 1.5 s.
-Destroyed units are permanently gone from the pool. When on-scene units fall to 2 or fewer with the pool
+raised as heat climbs; 0.9.25), decremented only when a dispatched unit actually spawns (0.9.27; failed
+spawns leave the pool alone). Destroyed units are permanently gone from the pool. When on-scene units fall to 2 or fewer with the pool
 under 5, reinforcements add 25 % of the heat's baseline pool with a REINFORCEMENTS banner. `pursuitView()`
 in `drive.js` reports `assigned` and `byKind` (`police`, `police-fast`, `police-int`, `police-heavy`) to the HUD.
 Helicopters (`helisFor`): one at heat 3 from the
@@ -340,13 +340,15 @@ with Doppler; a unit taken out winds its siren down over 1.8 s); the nearest hel
 and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, the engines of the four nearest
 cars (`traffic-voices.js`: each kind in a voice class, kei buzz, sedan, six, van, diesel truck, bus,
 V8, flat-four and racer, its revs from its speed through a gearbox, its firing note Doppler shifted
-and panned, with its tires on the road), eight recorded tracks
+and panned, with its tires on the road; `TRAFFIC_LEVEL` at 0.32, tires at 0.2, horns at 0.25, 0.9.27),
+exhaust pops per engine layout (a V8 a deep thump, a flat-four a crackle, the V12 a sharp crack on lift at high revs
+and on upshifts past 85 % of redline; `engine-dsp.js`, `exhaust.js`), eight recorded tracks
 in four moods with crossfades and a swell that follows the speed: silent below 30 km/h, full at 75
 (60 on the pass). The tracks come from `assets/music/tracks.json`: drop a file in the folder, run
 `npm run music` (it measures the loudness with ffmpeg and keeps the moods already set), set the new
 file's mood in the JSON; the game keeps its built-in list if a mood would have no track. Police sirens (three voices, a
 square and a saw through a band-pass, panned, muffled in the cockpit) and the helicopter's rotor
-(`siren.js`; `node tools/render-sirens.mjs` writes a check WAV).
+(`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs).
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
 speedometer style, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint

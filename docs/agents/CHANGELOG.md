@@ -695,6 +695,30 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.27 (2026-10-08)
+
+Louder traffic, louder horns, exhaust pops per layout, and backup pool spawn fix (B2 part 8).
+
+- `src/audio/audio.js`: `TRAFFIC_LEVEL` doubled from 0.16 to 0.32, `TRAFFIC_TIRE_LEVEL` doubled from 0.1 to 0.2, and `HORN_LEVEL` increased 2.5x from 0.1 to 0.25.
+- `src/audio/engine-dsp.js`: exhaust pops synthesized per engine layout (`popStyle`):
+  - Cross-plane V8 (`v8`, Rampart 440): a deep resonant low-frequency thump and body.
+  - Flat-four boxer (`boxer`, Hayate RS-4): an irregular sputtering crackle and spit with crisp transients.
+  - V12 (`v12`, Vespera GT): a razor-sharp whip-like crack with high-frequency snap and rapid decay.
+  - Straight-six (`i6`, Tsurugi GT-X, Hikari 300ZR): a punchy mid rasp and bark.
+- `src/vehicles/exhaust.js`: exhaust pops triggered on throttle lift at high revs and on every upshift past 85 % of redline (`SHIFT_FLAME_RPM = 0.85`, requiring `shiftTo > shiftFrom`).
+- `src/police/director.js` and `src/drive.js`: backup units consume from the assigned pool only when `traffic.spawnUnit` successfully spawns the unit (`director.unitSpawned()`), preventing pool drain and premature reinforcements when no spawn spot is found.
+- Measured before and after:
+  - Traffic engine level: `TRAFFIC_LEVEL` 0.16 to 0.32; racer beside player RMS 0.026 to 0.040 (+3.8 dB, level with player mix).
+  - Horn level: `HORN_LEVEL` 0.1 to 0.25; civilian horn beside player RMS 0.017 to 0.043 (+7.1 dB over player cruising engine).
+  - Exhaust pop peaks (`node tools/render-engines.mjs`):
+    - Hayate RS-4: peak 0.58 to 0.62, RMS 0.133 to 0.134.
+    - Rampart 440: peak 0.55 to 0.62, RMS 0.150 to 0.157 (deep thump).
+    - Vespera GT: peak 0.52 to 0.61, RMS 0.143 to 0.144 (sharp crack).
+    - Tsurugi GT-X: peak 0.54 to 0.57, RMS 0.144 to 0.144.
+    - Hikari 300ZR: peak 0.56 to 0.57, RMS 0.143 to 0.143.
+  - Backup pool: failed spawns over 6 s leave `dir.assigned` at 10 instead of draining to 5.
+- Tests: `tests/engine.test.mjs`, `tests/exhaust.test.mjs`, `tests/traffic-voices.test.mjs`, `tests/police-director.test.mjs`.
+
 ## 0.9.26 (2026-10-08)
 
 Helicopters run out of fuel, police stations with helipads, garages repair, and pursuit byKind fix (B2 part 7).

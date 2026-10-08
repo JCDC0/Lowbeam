@@ -16,7 +16,8 @@
  * @typedef {{
  *   cyl: number, pattern: number[], amps: number[], pipeHz: number, pipeQ: number,
  *   cutLow: number, cutHigh: number, body: number, noise: number, whistle: number,
- *   whine: number, pops: number, rough: number, width: number[], gain: number
+ *   whine: number, pops: number, rough: number, width: number[], gain: number,
+ *   popStyle?: 'crackle' | 'thump' | 'crack' | 'bark'
  * }} VoiceSpec
  */
 
@@ -35,7 +36,8 @@ export const VOICES = {
     noise: 0.2,
     whistle: 1,
     whine: 0.0,
-    pops: 0.55,
+    pops: 0.65,
+    popStyle: 'crackle',
     rough: 0.014,
     width: [0.85, 0.34],
     gain: 0.95,
@@ -53,7 +55,8 @@ export const VOICES = {
     noise: 0.16,
     whistle: 0,
     whine: 0.0,
-    pops: 0.9,
+    pops: 1.0,
+    popStyle: 'thump',
     rough: 0.02,
     width: [0.95, 0.4],
     gain: 1.05,
@@ -71,7 +74,8 @@ export const VOICES = {
     noise: 0.18,
     whistle: 0.8,
     whine: 0.2,
-    pops: 0.5,
+    pops: 0.6,
+    popStyle: 'bark',
     rough: 0.008,
     width: [0.88, 0.38],
     gain: 0.95,
@@ -89,7 +93,8 @@ export const VOICES = {
     noise: 0.14,
     whistle: 0,
     whine: 0.55,
-    pops: 0.18,
+    pops: 0.35,
+    popStyle: 'crack',
     rough: 0.006,
     width: [0.9, 0.42],
     gain: 0.9,
@@ -192,6 +197,7 @@ export class EngineVoice {
     this.bov = 0;
     this.pop = 0;
     this.popLp = 0;
+    this.popPhase = 0;
     this.bovLp = 0;
     this.lastBov = 0;
     this.lastPop = 0;
@@ -343,11 +349,29 @@ export class EngineVoice {
         y += Math.sin(this.whinePhase) * v.whine * 0.035 * (0.35 + 0.65 * load) * Math.min(1, rpm / 3000);
       }
 
-      if (this.load < 0.06 && rpm > 3200 && v.pops > 0 && this.rand() < (v.pops * 9 * (rpm / 8000)) / sr) this.pop = Math.max(this.pop, 0.35 + 0.65 * this.rand());
+      if (this.load < 0.06 && rpm > 3200 && v.pops > 0 && this.rand() < (v.pops * 10 * (rpm / 8000)) / sr) this.pop = Math.max(this.pop, 0.45 + 0.55 * this.rand());
       if (this.pop > 0.001) {
-        this.popLp += (white - this.popLp) * 0.12;
-        y += this.popLp * this.pop * 1.4;
-        this.pop *= 0.9975;
+        const style = v.popStyle || 'crackle';
+        if (style === 'thump') {
+          this.popPhase += (TAU * (55 + 50 * this.pop)) / sr;
+          if (this.popPhase > TAU) this.popPhase -= TAU;
+          this.popLp += (white - this.popLp) * 0.08;
+          y += (Math.sin(this.popPhase) * 1.8 + this.popLp * 1.5) * this.pop * 2.8;
+          this.pop *= 0.9982;
+        } else if (style === 'crack') {
+          this.popLp += (white - this.popLp) * 0.65;
+          y += (white - this.popLp * 0.5) * this.pop * 3.4;
+          this.pop *= 0.995;
+        } else if (style === 'bark') {
+          this.popLp += (white - this.popLp) * 0.22;
+          y += this.popLp * this.pop * 2.5;
+          this.pop *= 0.9975;
+        } else {
+          this.popLp += (white - this.popLp) * 0.35;
+          const burst = this.popLp * (1.2 + 0.8 * (white > 0.2 ? 1 : -0.5));
+          y += burst * this.pop * 2.6;
+          this.pop *= 0.997;
+        }
         if (this.pop < 0.002) this.pop = 0;
       }
       if (this.knock > 0.002) {

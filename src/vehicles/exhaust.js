@@ -19,7 +19,7 @@ import { clamp, lerp } from '../core/mathx.js';
 /** @typedef {ReturnType<typeof createFx>} Fx */
 
 /** Rpm, as a fraction of the redline, above which a shift throws a flame. */
-const SHIFT_FLAME_RPM = 0.8;
+const SHIFT_FLAME_RPM = 0.85;
 const BURST_TIME = 0.16;
 const PUFF_TIME = 1.8;
 
@@ -55,7 +55,7 @@ export function stepExhaust(s, spec, dt) {
 
   if (s.shiftCount !== fx.shifts) {
     fx.shifts = s.shiftCount;
-    if (on && s.shiftRpm > red * SHIFT_FLAME_RPM) {
+    if (on && s.shiftTo > s.shiftFrom && s.shiftRpm > red * SHIFT_FLAME_RPM) {
       fx.burst = BURST_TIME;
       pop(fx, 1);
     }

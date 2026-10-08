@@ -306,14 +306,16 @@ export class PoliceDirector {
     this.backupTimer = this.active ? BACKUP_EVERY : 0;
     if (!this.active) return ['police'];
     if (this.assigned <= 0) return [];
-    this.assigned--;
-    // The roster for the heat, minus the kinds already on the road: the missing one goes out.
     const left = roster(Math.max(1, this.heat.level));
     for (const u of w.units) {
       const i = left.indexOf(u.kind || 'police');
       if (i >= 0) left.splice(i, 1);
     }
     return [left.length ? left[left.length - 1] : 'police'];
+  }
+
+  unitSpawned() {
+    if (this.active && this.assigned > 0) this.assigned--;
   }
 
   /**

@@ -108,10 +108,10 @@ function noiseBuffer(ctx, seconds, kind) {
 const SIREN_LEVEL = 0.16;
 const ROTOR_LEVEL = 0.9;
 /** Peak gain of a nearby car's engine, and of its tires on the road. */
-const TRAFFIC_LEVEL = 0.16;
-const TRAFFIC_TIRE_LEVEL = 0.1;
+const TRAFFIC_LEVEL = 0.32;
+const TRAFFIC_TIRE_LEVEL = 0.2;
 /** Peak gain of a horn beside the player, and of a car's tires screeching to a stop. */
-const HORN_LEVEL = 0.1;
+const HORN_LEVEL = 0.25;
 const SCREECH_LEVEL = 0.5;
 /** The nitrous hiss while it flows. */
 const N2O_LEVEL = 0.14;
