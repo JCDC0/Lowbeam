@@ -44,7 +44,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby,siren}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,passby,siren,traffic-voices}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - Units are meters, seconds, kilograms. North is -Z, east is +X. Yaw 0 faces +Z; forward is
@@ -129,7 +129,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/police/heli.js`, `heli-view.js` | The helicopter and its searchlight |
 | `src/police/director.js` | `PoliceDirector`: the whole pursuit from the first notice to the report, as orders the Drive carries out |
 | `src/police/units.js`, `heat.js`, `roadblock.js`, `sight.js`, `lights.js`, `pursuit-view.js` | Unit kinds and the roster per heat, attention and heat, roadblocks and spike strips, line of sight, the light bar's flash pattern, the strip on the road |
-| `src/audio/*` | Engine synthesis (worklet), effects, ambience, pass-by, sirens and the rotor (`siren.js`), the recorded soundtrack and its moods |
+| `src/audio/*` | Engine synthesis (worklet), effects, ambience, pass-by, the engines of the cars around (`traffic-voices.js`), sirens and the rotor (`siren.js`), the recorded soundtrack and its moods |
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
 | `src/ui/minimap.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route |
@@ -141,9 +141,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.77)
+## Current state (0.9.78)
 
-359 tests pass; the type check is clean. By area:
+365 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -266,10 +266,13 @@ follow the A13 contract. The four units are Gemini's models (cruiser, unmarked
 car, Rhino, interceptor). Light bars flash
 red (left) and blue (right) in Most Wanted's quad pattern and the four nearest light the road, the
 walls and the player's car; the three nearest are heard (wail, yelp up close, hi-lo in a roadblock,
-with Doppler); the nearest helicopter's rotor thumps by distance; a pursuit is the intense music mood.
+with Doppler; a unit taken out winds its siren down over 1.8 s); the nearest helicopter's rotor thumps by distance; a pursuit is the intense music mood.
 
 **Audio.** Synthesized engines per layout (flat-four, V8, V12, straight-six) in an AudioWorklet, tire
-and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, eight recorded tracks
+and gravel noise, impacts, ambience, the pass-by whoosh scaled by relative speed, the engines of the four nearest
+cars (`traffic-voices.js`: each kind in a voice class, kei buzz, sedan, six, van, diesel truck, bus,
+V8, flat-four and racer, its revs from its speed through a gearbox, its firing note Doppler shifted
+and panned, with its tires on the road), eight recorded tracks
 in four moods with crossfades and a swell that follows the speed: silent below 30 km/h, full at 75
 (60 on the pass). The tracks come from `assets/music/tracks.json`: drop a file in the folder, run
 `npm run music` (it measures the loudness with ffmpeg and keeps the moods already set), set the new

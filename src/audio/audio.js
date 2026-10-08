@@ -23,6 +23,7 @@ import { store } from '../core/store.js';
 import { clamp } from '../core/mathx.js';
 import { MusicPlayer } from './music.js';
 import { PassBy, passbyDuration, passbyGain } from './passby.js';
+import { TRAFFIC_VOICES, trafficVoices } from './traffic-voices.js';
 
 /** @typedef {'master' | 'engine' | 'effects' | 'ambience' | 'music'} Channel */
 /** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} Mode */
@@ -106,6 +107,9 @@ function noiseBuffer(ctx, seconds, kind) {
 /** Peak gain of a siren right beside the player, and of the rotor overhead. */
 const SIREN_LEVEL = 0.16;
 const ROTOR_LEVEL = 0.9;
+/** Peak gain of a nearby car's engine, and of its tires on the road. */
+const TRAFFIC_LEVEL = 0.16;
+const TRAFFIC_TIRE_LEVEL = 0.1;
 /** The nitrous hiss while it flows. */
 const N2O_LEVEL = 0.14;
 
@@ -402,6 +406,29 @@ export class AudioSystem {
       osc2.start();
       return { osc, osc2, gain, pan, key: -1 };
     });
+    // The cars around the player (traffic-voices.js): an engine (its wave and the octave below it)
+    // through a low-pass that opens with the revs, and its tires on the road, panned together.
+    this.trafficSlots = Array.from({ length: TRAFFIC_VOICES }, () => {
+      const osc = c.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = 40;
+      const subOsc = c.createOscillator();
+      subOsc.type = 'square';
+      subOsc.frequency.value = 20;
+      const sub = g(0);
+      const tone = bq('lowpass', 800, 1.6);
+      const gain = g(0);
+      const pan = c.createStereoPanner ? c.createStereoPanner() : g(1);
+      osc.connect(tone);
+      subOsc.connect(sub).connect(tone);
+      tone.connect(gain).connect(pan);
+      const tire = g(0);
+      loop(white).connect(bq('bandpass', 900, 0.7)).connect(tire).connect(pan);
+      pan.connect(bus.view);
+      osc.start();
+      subOsc.start();
+      return { osc, subOsc, sub, tone, gain, tire, pan, key: -1 };
+    });
     // The rotor: low noise chopped by the blade pass.
     {
       const chop = g(0.5);
@@ -518,6 +545,7 @@ export class AudioSystem {
     this.music?.setScene(!!f.mountain, f.rival ?? Infinity, !!f.pursuit);
     this.sirens(f.sirens || [], f.rotor || { rate: 0, gain: 0 }, t);
     if (f.traffic) for (const ev of this.passby.update(s, f.traffic)) this.passbyVoice(ev, t);
+    this.trafficEngines(f.traffic ? trafficVoices(f.traffic, s) : [], t);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;
@@ -612,6 +640,41 @@ export class AudioSystem {
     }
     glide(this.rotor.lfo.frequency, Math.max(1, rotor.rate), t, 0.2);
     glide(this.rotor.level.gain, rotor.gain * ROTOR_LEVEL, t, 0.2);
+  }
+
+  /**
+   * The engines and tires of the nearest cars for this frame. As with the sirens, each voice
+   * follows one car by its key so a pass sweeps down smoothly; a voice with no car fades out.
+   * @param {import('./traffic-voices.js').TrafficVoice[]} voices @param {number} t
+   */
+  trafficEngines(voices, t) {
+    const slots = this.trafficSlots;
+    if (!slots) return;
+    const used = new Set();
+    for (const v of voices) {
+      let slot = slots.find((s) => s.key === v.key);
+      const fresh = !slot;
+      if (!slot) slot = slots.find((s) => !used.has(s) && !voices.some((w) => w.key === s.key));
+      if (!slot) continue;
+      used.add(slot);
+      slot.key = v.key;
+      if (slot.osc.type !== v.wave) slot.osc.type = v.wave;
+      // A new car starts at its own pitch; one already heard glides, so the Doppler drop is smooth.
+      const lag = fresh ? 0.001 : 0.05;
+      glide(slot.osc.frequency, v.pitch, t, lag);
+      glide(slot.subOsc.frequency, v.pitch / 2, t, lag);
+      glide(slot.sub.gain, v.sub, t, 0.1);
+      glide(slot.tone.frequency, v.cutoff, t, 0.08);
+      glide(slot.gain.gain, v.gain * TRAFFIC_LEVEL, t, 0.08);
+      glide(slot.tire.gain, v.tire * TRAFFIC_TIRE_LEVEL, t, 0.08);
+      if ('pan' in slot.pan) glide(slot.pan.pan, v.pan * 0.85, t, 0.06);
+    }
+    for (const s of slots) {
+      if (used.has(s)) continue;
+      s.key = -1;
+      glide(s.gain.gain, 0, t, 0.2);
+      glide(s.tire.gain, 0, t, 0.2);
+    }
   }
 
   /** @param {boolean} on @param {number} [at] */

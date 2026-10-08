@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.78 (2026-10-08)
+
+The cars around the player have engines (C2 part 8, first half).
+
+- `audio/traffic-voices.js` (pure): every kind in a voice class (`VOICE_OF`): kei (a three-cylinder
+  buzz to 7,200 rpm), sedan, six (SUVs, pickups, the unmarked car), van, diesel (box truck, tanker,
+  semi: low square to 2,300 rpm through eight gears), bus, V8 (the cruiser, the Rhino, the Rampart and
+  Halden racers), flat-four (the Hayate and the Lancer-X) and racer. A car's revs come from its speed
+  through its gearbox, its note from the revs and the cylinders, the pitch heard from the Doppler
+  shift of the closing speed. A bus at 40 km/h is about 80 Hz, a racer at 250 about 250 Hz.
+- `audio.js`: four voices, each an oscillator and the octave below through a low-pass that opens with
+  the revs, plus band-passed tire noise, panned to the car's side and muffled in the cockpit like
+  the rest. Each voice follows one car, so a pass sweeps down in pitch; the noise whoosh stays on top.
+  A racer beside the player sits about 6 dB under the mix.
+- A unit taken out no longer cuts its siren: it winds down over 1.8 s, the pitch sagging to a growl
+  (`dyingSiren`).
+- Tests: the voice classes, the revs and the gearbox, the bus against the racer, the Doppler and the
+  pan, the nearest four, the dying siren. 365 pass.
+
 ## 0.9.77 (2026-10-08)
 
 The Kagero Lancer-X and the Halden Drifter race with Gemini's models.

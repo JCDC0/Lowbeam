@@ -4,7 +4,8 @@
  * loud a source is at a distance. Pure; audio.js turns the result into oscillators.
  *
  * A unit far off wails; one close behind the player yelps, the way a real driver switches when
- * they are on someone's bumper; a roadblock sits on hi-lo. Each unit runs its own phase.
+ * they are on someone's bumper; a roadblock sits on hi-lo. Each unit runs its own phase. A unit
+ * taken out does not cut off: its siren winds down like a motor siren losing power (`DIE_TIME`).
  */
 
 /** Speed of sound, m/s, for the Doppler shift. */
@@ -22,12 +23,25 @@ export const PATTERNS = {
   hilo: { lo: 770, hi: 960, period: 0.55 },
 };
 
-/** @typedef {'wail' | 'yelp' | 'hilo'} Pattern */
+/** Seconds a destroyed unit's siren takes to wind down to nothing. */
+export const DIE_TIME = 1.8;
+
+/** @typedef {'wail' | 'yelp' | 'hilo' | 'die'} Pattern */
+
+/**
+ * A destroyed siren winding down, `age` seconds after the hit: the pitch sags from mid wail to a
+ * low growl, faster at first, and the level falls with it.
+ * @param {number} age @returns {{ pitch: number, level: number }}
+ */
+export function dyingSiren(age) {
+  const k = Math.max(0, Math.min(1, age / DIE_TIME));
+  return { pitch: 140 + 900 * Math.pow(1 - k, 1.8), level: Math.pow(1 - k, 1.3) };
+}
 
 /**
  * The pitch of a pattern at time t, Hz. Wail and yelp sweep up quickly and fall back slowly, like
  * a motor siren spinning up; hi-lo alternates two tones.
- * @param {Pattern} pattern @param {number} t seconds
+ * @param {Exclude<Pattern, 'die'>} pattern @param {number} t seconds
  */
 export function sirenPitch(pattern, t) {
   const p = PATTERNS[pattern];
@@ -57,15 +71,16 @@ export function sirenGain(d) {
  * The sirens the player hears this frame: the nearest SIREN_VOICES units with their bars on, each
  * with its pattern, pitch, gain, pan (-1 left to 1 right of the player's heading) and voice key
  * (the unit's id, so a voice follows one car).
- * @param {{ id: number, x: number, z: number, vx: number, vz: number, pursuit?: any, mode?: string, quarry?: any }[]} units
+ * @param {{ id: number, x: number, z: number, vx: number, vz: number, pursuit?: any, mode?: string, quarry?: any, destroyed?: boolean, wreckAge?: number }[]} units
  * @param {{ x: number, z: number, vx: number, vz: number, yaw: number }} player
  * @param {number} t seconds
  */
 export function sirenVoices(units, player, t) {
   const heard = [];
   for (const u of units) {
-    if (!u.pursuit && u.mode !== 'parked' && !u.quarry) continue;
-    if (u.mode === 'wreck') continue;
+    const dying = !!u.destroyed && (u.wreckAge ?? Infinity) < DIE_TIME;
+    if (!dying && !u.pursuit && u.mode !== 'parked' && !u.quarry) continue;
+    if (!dying && u.mode === 'wreck') continue;
     const dx = u.x - player.x;
     const dz = u.z - player.z;
     const d = Math.hypot(dx, dz);
@@ -74,18 +89,20 @@ export function sirenVoices(units, player, t) {
   }
   heard.sort((a, b) => a.d - b.d);
   return heard.slice(0, SIREN_VOICES).map(({ u, d, dx, dz }) => {
+    const dying = !!u.destroyed;
     /** @type {Pattern} */
-    const pattern = u.mode === 'parked' ? 'hilo' : d < YELP_RANGE && u.pursuit !== 'search' ? 'yelp' : 'wail';
+    const pattern = dying ? 'die' : u.mode === 'parked' ? 'hilo' : d < YELP_RANGE && u.pursuit !== 'search' ? 'yelp' : 'wail';
     const nx = dx / Math.max(d, 1e-3);
     const nz = dz / Math.max(d, 1e-3);
     // Closing speed: how fast the unit and the player approach along the line between them.
     const closing = (player.vx - u.vx) * nx + (player.vz - u.vz) * nz;
     const left = Math.cos(player.yaw) * nx - Math.sin(player.yaw) * nz;
+    const die = dying ? dyingSiren(u.wreckAge ?? 0) : null;
     return {
       key: u.id,
       pattern,
-      pitch: doppler(sirenPitch(pattern, t + u.id * 0.61), closing),
-      gain: sirenGain(d),
+      pitch: doppler(die ? die.pitch : sirenPitch(/** @type {Exclude<Pattern, 'die'>} */ (pattern), t + u.id * 0.61), closing),
+      gain: sirenGain(d) * (die ? die.level : 1),
       pan: Math.max(-1, Math.min(1, -left)),
     };
   });
