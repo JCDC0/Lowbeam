@@ -3,14 +3,29 @@
  * and darker below a quarter, and a destroyed unit burns, flames and black smoke, for as long as
  * its wreck stays. Two pooled point clouds (one blended, one added), one draw call each, whatever
  * the number of units. The hit points themselves are the sim's (`police/units.js`).
+ *
+ * Sliding tires, seen, for every car (the player's included): skid marks on the road behind the
+ * rear wheels (`render/skids.js`) and, in a hard slide, a pale smoke trail from them, from a third
+ * pool of puffs. How hard a car slides is `render/skid-rules.js`.
  */
 
 import * as THREE from 'three';
 import { psxUniforms } from '../render/psx.js';
 import { DAMAGE, health, isUnit } from '../police/units.js';
+import { SkidMarks } from '../render/skids.js';
+import { playerSlide, agentSlide } from '../render/skid-rules.js';
 
 const SMOKE = 240;
 const FIRE = 140;
+const TIRE_SMOKE = 260;
+/** Only cars this close lay marks and smoke, meters. */
+const SKID_RANGE = 220;
+/** A slide harder than this smokes; the smoke's puffs per second at a full slide. */
+const SMOKE_FROM = 0.45;
+const SMOKE_RATE = 26;
+/** The player's rear wheels: meters behind the center and half the track. */
+const PLAYER_REAR = 1.3;
+const PLAYER_HALF_TRACK = 0.76;
 /** Units farther than this from the camera make no smoke or fire, meters. */
 const RANGE = 170;
 
@@ -135,6 +150,8 @@ class Puffs {
 }
 
 const GREY = [0.32, 0.32, 0.34];
+const TIRE_WHITE = [0.62, 0.62, 0.64];
+const TIRE_GREY = [0.4, 0.4, 0.42];
 const DARK = [0.06, 0.06, 0.07];
 const FLAME_HOT = [1.0, 0.78, 0.32];
 const FLAME_RED = [0.85, 0.16, 0.04];
@@ -144,12 +161,44 @@ export class DamageFx {
   constructor(parent) {
     this.smoke = new Puffs(SMOKE, false);
     this.fire = new Puffs(FIRE, true);
+    this.tireSmoke = new Puffs(TIRE_SMOKE, false);
     this.group = new THREE.Group();
     this.group.name = 'damage-fx';
-    this.group.add(this.smoke.points, this.fire.points);
+    this.group.add(this.smoke.points, this.fire.points, this.tireSmoke.points);
     parent.add(this.group);
+    this.skids = new SkidMarks(parent);
     /** @type {Map<number, number>} emission owed per unit, so rates hold at any frame rate */
     this.owed = new Map();
+    /** Each car's yaw last frame, for its turn rate, and its tire smoke owed. @type {Map<number | string, { yaw: number, owed: number }>} */
+    this.tires = new Map();
+  }
+
+  /**
+   * One car's rear tires this frame: marks while it slides, smoke in a hard slide.
+   * @param {number | string} id @param {number} x @param {number} y @param {number} z @param {number} yaw
+   * @param {number} back meters from the center to the rear axle @param {number} half half the track
+   * @param {number} amount how hard it slides, 0 to 1 @param {number} speed m/s @param {number} dt
+   */
+  tiresOf(id, x, y, z, yaw, back, half, amount, speed, dt) {
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    const rx = x - fx * back;
+    const rz = z - fz * back;
+    const lx = fz * half;
+    const lz = -fx * half;
+    this.skids.tire(`${id}:l`, rx + lx, y, rz + lz, amount);
+    this.skids.tire(`${id}:r`, rx - lx, y, rz - lz, amount);
+    const t = this.tires.get(id);
+    if (!t || amount < SMOKE_FROM || speed < 5) {
+      if (t) t.owed = 0;
+      return;
+    }
+    t.owed += SMOKE_RATE * ((amount - SMOKE_FROM) / (1 - SMOKE_FROM)) * dt;
+    while (t.owed >= 1) {
+      t.owed -= 1;
+      const side = Math.random() < 0.5 ? 1 : -1;
+      this.tireSmoke.emit(rx + lx * side, y + 0.3, rz + lz * side, 1.5, 0.5, 2.6, 0.5, 0.18 + 0.22 * amount, TIRE_WHITE, TIRE_GREY, 0.5);
+    }
   }
 
   /**
@@ -186,13 +235,41 @@ export class DamageFx {
       this.owed.set(a.id, owed);
     }
     for (const id of this.owed.keys()) if (!seen.has(id)) this.owed.delete(id);
+
+    const live = new Set();
+    const player = /** @type {any} */ (focus);
+    if (dt > 0 && player.yaw !== undefined) {
+      live.add('player');
+      if (!this.tires.has('player')) this.tires.set('player', { yaw: player.yaw, owed: 0 });
+      this.tiresOf('player', player.x, player.y ?? 0, player.z, player.yaw, PLAYER_REAR, PLAYER_HALF_TRACK, playerSlide(player), player.speed ?? 0, dt);
+    }
+    for (const a of agents) {
+      if (Math.abs(a.x - focus.x) > SKID_RANGE || Math.abs(a.z - focus.z) > SKID_RANGE || dt <= 0) continue;
+      live.add(a.id);
+      let t = this.tires.get(a.id);
+      if (!t) this.tires.set(a.id, (t = { yaw: a.yaw, owed: 0 }));
+      let turn = Math.atan2(Math.sin(a.yaw - t.yaw), Math.cos(a.yaw - t.yaw)) / dt;
+      if (Math.abs(turn) > 20) turn = 0;
+      t.yaw = a.yaw;
+      this.tiresOf(a.id, a.x, a.y, a.z, a.yaw, a.kind.length * 0.32, a.kind.width * 0.42, agentSlide(a, turn), Math.hypot(a.vx, a.vz), dt);
+    }
+    for (const id of this.tires.keys()) {
+      if (live.has(id)) continue;
+      this.tires.delete(id);
+      this.skids.tire(`${id}:l`, 0, 0, 0, 0);
+      this.skids.tire(`${id}:r`, 0, 0, 0, 0);
+    }
     this.smoke.step(dt);
     this.fire.step(dt);
+    this.tireSmoke.step(dt);
+    this.skids.step(dt);
   }
 
   dispose() {
     this.group.parent?.remove(this.group);
     this.smoke.dispose();
     this.fire.dispose();
+    this.tireSmoke.dispose();
+    this.skids.dispose();
   }
 }

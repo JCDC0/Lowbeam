@@ -19,7 +19,7 @@ models are G5 and G7.
 4. **HUD overlay** (done in 0.9.85). A fine fishnet (a diagonal mesh) over the HUD panels, a vignette that closes in
    at high speed and a slight radial blur past about 200 km/h; each a toggle in Settings (on by
    default), saved with the settings.
-5. **Skid marks and tire smoke** for every car: the player's, the traffic's, the racers' and the
+5. **Skid marks and tire smoke** (done in 0.9.87) for every car: the player's, the traffic's, the racers' and the
    police: dark marks laid on the road where a tire slides (the player from the physics' slip, the
    others from their sideways speed and their turn), fading over about 40 s, and a light smoke trail
    in a hard slide.

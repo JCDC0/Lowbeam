@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.87 (2026-10-08)
+
+Skid marks and tire smoke for every car (C3 part 5).
+
+- `render/skids.js`: one ring buffer of 3,000 road decals in one draw call; each sliding rear tire lays
+  a 0.24 m dark strip a piece every 0.35 m, ending the strip when it grips again; a mark fades out over
+  40 s and the oldest slot is reused when the buffer is full. Double-sided and offset onto the road so
+  it never fights the tarmac.
+- `render/skid-rules.js` (pure) decides how hard a car slides: the player's from the physics' slip
+  (`skid` 1.6 to 5) or wheelspin, on asphalt and concrete only, never in the air; traffic, racers and
+  police knocked aside or wrecked from their sideways speed (1.5 to 6 m/s), and driving cars from the
+  grip their turn asks for (speed times yaw rate, 6.5 to 10 m/s2), so a unit turning hard at speed
+  marks the road and a lane change does not.
+- A slide past 45 % trails pale smoke from the rear wheels (a third pool of 260 puffs in
+  `traffic/damage-fx.js`, which now drives the marks for the player and every car within 220 m).
+- Tests: the player's rules (grip, slide, burnout, air, gravel) and the traffic's (straight, a lane
+  change, a hard turn, knocked sideways or straight, parked). Checked with a full-lock slide at
+  110 km/h on Route 1: two curved strips across the lanes and the smoke over them.
+
 ## 0.9.86 (2026-10-08)
 
 The Kenro Hardtop races with Gemini's model; reviews of 0.9.20 and 0.9.64.

@@ -44,7 +44,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby,siren,traffic-voices}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - Units are meters, seconds, kilograms. North is -Z, east is +X. Yaw 0 faces +Z; forward is
@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.86)
+## Current state (0.9.87)
 
 375 tests pass; the type check is clean. By area:
 
@@ -181,7 +181,8 @@ about 124 draw calls and 500k triangles.
 Engine rpm comes from the driven wheels (wheelspin climbs to the limiter, a spin does not swing the
 tach). Gearbox N, R, 1..n, auto or manual, any shift allowed: past 11,000 rpm the engine blows (money
 shift) into limp mode, repaired at a pump or by tow. Heat, over-rev and damage are real. Exhaust
-flames, sparks and smoke. Nitrous (`nitrous.js`, held on N, L3 on a pad): an 8 s bottle of 45 % extra
+flames, sparks and smoke. Every car's sliding tires lay skid marks that fade over 40 s, and a
+hard slide trails pale smoke (`render/skids.js`, `skid-rules.js`, driven from `traffic/damage-fx.js`). Nitrous (`nitrous.js`, held on N, L3 on a pad): an 8 s bottle of 45 % extra
 peak torque at half throttle or more, 0.6 to 4 s off 0-160 km/h; it heats the engine about 10 C a
 bottle and wears it a little (4 % a bottle on a clean run). Its torque is not cut by the rev limiter,
 so held through a gear it drives the revs 600 to 1,400 rpm past the redline, over-revving and
