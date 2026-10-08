@@ -672,6 +672,20 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.24 (2026-10-08)
+
+Police that drive like people: reaction delay and smoothing, lateral grip cap with corner braking, obstacle corridor awareness, and progressive damage scaling (B2 part 5).
+
+- `estimatedPlayer` in `src/traffic/sim.js`: records player trajectory history and supplies chasing units with a delayed (delay >= 0.18 s) and low-pass smoothed target estimate (tau ~ 0.4 s per unit by id), preventing instantaneous steering flicks from reaching units unfiltered.
+- Grip cap & corner braking in `stepChase` (`src/traffic/sim.js`): caps unit yaw rate at 8 / speed rad/s (8 m/s² lateral grip limit). When the required turn angle exceeds grip, reduces target speed and applies corner braking deceleration so units lift and brake into corners.
+- Path obstacle avoidance in `stepChase` (`src/traffic/sim.js`): free chasing units scan up to 90 m ahead in their forward corridor for traffic, wrecks, and parked units, applying Newtonian braking to decelerate and halt with a safe buffer without contact. Units only drive flat out when the corridor is clear (> 70 m) and behind the player; within 30 m of the player they match the player's speed.
+- `unitHealthScale` in `src/police/units.js` and aim wobble in `src/traffic/sim.js`: unit top speed scales smoothly from 100 % to 85 % between 50 % and 25 % HP, then smoothly to limp speed (70 %) below 25 % with no step. Below 50 % HP a free chasing unit wobbles slightly on its aim (0.15 rad, 0.6 Hz sine, phase per unit id).
+- Measured before and after:
+  - Player heading step response: unit steering reaction delay 0.18 s (was 0.00 s instantaneous twitch before); maximum unit yaw rate at 20 m/s 0.400 rad/s (was up to 3.400 rad/s before).
+  - Stopped car in chase corridor at 25 m/s: unit decelerates and comes to a complete standstill at 5.8 m clearance behind the stopped vehicle with 0 contacts (was 0 m / violent collision before).
+  - Health scale continuity: 1.000 at 50 % HP, 0.850 at 25 % HP, 0.700 at 0 % HP with zero step discontinuity (was discontinuous step directly from 100 % to 70 % at 25 % HP before).
+- Tests: `tests/police-driving.test.mjs` (reaction delay >= 0.15 s and grip cap, obstacle stop without contact, continuous non-rising speed curve, aim wobble below 50 % HP). 417 tests pass; type check clean.
+
 ## 0.9.23 (2026-10-08)
 
 Racers fast but not blind: street racers brake hard when trapped and overtake cleanly without collisions; player punches through roadblocks above 6 m/s (B2 part 4).

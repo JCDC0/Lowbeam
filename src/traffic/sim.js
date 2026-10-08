@@ -14,7 +14,7 @@ import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
 import { lightState } from './net.js';
 import { Manners, HORN_GAP, HORN_EVERY } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
-import { DAMAGE, health, unitDamage } from '../police/units.js';
+import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js';
 
 /** @typedef {import('./net.js').Lane} Lane */
 /** @typedef {import('./net.js').Link} Link */
@@ -33,7 +33,7 @@ import { DAMAGE, health, unitDamage } from '../police/units.js';
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
  *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean,
  *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null, shy?: number, shyUntil?: number,
- *   hurry?: number, hurryUntil?: number
+ *   hurry?: number, hurryUntil?: number, playerEst?: { x: number, z: number, vx: number, vz: number, speed?: number, yaw?: number } | null
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -185,6 +185,8 @@ export class TrafficSim {
     /** Road id the player is racing on, so traffic stays off it. Null outside a rally. */
     this.rallyRoad = /** @type {string | null} */ (null);
     this.time = 0;
+    /** @type {{ t: number, x: number, z: number, vx: number, vz: number, speed: number, yaw: number }[]} */
+    this.playerHistory = [];
     this.nextId = 1;
     this.spawnTimer = 0;
     /** @type {Map<Lane, Agent[]>} */
@@ -584,10 +586,24 @@ export class TrafficSim {
 
   /**
    * One step. `player` is the car being driven, so traffic can see it.
-   * @param {number} dt @param {{ x: number, y?: number, z: number, speed: number }} player
+   * @param {number} dt @param {{ x: number, y?: number, z: number, speed: number, vx?: number, vz?: number, yaw?: number }} player
    */
   update(dt, player) {
     this.time += dt;
+    const pvx = player.vx ?? (player.speed !== undefined && player.yaw !== undefined ? Math.sin(player.yaw) * player.speed : 0);
+    const pvz = player.vz ?? (player.speed !== undefined && player.yaw !== undefined ? Math.cos(player.yaw) * player.speed : 0);
+    this.playerHistory.push({
+      t: this.time,
+      x: player.x,
+      z: player.z,
+      vx: pvx,
+      vz: pvz,
+      speed: player.speed ?? 0,
+      yaw: player.yaw ?? 0,
+    });
+    while (this.playerHistory.length > 1 && this.playerHistory[0].t < this.time - 2.0) {
+      this.playerHistory.shift();
+    }
     this.sortLanes();
     let chasing = false;
     let searching = false;
@@ -909,22 +925,72 @@ export class TrafficSim {
   }
 
   /**
+   * Delayed, smoothed player estimate for a unit.
+   * @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number, vx?: number, vz?: number, yaw?: number }} player
+   */
+  estimatedPlayer(a, dt, player) {
+    const delay = 0.18 + 0.04 * ((a.id % 4) / 3);
+    const targetT = this.time - delay;
+    let delayed = null;
+    if (this.playerHistory.length > 0) {
+      if (targetT <= this.playerHistory[0].t) {
+        delayed = this.playerHistory[0];
+      } else {
+        for (let i = this.playerHistory.length - 1; i >= 0; i--) {
+          if (this.playerHistory[i].t <= targetT) {
+            const h0 = this.playerHistory[i];
+            const h1 = this.playerHistory[i + 1] ?? h0;
+            const dtH = h1.t - h0.t;
+            const u = dtH > 1e-6 ? (targetT - h0.t) / dtH : 0;
+            delayed = {
+              x: h0.x + (h1.x - h0.x) * u,
+              z: h0.z + (h1.z - h0.z) * u,
+              vx: h0.vx + (h1.vx - h0.vx) * u,
+              vz: h0.vz + (h1.vz - h0.vz) * u,
+              speed: h0.speed + (h1.speed - h0.speed) * u,
+              yaw: h0.yaw + (h1.yaw - h0.yaw) * u,
+            };
+            break;
+          }
+        }
+      }
+    }
+    if (!delayed) {
+      const pvx = player.vx ?? (player.speed !== undefined && player.yaw !== undefined ? Math.sin(player.yaw) * player.speed : 0);
+      const pvz = player.vz ?? (player.speed !== undefined && player.yaw !== undefined ? Math.cos(player.yaw) * player.speed : 0);
+      delayed = { x: player.x, z: player.z, vx: pvx, vz: pvz, speed: player.speed ?? 0, yaw: player.yaw ?? 0 };
+    }
+
+    if (!a.playerEst) {
+      a.playerEst = { x: delayed.x, z: delayed.z, vx: delayed.vx, vz: delayed.vz, speed: delayed.speed, yaw: delayed.yaw };
+    } else {
+      const tau = 0.38 + 0.04 * ((a.id % 3) / 2);
+      const alpha = 1 - Math.exp(-dt / tau);
+      a.playerEst.x += alpha * (delayed.x - a.playerEst.x);
+      a.playerEst.z += alpha * (delayed.z - a.playerEst.z);
+      a.playerEst.vx += alpha * (delayed.vx - a.playerEst.vx);
+      a.playerEst.vz += alpha * (delayed.vz - a.playerEst.vz);
+      a.playerEst.speed += alpha * (delayed.speed - a.playerEst.speed);
+      a.playerEst.yaw += alpha * (delayed.yaw - a.playerEst.yaw);
+    }
+    return a.playerEst;
+  }
+
+  /**
    * A pursuing unit within `CHASE_RANGE` of the player stops following its lane and drives at
    * the player directly: it aims at where the player will be (`CHASE_LEAD` seconds ahead),
    * brakes for the traffic in its way, and at heat 4 and up aims at the player's flank to ram.
    * A Rhino (`headOn`) always drives straight at the player from ahead instead of chasing.
-   * @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number, vx?: number, vz?: number }} player
+   * @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number, vx?: number, vz?: number, yaw?: number }} player
    */
   stepChase(a, dt, player) {
-    const dist = Math.hypot(player.x - a.x, player.z - a.z);
-    // The player's own velocity, so the aim leads a moving target.
-    const pvx = player.vx ?? 0;
-    const pvz = player.vz ?? 0;
+    const est = this.estimatedPlayer(a, dt, player);
+    const dist = Math.hypot(est.x - a.x, est.z - a.z);
+    const pvx = est.vx;
+    const pvz = est.vz;
     const lead = CHASE_LEAD;
-    let tx = player.x + pvx * lead;
-    let tz = player.z + pvz * lead;
-    // At heat 4 and up a cruiser aims at the player's side to PIT them; the very close in it
-    // still aims at the car itself, so it does not swing wide at the last moment.
+    let tx = est.x + pvx * lead;
+    let tz = est.z + pvz * lead;
     if (this.heat >= 4 && !a.kind.headOn && dist < 40) {
       const px = Math.sin(a.yaw);
       const pz = Math.cos(a.yaw);
@@ -932,41 +998,107 @@ export class TrafficSim {
       tx += pz * side;
       tz += -px * side;
     }
-    const aimYaw = Math.atan2(tx - a.x, tz - a.z);
+    let aimYaw = Math.atan2(tx - a.x, tz - a.z);
+    const h = health(a);
+    if (h < 0.5) {
+      const phase = (a.id * 1.7) % (Math.PI * 2);
+      aimYaw += 0.15 * Math.sin(2 * Math.PI * 0.6 * this.time + phase);
+    }
     const diff = wrapAngle(aimYaw - a.yaw);
-    const turn = clamp(diff, -CHASE_STEER * dt, CHASE_STEER * dt);
+    const maxYawRate = 8 / Math.max(1, a.speed);
+    const maxTurn = maxYawRate * dt;
+    const turn = clamp(diff, -maxTurn, maxTurn);
     a.yawRate = dt > 0 ? turn / dt : 0;
     a.yaw += turn;
 
-    // It drives hard, but brakes for whatever is directly in front, the way a real chase does.
-    let v0 = a.kind.top ? this.pursuitSpeed(a, player) : a.lane.limit * a.kind.speed[1] * (0.7 + 0.12 * this.heat);
-    // On the player's bumper it matches their speed: a nudge at heat 1, a shove from heat 2 up,
-    // never an engine that pushes the player's car along.
-    if (dist < CONTACT_RANGE) v0 = Math.min(v0, player.speed + (this.heat >= 2 ? 3 : 0.5));
-    const aheadX = a.x + Math.sin(a.yaw) * 18;
-    const aheadZ = a.z + Math.cos(a.yaw) * 18;
-    let block = Infinity;
+    const scanDist = Math.max(90, a.speed * 3);
+    const halfWidth = a.kind.width / 2 + 0.35;
+    const sinYaw = Math.sin(a.yaw);
+    const cosYaw = Math.cos(a.yaw);
+    let nearestObsGap = Infinity;
+    let nearestObsSpeed = 0;
+
     for (const o of this.agents) {
-      if (o === a || o.mode === 'wreck') continue;
-      const dx = o.x - aheadX;
-      const dz = o.z - aheadZ;
-      const d = Math.hypot(dx, dz);
-      if (d < 6) block = Math.min(block, d);
+      if (o === a) continue;
+      const dx = o.x - a.x;
+      const dz = o.z - a.z;
+      const dAlong = dx * sinYaw + dz * cosYaw;
+      if (dAlong <= 0 || dAlong > scanDist) continue;
+      const dLat = dx * cosYaw - dz * sinYaw;
+      const oWidth = o.mode === 'parked' ? Math.max(o.kind.width, o.kind.length) : o.kind.width;
+      if (Math.abs(dLat) > halfWidth + oWidth / 2) continue;
+      const oLength = o.mode === 'parked' ? Math.max(o.kind.width, o.kind.length) : o.kind.length;
+      const gap = dAlong - a.kind.length / 2 - oLength / 2;
+      if (gap < nearestObsGap) {
+        nearestObsGap = gap;
+        nearestObsSpeed = (o.mode === 'wreck' || o.mode === 'parked') ? 0 : Math.max(0, (o.vx ?? 0) * sinYaw + (o.vz ?? 0) * cosYaw);
+      }
     }
-    let acc = idm(a.speed, v0, a.kind.accel * 1.6, block, a.speed, true);
-    // The player ahead is the car it follows: it closes fast and brakes in time instead of
-    // piling into a car that stopped. From heat 2 it aims a little into the bumper.
-    const toward = (Math.sin(a.yaw) * (player.x - a.x) + Math.cos(a.yaw) * (player.z - a.z)) / Math.max(dist, 1e-3);
+
+    const pathClear = nearestObsGap > 70;
+    const isBehind = (player.x - a.x) * sinYaw + (player.z - a.z) * cosYaw > 0;
+    const topSpeed = ((a.kind.top ?? 160) / 3.6) * unitHealthScale(h);
+    let v0 = (pathClear && isBehind) ? topSpeed : (a.kind.top ? this.pursuitSpeed(a, player) : a.lane.limit * a.kind.speed[1] * (0.7 + 0.12 * this.heat));
+
+    const excessTurn = Math.abs(diff) - maxTurn;
+    if (excessTurn > 0) {
+      const vCorner = (8 * 0.8) / Math.max(0.1, Math.abs(diff));
+      v0 = Math.min(v0, vCorner);
+    }
+
+    const realDist = Math.hypot(player.x - a.x, player.z - a.z);
+    if (realDist <= 30) {
+      const approach = Math.sqrt(2 * 3.5 * Math.max(0, realDist - 4.5));
+      const matchMargin = this.heat >= 2 ? (realDist < CONTACT_RANGE ? 3 : 1.5) : (realDist < CONTACT_RANGE ? 0.5 : 0);
+      const maxClose = Math.max(matchMargin, Math.min(approach, 8));
+      v0 = Math.min(v0, player.speed + maxClose);
+    }
+
+    let acc = idm(a.speed, v0, a.kind.accel * 1.6, Infinity, 0, true);
+
+    const targetBuffer = 3.5;
+    if (nearestObsGap < Infinity) {
+      if (nearestObsGap <= targetBuffer) {
+        v0 = 0;
+        acc = Math.min(acc, -9.0);
+      } else {
+        const dStop = nearestObsGap - targetBuffer;
+        const closing = a.speed - nearestObsSpeed;
+        if (closing > 0) {
+          const aReq = (closing * closing) / (2 * Math.max(0.5, dStop));
+          acc = Math.min(acc, -Math.min(9.0, aReq));
+        }
+        const vSafe = nearestObsSpeed + Math.sqrt(2 * 3.5 * dStop);
+        v0 = Math.min(v0, vSafe);
+        const obsAcc = idm(a.speed, v0, a.kind.accel * 1.6, Math.max(0.2, dStop), closing, false);
+        acc = Math.min(acc, obsAcc);
+      }
+    }
+
+    if (excessTurn > 0 && a.speed > 8 / Math.max(0.1, Math.abs(diff) / 0.8)) {
+      const vCorner = 8 / Math.max(0.1, Math.abs(diff) / 0.8);
+      const neededBrake = (a.speed - vCorner) * 3;
+      acc = Math.min(acc, -clamp(neededBrake, 1.5, 8.0));
+    }
+
+    const toward = (sinYaw * (player.x - a.x) + cosYaw * (player.z - a.z)) / Math.max(realDist, 1e-3);
     if (toward > 0.85) {
-      const pAlong = (player.vx ?? 0) * Math.sin(a.yaw) + (player.vz ?? 0) * Math.cos(a.yaw);
-      const gap = dist - a.kind.length / 2 - PLAYER_HALF + (this.heat >= 2 ? RAM_REACH : 0);
+      const pAlong = (player.vx ?? 0) * sinYaw + (player.vz ?? 0) * cosYaw;
+      const gap = realDist - a.kind.length / 2 - PLAYER_HALF + (this.heat >= 2 ? RAM_REACH : 0);
       acc = Math.min(acc, idm(a.speed, v0, a.kind.accel * 1.6, Math.max(0.2, gap), a.speed - pAlong, true));
     }
+
     a.brake = acc < -1.2 ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -11, a.kind.accel * 1.6) * dt);
+    if (nearestObsGap < Infinity && nearestObsSpeed === 0 && a.speed < 0.25 && nearestObsGap <= targetBuffer + 3) {
+      a.speed = 0;
+      a.brake = 1;
+    }
+    const finalGripCap = 8 / Math.max(1, a.speed);
+    a.yawRate = clamp(a.yawRate, -finalGripCap, finalGripCap);
 
-    a.vx = Math.sin(a.yaw) * a.speed;
-    a.vz = Math.cos(a.yaw) * a.speed;
+    a.vx = sinYaw * a.speed;
+    a.vz = cosYaw * a.speed;
     a.x += a.vx * dt;
     a.z += a.vz * dt;
     if (this.groundAt) a.y = this.groundAt(a.x, a.z, a.y);
@@ -978,7 +1110,7 @@ export class TrafficSim {
    * @param {Agent} a @param {{ x: number, z: number, speed: number }} player
    */
   pursuitSpeed(a, player) {
-    const top = ((a.kind.top ?? 160) / 3.6) * (health(a) < DAMAGE.limp ? DAMAGE.limpSpeed : 1);
+    const top = ((a.kind.top ?? 160) / 3.6) * unitHealthScale(health(a));
     const base = a.lane.limit * a.kind.speed[1];
     if (a.pursuit === 'search') return Math.min(top, base);
     const behind = Math.hypot(player.x - a.x, player.z - a.z);

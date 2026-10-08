@@ -111,7 +111,7 @@ test('at heat 4 and up a unit aims at the player flank to ram', () => {
     a.yaw = 0;
     a.speed = 20;
     a.pursuit = true;
-    sim.update(1 / 30, player);
+    for (let t = 0; t < 0.6; t += 1 / 30) sim.update(1 / 30, player);
     const toPlayer = Math.atan2(player.x - a.x, player.z - a.z);
     return Math.abs(((toPlayer - a.yaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
   };

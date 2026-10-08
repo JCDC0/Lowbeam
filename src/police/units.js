@@ -97,6 +97,21 @@ export function unitDamage(hit, other, own) {
 /** What is left of a unit, 0..1. @param {{ hp?: number, kind: Kind }} a */
 export const health = (a) => Math.max(0, (a.hp ?? a.kind.hp ?? 100) / (a.kind.hp ?? 100));
 
+/**
+ * Scales a unit's top speed as its hit points fall: 100% down to 50% HP, falling smoothly from
+ * 100% to 85% between 50% and 25% HP, then smoothly to DAMAGE.limpSpeed below 25% with no step.
+ * @param {number} h Health fraction 0..1
+ */
+export function unitHealthScale(h) {
+  if (h >= 0.5) return 1.0;
+  if (h >= 0.25) {
+    const u = (h - 0.25) / 0.25;
+    return 0.85 + 0.15 * u;
+  }
+  const u = Math.max(0, h) / 0.25;
+  return DAMAGE.limpSpeed + (0.85 - DAMAGE.limpSpeed) * u;
+}
+
 /** Helicopters up at each heat level, after Most Wanted: one at 3, two at 4, three at 5. @param {number} heat */
 export const helisFor = (heat) => Math.max(0, Math.min(3, Math.floor(heat) - 2));
 

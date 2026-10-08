@@ -279,12 +279,17 @@ draw them in. Heat climbs a level per 90 s of pursuit and per infraction, stays 
 cools a level per 120 s of quiet, and a bust wipes it. Chasing units see 150 m on a clear line
 (buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round.
 Units take the lanes by the shortest route (U-turns included), drive straight at the player when
-close with a clear line, follow at the player's speed up to their own top speed (cruiser 190 km/h,
-unmarked 250, Rhino 175, interceptor 300) and shove from heat 2. Every unit has hit points (cruiser
+close with a clear line (`stepChase`), aiming at a delayed and smoothed target estimate (delay >= 0.18 s,
+tau ~ 0.4 s per unit by id, so sudden player steering reaches them softened; 0.9.24). A unit's yaw rate is capped
+at 8 / speed rad/s (8 m/s² lateral grip), braking into corners when the desired turn exceeds grip. A free
+chasing unit scans its forward corridor for traffic, wrecks and parked units, decelerating to stop without contact;
+it drives flat out only when its path is clear and it is behind the player, matching player speed within 30 m and
+shoving from heat 2. Every unit has hit points (cruiser
 100, unmarked 80, interceptor 120, Rhino 260) and loses them to every hit, by the player, other cars
 or a wall: the square of the closing speed times its share of the crash (`unitDamage`), so a Rhino
-shrugs off what hurts a cruiser and a pillar is worst. Below half it smokes and dulls, below a quarter
-it smokes black and limps at 70 % of its top speed, at zero it is destroyed: a dark burnt wreck in
+shrugs off what hurts a cruiser and a pillar is worst. Below half hit points a free unit wobbles slightly on its
+aim (0.15 rad, 0.6 Hz sine, phase by id), its top speed falls smoothly from 100 % to 85 % between 50 % and 25 % HP,
+then smoothly to limp speed (70 %) below 25 % with no step; at zero it is destroyed: a dark burnt wreck in
 flames (`traffic/damage-fx.js`), its bar and siren dead, its kind's bounty paid into the pursuit
 (¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. Backup
 arrives one car every 1.5 s from `roster(heat)`. Helicopters (`helisFor`): one at heat 3 from the
