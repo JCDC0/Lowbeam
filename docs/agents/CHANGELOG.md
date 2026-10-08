@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.80 (2026-10-08)
+
+The Tsurugi Wedge races with Gemini's model; the Kenro Hardtop goes back; a brief for the backend.
+
+- `KIND_MODELS` gains `rv-wedge` (`rv_wedge_full`) after review of Gemini's 0.9.62: a folded-paper
+  wedge with its pop-ups up, the body set back over the rear axle, louvers and a full tail panel.
+- Gemini's 0.9.63, the Kenro Hardtop, does not pass yet. The front is right (twin round lamps in a
+  dark grille, chrome bumpers, fender mirrors), but the roof is 0.9 m long (z -0.95 to -0.05) and
+  the cabin a short box on a deck as high as the hood, so from the side it reads as a pickup. A
+  pillarless hardtop wants a longer, lower roof with a C pillar sloping down to a short trunk.
+- `tasks/B2-backend-loose-ends.md` for the backend seat (Hermes): the Hikari among the street racers
+  with the two lane change tests made robust over seeds, the route planning test made independent of
+  the machine's load, and a unit's damage felt in how it drives before it limps.
+
 ## 0.9.79 (2026-10-08)
 
 Horns, panic, and a city that refills (C2 part 8 done; the pursuit overhaul is complete).

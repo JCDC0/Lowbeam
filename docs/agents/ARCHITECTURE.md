@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.79)
+## Current state (0.9.80)
 
 374 tests pass; the type check is clean. By area:
 
@@ -223,7 +223,7 @@ Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named 
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
-Kagero Hot-GT, Kagero Lancer-X and Halden Drifter racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
+Kagero Hot-GT, Kagero Lancer-X, Halden Drifter and Tsurugi Wedge racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
 
 **Races.** `RaceEvent` with three kinds: the duel (Tokyo Xtreme Racer gauges, challenge with H), the
 Kuro Pass rally time attack (gates, splits, medals, pace notes, ghost, F at the start line), and the

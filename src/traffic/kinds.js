@@ -92,6 +92,7 @@ export const KIND_MODELS = {
   'rv-hothatch': 'rv_hothatch_full',
   'rv-boxer': 'rv_boxer_full',
   'rv-v8drift': 'rv_v8drift_full',
+  'rv-wedge': 'rv_wedge_full',
   police: 'police_cruiser_full',
   'police-fast': 'police_unmarked_full',
   'police-heavy': 'police_rhino_full',

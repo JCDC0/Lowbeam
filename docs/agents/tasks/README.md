@@ -9,7 +9,7 @@ makes it. Claude reviews every commit before the next task starts.
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
 | Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 (used), now 0.9.70 to 0.9.99 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
-| Backend | GPT 6 Sol (Codex) or Hermes on Xiaomi MiMo 2.6 Pro | 0.9.20 to 0.9.49 | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
+| Backend | Hermes (Claude Haiku 5.5), earlier GPT 6 Sol (Codex) | 0.9.20 to 0.9.49 | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
 | Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
 
 Ask Claude for a new range when yours runs out.
@@ -37,7 +37,8 @@ and leaves `package.json` alone.
 | [C1-claude-queue.md](C1-claude-queue.md) | Claude | parts 1 to 4 and 6 done (0.9.7 to 0.9.12), the part 5 expressway done (0.9.14), part 7 under way (0.9.17: the Mazuma and the cruiser); greenery waits for G4 | In order: other cars hit the world; red and blue light bars, lit blinkers and sirens; the music swell at 75 km/h and a track manifest; the instrument rework from Jc's sketch; a second-layer city expressway and greenery; nitrous; Gemini's models into the game |
 | [G3-police-cars.md](G3-police-cars.md) | Assets | done, all four passed (0.9.54 to 0.9.57) and in the game (0.9.70) | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
 | [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3, between racers when Claude needs it for the city | Street trees, planters, hedges, shrubs and benches for the city |
-| [G5-street-racers.md](G5-street-racers.md) | Assets | next: two cars per review | The other eleven street racers in Blender, two cars per review |
+| [G5-street-racers.md](G5-street-racers.md) | Assets | 6 of 11 built (0.9.58 to 0.9.63); 5 in the game, the Hardtop back for its roof; two cars per review | The other eleven street racers in Blender, two cars per review |
+| [B2-backend-loose-ends.md](B2-backend-loose-ends.md) | Backend | next (from 0.9.20) | The Hikari among the street racers with robust lane change tests, a route test the machine's load cannot fail, a unit's damage felt in its driving |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
 | [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
 
