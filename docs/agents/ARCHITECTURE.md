@@ -270,7 +270,7 @@ and maintain 140 m clearance on spawn (0.9.23). The Hikari is not among the race
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
 Kagero Hot-GT, Kagero Lancer-X, Halden Drifter, Tsurugi Wedge, Kenro Hardtop, Hoshi Beat and Kagero
-RS-Wide racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
+RS-Wide, Vespera Zero and Kenro Sakura S racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
 
 **Weather.** Clear, drizzle, rain or storm (`render/weather.js`; Settings, saved as `weather`;
 `__lowbeam.weather('storm')`). A level from 0 to 1 sets how wet the roads are (`uWet`: roads, lanes,

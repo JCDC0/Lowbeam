@@ -50,3 +50,15 @@ the body at most 2,500 triangles; real arches, glass set in, a car shape from ab
 objects; exports `<file>` (body) and `<file>_full`; the shots at about 6 m including the top view;
 bounds and plan-view widths quoted from the JSON. Compare each with its lofted version in
 `tools/bodies.html` (`__bodies.show('<id>')`).
+
+## Review: Vespera Zero and Kenro Sakura S (Claude, 0.10.4)
+
+Both pass and are in the game (`KIND_MODELS`). Measured from the JSON: the Zero is 2.04 m wide at the
+hips and 1.9 m over most of its length, the Sakura 1.65 to 1.75 m; both lit and tinted in the game
+(the Zero in yellow, the Sakura in blue, head and tail lamps on). Notes for the last car:
+
+- Shoot the car in a strong, light color (the game repaints `paint`): the Sakura's default dark blue
+  hid its shape at night, and its cabin reads as one hump in the side view. In the game it is fine.
+- The Sakura's front shows dark wedges under the lamps (the air dam and fog lamp housings stand
+  proud of the bumper); keep the VIP's bumper clean, with the lamps set in.
+- Quote the plan-view width along the body, as the brief says, not only the bounds.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.4 (2026-10-09)
+
+Review of Gemini's 0.9.67 and 0.9.68; the Vespera Zero and the Kenro Sakura S in the game.
+
+- Both pass (the G5 brief records the review) and are in `KIND_MODELS`, so the racers draw from
+  their Blender bodies: ten of the eleven G5 cars. `tests/kind-models.test.mjs` checks their sizes,
+  materials and groups.
+
 ## 0.10.3 (2026-10-09)
 
 Rain: wet roads, falling streaks and thicker fog, from a new WEATHER row in Settings.
