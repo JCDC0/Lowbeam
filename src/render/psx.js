@@ -239,6 +239,16 @@ export function psxBasic(params = {}) {
 }
 
 /**
+ * One-pixel lines, fogged, for overhead wires: a wire is far thinner than a pixel at the low line
+ * count, and as triangles it flickers in and out, where a line holds one pixel at any distance. Not
+ * vertex snapped (a span crosses many snap cells and would kink).
+ * @param {THREE.LineBasicMaterialParameters} params
+ */
+export function psxLine(params = {}) {
+  return new THREE.LineBasicMaterial({ fog: true, ...params });
+}
+
+/**
  * Additive camera-facing flares for lamps that should read from a distance: traffic head and
  * tail lights. One quad per instance; the instance matrix gives the center and the size (its x
  * scale), `instanceColor` the color and `aDir` the way the lamp faces, so a headlight flares from

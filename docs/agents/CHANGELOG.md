@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.95 (2026-10-08)
+
+Utility poles and overhead wires on the back streets.
+
+- `src/world/poles.js` (pure): along every residential, port and industrial street with a sidewalk
+  (downtown and midtown run their wires underground), concrete poles every 30 m on one side at the
+  sidewalk's outer edge, shifted up to 6 m to keep 1.8 m from a lamp post, never in a junction or on
+  another road; a span joins two poles less than 48 m apart, so the wires carry on across the
+  junctions. 3,087 poles and 2,434 spans; each pole a solid circle. They are placed before the
+  vending machines, which now step aside from them (970 machines).
+- `src/world/build-poles.js`: a tapered pole, a crossarm with three insulators, a telephone bracket
+  and on 18 % of them a transformer drum, baked and merged in 700 m chunks; three power lines at
+  10.45 m and two telephone lines at 6.6 and 6.2 m, each a six-piece sag (1.8 % of the span) drawn
+  with `psxLine`, new in `psx.js`: one-pixel fogged lines, since a wire as triangles flickers away at
+  the low line count. The wires are a shade lighter than the night sky (black ones vanish against
+  it). A residential view gains 4 draw calls and 17k triangles.
+- `tests/poles.test.mjs`: poles and spans exist and spans are short, every pole stands on a
+  sidewalk out of the carriageway, the junctions and the lamp posts, and is solid; no vending
+  machine stands on one. 409 pass.
+
 ## 0.9.94 (2026-10-08)
 
 Vending machines on the town's sidewalks; the Kurogane Line's downtown ramps planned (C4).

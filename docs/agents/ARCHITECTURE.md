@@ -98,7 +98,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/core/input.js` | Keyboard and gamepad, menu actions, `drive(dt)` with keyboard ramps, key bindings (`KEYS`, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
-| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares |
+| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires) |
 | `src/render/pools.js`, `pool-grid.js` | Per-pixel light pools: every world light in a float texture and a 24 m grid of up to 12 lights per cell |
 | `src/render/fonts.js` | `FONT` (display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, awaited before any canvas is drawn |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shop signs, awnings, noise |
@@ -117,6 +117,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/build-*.js` | Meshes: terrain, roads, bridges, trees |
 | `src/world/markings.js` | Zebra crossings and stop lines at the town's junctions |
 | `src/world/vending.js`, `build-vending.js` | The street vending machines |
+| `src/world/poles.js`, `build-poles.js` | Utility poles and their overhead wires on the back streets |
 | `src/world/collision.js` | Circles and oriented boxes in a grid; the car as three circles |
 | `src/world/world.js` | `World.create(step)` builds the scene in stages; `update(camera, focus)` |
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
@@ -146,9 +147,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.94)
+## Current state (0.9.95)
 
-406 tests pass; the type check is clean. By area:
+409 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -173,7 +174,10 @@ about 900 junctions paved as one patch each (a zebra crossing on every arm with 
 line across its incoming lanes, about a meter ahead of where the traffic waits; `markings.js`), about 10,700 buildings in eleven kinds (towers to
 houses, shophouses, walk-ups, townhouses, machiya, coin parking, warehouses), merged per 320 m cell.
 About 1,000 vending machines on the town's sidewalks (`vending.js`), one to three together facing the
-road, their fronts lit (a red, a blue, a white and a green design), solid, in one mesh.
+road, their fronts lit (a red, a blue, a white and a green design), solid, in one mesh. Utility
+poles on the residential, port and industrial streets (`poles.js`; downtown and midtown are wired
+underground): about 3,100 concrete poles 30 m apart on one side, with a crossarm, a transformer on
+some, three power lines and two telephone lines sagging to the next pole as one-pixel lines.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
 pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
 bands, street lamps as spot cones; about 12,450 lights. World build about 6 to 8 s. A downtown view is

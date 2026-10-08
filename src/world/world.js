@@ -16,6 +16,7 @@ import { buildRoads } from './build-roads.js';
 import { buildBridges } from './build-bridges.js';
 import { buildHighway } from './build-highway.js';
 import { buildVending } from './build-vending.js';
+import { buildPoles } from './build-poles.js';
 import { buildLamps, buildTown } from './props.js';
 import { buildTrees } from './build-trees.js';
 import { buildLots, loadModels } from './build-lots.js';
@@ -67,6 +68,9 @@ export class World {
     await step('BUILDING THE CITY');
     w.add(buildLamps(w.scatter.lamps, w.grid));
     w.add(buildVending(w.scatter.vending, w.grid));
+    const poles = buildPoles(w.scatter.poles, w.grid);
+    w.add(poles);
+    w.groundChunks.push(...poles.userData.chunks);
     const town = buildTown(w.scatter.buildings, w.grid);
     w.add(town);
     w.groundChunks.push(...town.userData.chunks);
