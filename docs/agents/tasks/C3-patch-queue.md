@@ -39,5 +39,6 @@ While Gemini works through B2, Claude takes the open items in its own files that
 10. **Zebra crossings and stop lines** (done in 0.9.93) at the town's junctions, to go with them.
 11. **Vending machines** (done in 0.9.94) on the town's sidewalks.
 12. **Utility poles and wires** (done in 0.9.95) on the back streets.
+13. **Blue direction signs** (done in 0.9.96) before the avenue crossings.
 
 The Kurogane Line's ramps down to downtown are their own brief, C4.

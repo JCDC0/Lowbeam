@@ -118,6 +118,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/markings.js` | Zebra crossings and stop lines at the town's junctions |
 | `src/world/vending.js`, `build-vending.js` | The street vending machines |
 | `src/world/poles.js`, `build-poles.js` | Utility poles and their overhead wires on the back streets |
+| `src/world/guide-signs.js`, `build-guide-signs.js` | The blue direction signs before the avenue crossings |
 | `src/world/collision.js` | Circles and oriented boxes in a grid; the car as three circles |
 | `src/world/world.js` | `World.create(step)` builds the scene in stages; `update(camera, focus)` |
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
@@ -147,9 +148,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.95)
+## Current state (0.9.96)
 
-409 tests pass; the type check is clean. By area:
+411 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -177,7 +178,10 @@ About 1,000 vending machines on the town's sidewalks (`vending.js`), one to thre
 road, their fronts lit (a red, a blue, a white and a green design), solid, in one mesh. Utility
 poles on the residential, port and industrial streets (`poles.js`; downtown and midtown are wired
 underground): about 3,100 concrete poles 30 m apart on one side, with a crossarm, a transformer on
-some, three power lines and two telephone lines sagging to the next pole as one-pixel lines.
+some, three power lines and two telephone lines sagging to the next pole as one-pixel lines. Blue
+direction signs (`guide-signs.js`) on the avenues before the crossings where two avenues meet: the
+crossing drawn as arrows, each way out labeled in kanji and romaji with the district or zone it
+leads to (no place twice on a sign), never with a side street between the sign and its crossing.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
 pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
 bands, street lamps as spot cones; about 12,450 lights. World build about 6 to 8 s. A downtown view is

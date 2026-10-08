@@ -609,6 +609,15 @@ export const AREA_JP = {
   'HIGASHI TOLL': '東料金所',
   'MINATO TOLL': '港料金所',
   'BAYSHORE TOLL': '湾岸料金所',
+  'GINZA-MACHI': '銀座町',
+  'SHINMACHI': '新町',
+  'MINATOMACHI': '港町',
+  'KITAMACHI': '北町',
+  'HIGASHIMACHI': '東町',
+  'HAMACHO': '浜町',
+  'HIGASHI KOGYO': '東工業',
+  'KUROGANE FUTO': '黒鉄埠頭',
+  'NISHIMACHI': '西町',
 };
 
 /**

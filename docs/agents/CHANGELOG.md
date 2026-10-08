@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.9.96 (2026-10-08)
+
+Blue direction signs (案内標識) before the avenue crossings.
+
+- `src/world/guide-signs.js` (pure): at the 15 crossings where two avenues meet (and that have three
+  or more ways out), each avenue way in gets a cantilever sign 22 to 58 m before the crossing,
+  wherever no side street lies between the sign and the crossing (else the arrows would point at the
+  wrong junction) and the pole stands on the sidewalk. Each way out is an arrow at its real angle,
+  labeled with the place its road reaches: the zone outside the town or the district 600 m on, then
+  1.2 km on, then at its end, then the road's own name, so no place shows twice on one sign
+  (straight on chooses first). 17 signs.
+- `src/world/build-guide-signs.js`: the pole, its arm and braces and the panel, all panels on one
+  canvas (white arrows and text on blue, the stem from the bottom), one mesh for the island.
+- `AREA_JP` gains the nine districts' Japanese names (銀座町, 新町, 港町, 北町, 東町, 浜町, 東工業,
+  黒鉄埠頭, 西町), which the signs use and the area name now shows under a district's streets.
+- `tests/guide-signs.test.mjs`: every sign names each way once, in Japanese too, with a way straight
+  on; it hangs over its own lanes and the first junction ahead is its avenue crossing, 20 to 80 m on.
+  411 pass.
+
 ## 0.9.95 (2026-10-08)
 
 Utility poles and overhead wires on the back streets.
