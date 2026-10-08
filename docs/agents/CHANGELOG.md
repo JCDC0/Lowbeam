@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.88 (2026-10-08)
+
+More places: two police stations, two garages, two hideouts (C3 part 6).
+
+- `LOTS` gains six: Kitamachi Police Station on Route 18 north of the city and Toge (Kuro Pass) Police
+  Station at the top of the pass, so the west and the middle of the island have a station as the
+  north-east has the HQ; Sakura Motors on West Ave by the city and Mori Tuning on Route 18 in the
+  north; Kawa Yard on East Ave past the Route 1 overpass and the Mine Shed on the northern ridge.
+  Thirteen lots, all on the map and the minimap with their badges. The HQ stays first in the list.
+- The district stations stand on the garage model under a police sign until Gemini's district
+  station (G7) lands. Hideouts work at once (cooldown fills faster at any hideout lot). B2 part 7
+  asks Hermes to send tows, units and helicopters to the nearest station and to let garages repair.
+- Each spot came from a search over the outer roads that keeps the lot on land, flat, clear of every
+  other road and 14 m clear of every city street, so the street generator lays exactly the same 401
+  roads (checked by a fingerprint of every point). One spot beside East Ave's overpass raised the
+  terrain into the ramp and moved past it.
+- `lotDefs` takes Route 18, East Ave and Kuro Pass as lot roads.
+
 ## 0.9.87 (2026-10-08)
 
 Skid marks and tire smoke for every car (C3 part 5).

@@ -104,9 +104,13 @@ Jc struggled to get rid of the helicopters.
   calls for it. Events `heliLeaving` and `heliBack` (Claude makes the banners).
 - A helicopter loses sight under a deck or a dense block (the line from the spot to the player
   crosses a building box or a deck), as the units do.
-- Police stations: Claude is adding two more police lots (`kind: 'police'`, C3). Everything that
-  uses "the police HQ" must use the nearest station: busted tows, units going home, helicopter
-  pads (each station a pad).
+- Police stations: there are three since 0.9.88 (`LOTS` with `kind: 'police'`: the HQ first, then
+  Kitamachi on Route 18 and Toge on Kuro Pass). Everything that uses "the police HQ" (the first
+  police lot today, `drive.js`) must use the nearest station: busted tows, units going home,
+  helicopter pads (each station a pad).
+- Garages repair: the five garage lots (`kind: 'garage'`) are scenery today. Driving onto one and
+  stopping should repair the car as a pump does (`repairEngine`, the tires, the damage) at the
+  pump's price, with the same prompt; a garage does not sell fuel or nitrous.
 - Helicopters for racers: when no player pursuit is on, a police tail on a street racer (`TAIL`) may
   call one helicopter (at most one at a time); the player's pursuit takes priority.
 - Tests: fuel runs out and the helicopter leaves and returns; sight is lost under a deck; the nearest

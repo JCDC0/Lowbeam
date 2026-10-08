@@ -10,8 +10,8 @@ The history, version by version, is `docs/agents/CHANGELOG.md`. This file says w
 A PS1-style night driving game in the browser, in the line of Night-Runners Prologue, Tokyo Xtreme
 Racer and Need for Speed: Most Wanted (2005). The current level is Kurogane, a 6 km island: a city on
 a bay, Route 1 (an expressway loop with toll plazas and two viaducts) round it, the Bayshore Line, a
-mountain pass, a forest and a lake, four gas stations, seven landmark lots (police HQ, three garages,
-three hideouts). Five cars: Hayate RS-4 (rally tuner), Rampart 440 (muscle), Vespera GT (exotic),
+mountain pass, a forest and a lake, four gas stations, thirteen landmark lots (police HQ and two
+district stations, five garages, five hideouts). Five cars: Hayate RS-4 (rally tuner), Rampart 440 (muscle), Vespera GT (exotic),
 Tsurugi GT-X (modern GT), Hikari 300ZR (1984 turbo coupe). Traffic, street racers with duels, a rally
 time attack, the police helicopter and a first police pursuit are in. The police, the pursuit and
 its HUD follow Most Wanted (2005); the world, the rendering and the driving follow Night-Runners
@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.87)
+## Current state (0.9.88)
 
 375 tests pass; the type check is clean. By area:
 
@@ -164,7 +164,7 @@ deck. Minato Toll moved to x -160 to make room for its south-west junction. Kuro
 about 900 junctions paved as one patch each, about 10,700 buildings in eleven kinds (towers to
 houses, shophouses, walk-ups, townhouses, machiya, coin parking, warehouses), merged per 320 m cell.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
-pylon, kiosk, pit bay). Seven landmark lots with Blender models. Lights are per-pixel pools in seven
+pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
 bands, street lamps as spot cones; about 12,450 lights. World build about 6 to 8 s. A downtown view is
 about 124 draw calls and 500k triangles.
 

@@ -23,7 +23,7 @@ models are G5 and G7.
    police: dark marks laid on the road where a tire slides (the player from the physics' slip, the
    others from their sideways speed and their turn), fading over about 40 s, and a light smoke trail
    in a hard slide.
-6. **More places.** Two more police stations (Gemini's district station model from G7, the HQ model
+6. **More places** (done in 0.9.88). Two more police stations (Gemini's district station model from G7, the HQ model
    until it lands), more hideouts and repair garages spread over the island (the existing models), on
    the map and the minimap with their icons. B2 part 7 makes the police use the nearest station.
 7. **Banners for B2's events** as they land: reinforcements, a helicopter leaving to refuel and

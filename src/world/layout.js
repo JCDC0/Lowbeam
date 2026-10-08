@@ -447,7 +447,11 @@ const inNaikan = (x, z, m) => ((x - NAIKAN.x) / (NAIKAN.rx + m)) ** 2 + ((z - NA
  * lot beside a road like a gas station's forecourt (`road`, `near`, `side`, `w` along the road, `d`
  * away from it), with the model's front on the road. The street generator keeps clear of them.
  * `sign` is the text painted on the model's sign. Logic for them (the police, the helicopter,
- * hiding) comes later and finds them here.
+ * hiding) comes later and finds them here. The headquarters comes first: the code that wants "the
+ * police HQ" takes the first police lot. The two district stations (0.9.88) stand on the garage
+ * model under a police sign until Gemini's district station (G7) lands.
+ * Every lot was placed with a search that keeps it on land, flat and 14 m clear of every street the
+ * city generator lays, so adding one does not move a single street.
  * @typedef {{ id: string, kind: 'police' | 'garage' | 'hideout', model: string, name: string, sign?: string,
  *   road: string, near: number[], side: 'left' | 'right', w: number, d: number }} Lot
  * @type {Lot[]}
@@ -460,8 +464,14 @@ export const LOTS = [
   { id: 'hideout-futo', kind: 'hideout', model: 'hideout', name: 'FUTO WAREHOUSE', road: 'higashi', near: [2430, 2120], side: 'right', w: 48, d: 40 },
   { id: 'hideout-kita', kind: 'hideout', model: 'hideout', name: 'KITA WAREHOUSE', road: 'kita', near: [1650, -2470], side: 'right', w: 48, d: 40 },
   { id: 'hideout-nishi', kind: 'hideout', model: 'hideout', name: 'NISHI WAREHOUSE', road: 'west', near: [-2240, 640], side: 'right', w: 48, d: 40 },
+  { id: 'police-kita', kind: 'police', model: 'garage', name: 'KITAMACHI POLICE STATION', sign: 'KITAMACHI POLICE', road: 'r18', near: [-321, -862], side: 'right', w: 36, d: 32 },
+  { id: 'police-toge', kind: 'police', model: 'garage', name: 'KURO PASS POLICE STATION', sign: 'TOGE POLICE', road: 'kuro', near: [-2258, -2045], side: 'left', w: 36, d: 32 },
+  { id: 'garage-sakura', kind: 'garage', model: 'garage', name: 'SAKURA MOTORS', sign: 'SAKURA MOTORS', road: 'west', near: [-1395, 1200], side: 'right', w: 34, d: 32 },
+  { id: 'garage-mori', kind: 'garage', model: 'garage', name: 'MORI TUNING', sign: 'MORI TUNING', road: 'r18', near: [557, -1754], side: 'right', w: 34, d: 32 },
+  { id: 'hideout-kawa', kind: 'hideout', model: 'hideout', name: 'KAWA YARD', road: 'east', near: [2244, 1148], side: 'left', w: 48, d: 40 },
+  { id: 'hideout-mine', kind: 'hideout', model: 'hideout', name: 'MINE SHED', road: 'kuro', near: [47, -2444], side: 'right', w: 48, d: 40 },
 ];
-const lotDefs = [...HIGASHI, ...KITA, ...WEST];
+const lotDefs = [...HIGASHI, ...KITA, ...WEST, ...R18, ...EAST, ...KURO];
 /** The rectangle of a lot, the same way ground.js makes its pad. @param {Lot} lot */
 function lotRect(lot) {
   const def = /** @type {RoadDef} */ (lotDefs.find((d) => d.id === lot.road));
