@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.77 (2026-10-08)
+
+The Kagero Lancer-X and the Halden Drifter race with Gemini's models.
+
+- `KIND_MODELS` gains `rv-boxer` (`rv_boxer_full`) and `rv-v8drift` (`rv_v8drift_full`) after review
+  of Gemini's 0.9.60 and 0.9.61: the Lancer-X a four-door rally sedan with box flares, hood vents and
+  scoop and a tall wing on uprights; the Drifter a long-hooded, low four-door with a ducktail and a
+  full-width tail band. Checked in the game from behind: painted, the wing and the tail band read.
+- Gemini's next pair is the Tsurugi Wedge and the Kenro Hardtop (0.9.62, 0.9.63).
+
 ## 0.9.76 (2026-10-08)
 
 A bigger minimap with the heat on it (C2 part 7).
