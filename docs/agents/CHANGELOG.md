@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.86 (2026-10-08)
+
+The Kenro Hardtop races with Gemini's model; reviews of 0.9.20 and 0.9.64.
+
+- Gemini's 0.9.64 passes: the roof is 1.25 m (z +0.25 to -1.0), the C pillar slopes to a short trunk at
+  z -1.75 and the glass runs from z +1.35 to -1.75, so from the side it reads as a 70s hardtop, no
+  longer a pickup. `KIND_MODELS` gains `rv-hardtop` (`rv_hardtop_full`).
+- Hermes' 0.9.20 (B2 part 1) passes: `DAMAGE.k` 0.35 to 0.125 and `CIVIL_WRECK_HIT` 11 to 18 m/s,
+  measured (a cruiser takes 14 bumps at 8 m/s, a 15 m/s wall costs it 34 %, a 30 m/s head-on still
+  destroys it from every car, a Rhino takes 3.4 times as many rams). The guide's knock threshold
+  (still 11 m/s) is brought up to date here; Hermes is asked to update `ARCHITECTURE.md` with each
+  behavior change.
+
 ## 0.9.85 (2026-10-08)
 
 The HUD fishnet, the speed vignette and blur, with toggles (C3 part 4).
