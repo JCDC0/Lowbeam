@@ -544,6 +544,17 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.68 (2026-10-08)
+
+Street racers: Kenro Sakura S (`rv_sakura`).
+
+- `tools/blender/rv_sakura.py`: Late-80s Japanese rear-drive coupe in the Silvia S13 / 180SX spirit: 4.45 x 1.70 x 1.32 m, wheelbase 2.53 m (axles at z = +1.17 and -1.36 m), wheel radius 0.31 m at x = +-0.74.
+- Three-box notchback coupe architecture: distinct hood, raked windshield, level beltline with flush side glass, protective waist moldings, and crisp C-pillar to flat rear deck.
+- Front styling: slim triple-projector headlights with chrome backing bezel and white emissive lenses (`lamp`, z in [2.010, 2.025] m > 0), horizontal grille slot, bumper air intake mouth, integrated fog lamps, and front chin spoiler lip to +2.030 m.
+- Rear styling: wide dual-tier rectangular block taillights (`tail`, z in [-2.414, -2.405] m < 0) with chrome reverse inserts, rear deck lid lip spoiler wing, and single large-bore chrome cannon sports exhaust on left side (x = -0.48) to -2.420 m with dark inner bore.
+- 1,196 body triangles (budget <= 2,500), 1,900 full triangles with wheels (budget <= 3,200).
+- `assets/models/rv_sakura.json` and `assets/models/rv_sakura_full.json`. Bounds: body x: [-0.874, 0.874], y: [0.160, 1.320], z: [-2.420, 2.030]; full x: [-0.874, 0.874], y: [0.000, 1.320], z: [-2.420, 2.030]. Checked clean in props.html with 0 problems.
+
 ## 0.9.67 (2026-10-08)
 
 Street racers: Vespera Zero (`rv_hyper`).
