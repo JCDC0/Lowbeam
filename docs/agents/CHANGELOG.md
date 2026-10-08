@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.89 (2026-10-08)
+
+The backend seat moves to Gemini.
+
+- Hermes' budget ran out during B2 part 2; Claude reviewed its uncommitted work, found it complete and
+  tested (389 pass), and committed it as 0.9.21. Gemini (Antigravity) takes B2 from part 3 (0.9.22 on,
+  the backend range) alongside its asset work; the brief and the task board say so.
+
 ## 0.9.88 (2026-10-08)
 
 More places: two police stations, two garages, two hideouts (C3 part 6).

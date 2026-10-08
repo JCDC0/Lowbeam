@@ -1,13 +1,15 @@
 # B2: Traffic and police driving patch (Backend)
 
-For the backend seat (Hermes). Jc tested the game and listed what feels wrong in how the other cars
-and the police drive; this brief turns that list into small, exact parts, each proved by a test.
-Read `docs/agents/ARCHITECTURE.md` and `docs/agents/tasks/README.md` first. Claude has been working
-in these files while the seat was empty (C2, up to 0.9.81): pull first and read the code as it is
-now.
+For the backend seat. Jc tested the game and listed what feels wrong in how the other cars and the
+police drive; this brief turns that list into small, exact parts, each proved by a test. Read
+`docs/agents/ARCHITECTURE.md` and `docs/agents/tasks/README.md` first, and pull: Claude and Hermes
+have been in these files, read the code as it is now.
 
-Versions: 0.9.20 to 0.9.49 are yours and none is used yet. One commit per part, from 0.9.20. A
-commit numbered below `package.json` (0.9.81 or higher) adds its changelog entry in version order
+Who: Hermes did parts 1 and 2 (0.9.20, 0.9.21; part 2 committed by Claude when Hermes' budget ran
+out). Gemini (Antigravity) takes the backend seat from part 3 on, alongside its asset work.
+
+Versions: the backend range, 0.9.22 to 0.9.49, one commit per part (part 3 is 0.9.22, and so on). A
+commit numbered below `package.json` (0.9.89 or higher) adds its changelog entry in version order
 and leaves `package.json` and `package-lock.json` alone. Stage your files by name, never
 `git add -A`; Gemini and Claude commit in the same tree. Stop for Claude's review after parts 3 and
 6 and at the end.
