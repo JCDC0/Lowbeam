@@ -418,6 +418,17 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.20 (2026-10-08)
+
+Tougher cars: a cruiser takes 14 bumps at 8 m/s instead of 5, and a civilian hit under 18 m/s is knocked, not wrecked.
+
+- `DAMAGE.k` in `src/police/units.js` from 0.35 to 0.125 (hit points a unit loses per (m/s)^2 of closing speed). Measured in the sim with the Hayate (1290 kg) against a cruiser (100 hit points): a wall hit at 15 m/s costs 33.8 % of its hit points (was 94.5 %); rams at 8 m/s to destroy it 14 (was 5), at 9 m/s 11 (was 4); four bumps at 30 km/h cost 32 % (was 90 %); a 30 m/s head-on destroys it from every car in `CARS` (104 % of its hit points from the Hayate, was 291 %).
+- The Rhino: 47 rams at 8 m/s against 14 for a cruiser, 3.4 times (was 17 and 5, also 3.4 times). Hit points are unchanged.
+- `CIVIL_WRECK_HIT` in `src/traffic/sim.js` from 11 to 18 m/s closing. The Hayate hitting a sedan: 12, 15 and 17 m/s now knock it (all three wrecked it); 18.5 and 20 m/s wreck it.
+- The wall rule (under 35 % at 15 m/s) and two old assertions cannot all hold under the same square law: a wall hit at 70 km/h now costs a cruiser 57 % (was 159 %), so the assertion that a pillar at 70 km/h destroys it is dropped; the ceiling of eight rams at 9 m/s (now 11) is dropped with it. The rams test asks for six or more at 8 m/s, the brief's rule.
+- Tests: `police-damage` (the wall rule replaces the pillar line; the rams test at 8 m/s; a head-on for every car; the Rhino about three times a cruiser's rams); `traffic-knock` (a hit at 17 m/s knocks, at 19 m/s wrecks). Three old tests now need harder hits under the new law: `police-units` (the hard hit is 30 m/s, was 25; the soft unit is cleared first, since its impulse lowered the closing speed of the hard one); `traffic-walls` (the unit starts 20 m out, hits at 27 m/s; from 40 m it braked to 23 m/s, which costs 77 % and no longer wrecks it).
+- 379 tests pass (376 before, plus three); the type check is clean.
+
 ## 0.9.19 (2026-10-07)
 
 Police cars that can be destroyed (C2 part 2).

@@ -80,7 +80,7 @@ export function unitFor(heat) {
  * nothing under `floor` m/s, a wall counting as `wall` of an even share. Below `smoke` of its hit
  * points a unit smokes, below `limp` it limps at `limpSpeed` of its top speed, at zero it is destroyed.
  */
-export const DAMAGE = { k: 0.35, floor: 2, wall: 1.2, smoke: 0.5, limp: 0.25, limpSpeed: 0.7 };
+export const DAMAGE = { k: 0.125, floor: 2, wall: 1.2, smoke: 0.5, limp: 0.25, limpSpeed: 0.7 };
 
 /**
  * Hit points a unit of mass `own` loses to a hit at `hit` m/s closing against something of mass

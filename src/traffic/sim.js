@@ -47,7 +47,7 @@ const SPAWN_MAX = 460;
 const KEEP = 620;
 const WRECK_TIME = 24;
 /** A civilian or racer hit harder than this (closing speed, m/s) is wrecked; a lighter hit knocks it. */
-const CIVIL_WRECK_HIT = 11;
+const CIVIL_WRECK_HIT = 18;
 /**
  * A knocked car on its tires: how fast its sideways slide dies and how hard its driver brakes (m/s2),
  * how fast its spin settles (1/s), the speed (m/s) below which it tries its lane again, and how long

@@ -61,6 +61,16 @@ test('a hard hit wrecks a car', () => {
   assert.equal(a.mode, 'wreck');
 });
 
+test('a civilian hit under 18 m/s is knocked, not wrecked; a harder one wrecks it', () => {
+  const soft = civilian('sedan', 14);
+  const hit = soft.sim.collideWithPlayer(behind(soft.a, 17), spec);
+  assert.ok(hit > 16 && hit < 18, `the hit was ${hit.toFixed(1)} m/s`);
+  assert.equal(soft.a.mode, 'knocked', 'a 17 m/s hit knocks it off its line');
+  const hard = civilian('sedan', 14);
+  hard.sim.collideWithPlayer(behind(hard.a, 19), spec);
+  assert.equal(hard.a.mode, 'wreck', 'a 19 m/s hit wrecks it');
+});
+
 test('mass counts both ways: a kei car is thrown, a bus barely moves and stops the player', () => {
   const hitBy = (kind) => {
     const { sim, a } = civilian(kind, 0);

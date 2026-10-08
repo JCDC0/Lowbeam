@@ -159,7 +159,8 @@ test('a soft bump leaves a unit running; a hard hit wrecks it and counts it lost
   const ev = sim.takeEvents();
   assert.equal(ev.lost, 0);
   assert.ok(ev.policeHit > 0, 'but it is a hit on a police car');
-  const hard = make(25);
+  sim.agents.length = 0;
+  const hard = make(30);
   assert.equal(hard.mode, 'wreck');
   assert.equal(sim.takeEvents().lost, 1, 'a wrecked unit is lost to the pursuit');
 });

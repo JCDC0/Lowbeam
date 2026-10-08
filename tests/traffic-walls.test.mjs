@@ -80,7 +80,7 @@ test('a unit driving free at the player through a block stops at the wall, wreck
   a.pursuit = 'chase';
   a.free = true;
   a.x = 1000;
-  a.z = 1000 - 40;
+  a.z = 1000 - 20;
   a.y = 0;
   a.yaw = 0;
   a.speed = 30;
@@ -91,7 +91,7 @@ test('a unit driving free at the player through a block stops at the wall, wreck
     assert.ok(!inside(colliders, a), `never inside the block (t ${t.toFixed(2)})`);
   }
   assert.ok(a.z < 1000 - 10, 'it did not reach the far side');
-  assert.equal(a.mode, 'wreck', 'a 30 m/s hit on a wall wrecks it');
+  assert.equal(a.mode, 'wreck', 'a hit at about 27 m/s on a wall wrecks it');
   assert.equal(sim.takeEvents().lost, 1, 'and the pursuit loses it');
 });
 
