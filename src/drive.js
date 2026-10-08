@@ -201,7 +201,24 @@ export class Drive {
   pursuitView() {
     const view = this.policeOrders ? this.policeOrders.view : null;
     if (!view) return null;
-    return { ...view, helis: this.helisUp, nearby: this.policeOrders?.detect.watchers.length ?? 0 };
+    const units = this.traffic.units().filter((a) => a.mode !== 'wreck');
+    const byKind = {
+      police: 0,
+      'police-fast': 0,
+      'police-int': 0,
+      'police-heavy': 0,
+    };
+    for (const u of units) {
+      const k = u.kind?.id ?? 'police';
+      if (k in byKind) byKind[k]++;
+    }
+    return {
+      ...view,
+      helis: this.helisUp,
+      nearby: this.policeOrders?.detect.watchers.length ?? 0,
+      assigned: this.police.assigned,
+      byKind,
+    };
   }
 
   /**
@@ -348,6 +365,7 @@ export class Drive {
     const banners = {
       start: ['PURSUIT', { sub: `HEAT LEVEL ${e.heat ?? 1}`, tone: 'police' }],
       heat: [`HEAT LEVEL ${e.level}`, { sub: 'MORE UNITS RESPONDING', tone: 'police' }],
+      reinforcements: ['REINFORCEMENTS', { sub: `+${e.count} UNITS ASSIGNED`, tone: 'police' }],
       cooldown: ['COOLDOWN', { sub: 'FIND A PLACE TO HIDE', tone: 'cool' }],
       roadblock: ['ROADBLOCK AHEAD', { sub: e.spikes ? 'SPIKE STRIP' : '', tone: 'bad' }],
       roadblockDodged: ['ROADBLOCK DODGED', { tone: 'good' }],

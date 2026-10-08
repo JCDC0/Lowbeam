@@ -291,8 +291,13 @@ shrugs off what hurts a cruiser and a pillar is worst. Below half hit points a f
 aim (0.15 rad, 0.6 Hz sine, phase by id), its top speed falls smoothly from 100 % to 85 % between 50 % and 25 % HP,
 then smoothly to limp speed (70 %) below 25 % with no step; at zero it is destroyed: a dark burnt wreck in
 flames (`traffic/damage-fx.js`), its bar and siren dead, its kind's bounty paid into the pursuit
-(¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. Backup
-arrives one car every 1.5 s from `roster(heat)`. Helicopters (`helisFor`): one at heat 3 from the
+(¥5,000 to ¥20,000), counted as taken out, a little heat added, and a COP TAKEN OUT toast. The
+director maintains an assigned pool for the pursuit (10 at heat 1, 20 at 2, 35 at 3, 50 at 4, 60 at 5,
+raised as heat climbs; 0.9.25), decremented as each backup car is dispatched from `roster(heat)` every 1.5 s.
+Destroyed units are permanently gone from the pool. When on-scene units fall to 2 or fewer with the pool
+under 5, reinforcements add 25 % of the heat's baseline pool with a REINFORCEMENTS banner. `pursuitView()`
+in `drive.js` reports `assigned` and `byKind` (`police`, `police-fast`, `police-int`, `police-heavy`) to the HUD.
+Helicopters (`helisFor`): one at heat 3 from the
 HQ's roof, two at 4, three at 5, the backup two flying in from over the west and east hills and leaving
 the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: behind, ahead on the
 left, wide on the right) so their searchlights cover different streets. From heat 4 a

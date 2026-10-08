@@ -672,6 +672,20 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.25 (2026-10-08)
+
+The pursuit's numbers, Most Wanted's: assigned pool by heat level, reinforcements on low points, and on-scene unit counts by kind for the HUD (B2 part 6).
+
+- `PoliceDirector` in `src/police/director.js`: maintains an `assigned` pool (10 at heat 1, 20 at 2, 35 at 3, 50 at 4, 60 at 5), incremented as heat climbs. Each unit dispatched via `backup` decrements the pool; destroyed units are permanently removed and never return to the pool.
+- Reinforcements: when on-scene active units fall to 2 or fewer while the pool is under 5, the pool gains 25 % of the heat's baseline quota (3 at heat 1, 5 at 2, 9 at 3, 13 at 4, 15 at 5), firing `{ type: 'reinforcements', count }` once per low point until force recovers.
+- `pursuitView()` in `src/drive.js`: exports `assigned` and `byKind: { police, 'police-fast', 'police-int', 'police-heavy' }` tallying non-wreck units on scene for the HUD layout.
+- `policeEvent` in `src/drive.js`: adds the banner entry for reinforcements: `['REINFORCEMENTS', { sub: '+<count> UNITS ASSIGNED', tone: 'police' }]`.
+- Measured before and after:
+  - Heat 1 pursuit pool: initial assigned pool 10 (was untracked before); pool decremented to 9 on first unit dispatched, 8 on second unit; pool remains 8 upon unit destruction (no resurrection).
+  - Low point reinforcements: pool at 4 with on-scene units <= 2 gained +3 units (+25%), emitting a reinforcements event once (0 repeated events during the low point); recovery to > 2 on-scene units re-armed the low point trigger.
+  - HUD view contract: `pursuitView()` supplies non-empty `assigned` and `byKind` counts matching Jc's sketch and `layoutPursuit`.
+- Tests: `tests/police-director.test.mjs` (pool falls on backup dispatch, destroyed units do not return, reinforcements fire once per low point), `tests/pursuit-hud.test.mjs` (layoutPursuit formats kinds, assigned, destroyed and reinforcements). 419 tests pass; type check clean.
+
 ## 0.9.24 (2026-10-08)
 
 Police that drive like people: reaction delay and smoothing, lateral grip cap with corner braking, obstacle corridor awareness, and progressive damage scaling (B2 part 5).

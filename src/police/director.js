@@ -86,6 +86,9 @@ export function unitSees(u, p, mode) {
 /** A pass closer than `range` m (center to center) at more than `speed` m/s relative provokes a unit. */
 export const NEAR_MISS = { range: 3.8, speed: 22 };
 
+/** Assigned units pool by heat level, from Most Wanted. */
+export const ASSIGNED_BY_HEAT = [0, 10, 20, 35, 50, 60];
+
 export class PoliceDirector {
   /** @param {{ rand?: () => number }} [opts] */
   constructor({ rand = Math.random } = {}) {
@@ -96,6 +99,10 @@ export class PoliceDirector {
     /** Seconds the end card has been up, while the ended pursuit is kept for it. */
     this.reportAge = 0;
     this.backupTimer = 0;
+    /** The assigned units pool for the pursuit. */
+    this.assigned = 0;
+    this.assignedHeat = 0;
+    this.reinforcedLow = false;
     /** @type {any} the standing roadblock. */
     this.roadblock = null;
     /** @type {any} its spike strip. */
@@ -157,7 +164,8 @@ export class PoliceDirector {
     // A finished pursuit only shows its card, then the police stand down.
     if (this.pursuit && !this.active) {
       this.reportAge += dt;
-      out.view = this.pursuit.reportView();
+      const rv = this.pursuit.reportView();
+      out.view = rv ? { ...rv, assigned: this.assigned } : null;
       if (this.reportAge >= REPORT_TIME) {
         this.pursuit = null;
         out.view = null;
@@ -205,7 +213,26 @@ export class PoliceDirector {
       });
       const before = this.heat.level;
       this.heat.update(dt, { pursuit: true, infractions: events.filter((e) => e.type === 'infraction').length });
-      if (this.heat.level > before) out.events.push({ type: 'heat', level: this.heat.level });
+      if (this.heat.level > before) {
+        out.events.push({ type: 'heat', level: this.heat.level });
+        const newLevel = Math.max(1, Math.min(5, Math.floor(this.heat.level)));
+        if (newLevel > this.assignedHeat) {
+          this.assigned += (ASSIGNED_BY_HEAT[newLevel] - ASSIGNED_BY_HEAT[this.assignedHeat]);
+          this.assignedHeat = newLevel;
+        }
+      }
+      const onScene = w.units.length;
+      if (onScene <= 2 && this.assigned < 5) {
+        if (!this.reinforcedLow) {
+          this.reinforcedLow = true;
+          const level = Math.max(1, Math.min(5, Math.floor(this.heat.level)));
+          const count = Math.round(ASSIGNED_BY_HEAT[level] * 0.25);
+          this.assigned += count;
+          out.events.push({ type: 'reinforcements', count });
+        }
+      } else if (onScene > 2) {
+        this.reinforcedLow = false;
+      }
       out.events.push(...events);
       for (const e of events) {
         if (e.type === 'escaped') {
@@ -223,9 +250,11 @@ export class PoliceDirector {
         out.heli = heli;
         out.helis = helis;
         this.stepRoadblock(dt, w, out);
-        out.view = pursuit.view();
+        const pv = pursuit.view();
+        out.view = pv ? { ...pv, assigned: this.assigned } : null;
       } else {
-        out.view = /** @type {Pursuit} */ (this.pursuit).reportView();
+        const rv = /** @type {Pursuit} */ (this.pursuit).reportView();
+        out.view = rv ? { ...rv, assigned: this.assigned } : null;
       }
     }
     this.stepTires(dt, p, out);
@@ -236,6 +265,10 @@ export class PoliceDirector {
   /** @param {PoliceOrders} out */
   begin(out) {
     this.heat.startPursuit();
+    const level = Math.max(1, Math.min(5, Math.floor(this.heat.level)));
+    this.assigned = ASSIGNED_BY_HEAT[level] ?? 10;
+    this.assignedHeat = level;
+    this.reinforcedLow = false;
     this.pursuit = new Pursuit();
     this.pursuit.setHeat(this.heat.level, false);
     this.reportAge = 0;
@@ -253,6 +286,9 @@ export class PoliceDirector {
     out.heli = false;
     this.reportAge = 0;
     this.heat.calm = 0;
+    this.assigned = 0;
+    this.assignedHeat = 0;
+    this.reinforcedLow = false;
     if (this.roadblock) out.clearRoadblock = true;
     this.roadblock = null;
     this.spikes = null;
@@ -269,6 +305,8 @@ export class PoliceDirector {
     if (w.units.length >= want || this.backupTimer > 0) return [];
     this.backupTimer = this.active ? BACKUP_EVERY : 0;
     if (!this.active) return ['police'];
+    if (this.assigned <= 0) return [];
+    this.assigned--;
     // The roster for the heat, minus the kinds already on the road: the missing one goes out.
     const left = roster(Math.max(1, this.heat.level));
     for (const u of w.units) {

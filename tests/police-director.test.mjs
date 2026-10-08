@@ -214,3 +214,56 @@ test('hitting a police car is an instant pursuit and a ram on the sheet', () => 
   assert.ok(dir.pursuit.infractions.includes('ram'));
   assert.ok(dir.pursuit.cost >= 3000, 'the damage is a cost to the state');
 });
+
+test('assigned pool falls as units go out, destroyed units do not come back', () => {
+  const dir = new PoliceDirector();
+  const oStart = dir.update(DT, world({ x: 0, z: 0, speed: 20 }, [{ x: 3, z: 0 }], { hitPolice: 3000 }));
+  assert.ok(dir.active, 'pursuit starts');
+  assert.equal(oStart.spawn.length, 1, 'first backup unit dispatched');
+  assert.equal(dir.assigned, 9, 'assigned pool falls from 10 to 9 when first unit goes out');
+
+  const units = [{ x: 8, z: 0 }, { x: 0, z: -30 }];
+  let spawned = false;
+  for (let t = 0; t < 1.6; t += DT) {
+    const o = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
+    if (o.spawn.length > 0) {
+      spawned = true;
+      units.push({ x: 0, z: -60, kind: o.spawn[0] });
+    }
+  }
+  assert.ok(spawned, 'second backup unit went out');
+  assert.equal(dir.assigned, 8, 'assigned pool is now 8');
+
+  const oDestroy = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units, { destroyed: ['police'] }));
+  assert.equal(dir.assigned, 8, 'destroyed unit does not come back to the pool');
+  assert.ok(oDestroy.events.some((e) => e.type === 'destroyed'), 'destroyed event emitted');
+});
+
+test('reinforcements fire once per low point', () => {
+  const dir = new PoliceDirector();
+  speedPast(dir);
+  assert.ok(dir.active);
+
+  dir.assigned = 4;
+  const units = [{ x: 0, z: -30 }, { x: 0, z: -50 }];
+  const o1 = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
+  const reinfEvents1 = o1.events.filter((e) => e.type === 'reinforcements');
+  assert.equal(reinfEvents1.length, 1, 'reinforcements fire at low point');
+  assert.equal(reinfEvents1[0].count, 3, 'heat 1 gains 25% of 10 = 3 units');
+  assert.equal(dir.assigned, 7, 'pool gained 3 units (4 + 3 = 7)');
+
+  dir.assigned = 4;
+  const o2 = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
+  const reinfEvents2 = o2.events.filter((e) => e.type === 'reinforcements');
+  assert.equal(reinfEvents2.length, 0, 'reinforcements do not fire repeatedly during the same low point');
+
+  units.push({ x: 0, z: -70 });
+  dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units));
+
+  const units2 = [{ x: 0, z: -30 }];
+  dir.assigned = 3;
+  const o3 = dir.update(DT, world({ x: 0, z: 0, speed: 30 }, units2));
+  const reinfEvents3 = o3.events.filter((e) => e.type === 'reinforcements');
+  assert.equal(reinfEvents3.length, 1, 'reinforcements fire again for the new low point after recovery');
+  assert.equal(dir.assigned, 6, 'pool gained 3 units for the new low point');
+});
