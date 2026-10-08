@@ -176,7 +176,7 @@ roof; the tow goes to the nearest of the three stations; garages repair without 
   hides a parked sky helicopter) and reappears in the air there when it relaunches. Put `pad` back
   to `basePad` once the refuel is done.
 
-Also: `unitSpawned()` in `director.js` needs a doc comment (exported API).
+Also: `unitSpawned()` in `director.js` needs a doc comment (exported API). Both fixes and the doc comment landed in 0.9.28 with tests in `tests/heli.test.mjs`.
 
 ## Later (after review)
 

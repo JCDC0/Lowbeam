@@ -314,6 +314,9 @@ export class PoliceDirector {
     return [left.length ? left[left.length - 1] : 'police'];
   }
 
+  /**
+   * Records that a dispatched backup unit spawned in the world, decrementing the assigned pool.
+   */
   unitSpawned() {
     if (this.active && this.assigned > 0) this.assigned--;
   }

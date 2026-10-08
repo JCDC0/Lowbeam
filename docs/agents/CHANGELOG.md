@@ -725,6 +725,19 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.28 (2026-10-08)
+
+Helicopter tank refills when parked at home, and pad resets to basePad after refuel.
+
+- `src/police/heli.js`:
+  - Tank refills to full (`HELI.fuel`) when the helicopter parks at home (on its base pad or when a backup is put away in the sky), preventing an early break-off during the next pursuit if the previous chase ended low on fuel.
+  - After completing a refuel at a police station, `this.pad` resets to `this.basePad` (and sky backups restore their position to `basePad`), allowing HQ helicopters to return to HQ upon pursuit end and preventing sky backups from remaining hidden on station roofs or relaunching from station pads.
+- `src/police/director.js`: added doc comment to the exported `unitSpawned()` API.
+- Measured before and after:
+  - Pursuit after low fuel recall: before, a helicopter ending pursuit with 35 s fuel remaining broke off 20 s into the next pursuit; after, fuel is restored to 115 s upon parking and chases 50 s without break-off.
+  - Pad assignment: before, `pad` remained station pad after 40 s refuel; after, `pad` restores to `basePad` upon refuel completion.
+- Tests: `tests/heli.test.mjs` (14 pass).
+
 ## 0.9.27 (2026-10-08)
 
 Louder traffic, louder horns, exhaust pops per layout, and backup pool spawn fix (B2 part 8).

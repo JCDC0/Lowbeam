@@ -228,3 +228,64 @@ test('the nearest station is used for a tow', () => {
   assert.equal(hq?.lot.id, 'police');
   assert.equal(hq?.lot.name, 'KUROGANE POLICE HQ');
 });
+
+test('state left low and parked, then a new pursuit does not break off early', () => {
+  const h = new Heli(PAD);
+  const target = car(20);
+  const w = world(target);
+  h.launch();
+  run(h, w, 20);
+  assert.equal(h.state, 'chase');
+  h.fuel = 35;
+  h.recall();
+  w.target = null;
+  run(h, w, 120);
+  assert.equal(h.state, 'parked');
+  assert.equal(h.fuel, HELI.fuel, 'refilled when parked at home');
+
+  w.target = target;
+  h.launch();
+  run(h, w, 12);
+  assert.equal(h.state, 'chase');
+  let brokeOff = false;
+  run(h, w, 50, (hh) => {
+    if (hh.refueling || hh.state === 'return') brokeOff = true;
+  });
+  assert.equal(brokeOff, false, 'did not break off early in the new pursuit');
+  assert.equal(h.state, 'chase');
+});
+
+test('pad returns to basePad after a refuel', () => {
+  const stationPad = { x: 300, y: 7.5, z: 300, yaw: 0 };
+  const h = new Heli(PAD);
+  const target = car(20);
+  const w = world(target);
+  w.stations = [stationPad];
+  h.launch();
+  run(h, w, 20);
+  assert.equal(h.state, 'chase');
+  h.fuel = 16;
+  for (let t = 0; t < 2; t += DT) {
+    h.update(DT, w);
+  }
+  assert.equal(h.state, 'return');
+  assert.equal(h.pad, stationPad, 'diverting to station pad');
+  assert.ok(h.refueling);
+
+  let landed = false;
+  for (let t = 0; t < 60; t += DT) {
+    h.update(DT, w);
+    if (h.state === 'parked') {
+      landed = true;
+      break;
+    }
+  }
+  assert.ok(landed, 'landed on station pad');
+
+  for (let t = 0; t < HELI.refuelTime + 1; t += DT) {
+    h.update(DT, w);
+  }
+  assert.equal(h.refueling, false, 'refuel complete');
+  assert.equal(h.pad, PAD, 'pad restored to basePad after refuel');
+});
+

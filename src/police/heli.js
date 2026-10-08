@@ -187,6 +187,7 @@ export class Heli {
   /** Scrambles: spins up on the pad, or turns round if it was flying home. */
   launch() {
     if (this.refueling) return;
+    if (this.state === 'parked') this.fuel = HELI.fuel;
     if (this.sky && this.state === 'parked') {
       this.x = this.pad.x;
       this.y = this.pad.y;
@@ -233,16 +234,26 @@ export class Heli {
         }
       }
     }
-    if (this.state === 'parked' && this.refueling) {
-      this.refuelTimer += dt;
-      if (this.refuelTimer >= HELI.refuelTime) {
-        this.fuel = HELI.fuel;
-        this.refueling = false;
-        this.refuelTimer = 0;
-        if (w.target) {
-          this.launch();
-          events.push({ type: 'heliBack' });
+    if (this.state === 'parked') {
+      if (this.refueling) {
+        this.refuelTimer += dt;
+        if (this.refuelTimer >= HELI.refuelTime) {
+          this.fuel = HELI.fuel;
+          this.refueling = false;
+          this.refuelTimer = 0;
+          this.pad = this.basePad;
+          if (this.sky) {
+            this.x = this.basePad.x;
+            this.y = this.basePad.y;
+            this.z = this.basePad.z;
+          }
+          if (w.target) {
+            this.launch();
+            events.push({ type: 'heliBack' });
+          }
         }
+      } else {
+        this.fuel = HELI.fuel;
       }
     }
     const P = this.pad;
@@ -278,6 +289,7 @@ export class Heli {
           this.fly(dt, w, P.x, P.y, P.z, null);
           if (Math.hypot(this.x - P.x, this.z - P.z) < 40) {
             this.state = 'parked';
+            this.fuel = HELI.fuel;
             this.rotor = 0;
             this.vx = this.vy = this.vz = 0;
           }
@@ -308,7 +320,10 @@ export class Heli {
       }
       case 'spindown':
         this.rotor = Math.max(0, this.rotor - dt / HELI.spinDown);
-        if (this.rotor <= 0) this.state = 'parked';
+        if (this.rotor <= 0) {
+          this.state = 'parked';
+          if (!this.refueling) this.fuel = HELI.fuel;
+        }
         break;
     }
     this.rotorAngle = (this.rotorAngle + this.rotor * dt * Math.PI * 2 * 5.5) % (Math.PI * 2);

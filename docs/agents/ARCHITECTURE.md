@@ -312,7 +312,7 @@ the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: be
 left, wide on the right) so their searchlights cover different streets. Each helicopter has 100 s of pursuit fuel
 (115 s total, `heli.js`); at 15 s left it breaks off (CHOPPER BREAKING OFF) to the nearest of the three police stations
 (HQ, Kitamachi, Toge, each with a pad via `helipadOf`) to refuel for 40 s, returning (CHOPPER BACK) if heat warrants
-(0.9.26). Searchlights lose sight under decks and behind dense building blocks. While no player pursuit is active,
+(0.9.26); its tank refills when parked at home, and its pad returns to basePad once refueled (0.9.28). Searchlights lose sight under decks and behind dense building blocks. While no player pursuit is active,
 a patrol tailing a street racer may summon one helicopter, with player pursuits taking precedence. The five landmark
 garages repair the engine, damage and tires at pump prices without selling fuel or nitrous. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
