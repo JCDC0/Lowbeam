@@ -162,6 +162,19 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.63 (2026-10-08)
+
+Street racers: Kenro Hardtop (`rv_hardtop`).
+
+- `tools/blender/rv_hardtop.py`: 70s two-door pillarless hardtop in the Hakosuka KPGC10 / Celica / Laurel spirit. 4.40 x 1.66 x 1.41 m, wheelbase 2.57 m (axles at z = +1.15 and -1.42 m), wheel radius 0.30 m at x = +-0.70.
+- Pillarless greenhouse: no B-pillar, one continuous side glass opening from A-pillar to notched fastback C-pillar; long hood (~1.68 m) and short trunk deck.
+- Front and rear chrome bumpers standing proud of body; front chin spoiler under bumper; front/rear bumper overriders.
+- Works-style bolt-on over-fenders on all four arches with visible rivet heads.
+- Round twin headlights per side in a dark grille panel (`lamp`, z in [1.950, 1.960] m > 0); round twin taillights per side (`tail`, z in [-2.422, -2.412] m < 0); twin chrome exhaust tips to -2.430 m.
+- Deep-dish dark Watanabe-style rims on viewer wheels.
+- 1,776 body triangles (budget <= 1,800), 2,480 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_hardtop.json` and `assets/models/rv_hardtop_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.62 (2026-10-08)
 
 Street racers: Tsurugi Wedge (`rv_wedge`).
