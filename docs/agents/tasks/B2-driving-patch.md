@@ -182,7 +182,7 @@ Also: `unitSpawned()` in `director.js` needs a doc comment (exported API).
 
 - The Hikari among the street racers (`RIVALS` leaves it out because two lane change tests sit near
   their limits); make those tests robust over several seeds first.
-- `tests/route.test.mjs` times one call with the wall clock and fails on a busy machine: count the
+- `tests/island/route.test.mjs` times one call with the wall clock and fails on a busy machine: count the
   work instead.
 
 ## Report

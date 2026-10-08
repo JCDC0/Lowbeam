@@ -23,7 +23,7 @@ Prologue (`docs/DESIGN.md`).
 |---|---|
 | Install | `npm install` (dev only: `three` for types, `typescript`, the font packages) |
 | Run | `npm start`, then open http://localhost:8040 |
-| Test | `npm test` (`node --test --test-concurrency=4 tests/*.test.mjs`); one file: `node --test tests/<name>.test.mjs` |
+| Test | `npm test` (`node --test --test-concurrency=4 tests/*.test.mjs`); one file: `node --test tests/<name>.test.mjs` or `tests/island/<name>.test.mjs` |
 | Type-check (the lint step) | `npm run check` (`tsc`, JSDoc types, no emit) |
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
@@ -47,6 +47,11 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
   soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
+- A test that needs the island (the ground, the traffic net, the scatter) takes it from
+  `tests/island.mjs` (`island()`, `trafficNet()`, `scattered()`, built on first use), never builds
+  its own, and must not change it. Such a file lives in `tests/island/` and is imported by one of the
+  four groups `tests/island-{traffic,police,roads,places}.test.mjs`, which `npm test` runs as one
+  process each, so the island is built four times a run instead of thirty.
 - Units are meters, seconds, kilograms. North is -Z, east is +X. Yaw 0 faces +Z; forward is
   (sin yaw, cos yaw), left is (cos yaw, -sin yaw). Path offsets `d` are positive to the left. Input
   steer is positive to the right and negated inside physics. A car model's local +X is its LEFT.
@@ -73,12 +78,11 @@ Tests prove the rules; the game is verified by looking at it.
   `input.endFrame()`) when the loop is not running. Add `?v=N` to the URL to defeat caching.
 - Models from Blender are checked in `tools/props.html?models=a,b` (night, a road, a car for scale,
   collider boxes, light markers, a report from `__props.check()`), landmarks in `tools/landmarks.html`.
-- `npm test` and `npm run check` once before every commit, not after every edit. The full suite is
-  expensive: about 30 of its files each rebuild the whole island (the roads, the city's streets, the
-  junctions, often the traffic net), and the traffic and police tests run minutes of simulation, so a
-  run is 40 to 50 s with every core busy on a 16-thread machine. `npm test` caps it at four files
-  at a time so the machine stays usable. While working, run only the files your change touches
-  (`node --test tests/traffic-solid.test.mjs`), and never run the suite in a loop.
+- `npm test` and `npm run check` once before every commit, not after every edit. A full run is
+  about 17 s, four files at a time; the longest are the traffic group (14 s) and the roads group
+  (13 s). Building the island costs about 5 s (ground 2 s, traffic net 2.6 s, scatter 1 s), so a
+  file run alone (`node --test tests/island/traffic-solid.test.mjs`) takes 5 s or more. While
+  working, run only the files your change touches, and never run the suite in a loop.
 
 ## Blender
 

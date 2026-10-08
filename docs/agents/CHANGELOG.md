@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.1 (2026-10-08)
+
+The test suite builds the island four times instead of thirty: a full run is 17 s, not 48.
+
+- Thirty test files each built their own island (the ground about 2 s, the traffic net 2.6 s, the
+  scatter 1 s), one process per file: 190 s of work, 48 s on the clock four files at a time, most of
+  it building the same island again. They now take it from `tests/island.mjs` (`island()`,
+  `trafficNet()`, `scattered()`, built on first use), live in `tests/island/`, and run in four
+  groups, one process each: `island-traffic` (traffic, solid, blinkers, walls, evade; 14 s),
+  `island-police` (the police files, roadblocks, the pursuit, rally traffic, refill, knocks; 7 s),
+  `island-roads` (layout, route, Kurogane Line, signals; 13 s) and `island-places` (lots, poles,
+  scatter, forest, audio env, vending, markings, guide signs, gantries, toll, world; 6 s).
+- No test changed beyond its imports and where its island comes from; a few unused imports went
+  with it. 424 pass. A moved file still runs alone (`node --test tests/island/signals.test.mjs`).
+- The guide's Conventions say how a new test gets the island; Verification has the new times.
+
 ## 0.10.0 (2026-10-08)
 
 Review of Gemini's 0.9.26 and 0.9.27, the end of B2.
