@@ -116,6 +116,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/lots.js`, `build-lots.js` | Landmark lots and the Blender model loader |
 | `src/world/build-*.js` | Meshes: terrain, roads, bridges, trees |
 | `src/world/markings.js` | Zebra crossings and stop lines at the town's junctions |
+| `src/world/vending.js`, `build-vending.js` | The street vending machines |
 | `src/world/collision.js` | Circles and oriented boxes in a grid; the car as three circles |
 | `src/world/world.js` | `World.create(step)` builds the scene in stages; `update(camera, focus)` |
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
@@ -145,9 +146,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.93)
+## Current state (0.9.94)
 
-404 tests pass; the type check is clean. By area:
+406 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -171,6 +172,8 @@ deck. Minato Toll moved to x -160 to make room for its south-west junction. Kuro
 about 900 junctions paved as one patch each (a zebra crossing on every arm with a sidewalk and a stop
 line across its incoming lanes, about a meter ahead of where the traffic waits; `markings.js`), about 10,700 buildings in eleven kinds (towers to
 houses, shophouses, walk-ups, townhouses, machiya, coin parking, warehouses), merged per 320 m cell.
+About 1,000 vending machines on the town's sidewalks (`vending.js`), one to three together facing the
+road, their fronts lit (a red, a blue, a white and a green design), solid, in one mesh.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
 pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
 bands, street lamps as spot cones; about 12,450 lights. World build about 6 to 8 s. A downtown view is

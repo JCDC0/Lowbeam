@@ -11,6 +11,7 @@ import { padDistance } from './ground.js';
 import { makeRng } from '../core/rng.js';
 import { placeForest } from './forest.js';
 import { placeHighway } from './highway.js';
+import { placeVending } from './vending.js';
 import { SKIRT, ELEVATED } from './roads.js';
 
 /** @typedef {import('./ground.js').Ground} Ground */
@@ -124,6 +125,7 @@ export function scatterWorld(ground, { models = {} } = {}) {
   /** @type {Box[]} */
   const boxes = [];
   const lamps = placeLamps(ground, lights, circles);
+  const vending = placeVending(ground, circles, boxes);
   const lot = lotContents(ground.lots, models);
   boxes.push(...lot.boxes);
   lights.push(...lot.lights);
@@ -132,7 +134,7 @@ export function scatterWorld(ground, { models = {} } = {}) {
   const trees = placeForest(ground, buildings, circles, clearOfRoads);
   const bridges = placeBridges(ground, circles, boxes);
   const highway = placeHighway(ground, boxes, circles, lights);
-  return { lamps, stations, buildings, trees, bridges, highway, lights, circles, boxes };
+  return { lamps, vending, stations, buildings, trees, bridges, highway, lights, circles, boxes };
 }
 
 /** Lift (m) from which a road gets side walls, and from which it counts as a deck with piers. */

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.9.94 (2026-10-08)
+
+Vending machines on the town's sidewalks; the Kurogane Line's downtown ramps planned (C4).
+
+- `src/world/vending.js` (pure): along every town street with a sidewalk, a cluster of one to three
+  machines every 70 to 150 m in the residential streets, 110 to 220 m in midtown and 160 to 300 m
+  downtown, on a random side, at the sidewalk's outer edge with their fronts to the road. A cluster
+  is dropped if any machine would stand within 1.2 m of a lamp post, near a junction, by a forecourt
+  or on another road. 1,010 machines, placed in about 100 ms; each a box collider.
+- `src/world/build-vending.js`: a cabinet and a lit front (unlit material, so it glows) in four
+  designs drawn on one canvas, every machine in one mesh: 2 draw calls and 12k triangles for the
+  island (chunked, they cost 8 calls downtown).
+- `tests/vending.test.mjs`: every design is used, every machine is solid, on its sidewalk facing the
+  road, out of the carriageway and the junctions. 406 pass.
+- `docs/agents/tasks/C4-kurogane-ramps.md`: the plan for the Kurogane Line's ramps down to
+  downtown, with what a slip road off a deck needs in the roads, the scatter, the bridges, the
+  streets and the traffic links.
+
 ## 0.9.93 (2026-10-08)
 
 Zebra crossings and stop lines at the town's junctions.
