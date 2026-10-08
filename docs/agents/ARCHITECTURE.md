@@ -111,6 +111,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/buildings.js`, `props.js` | Building placement and the building kinds |
 | `src/world/scatter.js` | Pure placement: lamps, trees, buildings, station furniture, lights, colliders |
 | `src/world/highway.js`, `build-highway.js`, `toll.js` | Barriers, rails, toll plazas, the toll meter |
+| `src/world/gantries.js`, `build-gantries.js` | Route 1's sign gantries before every exit and their green guide signs |
 | `src/world/gas-station.js` | The Japanese gas stations |
 | `src/world/lots.js`, `build-lots.js` | Landmark lots and the Blender model loader |
 | `src/world/build-*.js` | Meshes: terrain, roads, bridges, trees |
@@ -142,13 +143,17 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.90)
+## Current state (0.9.91)
 
-389 tests pass; the type check is clean. By area:
+392 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
-Expressway's and two 12 m viaducts (north-east, north-west). The Bayshore Line with its own plaza and
+Expressway's and two 12 m viaducts (north-east, north-west). Before every exit a steel sign gantry
+(`gantries.js`, Shuto style): one about 500 m out with the distance, one where the exit lane opens
+with an arrow down to it, each with a green guide sign (出口 EXIT, or JCT onto the Bayshore and
+Kurogane Lines; the place in kanji and romaji and the road it joins) beside the loop's own sign
+(Route 1's hexagonal shield, 内回り or 外回り); 22 in all, their posts solid. The Bayshore Line with its own plaza and
 junctions. Four avenues on overpasses with diamond interchanges; every ramp is a slip road. The
 Kurogane Line, the city's second layer (`kuroganeLine` in `layout.js`): a 3.2 km elevated road, two
 lanes each way, that leaves Route 1's inner carriageway west of the Harbor interchange, climbs north
@@ -315,6 +320,5 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
 - Nothing has been checked at real frame rates on a gaming desktop yet.
 - Hillside streets can reach 20 % where a junction pulls them; the Route 18 ramps climb at 6.5 %.
-- Route 1 has no overhead sign gantries.
 - The Kurogane Line joins only Route 1's inner carriageway (the outer one would need ramps flying
   over the loop) and has no ramps down to the city streets yet. City greenery waits for G4.

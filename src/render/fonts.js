@@ -30,7 +30,7 @@ export const FONT = {
 const JP_TEXT = 'ラーメン居酒屋薬局書店喫茶理容酒寿司カラオケスナックホテル' +
   'ETC専用一般北東港湾岸普通大型円カメラ稼働中黒鉄高速パーソナルカード受付中速度違反取締中' +
   'きつね石油ほしセルフレギュラーハイオク軽油入口出口タイヤオイルバッテリー洗車コーティング' +
-  '警察本部黒鉄';
+  '警察本部黒鉄外回り内回り国道18号港通り西通り東通り東工業地帯北町西町都心湾岸線黒鉄線';
 
 /** Resolves once every face is loaded (or after `timeout` ms, so a missing file never blocks the game). */
 export async function loadFonts(timeout = 4000) {

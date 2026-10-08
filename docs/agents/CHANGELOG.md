@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.91 (2026-10-08)
+
+Route 1's sign gantries, after the Shuto Expressway's.
+
+- `src/world/gantries.js` (pure) finds every exit off Route 1 (twelve: the four avenues each way, the
+  Bayshore Line each way, the Kurogane Line twice from the inner loop) and stands a steel gantry
+  across the carriageway where the exit lane opens (20 to 120 m before it) and another about 500 m
+  before the nose (300 to 650 m, the distance on the sign rounded to 100 m). A spot is skipped in a
+  plaza's reach, on a viaduct, where a post would stand on another road or a forecourt, or where the
+  ground is more than 8 m below; no two gantries within 140 m on a carriageway. 22 stand: every exit
+  has its near one, ten of twelve the far one (the Route 18 exit on the outer loop and the West Ave
+  exit on the inner loop have a toll plaza where theirs would go). The posts (outside the rail and on
+  the median barrier) are colliders.
+- `src/world/build-gantries.js`: the truss (two chords and verticals on square posts down to the
+  ground), and on its approach face a green guide sign for the exit (出口 EXIT or JCT in a white box,
+  the distance or an arrow down to the exit lane, the place in kanji and romaji, the road it joins in
+  a box) over the left lanes and the loop's sign (Route 1's hexagonal shield, 黒鉄高速, 内回り INNER
+  LOOP or 外回り OUTER LOOP) over the right ones, with small lamps under each. All 24 signs on one
+  canvas; each gantry is its own mesh, culled with the road chunks. The new kanji are added to the
+  glyphs fetched before the textures are drawn.
+- `tests/gantries.test.mjs`: every exit has its near gantry and most a far one at the right
+  distance, junctions are signed JCT, the posts stand clear of other roads and of each other. 392
+  pass.
+
 ## 0.9.90 (2026-10-08)
 
 The Hoshi Beat and the Kagero RS-Wide race with Gemini's models.

@@ -28,3 +28,8 @@ models are G5 and G7.
    the map and the minimap with their icons. B2 part 7 makes the police use the nearest station.
 7. **Banners for B2's events** as they land: reinforcements, a helicopter leaving to refuel and
    coming back.
+
+While Gemini works through B2, Claude takes the open items in its own files that wait on no one:
+
+8. **Route 1's sign gantries** (done in 0.9.91): a gantry about 500 m before every exit and one where
+   the exit lane opens, with Shuto-style green guide signs.

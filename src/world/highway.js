@@ -9,6 +9,7 @@ import { SKIRT } from './roads.js';
 import { padDistance } from './ground.js';
 import { CITY, TOLLS } from './layout.js';
 import { inStretch } from './merge.js';
+import { placeGantries } from './gantries.js';
 
 /** Meters of barrier or rail per segment (and per collider box). */
 export const SEGMENT = 6;
@@ -248,7 +249,8 @@ export function placeHighway(ground, boxes, circles, lights) {
       }
     }
   }
-  return { barrier, rails, plazas };
+  const gantries = placeGantries(ground, (x, z) => inPlaza(x, z, PLAZA.reach + 60), circles);
+  return { barrier, rails, plazas, gantries };
 }
 
 /**

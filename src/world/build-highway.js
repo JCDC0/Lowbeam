@@ -3,7 +3,7 @@
  * culled like the road), and the toll plazas, after the Shuto Expressway's (Oi): a canopy with a
  * glass and blue fascia, red fins, lit lane signs (ETC専用, ETC/一般, 一般) and signals, chevron
  * boards over the islands, booths on islands with striped cushions, light masts on the median and
- * the ETC lanes painted blue.
+ * the ETC lanes painted blue. The sign gantries before the exits are in build-gantries.js.
  */
 
 import * as THREE from 'three';
@@ -13,6 +13,7 @@ import { bakeGeometry } from '../render/bake.js';
 import { canvasTexture, concreteTexture, makeCanvas } from '../render/textures.js';
 import { BARRIER, PLAZA_PARTS, RAIL } from './highway.js';
 import { FONT } from '../render/fonts.js';
+import { buildGantries } from './build-gantries.js';
 
 const CANOPY_Y = 5.9;
 
@@ -71,6 +72,7 @@ export function buildHighway(highway, grid) {
   }
 
   for (const pl of highway.plazas) group.add(buildPlaza(pl, grid, mats));
+  buildGantries(highway.gantries, grid, group, chunks);
   return group;
 }
 
