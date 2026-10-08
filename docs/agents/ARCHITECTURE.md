@@ -126,6 +126,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/traffic/net.js` | Every road as directed lanes, links, traffic lights; `lanesAt`, `locate` and `route` (Dijkstra over the lanes, U-turns included) |
 | `src/traffic/sim.js` | `TrafficSim`: IDM following, lane changes with blinkers, spawn and despawn, wrecks, street racers; police units that route to the player, chase free on a clear line, search, park in roadblocks |
 | `src/traffic/kinds.js`, `bodies.js`, `render.js` | Vehicle kinds, their geometry, instanced drawing with lamp flares |
+| `src/world/signals.js`, `build-signals.js` | The traffic signals at every lit crossing, their lamps following the traffic's phases |
 | `src/traffic/manners.js` | The civilians' horns (passed on the wrong side, cut up, a red run in front of them, a scrape) and their panic in a pursuit |
 | `src/race/event.js`, `duel.js`, `rally.js`, `pacenotes.js`, `pursuit.js` | `RaceEvent` and its kinds |
 | `src/police/heli.js`, `heli-view.js` | The helicopter and its searchlight |
@@ -143,9 +144,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.91)
+## Current state (0.9.92)
 
-392 tests pass; the type check is clean. By area:
+396 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -211,14 +212,24 @@ inside the main dial (`dialLamps`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
 turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; a blinking
-indicator flares larger and the three nearest throw a small amber pool. Every car the player hits
+indicator flares larger and the three nearest throw a small amber pool. The traffic lights are seen:
+at each of the 962 lit crossings every way in has a Japanese signal (`world/signals.js`), a pole on
+the far left corner with an arm over its lanes and a horizontal head (blue-green, amber, red from the
+left), its lamps following `lightState` on the traffic's own clock with a glow on the lit lamp near
+the camera; about 3,000 heads, the poles solid, made in `main.js` once the Drive has its traffic net
+(`Colliders.addCircles`). Every car the player hits
 answers by mass, the same contact rules as the player's car (`vehicles/contact.js`): a kei car is
 thrown, a bus stops the player. A hit under 18 m/s closing (0.9.20) knocks a car off its line: it slides on
 its tires (the sideways slide dies at 0.75 g, the driver brakes, the spin settles), hazards off, and
 drives on from its lane within about a second (0.9.21). A civilian with the player or a racer closing
 fast from behind moves over into a free lane, or speeds up when boxed in, and honks; a harder hit, or a car stranded off every lane for 6 s, is a wreck, which
-slides at tire grip (0.7 g) until it stops. Knocked cars and moving wrecks hit the other traffic, so
-one hit can push a car into the next (`collideAgents`). A car off its lane
+slides at tire grip (0.7 g) until it stops. Every agent is a solid body in every mode (`drive`,
+`knocked`, `wreck`, `parked`): `collideAgents` resolves overlap between any two agents by pushing them
+apart along the contact normal in proportion to inverse mass; a hit below 3 m/s closing speed nudges
+without knocking (0.9.22). Obstacle tracking in `leader` accounts for wrecks and parked roadblock units
+across sibling lanes: a car brakes to an equilibrium stop 6 m before a roadblock and, where an adjacent
+lane remains open, changes into it instead. Knocked cars and moving wrecks hit the other traffic, so
+one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
 traffic keeps left), cut up close ahead (they brake too), crossed at speed while they wait at rest,
@@ -264,8 +275,9 @@ HQ's roof, two at 4, three at 5, the backup two flying in from over the west and
 the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: behind, ahead on the
 left, wide on the right) so their searchlights cover different streets. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,
-with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): spiked tires lose 38 %
-grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
+with a spike strip in its gap (half of them at 4, all at 5; Gemini's model): a parked unit stays
+immovable against impacts up to 6 m/s closing speed, moving and knocking only when hit harder (0.9.22);
+spiked tires lose 38 % grip and 28 % top speed for 22 s or until a pump or a tow. Out of sight: evading, cooldown (hideouts
 and decks fill it three times faster), escaped with the bounty paid. Stopped with a unit within 12 m
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
 police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
@@ -319,6 +331,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The GPS route test measures planning time and can fail when the machine is busy.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
 - Nothing has been checked at real frame rates on a gaming desktop yet.
-- Hillside streets can reach 20 % where a junction pulls them; the Route 18 ramps climb at 6.5 %.
+- The steepest streets climb 12.6 % over 10 m (Minatomachi and Shinmachi, just off the Sotokan
+  ring); the Route 18 ramps climb at 6.5 %.
 - The Kurogane Line joins only Route 1's inner carriageway (the outer one would need ramps flying
   over the loop) and has no ramps down to the city streets yet. City greenery waits for G4.

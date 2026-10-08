@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.92 (2026-10-08)
+
+The traffic lights can be seen: a Japanese signal for every way into every lit crossing.
+
+- The traffic net has had lights since 0.4 (`lightState`, a 30.4 s cycle per crossing, the cars stop
+  at red), but nothing drew them, so a car waiting at an empty crossing looked stuck and the player
+  could not see a red. `src/world/signals.js` (pure) places a signal for each lane direction with a
+  stop at a lit crossing: a pole on the far left corner past the crossing (following the lane round a
+  ring road's curve), an arm over that direction's lanes, the head at 5.3 m facing the cars it stops.
+  Corners that fall in another carriageway get none. 2,996 signals at the 962 crossings, placed in
+  22 ms.
+- `src/world/build-signals.js`: poles, arms, hangers, the head and its three visors baked and merged
+  in 700 m chunks culled with the ground; all the lamps in one mesh whose vertex colors are rewritten
+  only for the signals whose phase changed (update ranges); a flare on each lit lamp within 260 m.
+  Downtown it adds 5 draw calls and 46k triangles (125 against 120). `main.js` builds it once the
+  Drive has its traffic net and steps it on the traffic's clock, so the lamps and the cars agree.
+  The poles are solid (`Colliders.addCircles`, new).
+- `tests/signals.test.mjs`: nine in ten crossings signed, every head over its own lanes past its
+  crossing and facing its traffic, no pole in a carriageway, the lamps match `lightState` and the
+  two ways of a crossing are never green together. 396 pass.
+- The guide's note on steep streets was stale (20 %): measured now, the steepest is 12.6 % over 10 m.
+- B2 brief: Claude's wording for the banners of B2's new events (reinforcements, a helicopter leaving
+  and coming back) goes in parts 6 and 7, since the banner table is in `drive.js`.
+
 ## 0.9.91 (2026-10-08)
 
 Route 1's sign gantries, after the Shuto Expressway's.
@@ -559,6 +583,38 @@ Pursuit props, first part: spike strip.
 
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
+
+## 0.9.22 (2026-10-08)
+
+Every car is solid: agents resolve overlap by inverse mass without phasing, and traffic avoids or stops 6 m before roadblocks (B2 part 3).
+
+- `collideAgents` in `src/traffic/sim.js`: every agent in every mode (`drive`, `knocked`, `wreck`,
+  `parked`) is treated as a physical body. Overlaps are resolved by pushing cars apart along contact
+  normals in proportion to inverse mass. Impacts below 3 m/s closing speed nudge without knocking;
+  impacts at 3 m/s or higher knock agents into free bodies.
+- Parked roadblock units: infinite mass and inertia against impacts up to 6 m/s closing speed,
+  staying completely stationary; hits above 6 m/s knock the parked unit and transition it to a
+  free body.
+- `leader`: indexes wrecks and parked roadblock units across all lanes they overlap. Obstacle
+  following calculates an equilibrium stopping gap 6 m before a roadblock.
+- Lane changing at obstacles: where an adjacent lane remains open past a roadblock, approaching
+  vehicles select the clearest lane and change into it instead of stopping. `changeSafe` prevents
+  lane changes into vehicles transitioning or signaling across adjacent lanes.
+- Measured before and after:
+  - 60 s run overlaps (1800 steps, with roadblock): maximum penetration depth 0.003 m after (was
+    1.513 m before, with 19 deep overlap events exceeding 0.3 m); deep overlaps (> 0.3 m) 0 after
+    (was 19 before); ending overlaps 0 after (was 1 pair before).
+  - Roadblock across two of three lanes: car detects roadblock ahead, moves into the third open lane,
+    and passes cleanly with 3.75 m lateral clearance (was phasing through before).
+  - Roadblock across all lanes: car smoothly brakes to an equilibrium stop with 6.00 m clearance
+    (was stopping inside roadblock units with 0 m clearance before).
+  - Parked unit hit at 4 m/s (under 6 m/s): 0 m displacement, stays parked (was phasing through before);
+    hit at 10 m/s (above 6 m/s): 0.129 m displacement and knocked into a free body.
+  - Moving car hit at 2 m/s (< 3 m/s): pushed apart along contact normal without knock (mode stays
+    drive); hit at 5 m/s (>= 3 m/s): knocked.
+- Tests: `tests/traffic-solid.test.mjs` (60 s overlap run, 2-lane roadblock pass, 3-lane roadblock stop,
+  parked unit hit threshold, 3 m/s knock threshold). 397 tests pass (392 before, plus five); type check
+  clean.
 
 ## 0.9.21 (2026-10-08)
 

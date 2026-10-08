@@ -464,8 +464,22 @@ export class TrafficSim {
    */
   spawnParked(kindId, spot, lane, s) {
     const kind = UNIT_BY_ID.get(kindId) || UNIT_BY_ID.get('police');
+    let targetLane = lane;
+    let targetS = s;
+    if (lane && lane.road) {
+      const siblings = (this.net.byRoad.get(lane.road.id) || []).filter((l) => l.dir === lane.dir);
+      let bestD = Infinity;
+      for (const l of siblings) {
+        const q = this.net.sample(l, s, this._q);
+        const d = Math.hypot(q.x - spot.x, q.z - spot.z);
+        if (d < bestD) {
+          bestD = d;
+          targetLane = l;
+        }
+      }
+    }
     const a = /** @type {Agent} */ ({
-      id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane, s, speed: 0, factor: 1,
+      id: this.nextId++, kind, paint: this.rng.pick(kind.paint), lane: targetLane, s: targetS, speed: 0, factor: 1,
       x: spot.x, y: spot.y, z: spot.z, yaw: spot.yaw, vx: 0, vz: 0, yawRate: 0,
       ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
       changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
@@ -629,9 +643,31 @@ export class TrafficSim {
   sortLanes() {
     this.byLane.clear();
     for (const a of this.agents) {
+      if (a.mode === 'wreck') {
+        const at = this.net.locate(a.x, a.z, a.yaw, a.y + 0.5, 6);
+        if (at) {
+          a.lane = at.lane;
+          a.s = at.s;
+        }
+      }
       let list = this.byLane.get(a.lane);
       if (!list) this.byLane.set(a.lane, (list = []));
       list.push(a);
+
+      if ((a.mode === 'parked' || a.mode === 'wreck') && a.lane && a.lane.road) {
+        const siblings = (this.net.byRoad.get(a.lane.road.id) || []).filter((l) => l.dir === a.lane.dir);
+        const reach = (a.mode === 'parked' ? Math.max(a.kind.length, a.kind.width) : a.kind.width) / 2;
+        for (const l of siblings) {
+          if (l === a.lane) continue;
+          const q = this.net.sample(l, a.s, this._q);
+          const d = Math.hypot(q.x - a.x, q.z - a.z);
+          if (d < l.width / 2 + reach * 0.7) {
+            let sibList = this.byLane.get(l);
+            if (!sibList) this.byLane.set(l, (sibList = []));
+            if (!sibList.includes(a)) sibList.push(a);
+          }
+        }
+      }
     }
     for (const list of this.byLane.values()) list.sort((p, q) => p.s - q.s);
   }
@@ -651,10 +687,14 @@ export class TrafficSim {
       let ds = o.s - a.s;
       if (lane.closed && ds < 0) ds += lane.length;
       if (ds <= 0) continue;
-      const g = ds - half - o.kind.length / 2;
+      const s0 = this.isRival(a) ? 1.0 : MIN_GAP;
+      const reach = o.mode === 'parked' ? Math.max(o.kind.length, o.kind.width) / 2 : o.kind.length / 2;
+      const physicalDist = ds - half - reach;
+      const targetStop = o.mode === 'parked' ? 6.0 : s0;
+      const g = physicalDist - (targetStop - s0);
       if (g < gap) {
-        gap = g;
-        v = o.mode === 'wreck' ? 0 : o.speed;
+        gap = Math.max(0.1, g);
+        v = (o.mode === 'wreck' || o.mode === 'parked') ? 0 : o.speed;
       }
     }
     // Past the end of this lane, look into the lane it leads to.
@@ -663,10 +703,14 @@ export class TrafficSim {
       for (const o of this.byLane.get(a.end.lane) || []) {
         const ds = o.s - a.end.toS;
         if (ds < -2) continue;
-        const g = room + ds - half - o.kind.length / 2;
+        const s0 = this.isRival(a) ? 1.0 : MIN_GAP;
+        const reach = o.mode === 'parked' ? Math.max(o.kind.length, o.kind.width) / 2 : o.kind.length / 2;
+        const physicalDist = room + ds - half - reach;
+        const targetStop = o.mode === 'parked' ? 6.0 : s0;
+        const g = physicalDist - (targetStop - s0);
         if (g < gap) {
-          gap = g;
-          v = o.mode === 'wreck' ? 0 : o.speed;
+          gap = Math.max(0.1, g);
+          v = (o.mode === 'wreck' || o.mode === 'parked') ? 0 : o.speed;
         }
       }
     }
@@ -1258,6 +1302,17 @@ export class TrafficSim {
         if (closing > 2 && distBehind < 50 && distBehind / closing < (rival ? 2.0 : 3.5)) return false;
       }
     }
+    for (const o of this.agents) {
+      if (o === a || !o.lane || o.lane.road !== target.road || o.lane.dir !== target.dir) continue;
+      if (o.changeDuration > 0 || o.signalTarget === target) {
+        let ds = o.s - a.s;
+        if (target.closed) {
+          if (ds > target.length / 2) ds -= target.length;
+          else if (ds < -target.length / 2) ds += target.length;
+        }
+        if (Math.abs(ds) < (rival ? 10 : 25)) return false;
+      }
+    }
     return true;
   }
 
@@ -1381,7 +1436,8 @@ export class TrafficSim {
       // reasons to leave a lane no matter how recently the car moved into it.
       const planned = a.plan && a.plan.lane;
       const distToExit = planned ? a.plan.at - a.s : 0;
-      const mustLeave = (planned && distToExit > 0 && distToExit < 250) || lead.gap < 38;
+      const obstacleAhead = (lead.v === 0 && lead.gap < 75) || (lead.gap < 38 && wanted - lead.v > 2);
+      const mustLeave = (planned && distToExit > 0 && distToExit < 250) || obstacleAhead;
       const held = this.time < a.laneHold;
       if (lane.index > 0) {
         let closingBehind = false;
@@ -1407,13 +1463,38 @@ export class TrafficSim {
           want = lane.index - 1;
         } else if (planned && distToExit > 0 && distToExit < 250) {
           want = lane.index - 1;
-        } else if (lead.gap < 38 && wanted - lead.v > 2) {
-          want = lane.index + 1;
+        } else if (obstacleAhead) {
+          let bestRoom = Math.max(lead.gap + 15, 30);
+          let bestIdx = -1;
+          for (const idx of [lane.index + 1, lane.index - 1]) {
+            const next = same.find((l) => l.index === idx);
+            if (!next) continue;
+            const room = this.openAhead(next, a.s);
+            if (room > bestRoom) {
+              bestRoom = room;
+              bestIdx = idx;
+            }
+          }
+          if (bestIdx >= 0) want = bestIdx;
+          else if (lane.index + 1 < same.length) want = lane.index + 1;
+          else if (lane.index - 1 >= 0) want = lane.index - 1;
         } else if (lead.gap > 70 && a.speed < wanted * 1.02 && this.slowLaneClear(a, same[lane.index - 1])) {
           want = lane.index - 1;
         }
-      } else if (lead.gap < 38 && wanted - lead.v > 2) {
-        want = lane.index + 1;
+      } else if (obstacleAhead) {
+        let bestRoom = Math.max(lead.gap + 15, 30);
+        let bestIdx = -1;
+        for (const idx of [lane.index + 1, lane.index - 1]) {
+          const next = same.find((l) => l.index === idx);
+          if (!next) continue;
+          const room = this.openAhead(next, a.s);
+          if (room > bestRoom) {
+            bestRoom = room;
+            bestIdx = idx;
+          }
+        }
+        if (bestIdx >= 0) want = bestIdx;
+        else if (lane.index + 1 < same.length) want = lane.index + 1;
       }
       if (held && !mustLeave) want = -1;
     }
@@ -1438,6 +1519,7 @@ export class TrafficSim {
           return;
         }
         this.beginSignal(a, this.signalSide(a, target), target);
+        if (lead.v === 0 && lead.gap < 75) a.signalTimer = Math.min(a.signalTimer, 0.4);
         return;
       }
       if (a.signalTimer > 0) return;
@@ -1563,6 +1645,8 @@ export class TrafficSim {
    */
   knock(a, hit, other) {
     if (a.mode === 'wreck') return;
+    if (hit < 3) return;
+    if (a.mode === 'parked' && hit <= 6) return;
     const unit = isUnit(a.kind);
     if (unit ? this.hurt(a, unitDamage(hit, other, a.kind.mass)) : hit > CIVIL_WRECK_HIT) {
       if (unit) {
@@ -1577,7 +1661,13 @@ export class TrafficSim {
       a.changeDuration = 0;
       return;
     }
-    if (a.mode === 'parked') return;
+    if (a.mode === 'parked') {
+      a.mode = 'knocked';
+      a.knockAge = 0;
+      a.ex = a.ez = 0;
+      a.changeDuration = 0;
+      return;
+    }
     if (unit && a.pursuit) {
       if (a.mode === 'drive') a.free = true;
       return;
@@ -1664,24 +1754,74 @@ export class TrafficSim {
   }
 
   /**
-   * Knocked cars and wrecks against the rest of the traffic: the same contacts as with the player's
-   * car, so one hit can push a car into the next. Only pairs with a free body in them are tested.
+   * Resolves overlaps between any two agents in any mode (drive, knocked, wreck, parked) by inverse mass,
+   * keeping parked units immovable below 6 m/s closing speed and knocking neither below 3 m/s.
    */
   collideAgents() {
-    const loose = this.agents.filter((a) => a.mode === 'knocked' || (a.mode === 'wreck' && a.speed > 0.3));
-    if (!loose.length) return;
-    for (const a of loose) {
-      for (const o of this.agents) {
-        if (o === a || Math.abs(o.x - a.x) > 12 || Math.abs(o.z - a.z) > 12 || Math.abs(o.y - a.y) > 2.5) continue;
-        if (o.mode === 'knocked' && o.id < a.id) continue;
-        const A = this.bodyOfAgent(a);
-        const B = this.bodyOfAgent(o);
-        const hit = collideCars(A, B);
-        if (hit <= 0) continue;
-        this.applyBody(a, A);
-        this.applyBody(o, B);
-        if (o.mode === 'drive' || isUnit(o.kind)) this.knock(o, hit, a.kind.mass);
-        if (isUnit(a.kind)) this.knock(a, hit, o.kind.mass);
+    const n = this.agents.length;
+    for (let it = 0; it < 2; it++) {
+      for (let i = 0; i < n; i++) {
+        const a = this.agents[i];
+        for (let j = i + 1; j < n; j++) {
+          const o = this.agents[j];
+          if (Math.abs(o.x - a.x) > 12 || Math.abs(o.z - a.z) > 12 || Math.abs(o.y - a.y) > 2.5) continue;
+          if (a.mode === 'parked' && o.mode === 'parked') continue;
+
+          if (a.mode === 'parked') {
+            const A = this.bodyOfAgent(a);
+            A.mass = Infinity;
+            A.inertia = Infinity;
+            const B = this.bodyOfAgent(o);
+            const hit = collideCars(A, B);
+            if (hit <= 0) continue;
+            if (hit <= 6) {
+              this.applyBody(o, B);
+              if (hit >= 3 && it === 0) this.knock(o, hit, a.kind.mass);
+            } else {
+              const Areal = this.bodyOfAgent(a);
+              const Breal = this.bodyOfAgent(o);
+              collideCars(Areal, Breal);
+              this.applyBody(a, Areal);
+              this.applyBody(o, Breal);
+              if (it === 0) {
+                this.knock(a, hit, o.kind.mass);
+                this.knock(o, hit, a.kind.mass);
+              }
+            }
+          } else if (o.mode === 'parked') {
+            const A = this.bodyOfAgent(a);
+            const B = this.bodyOfAgent(o);
+            B.mass = Infinity;
+            B.inertia = Infinity;
+            const hit = collideCars(A, B);
+            if (hit <= 0) continue;
+            if (hit <= 6) {
+              this.applyBody(a, A);
+              if (hit >= 3 && it === 0) this.knock(a, hit, o.kind.mass);
+            } else {
+              const Areal = this.bodyOfAgent(a);
+              const Breal = this.bodyOfAgent(o);
+              collideCars(Areal, Breal);
+              this.applyBody(a, Areal);
+              this.applyBody(o, Breal);
+              if (it === 0) {
+                this.knock(a, hit, o.kind.mass);
+                this.knock(o, hit, a.kind.mass);
+              }
+            }
+          } else {
+            const A = this.bodyOfAgent(a);
+            const B = this.bodyOfAgent(o);
+            const hit = collideCars(A, B);
+            if (hit <= 0) continue;
+            this.applyBody(a, A);
+            this.applyBody(o, B);
+            if (hit >= 3 && it === 0) {
+              this.knock(a, hit, o.kind.mass);
+              this.knock(o, hit, a.kind.mass);
+            }
+          }
+        }
       }
     }
   }
@@ -1696,6 +1836,8 @@ export class TrafficSim {
 
   /** @param {Agent} a @param {ReturnType<TrafficSim['bodyOfAgent']>} b */
   applyBody(a, b) {
+    const oldX = a.x;
+    const oldZ = a.z;
     a.x = b.x;
     a.z = b.z;
     a.vx = b.vx;
@@ -1703,6 +1845,23 @@ export class TrafficSim {
     a.yawRate = b.yawRate;
     // What the hit left of its speed along its heading is what it drives on with.
     a.speed = a.mode === 'wreck' ? Math.hypot(a.vx, a.vz) : Math.max(0, a.vx * Math.sin(a.yaw) + a.vz * Math.cos(a.yaw));
+    if (a.mode === 'drive' && a.lane) {
+      const q = this.net.sample(a.lane, a.s, this._q);
+      const dx = a.x - oldX;
+      const dz = a.z - oldZ;
+      const ds = dx * q.tx + dz * q.tz;
+      const dex = dx - ds * q.tx;
+      const dez = dz - ds * q.tz;
+      a.s = clamp(a.s + ds, 0, a.lane.length);
+      a.ex += dex;
+      a.ez += dez;
+      if (a.changeDuration > 0) {
+        a.changeStartX += dex;
+        a.changeStartZ += dez;
+        a.changePrevEx += dex;
+        a.changePrevEz += dez;
+      }
+    }
   }
 
   stepWreck(a, dt) {
@@ -1748,13 +1907,29 @@ export class TrafficSim {
     for (const a of this.agents) {
       if (Math.abs(a.x - state.x) > 14 || Math.abs(a.z - state.z) > 14) continue;
       if (Math.abs(a.y - state.y) > 2.5) continue;
-      const body = this.bodyOfAgent(a);
-      const hit = collideCars(me, body);
-      if (hit <= 0) continue;
-      hardest = Math.max(hardest, hit);
-      this.applyBody(a, body);
-      if (isUnit(a.kind)) this.policeHit += hit;
-      this.knock(a, hit, spec.mass);
+      if (a.mode === 'parked') {
+        const body = this.bodyOfAgent(a);
+        body.mass = Infinity;
+        body.inertia = Infinity;
+        const hit = collideCars(me, body);
+        if (hit <= 0) continue;
+        hardest = Math.max(hardest, hit);
+        if (hit > 6) {
+          const bodyReal = this.bodyOfAgent(a);
+          collideCars(me, bodyReal);
+          this.applyBody(a, bodyReal);
+          if (isUnit(a.kind)) this.policeHit += hit;
+          this.knock(a, hit, spec.mass);
+        }
+      } else {
+        const body = this.bodyOfAgent(a);
+        const hit = collideCars(me, body);
+        if (hit <= 0) continue;
+        hardest = Math.max(hardest, hit);
+        this.applyBody(a, body);
+        if (isUnit(a.kind)) this.policeHit += hit;
+        this.knock(a, hit, spec.mass);
+      }
     }
     return hardest;
   }
