@@ -577,6 +577,18 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.69 (2026-10-09)
+
+Street racers: Kagero Aristo VIP (`rv_vip`).
+
+- `tools/blender/rv_vip.py`: Late-90s Japanese luxury VIP sedan in the Toyota Aristo JZS161 / Lexus GS300 / Celsior VIP spirit: 4.95 x 1.82 x 1.45 m, wheelbase 2.92 m (axles at z = +1.25 and -1.67 m), wheel radius 0.34 m at x = +-0.78.
+- Long luxury sedan architecture: formal long hood, raked windshield with defined A-pillars, long executive roofline with black B-pillar door divider, formal C-pillar sail panels sweeping over the rear axle, and high executive trunk deck lid.
+- Front styling: prestigious vertical chrome front grille with hood brow garnish, quad flush projector headlights with chrome backing bezels and white emissive lenses (`lamp`, z in [2.184, 2.198] m > 0), clean bumper face with set-in air intake and flush fog lamps, and front VIP chin spoiler lip to +2.200 m.
+- Side styling: protective chrome waist rub strips along doors, slammed VIP side skirts along lower rocker, and deep-dish VIP luxury multi-piece dish rims.
+- Rear styling: wide horizontal luxury taillight clusters with center bridge bar and chrome reverse inserts (`tail`, z in [-2.749, -2.735] m < 0), chrome executive trunk license garnish, Japanese license plate 'KG 88-88', and dual large-bore chrome exhaust tips (x = +-0.55) to -2.750 m with dark inner bores.
+- 1,438 body triangles (budget <= 2,500), 2,270 full triangles with wheels (budget <= 3,200).
+- `assets/models/rv_vip.json` and `assets/models/rv_vip_full.json`. Bounds: body x: [-0.9388, 0.9388], y: [0.1700, 1.4498], z: [-2.7500, 2.2000]; full x: [-0.9388, 0.9388], y: [0.0000, 1.4498], z: [-2.7500, 2.2000]. Checked clean in props.html with 0 problems.
+
 ## 0.9.68 (2026-10-08)
 
 Street racers: Kenro Sakura S (`rv_sakura`).
