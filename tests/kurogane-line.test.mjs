@@ -52,3 +52,22 @@ test('traffic can drive from Route 1 onto the line at one end and off it at the 
   assert.ok(net.route(fwd, fwd.length / 2, [{ lane: inner, s: 5600 }], { maxCost: 4000 }), 'the eastbound line comes down onto Route 1');
   assert.ok(net.route(rev, rev.length / 2, [{ lane: inner, s: 3700 }], { maxCost: 4000 }), 'the westbound line comes down onto Route 1');
 });
+
+test('a median barrier runs the whole deck with no gap, past both ends into the fork of the ramps', async () => {
+  const { placeHighway, SEGMENT } = await import('../src/world/highway.js');
+  const { barrier } = placeHighway(g, [], [], []);
+  const line = road('c3-f');
+  const half = line.def.median / 2 + line.hw;
+  const on = barrier.filter((b) => {
+    const n = line.path.nearest(b.x, b.z);
+    return Math.abs(Math.hypot(b.x - line.path.sample(n.s).x, b.z - line.path.sample(n.s).z) - half) < 0.6 && Math.abs(b.y - line.heightAt(n.s)) < 1;
+  });
+  const cover = on.map((b) => line.path.nearest(b.x, b.z).s).sort((a, b) => a - b);
+  assert.ok(cover.length > line.path.length / SEGMENT - 2, `${cover.length} pieces along ${line.path.length.toFixed(0)} m`);
+  for (let i = 1; i < cover.length; i++) assert.ok(cover[i] - cover[i - 1] <= SEGMENT + 0.5, `a gap at ${cover[i - 1].toFixed(0)} m`);
+  const nose = (s, dir) => {
+    const q = line.path.sample(s);
+    return on.some((b) => (b.x - q.x) * q.tx * dir + (b.z - q.z) * q.tz * dir > 0 && b.len > SEGMENT);
+  };
+  assert.ok(nose(0, -1) && nose(line.path.length, 1), 'a nose past each end');
+});

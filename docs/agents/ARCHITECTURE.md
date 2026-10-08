@@ -142,9 +142,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.80)
+## Current state (0.9.81)
 
-374 tests pass; the type check is clean. By area:
+375 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -157,7 +157,8 @@ downtown and comes back to Route 1 east of it. Its four ramps are slip roads tha
 circle and climb to 6 m where they meet the deck, which eases from 6 m at its ends to 12 m (a lift
 `floor`). The avenue, its junctions and the streets crossing under it stay on the ground; over the
 avenue the deck stands on portal frames on the sidewalks (`portalOver` in `scatter.js`), elsewhere
-on round piers. Traffic, racers and police use it, and a reset on any deck puts the car back on the
+on round piers. A concrete barrier runs down its median the whole way and on past each end into
+the fork of the ramps. Traffic, racers and police use it, and a reset on any deck puts the car back on the
 deck. Minato Toll moved to x -160 to make room for its south-west junction. Kuro Pass
 (6.4 km, to 254 m). Kurogane City: frame roads plus about 400 generated streets in nine districts,
 about 900 junctions paved as one patch each, about 10,700 buildings in eleven kinds (towers to

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.81 (2026-10-08)
+
+Fixed: a car could cross the Kurogane Line's median and fall through the deck where its ramps fork.
+
+- The median barrier loop in `highway.js` built Route 1's and the Bayshore Line's barriers but never
+  the Kurogane Line's (0.9.14 left it out). The median, drawn decked over, let a car cross into the
+  oncoming carriageway, and at the deck's ends, where the two carriageways stop 10 m apart and the
+  ramps fork, it drove off the edge and dropped 6 m to the street (Jc's "middle roads phase
+  through"). The line now has its barrier, and a deck that ends in the air gets a nose: the barrier
+  run to the very end and 6 m on into the fork.
+- Found with a scan of the ground under every raised road and the strips between them; checked by
+  driving 80 runs into the medians, forks and ramp ends at both ends of the line (none fall now; the
+  east end fell before). A test checks the barrier runs the whole deck with no gap and past both
+  ends.
+
 ## 0.9.80 (2026-10-08)
 
 The Tsurugi Wedge races with Gemini's model; the Kenro Hardtop goes back; a brief for the backend.

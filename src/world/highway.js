@@ -105,14 +105,16 @@ export function placeHighway(ground, boxes, circles, lights) {
   const rails = [];
   const chunkOf = (s) => Math.floor(s / 180);
 
-  for (const exp of ['c1', 'c2']) {
+  // The Kurogane Line (c3) needs its median barrier as much as Route 1: without it a car drove
+  // onto the decked-over median and, where the ramps fork at its ends, fell through (0.9.81).
+  for (const exp of ['c1', 'c2', 'c3']) {
     const fwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-f`));
     const rev = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-r`));
     if (!fwd || !rev) continue;
     const hw = fwd.hw;
     const half = /** @type {number} */ (fwd.def.median ?? 3.2) / 2 + hw;
     const p = fwd.path;
-    const chunkBase = exp === 'c1' ? 0 : 5000;
+    const chunkBase = { c1: 0, c2: 5000, c3: 7000 }[exp];
 
     for (let s = 0; s < p.length - SEGMENT / 2; s += SEGMENT) {
       const mid = s + SEGMENT / 2;
@@ -142,6 +144,23 @@ export function placeHighway(ground, boxes, circles, lights) {
       const ox = q.x + q.tz * rEdge;
       const oz = q.z - q.tx * rEdge;
       railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, (rev.lifted && rev.liftAt(rp.s) > 1.2) || inPlaza(ox, oz, PLAZA.openRail) || rampOpen(`${exp}-r`, rp.s));
+    }
+
+    // A deck that ends in the air, where its ramps fork, gets a nose: the barrier run to the very
+    // end and on into the fork, so no car slips past its last segment and off the edge.
+    if (!p.closed && fwd.lifted) {
+      for (const [s, dir] of [[0, -1], [p.length, 1]]) {
+        if (fwd.liftAt(s) < 2) continue;
+        p.sample(s, q);
+        const yaw = Math.atan2(q.tx, q.tz);
+        const y = fwd.heightAt(s);
+        const len = SEGMENT * 1.5;
+        const along = dir * (len / 2 - SEGMENT / 2);
+        const mx = q.x - q.tz * half + q.tx * along;
+        const mz = q.z + q.tx * half + q.tz * along;
+        barrier.push({ x: mx, z: mz, y, yaw, len, chunk: chunkBase + chunkOf(s) });
+        boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: len / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
+      }
     }
   }
 
