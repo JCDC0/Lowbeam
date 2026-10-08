@@ -5,6 +5,8 @@ import { SCREEN_FX, fxOn, setFx } from './screen-fx.js';
 const FX_LABELS = { net: 'NET', vignette: 'VIGNETTE', blur: 'BLUR' };
 import { RENDER_HEIGHTS, DEFAULT_LINES } from '../render/stage.js';
 import { CLUSTER_STYLES } from './cluster-styles.js';
+import { LEVELS, nextWeather } from '../render/weather.js';
+import { currentWeather, saveWeather } from './weather-setting.js';
 import { CONTROL_ACTIONS, ACTION_LABELS, PAD_LABELS, KEYS, keyLabel, rebind } from '../core/input.js';
 
 /**
@@ -287,6 +289,11 @@ export function settingsScreen(ui, stage = null) {
             <span class="ac-pill click" data-act="toggle-cluster" id="set-cluster-val">PER CAR</span>
             <span class="hints-inline">PER CAR / CLASSIC / RACING / TWIN / SPORT / DIGITAL / VFD</span>
           </div>
+          <div class="ac-row click" data-row="weather">
+            <span class="ac-rlabel">WEATHER</span>
+            <span class="ac-pill click" data-act="toggle-weather" id="set-weather-val">CLEAR</span>
+            <span class="hints-inline">CLEAR / DRIZZLE / RAIN / STORM</span>
+          </div>
           <div class="ac-row click" data-row="fx">
             <span class="ac-rlabel">SCREEN FX</span>
             <span class="ac-pills">${SCREEN_FX.map((f) => `<span class="ac-pill click" data-act="toggle-fx" data-fx="${f}" id="set-fx-${f}">${FX_LABELS[f]}</span>`).join('')}</span>
@@ -323,6 +330,7 @@ export function settingsScreen(ui, stage = null) {
             <b>MANUAL MODE:</b> Sequential shifting (N, R, 1..7). Tap <b>Shift</b> or <b>E</b> to upshift, <b>Ctrl</b> or <b>Q</b> to downshift. The rev limiter cuts ignition at redline. Over-rev downshifts cause money shift damage.<br><br>
             <b>RENDER HEIGHT:</b> Target vertical scanlines. 240 is the authentic PS1 resolution; 480 (default) keeps the dither and 15-bit color with a clearer picture.<br><br>
             <b>SPEEDOMETER:</b> HUD cluster style in outside views. PER CAR matches each vehicle's instruments; or lock to Classic, Racing, Twin, Sport, Digital or VFD.<br><br>
+            <b>WEATHER:</b> Rain soaks the roads so the lamps shine in them, closes the fog in and streaks the air; a storm is the thickest. Looks only for now: the car grips the same.<br><br>
             <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
           </div>
         </div>
@@ -337,6 +345,7 @@ export function settingsScreen(ui, stage = null) {
   const transEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-trans-val'));
   const renderEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-render-val'));
   const clusterEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-cluster-val'));
+  const weatherEl = /** @type {HTMLElement} */ (s.el.querySelector('#set-weather-val'));
   const CLUSTER_CHOICES = ['car', ...CLUSTER_STYLES];
   const CLUSTER_LABELS = { car: 'PER CAR', classic: 'CLASSIC', tuner: 'RACING TACH', twin: 'TWIN DIAL', sport: 'SPORT TACH', digital: 'DIGITAL LCD', vfd: '1984 VFD' };
   let sel = 0;
@@ -356,6 +365,7 @@ export function settingsScreen(ui, stage = null) {
     SCREEN_FX.forEach((f, i) => /** @type {HTMLElement} */ (s.el.querySelector(`#set-fx-${f}`)).classList.toggle('focus', rows[sel]?.dataset.row === 'fx' && i === fxSel));
   };
   const FX_ROW = rows.findIndex((r) => r.dataset.row === 'fx');
+  const WEATHER_ROW = rows.findIndex((r) => r.dataset.row === 'weather');
   const AUDIO_ROW = rows.findIndex((r) => r.dataset.row === CHANNELS[0]);
   const CONTROLS_ROW = rows.findIndex((r) => r.dataset.row === 'controls');
 
@@ -376,6 +386,13 @@ export function settingsScreen(ui, stage = null) {
     sync();
   }
 
+  /** @param {import('../render/weather.js').Weather} w */
+  function setWeatherChoice(w) {
+    saveWeather(w);
+    window.__lowbeam?.world?.setWeather(LEVELS[w]);
+    sync();
+  }
+
   function sync() {
     const isManual = store.get('transmission', /** @type {string} */ ('auto')) === 'manual';
     transEl.textContent = isManual ? 'MANUAL' : 'AUTO';
@@ -391,6 +408,11 @@ export function settingsScreen(ui, stage = null) {
     clusterEl.textContent = CLUSTER_LABELS[curCluster] ?? String(curCluster).toUpperCase();
     clusterEl.classList.toggle('cyan', curCluster !== 'car');
     clusterEl.classList.toggle('on', curCluster === 'car');
+
+    const curWeather = currentWeather();
+    weatherEl.textContent = curWeather.toUpperCase();
+    weatherEl.classList.toggle('cyan', curWeather !== 'clear');
+    weatherEl.classList.toggle('on', curWeather === 'clear');
 
     for (const f of SCREEN_FX) {
       const pill = /** @type {HTMLElement} */ (s.el.querySelector(`#set-fx-${f}`));
@@ -448,6 +470,10 @@ export function settingsScreen(ui, stage = null) {
       }
       if (rowId === 'cluster') {
         clickedAction = 'toggle-cluster';
+        return;
+      }
+      if (rowId === 'weather') {
+        clickedAction = 'toggle-weather';
         return;
       }
       if (rowId === 'controls') {
@@ -512,6 +538,9 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(CLUSTER_CHOICES.indexOf(curC) + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('select');
+        } else if (action === 'toggle-weather') {
+          setWeatherChoice(nextWeather(currentWeather()));
+          audio.ui('select');
         } else if (action === 'open-controls') {
           audio.ui('select');
           return 'controls';
@@ -566,6 +595,9 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + CLUSTER_CHOICES.length - 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
+        } else if (sel === WEATHER_ROW) {
+          setWeatherChoice(nextWeather(currentWeather(), -1));
+          audio.ui('move');
         } else if (sel >= AUDIO_ROW && sel < AUDIO_ROW + CHANNELS.length) {
           const ch = CHANNELS[sel - AUDIO_ROW];
           const curV = audio.settings[ch].volume;
@@ -597,6 +629,9 @@ export function settingsScreen(ui, stage = null) {
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
           audio.ui('move');
+        } else if (sel === WEATHER_ROW) {
+          setWeatherChoice(nextWeather(currentWeather()));
+          audio.ui('move');
         } else if (sel >= AUDIO_ROW && sel < AUDIO_ROW + CHANNELS.length) {
           const ch = CHANNELS[sel - AUDIO_ROW];
           const curV = audio.settings[ch].volume;
@@ -624,6 +659,9 @@ export function settingsScreen(ui, stage = null) {
           const idx = CLUSTER_CHOICES.indexOf(curC);
           const nextC = CLUSTER_CHOICES[(idx + 1) % CLUSTER_CHOICES.length];
           setClusterChoice(nextC);
+          audio.ui('select');
+        } else if (sel === WEATHER_ROW) {
+          setWeatherChoice(nextWeather(currentWeather()));
           audio.ui('select');
         } else if (sel === FX_ROW) {
           setFx(SCREEN_FX[fxSel]);

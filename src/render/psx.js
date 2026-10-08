@@ -26,6 +26,8 @@ export const psxUniforms = {
   uPoolGrid: { value: new THREE.Vector4(0, 0, 24, 0) },
   /** 1 once installPools has run; until then baked materials use the `bake` attribute. */
   uPoolsOn: { value: 0 },
+  /** How wet the road surfaces are, 0 dry to 1 soaked (`render/weather.js`). */
+  uWet: { value: 0 },
   /**
    * Moving lights (traffic/render.js, heli-view.js): headlight beams, police light bars, lit
    * indicators, the searchlight. Position and range, then direction and the cosine where the cone
@@ -85,6 +87,24 @@ export function addBeamLight(x, y, z, color, dir) {
  * pool read as a shape on the road rather than a smooth glow.
  */
 const POOL_FRAGMENT = /* glsl */ `
+uniform float uWet;
+vec3 gWet = vec3(0.0);
+void wetStreak(vec3 p, vec3 n, vec3 lp, float range, vec3 col, float e) {
+  if (uWet <= 0.001 || n.y < 0.9 || e <= 0.0) return;
+  vec2 view = lp.xz - cameraPosition.xz;
+  float vl = length(view);
+  if (vl < 1.0) return;
+  vec2 hv = view / vl;
+  vec2 toLamp = lp.xz - p.xz;
+  float a = dot(toLamp, hv);
+  float c = toLamp.x * hv.y - toLamp.y * hv.x;
+  float along = smoothstep(-1.5, 1.0, a) * (1.0 - smoothstep(0.0, range * 0.9, a));
+  float width = 0.7 + 0.08 * max(a, 0.0);
+  float puddle = smoothstep(0.5 - uWet * 0.35, 0.8, 0.5 + 0.5 * sin(p.x * 0.13 + 2.0 * sin(p.z * 0.11)) * sin(p.z * 0.17 + 2.0 * sin(p.x * 0.09)));
+  float s = exp(-(c * c) / (width * width)) * along * clamp(e * 6.0, 0.0, 1.0) * mix(0.5, 1.0, puddle);
+  s = floor(s * 4.0 + 0.5) / 4.0;
+  gWet += col * s * uWet * 2.2;
+}
 uniform sampler2D uPoolLights;
 uniform sampler2D uPoolCells;
 uniform vec4 uPoolGrid;
@@ -138,6 +158,7 @@ vec3 poolLight(vec3 p, vec3 n) {
         e = (1.0 - r) * (1.0 - r);
       }
       e = floor(e * POOL_BANDS + 0.35) / POOL_BANDS;
+      wetStreak(p, n, L0.xyz, L0.w, L1.rgb, e);
       sum += L1.rgb * e * lam;
     }
   }
@@ -158,12 +179,13 @@ if (uSnapOn > 0.5 && gl_Position.w > 0.0) {
 
 /**
  * @param {THREE.Material} mat
- * @param {{ baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean }} opts
- *   `lamp` reads a `lamp` vertex color that is added as emissive light, scaled up on red
+ * @param {{ baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean, wet?: boolean }} opts
+ *   `wet` (with `baked`) makes the surface darken and shine in the rain: it mirrors every light in
+ *   it, sharply in puddles (`uWet`). `lamp` reads a `lamp` vertex color that is added as emissive light, scaled up on red
  *   lamps by an instanced `aBrake` attribute (brake lights). `paint` limits the instance
  *   color to the vertices whose `aPaint` attribute is 1, so glass and trim keep their color.
  */
-export function patchPsx(mat, { baked = false, local = false, lamp = false, paint = false } = {}) {
+export function patchPsx(mat, { baked = false, local = false, lamp = false, paint = false, wet = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapOn = psxUniforms.uSnapOn;
@@ -172,7 +194,7 @@ export function patchPsx(mat, { baked = false, local = false, lamp = false, pain
     let fs = shader.fragmentShader;
     let extra = '';
     if (baked) {
-      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir', 'uBeamCol']) shader.uniforms[k] = psxUniforms[k];
+      for (const k of ['uPoolLights', 'uPoolCells', 'uPoolGrid', 'uPoolsOn', 'uBeamPos', 'uBeamDir', 'uBeamCol', 'uWet']) shader.uniforms[k] = psxUniforms[k];
       vs = 'attribute vec3 bake;\nvarying vec3 vBake;\nvarying vec3 vPoolPos;\nvarying vec3 vPoolN;\n' + vs;
       vs = vs.replace('#include <begin_vertex>', `#include <begin_vertex>
 vBake = bake;
@@ -186,7 +208,9 @@ poolW = modelMatrix * poolW;
 vPoolPos = poolW.xyz;
 vPoolN = normalize(mat3(modelMatrix) * poolN);`);
       fs = `varying vec3 vBake;\n#define POOL_BANDS ${POOL_BANDS.toFixed(1)}\n#define BEAMS ${BEAMS}\n${POOL_FRAGMENT}${fs}`;
+      if (wet) extra += '\ndiffuseColor.rgb *= 1.0 - 0.4 * uWet;';
       extra += '\ntotalEmissiveRadiance += (uPoolsOn > 0.5 ? poolLight(vPoolPos, normalize(vPoolN)) : vBake) * diffuseColor.rgb;';
+      if (wet) extra += '\ntotalEmissiveRadiance += gWet;';
     }
     if (lamp) {
       vs = 'attribute vec3 lamp;\nattribute float aBrake;\nvarying vec3 vLamp;\n' + vs;
@@ -208,17 +232,17 @@ vPoolN = normalize(mat3(modelMatrix) * poolN);`);
     shader.vertexShader = vs;
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}`;
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}${wet ? '-wet' : ''}`;
   return mat;
 }
 
 /**
  * Lambert material with the PSX patch.
- * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean }} params
+ * @param {THREE.MeshLambertMaterialParameters & { baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean, wet?: boolean }} params
  */
 export function psxLambert(params = {}) {
-  const { baked, local, lamp, paint, ...rest } = params;
-  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local, lamp, paint });
+  const { baked, local, lamp, paint, wet, ...rest } = params;
+  return patchPsx(new THREE.MeshLambertMaterial(rest), { baked, local, lamp, paint, wet });
 }
 
 /**

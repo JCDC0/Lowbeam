@@ -28,6 +28,8 @@ import { loadFonts } from '../render/fonts.js';
 import { LOTS } from './layout.js';
 import { buildStations } from './gas-station.js';
 import { buildSky, MOON_DIR } from '../render/sky.js';
+import { RainView } from '../render/rain.js';
+import { weatherLook } from '../render/weather.js';
 
 const _dir = new THREE.Vector3();
 
@@ -94,6 +96,10 @@ export class World {
     this.scene.fog = new THREE.Fog(FOG.color, FOG.near, FOG.far);
     this.sky = buildSky();
     this.scene.add(this.sky);
+    this.rain = new RainView();
+    this.scene.add(this.rain.lines);
+    /** The weather level, 0 dry to 1 a storm (`render/weather.js`). */
+    this.weather = 0;
     this.scene.add(new THREE.HemisphereLight(0x4a5a82, 0x101012, 1.0));
     const moon = new THREE.DirectionalLight(0xa4b6e0, 0.9);
     moon.position.copy(MOON_DIR).multiplyScalar(100);
@@ -117,6 +123,27 @@ export class World {
   /** @param {THREE.Object3D} obj */
   add(obj) {
     this.root.add(obj);
+  }
+
+  /**
+   * Sets the weather: the roads soak, the fog closes in and the rain falls.
+   * @param {number} level 0 to 1
+   */
+  setWeather(level) {
+    this.weather = level;
+    const look = weatherLook(level);
+    psxUniforms.uWet.value = look.wet;
+    const fog = /** @type {THREE.Fog} */ (this.scene.fog);
+    fog.near = look.fogNear;
+    fog.far = look.fogFar;
+  }
+
+  /**
+   * Per frame: moves the rain. @param {number} dt
+   * @param {{ vx: number, vy?: number, vz: number }} [vel] the camera's velocity
+   */
+  stepWeather(dt, vel) {
+    this.rain.update(dt, this.weather, vel);
   }
 
   /**

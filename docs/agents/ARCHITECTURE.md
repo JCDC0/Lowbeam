@@ -44,7 +44,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - A test that needs the island (the ground, the traffic net, the scatter) takes it from
@@ -107,7 +107,8 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/core/input.js` | Keyboard and gamepad, menu actions, `drive(dt)` with keyboard ramps, key bindings (`KEYS`, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
-| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires) |
+| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`) |
+| `src/render/weather.js`, `rain.js` | The weather as numbers (`weatherLook`: wet, fog, streaks) and the rain, streaks moved in the vertex shader |
 | `src/render/pools.js`, `pool-grid.js` | Per-pixel light pools: every world light in a float texture and a 24 m grid of up to 12 lights per cell |
 | `src/render/fonts.js` | `FONT` (display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, awaited before any canvas is drawn |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shop signs, awnings, noise |
@@ -157,9 +158,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.2)
+## Current state (0.10.3)
 
-424 tests pass; the type check is clean. By area:
+431 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -271,6 +272,15 @@ model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hosh
 Kagero Hot-GT, Kagero Lancer-X, Halden Drifter, Tsurugi Wedge, Kenro Hardtop, Hoshi Beat and Kagero
 RS-Wide racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
 
+**Weather.** Clear, drizzle, rain or storm (`render/weather.js`; Settings, saved as `weather`;
+`__lowbeam.weather('storm')`). A level from 0 to 1 sets how wet the roads are (`uWet`: roads, lanes,
+shoulders, sidewalks, zebras and stop lines darken and every street lamp throws a bright, stretched
+reflection toward the viewer along the road), how far the fog closes in (420 m dry, 230 m in a storm),
+and how many one-pixel rain streaks fall in a box round the camera (`RainView`, up to 3,200, placed in
+the vertex shader, leaning back with the car's speed). Looks only: the grip, the sound, the traffic
+and the police do not change yet (`tasks/B3-wet-weather.md`). One draw call; a reflection reaches only
+as far as its lamp's light pool (about 15 m), not the whole way a real one would.
+
 **Races.** `RaceEvent` with three kinds: the duel (Tokyo Xtreme Racer gauges, challenge with H), the
 Kuro Pass rally time attack (gates, splits, medals, pace notes, ghost, F at the start line), and the
 police pursuit.
@@ -355,7 +365,7 @@ square and a saw through a band-pass, panned, muffled in the cockpit) and the he
 (`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs).
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
-speedometer style, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
+speedometer style, the weather, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
 routing, a 220 px minimap after Most Wanted's radar (the sea and the lake in blue, grey roads, the
 places as round badges; the heat as a flame and "x N" at the top left and an amber rim arc filling
 with the progress to the next level; police cars as small chevrons flashing red and blue, grey on

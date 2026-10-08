@@ -371,16 +371,16 @@ function mergeGroups(geos, groups) {
 }
 
 export function buildRoads(ground, grid) {
-  const shoulder = psxLambert({ map: shoulderTexture(), baked: true });
+  const shoulder = psxLambert({ map: shoulderTexture(), baked: true, wet: true });
   const mats = {
-    asphalt: psxLambert({ map: asphaltTexture(), baked: true }),
+    asphalt: psxLambert({ map: asphaltTexture(), baked: true, wet: true }),
     gravel: psxLambert({ map: gravelTexture(), baked: true }),
   };
   const laneMats = new Map();
   const surfaceOf = (road) => {
     if (road.surface !== 'asphalt' || !road.def.lanes || road.def.lines === 'center' || !road.def.lines) return mats[road.surface] || mats.asphalt;
     const lanes = road.def.lines === 'none' ? 0 : road.def.lanes;
-    if (!laneMats.has(lanes)) laneMats.set(lanes, psxLambert({ map: laneAsphaltTexture(lanes), baked: true }));
+    if (!laneMats.has(lanes)) laneMats.set(lanes, psxLambert({ map: laneAsphaltTexture(lanes), baked: true, wet: true }));
     return laneMats.get(lanes);
   };
   const group = new THREE.Group();
@@ -389,7 +389,7 @@ export function buildRoads(ground, grid) {
   group.userData.chunks = chunks;
   const shared = sharedEdges(ground.roads);
   const concrete = psxLambert({ map: concreteTexture(), baked: true, side: THREE.DoubleSide });
-  const walkMat = psxLambert({ map: concreteTexture(), baked: true, color: 0xb8b6b0 });
+  const walkMat = psxLambert({ map: concreteTexture(), baked: true, color: 0xb8b6b0, wet: true });
   /** @type {Map<string, { geos: THREE.BufferGeometry[], mats: THREE.Material[], x: number, z: number, n: number }>} */
   const buckets = new Map();
   for (const road of ground.roads.roads) {
@@ -426,8 +426,8 @@ export function buildRoads(ground, grid) {
   const goreMeshBuilder = buildGores(ground);
   const goreData = goreMeshBuilder.geometry(['gore', 'dash']);
   if (goreData.geometry.attributes.position && goreData.geometry.attributes.position.count > 0) {
-    const goreMat = psxLambert({ map: goreTexture(), baked: true, side: THREE.DoubleSide });
-    const dashMat = psxLambert({ map: laneAddTexture(), baked: true, side: THREE.DoubleSide });
+    const goreMat = psxLambert({ map: goreTexture(), baked: true, wet: true, side: THREE.DoubleSide });
+    const dashMat = psxLambert({ map: laneAddTexture(), baked: true, wet: true, side: THREE.DoubleSide });
     const goreMesh = new THREE.Mesh(bakeGeometry(goreData.geometry, grid, { wrap: 0.6 }), [goreMat, dashMat]);
     goreMesh.name = 'road-gores';
     group.add(goreMesh);
@@ -475,8 +475,8 @@ function markingMats() {
     g.fillStyle = '#e4e2da';
     g.fillRect(0, 0, 8, 4);
     _markingMats = {
-      zebra: psxLambert({ map: canvasTexture(c, { repeat: true }), baked: true, alphaTest: 0.5, side: THREE.DoubleSide }),
-      stop: psxLambert({ color: 0xe4e2da, baked: true, side: THREE.DoubleSide }),
+      zebra: psxLambert({ map: canvasTexture(c, { repeat: true }), baked: true, wet: true, alphaTest: 0.5, side: THREE.DoubleSide }),
+      stop: psxLambert({ color: 0xe4e2da, baked: true, wet: true, side: THREE.DoubleSide }),
     };
   }
   return _markingMats;

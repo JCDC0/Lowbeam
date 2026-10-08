@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.10.3 (2026-10-09)
+
+Rain: wet roads, falling streaks and thicker fog, from a new WEATHER row in Settings.
+
+- `render/weather.js` (pure) names four weathers, clear, drizzle, rain and storm, as levels 0, 0.35,
+  0.7 and 1, and turns a level into numbers (`weatherLook`): how wet the roads are, the fog's
+  distances (420 m dry down to 230 m in a storm), how many rain streaks and how hard they fall.
+- `psx.js` materials take `wet` (with `baked`): the surface darkens and every street lamp whose pool
+  reaches it throws a bright reflection stretched along the road toward the viewer (`wetStreak`, in
+  the pool loop, banded like the pools, stronger in puddles). `build-roads.js` makes the roads, lanes,
+  shoulders, sidewalks, zebras and stop lines wet.
+- `render/rain.js`: 3,200 one-pixel streaks in a box round the camera, positioned in the vertex
+  shader (nothing per streak on the CPU), leaning back with the car's speed. One more draw call (224
+  to 225 in the view measured).
+- `world.setWeather(level)` and `stepWeather(dt, vel)`; `window.__lowbeam.weather('storm')`; the
+  drive starts in the saved weather.
+- It is looks only. Grip, sound, traffic and the police are the backend's, briefed in
+  `tasks/B3-wet-weather.md`; what is left of the look is in `tasks/C5-weather.md`.
+- `tests/weather.test.mjs`: 5 tests. 431 pass (with the backend's two from 0.9.28).
+
 ## 0.10.2 (2026-10-08)
 
 Docs only: the guide's current-state heading names 0.10.2 and the task list says the backend's next

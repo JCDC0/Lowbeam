@@ -20,6 +20,8 @@ import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
 import { store } from './core/store.js';
 import { applyNet, speedFx } from './ui/screen-fx.js';
+import { LEVELS } from './render/weather.js';
+import { currentWeather } from './ui/weather-setting.js';
 import { placeSignals, SIGNAL } from './world/signals.js';
 import { SignalView } from './world/build-signals.js';
 
@@ -129,6 +131,7 @@ async function enterWorld() {
     drive.colliders.addCircles(signals.signals.map((s) => ({ x: s.px, z: s.pz, r: SIGNAL.pole + 0.05 })));
     map.setWorld(world);
   }
+  world.setWeather(LEVELS[currentWeather()]);
   drive.start(garage.spec, garage.model.paintIndex);
   setState('drive');
 }
@@ -273,6 +276,7 @@ function frame(now) {
   }
   if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
   if (signals && drive) signals.update(drive.traffic.time, stage.camera.position);
+  if (world) world.stepWeather(dt, state === 'drive' && drive?.car ? drive.car.state : undefined);
   if (drive?.car) tracker.update(drive.car, dt);
   rHud.update(tracker, dt);
   // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.
@@ -305,6 +309,10 @@ window.__lowbeam = {
   },
   setState,
   enterWorld,
+  /** Sets the weather by name ('clear', 'drizzle', 'rain', 'storm') or by level, 0 to 1. @param {string | number} w */
+  weather(w) {
+    world.setWeather(typeof w === 'number' ? w : LEVELS[w] ?? 0);
+  },
   /** Puts the free camera somewhere and draws one frame. */
   fly(x, y, z, yaw = fly.yaw, pitch = fly.pitch) {
     Object.assign(fly, { x, y, z, yaw, pitch });
