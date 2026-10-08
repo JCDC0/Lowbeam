@@ -94,6 +94,8 @@ export const KIND_MODELS = {
   'rv-v8drift': 'rv_v8drift_full',
   'rv-wedge': 'rv_wedge_full',
   'rv-hardtop': 'rv_hardtop_full',
+  'rv-roadster': 'rv_roadster_full',
+  'rv-wide': 'rv_wide_full',
   police: 'police_cruiser_full',
   'police-fast': 'police_unmarked_full',
   'police-heavy': 'police_rhino_full',

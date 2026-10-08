@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.90 (2026-10-08)
+
+The Hoshi Beat and the Kagero RS-Wide race with Gemini's models.
+
+- Gemini's 0.9.65 and 0.9.66 pass. The Beat: an open kei roadster, 0.86 m tall, twin roll hoops,
+  louvers over the mid engine and side intakes ahead of the rear wheels. The RS-Wide: riveted bolt-on
+  flares taking the body from 1.78 m to 1.95 m, a carbon splitter on stays, a fastback and a GT wing
+  on swan necks just over the roof. Both match the G5 table and stay under the 2,600 triangle budget
+  (2,190 and 2,448). `KIND_MODELS` gains `rv-roadster` and `rv-wide`; eight of the eleven G5 cars race.
+- A slip in 0.9.21: Gemini's 0.9.66 changelog entry, written in the tree before its commit, went in
+  with Claude's commit of Hermes' work. The entry is Gemini's own text and its model landed in
+  0.9.66, so it stays.
+
 ## 0.9.89 (2026-10-08)
 
 The backend seat moves to Gemini.
