@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.93 (2026-10-08)
+
+Zebra crossings and stop lines at the town's junctions.
+
+- `src/world/markings.js` (pure): at every junction, each arm with a sidewalk gets a zebra crossing
+  (bars 0.45 m with 0.45 m spaces, running with the traffic, 3.2 m deep) 0.6 m past the edge of the
+  road it crosses, and a stop line 0.4 m behind it across the lanes coming in (on their left, traffic
+  keeps left). The traffic stops 3.5 m past the crossed road's edge plus its 2.2 m gap, so the line
+  is about a meter ahead of the waiting bumpers. Paint that would fall inside a neighboring junction
+  is left out. 4,094 zebras and 4,065 stop lines at 1,153 junctions, placed in 44 ms.
+- `build-roads.js` draws them as one mesh (a repeating bar texture with an alpha test, and plain
+  white), just over the junction patch.
+- `tests/markings.test.mjs`: the junctions are painted, every mark lies on a road and outside the
+  middle of its crossing, the stop line covers the incoming lanes and stays ahead of the stopped
+  traffic. 404 pass.
+
 ## 0.9.92 (2026-10-08)
 
 The traffic lights can be seen: a Japanese signal for every way into every lit crossing.

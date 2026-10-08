@@ -18,6 +18,7 @@ import { MeshBuilder } from '../render/builder.js';
 import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, shoulderTexture, makeCanvas, canvasTexture } from '../render/textures.js';
 import { SKIRT, SINK } from './roads.js';
 import { inStretch } from './merge.js';
+import { MARKING, placeMarkings } from './markings.js';
 
 export const TILE = 12;
 const CHUNK_ROWS = 90;
@@ -439,5 +440,44 @@ export function buildRoads(ground, grid) {
     group.add(mesh);
   }
 
+  const paint = buildMarkings(placeMarkings(ground.junctions));
+  if (paint) {
+    const mesh = new THREE.Mesh(bakeGeometry(paint.geometry, grid, { wrap: 0.6 }), paint.keys.map((k) => markingMats()[k]));
+    mesh.name = 'road-markings';
+    group.add(mesh);
+  }
+
   return group;
+}
+
+/** The zebra crossings and stop lines at the town's junctions (`markings.js`), as one mesh. */
+function buildMarkings(markings) {
+  if (!markings.length) return null;
+  const b = new MeshBuilder();
+  const period = MARKING.bar + MARKING.space;
+  for (const m of markings) {
+    b.push(m.x, m.y, m.z, m.yaw);
+    const x = m.w / 2;
+    const z = m.d / 2;
+    // The zebra's bars run with the traffic, so its texture repeats across the road.
+    const uv = m.kind === 'zebra' ? [-x / period, 0, x / period, 1] : [0, 0, 1, 1];
+    b.quad(m.kind, [x, 0, -z], [-x, 0, -z], [-x, 0, z], [x, 0, z], uv);
+    b.pop();
+  }
+  return b.geometry(['zebra', 'stop']);
+}
+
+let _markingMats = null;
+function markingMats() {
+  if (!_markingMats) {
+    const c = makeCanvas(16, 4);
+    const g = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+    g.fillStyle = '#e4e2da';
+    g.fillRect(0, 0, 8, 4);
+    _markingMats = {
+      zebra: psxLambert({ map: canvasTexture(c, { repeat: true }), baked: true, alphaTest: 0.5, side: THREE.DoubleSide }),
+      stop: psxLambert({ color: 0xe4e2da, baked: true, side: THREE.DoubleSide }),
+    };
+  }
+  return _markingMats;
 }
