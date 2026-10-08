@@ -71,6 +71,24 @@ test('a civilian hit under 18 m/s is knocked, not wrecked; a harder one wrecks i
   assert.equal(hard.a.mode, 'wreck', 'a 19 m/s hit wrecks it');
 });
 
+test('a knocked car keeps its hazards off and is back in drive within 1.5 s, whatever the hit', () => {
+  for (const closing of [5, 10, 15, 17]) {
+    const { sim, a } = civilian('sedan', 14);
+    sim.collideWithPlayer(behind(a, closing), spec);
+    assert.equal(a.mode, 'knocked', `a ${closing} m/s hit knocks it`);
+    let t = 0;
+    let signal = a.signal;
+    while (a.mode === 'knocked' && t < 3) {
+      sim.stepKnocked(a, DT);
+      signal = Math.max(signal, a.signal);
+      t += DT;
+    }
+    assert.equal(signal, 0, `a ${closing} m/s hit leaves the hazards off`);
+    assert.equal(a.mode, 'drive', `after ${t.toFixed(2)} s a ${closing} m/s knock is ${a.mode}`);
+    assert.ok(t <= 1.5, `it drove on after ${t.toFixed(2)} s`);
+  }
+});
+
 test('mass counts both ways: a kei car is thrown, a bus barely moves and stops the player', () => {
   const hitBy = (kind) => {
     const { sim, a } = civilian(kind, 0);

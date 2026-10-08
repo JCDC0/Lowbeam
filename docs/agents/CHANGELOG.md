@@ -314,6 +314,20 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.66 (2026-10-08)
+
+Street racers: Kagero RS-Wide (`rv_wide`).
+
+- `tools/blender/rv_wide.py`: Widebody tuner coupe in the Rocket Bunny / Pandem GT coupe spirit: 4.60 x 1.95 x 1.39 m, wheelbase 2.67 m (axles at z = +1.25 and -1.42 m), wheel radius 0.33 m at x = +-0.80.
+- Widebody stance: riveted bolt-on flares with visible chrome rivet heads standing out from a 1.78 m body waist to 1.95 m over both axles.
+- Deep front carbon splitter on metallic support stays to z = +2.170 m, dual front bumper canards per corner, vented hood cooling extractor.
+- Fastback coupe greenhouse with raked windshield and sleek sloping rear fastback glass (z in [-1.520, 0.850] m).
+- Rear molded ducktail spoiler lip on deck lid; big GT wing on swan-neck mounts arching above the roof line (top crown height 1.390 m, roof at 1.360 m).
+- Finned rear under-diffuser with four vertical aerodynamic fins; quad large-bore chrome exhaust tips to z = -2.430 m.
+- Aggressive twin headlights per side (`lamp`, z in [2.144, 2.154] m > 0), twin round taillights (`tail`, z in [-2.420, -2.410] m < 0).
+- 1,744 body triangles (budget <= 1,800), 2,448 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_wide.json` and `assets/models/rv_wide_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.65 (2026-10-08)
 
 Street racers: Hoshi Beat (`rv_roadster`).
@@ -500,6 +514,24 @@ Pursuit props, first part: spike strip.
 
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
+
+## 0.9.21 (2026-10-08)
+
+A bumped car drives on, and a civilian gets out of the way (B2 part 2). Hermes' work, finished and
+committed by Claude when Hermes' budget ran out before its commit.
+
+- A knock under the wreck threshold no longer turns the hazards on (`stepKnocked` leaves `signal`
+  alone); the slide ends when its sideways speed falls under 0.6 m/s (`KNOCK.slide`, replacing the old
+  4 m/s total-speed `rejoin`), and the car takes its lane and drives on. Every knock from 5 to 17 m/s
+  is back in `drive` within 1.5 s.
+- `AVOID`: a civilian with the player (in its lane, within 25 m behind) or a racer (in its lane)
+  closing at 8 m/s or more moves over into a free lane at once, without its signal wait, or with no
+  lane free raises its wanted speed to 1.2 times for 4 s; either way it honks a short warning (the
+  manners' horn limits, once per car per 3 s). Units and racers do not yield this way.
+- Tests: `traffic-knock` (hazards off, back in drive within 1.5 s at four hit speeds) and
+  `traffic-evade` (moves over within 3 s with a warning honk; a racer behind makes it move at once;
+  boxed in it speeds up, never past 1.2 times; a slow approach changes nothing; the horn limit). 389
+  pass.
 
 ## 0.9.20 (2026-10-08)
 

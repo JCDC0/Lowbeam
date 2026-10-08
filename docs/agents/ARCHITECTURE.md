@@ -209,8 +209,9 @@ turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; 
 indicator flares larger and the three nearest throw a small amber pool. Every car the player hits
 answers by mass, the same contact rules as the player's car (`vehicles/contact.js`): a kei car is
 thrown, a bus stops the player. A hit under 18 m/s closing (0.9.20) knocks a car off its line: it slides on
-its tires (the sideways slide dies at 0.75 g, the driver brakes, the spin settles), hazards on, then
-drives on from its lane; a harder hit, or a car stranded off every lane for 6 s, is a wreck, which
+its tires (the sideways slide dies at 0.75 g, the driver brakes, the spin settles), hazards off, and
+drives on from its lane within about a second (0.9.21). A civilian with the player or a racer closing
+fast from behind moves over into a free lane, or speeds up when boxed in, and honks; a harder hit, or a car stranded off every lane for 6 s, is a wreck, which
 slides at tire grip (0.7 g) until it stops. Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next (`collideAgents`). A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed

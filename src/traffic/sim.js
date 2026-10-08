@@ -12,7 +12,7 @@ import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
 import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
 import { lightState } from './net.js';
-import { Manners } from './manners.js';
+import { Manners, HORN_GAP, HORN_EVERY } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 import { DAMAGE, health, unitDamage } from '../police/units.js';
 
@@ -32,7 +32,8 @@ import { DAMAGE, health, unitDamage } from '../police/units.js';
  *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
  *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean,
- *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null, shy?: number, shyUntil?: number
+ *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null, shy?: number, shyUntil?: number,
+ *   hurry?: number, hurryUntil?: number
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -50,10 +51,16 @@ const WRECK_TIME = 24;
 const CIVIL_WRECK_HIT = 18;
 /**
  * A knocked car on its tires: how fast its sideways slide dies and how hard its driver brakes (m/s2),
- * how fast its spin settles (1/s), the speed (m/s) below which it tries its lane again, and how long
- * it may sit off every lane before it counts as a wreck.
+ * how fast its spin settles (1/s), the sideways speed (m/s) below which the slide is over and it tries
+ * its lane again, and how long it may sit off every lane before it counts as a wreck.
  */
-const KNOCK = { grip: 7.5, brake: 4.5, spin: 2.2, rejoin: 4, stranded: 6 };
+const KNOCK = { grip: 7.5, brake: 4.5, spin: 2.2, slide: 0.6, stranded: 6 };
+/**
+ * A civilian with a faster car (the player or a racer) closing on it from behind within `range` m at
+ * `closing` m/s or more gets out of the way: over into a free lane, else it raises the speed it aims for
+ * to `hurry` times its wanted speed for `hurryFor` s.
+ */
+const AVOID = { range: 25, closing: 8, hurry: 1.2, hurryFor: 4 };
 /** Seconds between lane-change decisions for one agent. */
 const CHANGE_EVERY = 0.8;
 /** Seconds a civilian keeps the lane it just moved into before it will consider moving again. */
@@ -142,6 +149,8 @@ export class TrafficSim {
     this.heat = 0;
     /** The civilians' horns and their panic in a pursuit (manners.js); `takeSounds` empties it. */
     this.manners = new Manners(seed + 14);
+    /** When each civilian last blew its warning horn (`honk`), by id. @type {Map<number, number>} */
+    this.honkAt = new Map();
     /**
      * Hooks the Drive sets so units respect the world (the sim stays pure; tests leave them null):
      * `clear(unit, player)` says nothing solid stands between them, `groundAt(x, z, y)` is the
@@ -734,6 +743,7 @@ export class TrafficSim {
     // A racer in a duel stops cruising and goes for its top speed, and it will not drop
     // back to the slow lane while the duel is on.
     let v0 = a.duel ? a.lane.limit * a.kind.speed[1] : a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
+    if (this.time < (a.hurryUntil ?? 0)) v0 = Math.max(v0, a.hurry ?? v0);
     // Sirens on: a unit drives as fast as the chase needs, up to its own top speed, whatever the
     // limit; a search is brisk but not flat out.
     if (a.pursuit || a.quarry) v0 = this.pursuitSpeed(a, player);
@@ -749,6 +759,7 @@ export class TrafficSim {
 
     // A signal waits in real time; the move happens when it runs out.
     if (a.signalTimer > 0) a.signalTimer = Math.max(0, a.signalTimer - dt);
+    if (!isUnit(a.kind) && !rival && a.changeDuration === 0 && this.closingBehind(a, player) > 0) this.avoid(a, player);
     this.maybeChange(a, lead, player);
 
     // Taking the exit or turn that was planned.
@@ -1251,6 +1262,73 @@ export class TrafficSim {
   }
 
   /**
+   * The closing speed (m/s) of the nearest faster car behind a civilian in its own lane: the player
+   * (within `AVOID.range` and in the lane) or a racer. Zero when none closes at `AVOID.closing` or more.
+   * @param {Agent} a @param {{ x: number, z: number, speed: number }} [player]
+   */
+  closingBehind(a, player) {
+    let best = 0;
+    const fx = Math.sin(a.yaw);
+    const fz = Math.cos(a.yaw);
+    if (player) {
+      const dx = player.x - a.x;
+      const dz = player.z - a.z;
+      const behind = -(dx * fx + dz * fz);
+      const side = dx * fz - dz * fx;
+      const closing = player.speed - a.speed;
+      if (behind > 0 && behind < AVOID.range && Math.abs(side) < 2 && closing >= AVOID.closing) best = closing;
+    }
+    for (const o of this.byLane.get(a.lane) || []) {
+      if (o === a || o.mode !== 'drive' || !this.isRival(o)) continue;
+      let ds = a.s - o.s;
+      if (a.lane.closed && ds < 0) ds += a.lane.length;
+      const closing = o.speed - a.speed;
+      if (ds > 0 && ds < AVOID.range && closing >= AVOID.closing) best = Math.max(best, closing);
+    }
+    return best;
+  }
+
+  /**
+   * A civilian with a faster car closing on it gets out of the way: over into a lane that is free
+   * (`changeSafe`), slow side first, at once and without its usual signal wait; with no lane free it
+   * raises the speed it aims for to `AVOID.hurry` times its wanted speed for `AVOID.hurryFor` s. Either
+   * way it honks, the short warning blast.
+   * @param {Agent} a @param {{ x: number, z: number, speed: number }} [player]
+   */
+  avoid(a, player) {
+    const same = (this.net.byRoad.get(a.lane.road.id) || []).filter((l) => l.dir === a.lane.dir);
+    for (const idx of [a.lane.index - 1, a.lane.index + 1]) {
+      const target = same.find((l) => l.index === idx);
+      if (!target || !this.changeSafe(a, target, player)) continue;
+      this.beginSignal(a, this.signalSide(a, target), target);
+      a.signalTimer = 0;
+      this.startLaneChange(a, target);
+      this.honk(a);
+      return;
+    }
+    if (this.time >= (a.hurryUntil ?? 0)) {
+      a.hurry = a.lane.limit * a.factor * AVOID.hurry;
+      a.hurryUntil = this.time + AVOID.hurryFor;
+    }
+    this.honk(a);
+  }
+
+  /**
+   * The short horn a civilian blows as it gets out of the way: once per `HORN_GAP` for each car and
+   * once per `HORN_EVERY` for the street, as manners.js does. It takes the `panic` blast, because
+   * manners.js is not the backend's to extend with a reason of its own.
+   * @param {Agent} a
+   */
+  honk(a) {
+    const m = this.manners;
+    for (const [id, t] of this.honkAt) if (this.time - t > HORN_GAP) this.honkAt.delete(id);
+    if (this.time - (this.honkAt.get(a.id) ?? -Infinity) <= HORN_GAP || this.time - m.lastHorn <= HORN_EVERY) return;
+    this.honkAt.set(a.id, this.time);
+    m.lastHorn = this.time;
+    m.horns.push({ id: a.id, kind: a.kind.id, x: a.x, z: a.z, reason: 'panic', blast: 'short' });
+  }
+
+  /**
    * Evaluates lane change opportunities: overtaking slower cars, yielding to faster
    * vehicles closing from behind, and positioning for planned exits or turns.
    * @param {Agent} a @param {{ gap: number, v: number }} lead
@@ -1561,18 +1639,18 @@ export class TrafficSim {
     a.yaw += a.yawRate * dt;
     a.speed = Math.max(0, vF);
     a.brake = 1;
-    a.signal = 2;
-    a.signalTimer = 0;
     if (this.groundAt) a.y = this.groundAt(a.x, a.z, a.y);
     const q = this.net.sample(a.lane, a.s, this._q);
     a.s = clamp(a.s + (a.vx * q.tx + a.vz * q.tz) * dt, 0, a.lane.length);
-    if (Math.hypot(a.vx, a.vz) < KNOCK.rejoin && Math.abs(a.yawRate) < 0.35 && a.knockAge > 0.8) {
+    if (Math.abs(vL) < KNOCK.slide && Math.abs(a.yawRate) < 0.35 && a.knockAge > 0.8) {
       const at = this.net.locate(a.x, a.z, a.yaw, a.y + 0.5, 2);
       if (at) {
         this.net.sample(at.lane, at.s, q);
         if (q.tx * fx + q.tz * fz > 0.8) {
           a.mode = 'drive';
           a.signal = 0;
+          a.signalTimer = 0;
+          a.signalTarget = null;
           a.speed = Math.max(0, vF);
           this.moveTo(a, at.lane, at.s, false);
           return;
