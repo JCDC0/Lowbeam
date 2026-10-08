@@ -110,6 +110,18 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.60 (2026-10-08)
+
+Street racers: Kagero Lancer-X (`rv_boxer`).
+
+- `tools/blender/rv_boxer.py`: 4-door rally sedan in the Evo / Impreza spirit. 4.50 x 1.77 x 1.45 m, wheelbase 2.63 m (axles at z = +1.15 and -1.48 m), wheel radius 0.32 m at x = +-0.76.
+- Three-box sedan architecture with distinct hood, 4-door cabin (visible B and C pillars, door cut lines, handles), and trunk deck.
+- Hood vents (two dark slots) and hood scoop; tall rear rally wing on two uprights over trunk (blade at y = 1.42 m, 0.44 m clear of trunk lid, wing apex at 1.450 m).
+- Front and rear box-flared arches (1.7700 m wide), rally mud flaps behind all four wheels, big front intake with intercooler mesh, front chin splitter, and bumper fog lamps.
+- Emissive headlights (`lamp`, z in [2.026, 2.048] m > 0), block taillights (`tail`, z in [-2.437, -2.427] m < 0), both proud of hull; single chrome cannon exhaust to -2.450 m with dark bore.
+- 1,732 body triangles (budget <= 1,800), 2,436 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_boxer.json` and `assets/models/rv_boxer_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.59 (2026-10-07)
 
 Street racers: Kagero Hot-GT (`rv_hothatch`).
