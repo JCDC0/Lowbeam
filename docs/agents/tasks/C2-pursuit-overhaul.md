@@ -80,7 +80,7 @@ spread round the player so their searchlights cover different streets. The count
 - Units show their sight: a cone ahead of each searching unit, a lit marker on each one that sees
   the player; helicopters show their searchlight.
 
-## 8. The audio expansion
+## 8. The audio expansion (done in 0.9.78 and 0.9.79)
 
 - Pass-bys: today one swish whatever the speed. Each nearby car gets its own voice from a small pool
   (engine and tire noise, panned and Doppler shifted, louder and longer the faster it closes), so a

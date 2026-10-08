@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.9.79 (2026-10-08)
+
+Horns, panic, and a city that refills (C2 part 8 done; the pursuit overhaul is complete).
+
+- `traffic/manners.js` (pure), called by the sim each step: a civilian honks when the player passes
+  it on its left (the wrong side, traffic keeps left), cuts in close ahead (it brakes too), crosses
+  fast in front of it while it waits at rest (a red run), or knocks it aside (two taps). One honk per
+  car per 3 s and one on the street per 0.3 s. Police units and racers never honk.
+- In a pursuit (the sim's `heat`), civilians within 45 m of the player or 36 m of a chasing unit
+  panic once per 7 s: they brake to 2 m/s for 3.5 s, edge 1.4 m toward the curb (`shy`, held in
+  `stepDrive`), screech if they were above 9 m/s, and honk half the time.
+- `audio.horn`: each voice class's two notes (`hornOf`; trucks and buses an air horn) as a tap, a long
+  lean or two taps, panned and heard to 160 m. `audio.screech`: a narrow band of noise falling in
+  pitch, longer from a higher speed. The Drive hands both over from `traffic.takeSounds()`.
+- Fixed: the traffic stopped refilling away from Route 1. While fewer than five racers were out the
+  sim only tried to spawn a racer, which fails anywhere more than 460 m from the expressway, so the
+  city emptied once its first cars had gone (from 0.4.10). A failed racer now falls through to a
+  civilian. A test drives 12 s on a street far from Route 1 (0 civilians before, 15 or more now).
+- Checked in the game: 29 civilians in the city where there were none; a forced pursuit made the
+  sedan ahead stop and edge to the curb, two screeches and a panic honk.
+- Tests: the four horn reasons, the wrong side against the right one, the once-per-car limit, units
+  never honking, panic near the player and near a unit, the horns by kind, the refill. 374 pass.
+
 ## 0.9.78 (2026-10-08)
 
 The cars around the player have engines (C2 part 8, first half).

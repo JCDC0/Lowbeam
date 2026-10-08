@@ -12,6 +12,7 @@ import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
 import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
 import { lightState } from './net.js';
+import { Manners } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 import { DAMAGE, health, unitDamage } from '../police/units.js';
 
@@ -31,7 +32,7 @@ import { DAMAGE, health, unitDamage } from '../police/units.js';
  *   brake: number, fade: number, pursuit?: boolean | 'chase' | 'search',
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
  *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean,
- *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null
+ *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null, shy?: number, shyUntil?: number
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -139,6 +140,8 @@ export class TrafficSim {
     this.patrolTarget = patrols;
     /** 1 to 5 while a pursuit is on: how hard the units drive, and whether they ram. */
     this.heat = 0;
+    /** The civilians' horns and their panic in a pursuit (manners.js); `takeSounds` empties it. */
+    this.manners = new Manners(seed + 14);
     /**
      * Hooks the Drive sets so units respect the world (the sim stays pure; tests leave them null):
      * `clear(unit, player)` says nothing solid stands between them, `groundAt(x, z, y)` is the
@@ -502,6 +505,11 @@ export class TrafficSim {
     return out;
   }
 
+  /** The horns and the screeching tires since the last call, for the audio. */
+  takeSounds() {
+    return this.manners.take();
+  }
+
   /** Every live police unit. @returns {Agent[]} */
   units() {
     return this.agents.filter((a) => isUnit(a.kind));
@@ -579,6 +587,8 @@ export class TrafficSim {
       if (this.hitWorld && (a.mode === 'wreck' || a.mode === 'knocked' || a.free)) this.collideWorld(a);
     }
     this.collideAgents();
+    const driver = /** @type {any} */ (player);
+    if (driver.yaw !== undefined) this.manners.update(this.time, this.agents, driver, this.heat);
     this.startTails(dt);
     // Remove what was left behind, what ended and what has been a wreck long enough. A chasing
     // unit left behind is lost to the pursuit.
@@ -593,8 +603,10 @@ export class TrafficSim {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       const rivals = this.countRivals();
-      if (rivals < this.rivalTarget) this.spawnRival(player, 250, 460);
-      else if (this.agents.length - rivals < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
+      // Racers only spawn on Route 1; far from it no racer can be placed, and the civilians must
+      // still be refilled (before 0.9.79 the city emptied once its first traffic had gone).
+      const racer = rivals < this.rivalTarget ? this.spawnRival(player, 250, 460) : null;
+      if (!racer && this.agents.length - rivals < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
       this.spawnTimer = 0.25;
     }
   }
@@ -801,8 +813,12 @@ export class TrafficSim {
       a.yawRate = 0;
     } else {
       const k = Math.exp(-dt * (1.4 + a.speed * 0.05));
-      a.ex *= k;
-      a.ez *= k;
+      // A panicking car edges toward the curb (its left) and holds there until it calms down.
+      const shy = a.shy && this.time < (a.shyUntil ?? 0) ? a.shy : 0;
+      const sx = q.tz * shy;
+      const sz = -q.tx * shy;
+      a.ex = sx + (a.ex - sx) * k;
+      a.ez = sz + (a.ez - sz) * k;
       a.x = q.x + a.ex;
       a.z = q.z + a.ez;
       a.y = q.y;

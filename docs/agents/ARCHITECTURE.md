@@ -45,7 +45,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
   soundtrack,passby,siren,traffic-voices}.js`, `src/render/pool-grid.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
-  `src/race/*`, `src/traffic/{net,sim,kinds}.js`, `src/ui/route.js`, `layoutPursuit` in
+  `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - Units are meters, seconds, kilograms. North is -Z, east is +X. Yaw 0 faces +Z; forward is
   (sin yaw, cos yaw), left is (cos yaw, -sin yaw). Path offsets `d` are positive to the left. Input
@@ -125,6 +125,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/traffic/net.js` | Every road as directed lanes, links, traffic lights; `lanesAt`, `locate` and `route` (Dijkstra over the lanes, U-turns included) |
 | `src/traffic/sim.js` | `TrafficSim`: IDM following, lane changes with blinkers, spawn and despawn, wrecks, street racers; police units that route to the player, chase free on a clear line, search, park in roadblocks |
 | `src/traffic/kinds.js`, `bodies.js`, `render.js` | Vehicle kinds, their geometry, instanced drawing with lamp flares |
+| `src/traffic/manners.js` | The civilians' horns (passed on the wrong side, cut up, a red run in front of them, a scrape) and their panic in a pursuit |
 | `src/race/event.js`, `duel.js`, `rally.js`, `pacenotes.js`, `pursuit.js` | `RaceEvent` and its kinds |
 | `src/police/heli.js`, `heli-view.js` | The helicopter and its searchlight |
 | `src/police/director.js` | `PoliceDirector`: the whole pursuit from the first notice to the report, as orders the Drive carries out |
@@ -141,9 +142,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.78)
+## Current state (0.9.79)
 
-365 tests pass; the type check is clean. By area:
+374 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -211,7 +212,13 @@ drives on from its lane; a harder hit, or a car stranded off every lane for 6 s,
 slides at tire grip (0.7 g) until it stops. Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next (`collideAgents`). A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
-out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Five street racers on
+out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
+traffic keeps left), cut up close ahead (they brake too), crossed at speed while they wait at rest,
+or knocked aside, they honk with their own horn (a kei car's high beep, a truck's air horn). In a
+pursuit, cars within 45 m of the player or of a chasing unit panic: they brake to a crawl, edge
+toward the curb, screech if they were moving and maybe honk. The traffic refills everywhere: before
+0.9.79 no civilian spawned while the street racers were short, which far from Route 1 was always.
+Five street racers on
 Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the

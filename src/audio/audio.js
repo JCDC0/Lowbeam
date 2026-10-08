@@ -23,7 +23,7 @@ import { store } from '../core/store.js';
 import { clamp } from '../core/mathx.js';
 import { MusicPlayer } from './music.js';
 import { PassBy, passbyDuration, passbyGain } from './passby.js';
-import { TRAFFIC_VOICES, trafficVoices } from './traffic-voices.js';
+import { TRAFFIC_VOICES, trafficVoices, hornOf, panOf } from './traffic-voices.js';
 
 /** @typedef {'master' | 'engine' | 'effects' | 'ambience' | 'music'} Channel */
 /** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} Mode */
@@ -110,6 +110,9 @@ const ROTOR_LEVEL = 0.9;
 /** Peak gain of a nearby car's engine, and of its tires on the road. */
 const TRAFFIC_LEVEL = 0.16;
 const TRAFFIC_TIRE_LEVEL = 0.1;
+/** Peak gain of a horn beside the player, and of a car's tires screeching to a stop. */
+const HORN_LEVEL = 0.1;
+const SCREECH_LEVEL = 0.5;
 /** The nitrous hiss while it flows. */
 const N2O_LEVEL = 0.14;
 
@@ -532,7 +535,8 @@ export class AudioSystem {
    * to the nearest street racer) set the music's mood.
    * `f.sirens` are the police sirens heard this frame and `f.rotor` the helicopter (siren.js);
    * `f.pursuit` says the police are after the player, for the music.
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[], sirens?: ReturnType<typeof import('./siren.js').sirenVoices>, rotor?: { rate: number, gain: number }, pursuit?: boolean }} f
+   * `f.horns` and `f.screeches` are the civilians' horns and tires since the last frame (manners.js).
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[], sirens?: ReturnType<typeof import('./siren.js').sirenVoices>, rotor?: { rate: number, gain: number }, pursuit?: boolean, horns?: import('../traffic/manners.js').Horn[], screeches?: import('../traffic/manners.js').Screech[] }} f
    * @param {number} [at]
    */
   update(f, at) {
@@ -546,6 +550,8 @@ export class AudioSystem {
     this.sirens(f.sirens || [], f.rotor || { rate: 0, gain: 0 }, t);
     if (f.traffic) for (const ev of this.passby.update(s, f.traffic)) this.passbyVoice(ev, t);
     this.trafficEngines(f.traffic ? trafficVoices(f.traffic, s) : [], t);
+    for (const h of f.horns || []) this.horn(h, s, t);
+    for (const k of f.screeches || []) this.screech(k, s, t);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;
@@ -675,6 +681,74 @@ export class AudioSystem {
       glide(s.gain.gain, 0, t, 0.2);
       glide(s.tire.gain, 0, t, 0.2);
     }
+  }
+
+  /**
+   * A civilian's horn: its two notes together through a band-pass, as a quick tap, a long lean or
+   * two taps, panned to where the car is.
+   * @param {import('../traffic/manners.js').Horn} h @param {{ x: number, z: number, yaw: number }} player @param {number} t
+   */
+  horn(h, player, t) {
+    const d = Math.hypot(h.x - player.x, h.z - player.z);
+    const { notes, wave, gain } = hornOf(h.kind, d);
+    if (gain < 0.01) return;
+    const c = this.ctx;
+    const out = c.createGain();
+    out.gain.value = 0;
+    const pan = c.createStereoPanner ? c.createStereoPanner() : c.createGain();
+    if ('pan' in pan) pan.pan.value = panOf(player, h.x, h.z) * 0.85;
+    const band = c.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = notes[1] * 2.2;
+    band.Q.value = 0.9;
+    band.connect(out).connect(pan).connect(this.bus.view);
+    const blasts = h.blast === 'double' ? [[0, 0.16], [0.28, 0.2]] : h.blast === 'long' ? [[0, 0.85]] : [[0, 0.28]];
+    const peak = gain * HORN_LEVEL;
+    for (const [at, len] of blasts) {
+      out.gain.setValueAtTime(0, t + at);
+      out.gain.linearRampToValueAtTime(peak, t + at + 0.015);
+      out.gain.setValueAtTime(peak, t + at + len);
+      out.gain.linearRampToValueAtTime(0, t + at + len + 0.04);
+    }
+    const end = t + blasts[blasts.length - 1][0] + blasts[blasts.length - 1][1] + 0.1;
+    for (const f of notes) {
+      const o = c.createOscillator();
+      o.type = wave;
+      o.frequency.value = f;
+      o.connect(band);
+      o.start(t);
+      o.stop(end);
+    }
+  }
+
+  /**
+   * A civilian's tires screeching as it brakes hard: a narrow band of noise that falls in pitch as
+   * the car slows, longer from a higher speed.
+   * @param {import('../traffic/manners.js').Screech} k @param {{ x: number, z: number, yaw: number }} player @param {number} t
+   */
+  screech(k, player, t) {
+    const d = Math.hypot(k.x - player.x, k.z - player.z);
+    if (d > 120) return;
+    const gain = (1 / (1 + d / 10)) * (1 - d / 120) * SCREECH_LEVEL;
+    const dur = Math.min(1.4, 0.35 + k.speed * 0.035);
+    const c = this.ctx;
+    const src = c.createBufferSource();
+    src.buffer = this.white;
+    const band = c.createBiquadFilter();
+    band.type = 'bandpass';
+    band.Q.value = 7;
+    band.frequency.setValueAtTime(1500, t);
+    band.frequency.exponentialRampToValueAtTime(1050, t + dur);
+    const env = c.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(gain, t + 0.05);
+    env.gain.setValueAtTime(gain, t + dur * 0.7);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    const pan = c.createStereoPanner ? c.createStereoPanner() : c.createGain();
+    if ('pan' in pan) pan.pan.value = panOf(player, k.x, k.z) * 0.85;
+    src.connect(band).connect(env).connect(pan).connect(this.bus.view);
+    src.start(t, Math.random() * 1.5);
+    src.stop(t + dur + 0.05);
   }
 
   /** @param {boolean} on @param {number} [at] */

@@ -78,6 +78,28 @@ export function trafficGain(d) {
 }
 
 /**
+ * A car's horn: its two notes, the wave (an air horn on the trucks and buses is brassier), and
+ * how loud it is heard from `d` meters (horns carry further than engines).
+ * @param {string} kindId @param {number} d
+ * @returns {{ notes: [number, number], wave: OscillatorType, gain: number }}
+ */
+export function hornOf(kindId, d) {
+  const cls = VOICE_OF[kindId] ?? (kindId.startsWith('rv-') ? 'racer' : 'sedan');
+  const v = VOICES[cls];
+  const air = cls === 'diesel' || cls === 'bus';
+  return { notes: v.horn, wave: air ? 'sawtooth' : 'square', gain: d >= 160 ? 0 : (1 / (1 + d / 12)) * (1 - d / 160) * (air ? 1.3 : 1) };
+}
+
+/** Pan of a point seen from the player, -1 left to 1 right. @param {{ x: number, z: number, yaw: number }} player @param {number} x @param {number} z */
+export function panOf(player, x, z) {
+  const dx = x - player.x;
+  const dz = z - player.z;
+  const d = Math.max(1e-3, Math.hypot(dx, dz));
+  const left = Math.cos(player.yaw) * (dx / d) - Math.sin(player.yaw) * (dz / d);
+  return Math.max(-1, Math.min(1, -left));
+}
+
+/**
  * @typedef {{ key: number, wave: OscillatorType, pitch: number, sub: number, cutoff: number, gain: number, tire: number, pan: number }} TrafficVoice
  */
 
