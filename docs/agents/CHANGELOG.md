@@ -139,6 +139,19 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.62 (2026-10-08)
+
+Street racers: Tsurugi Wedge (`rv_wedge`).
+
+- `tools/blender/rv_wedge.py`: 80s twin-turbo wedge GT in the Countach / Supra A70 / Starion spirit. 4.40 x 1.86 x 1.16 m, wheelbase 2.55 m (axles at z = +1.50 and -1.05 m), wheel radius 0.32 m at x = +-0.79.
+- Folded-paper body with flat panels and sharp creases; long low wedge nose rising in a straight line to a steeply raked windshield; pushed-back cabin stance over short rear axle.
+- Pop-up headlamps shown UP with forward-facing emissive lenses (`lamp`, z in [1.935, 1.945] m > 0); slim dark intake slot in nose under headlamps; front chin splitter.
+- Flat rear deck with integrated lip spoiler; slatted rear window louvers; full-width tail lamp band (`tail`, z in [-1.939, -1.929] m < 0); twin chrome exhaust tips to -1.950 m with dark bores.
+- Strong beltline crease and angular NACA-style side intakes ahead of rear wheels.
+- 1,426 body triangles (budget <= 1,800), 2,130 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_wedge.json` and `assets/models/rv_wedge_full.json`. Checked clean in props.html with 0 problems.
+- Add `tools/blender/__pycache__/` to `.gitignore`.
+
 ## 0.9.61 (2026-10-08)
 
 Street racers: Halden Drifter (`rv_v8drift`).

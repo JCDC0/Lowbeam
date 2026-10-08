@@ -11,3 +11,5 @@ tools/shots/
 
 # Reference images copied from the web for the agents to look at. Not ours to commit.
 concepts/
+
+tools/blender/__pycache__/
