@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.82 (2026-10-08)
+
+Briefs from Jc's test drive.
+
+- `tasks/B2-driving-patch.md` replaces the loose-ends brief for the backend seat (Hermes on Claude
+  Haiku 5.5): tougher cars and units, bumped cars that drive on or get out of the way instead of
+  standing with hazards, every car solid (no phasing into roadblocks), racers that brake when they
+  cannot pass, police that react with a delay and within their grip, the assigned pool and
+  reinforcements, helicopters that run out of fuel, the nearest station, louder traffic and exhaust.
+  The Hikari and the route timing test move to its "Later".
+- `tasks/C3-patch-queue.md`: Claude's half: Most Wanted's radar, the pursuit HUD after Jc's sketch,
+  the HUD fishnet, vignette and blur with toggles, skid marks and smoke for every car, more police
+  stations, hideouts and garages.
+- `tasks/G7-police-station.md`: a district police station with a roof pad, and the roadblock barrier;
+  Gemini's next range is 0.10.50 to 0.10.69.
+
 ## 0.9.81 (2026-10-08)
 
 Fixed: a car could cross the Kurogane Line's median and fall through the deck where its ramps fork.

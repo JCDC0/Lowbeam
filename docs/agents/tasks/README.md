@@ -10,7 +10,7 @@ makes it. Claude reviews every commit before the next task starts.
 |---|---|---|---|
 | Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 (used), now 0.9.70 to 0.9.99 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
 | Backend | Hermes (Claude Haiku 5.5), earlier GPT 6 Sol (Codex) | 0.9.20 to 0.9.49 | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
-| Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
+| Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69, then 0.10.50 to 0.10.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
 
 Ask Claude for a new range when yours runs out.
 
@@ -38,9 +38,11 @@ and leaves `package.json` alone.
 | [G3-police-cars.md](G3-police-cars.md) | Assets | done, all four passed (0.9.54 to 0.9.57) and in the game (0.9.70) | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
 | [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3, between racers when Claude needs it for the city | Street trees, planters, hedges, shrubs and benches for the city |
 | [G5-street-racers.md](G5-street-racers.md) | Assets | 6 of 11 built (0.9.58 to 0.9.63); 5 in the game, the Hardtop back for its roof; two cars per review | The other eleven street racers in Blender, two cars per review |
-| [B2-backend-loose-ends.md](B2-backend-loose-ends.md) | Backend | next (from 0.9.20) | The Hikari among the street racers with robust lane change tests, a route test the machine's load cannot fail, a unit's damage felt in its driving |
+| [B2-driving-patch.md](B2-driving-patch.md) | Backend | next (from 0.9.20) | From Jc's test drive: tougher cars, bumped cars that drive on or get out of the way, every car solid (no phasing into roadblocks), racers that brake, police that drive like people, the assigned pool and reinforcements, helicopters that refuel, louder traffic and exhaust |
+| [C3-patch-queue.md](C3-patch-queue.md) | Claude | part 1 done (0.9.81) | From the same drive: the Kurogane Line median, Most Wanted's radar, the pursuit HUD after Jc's sketch, the HUD fishnet, vignette and blur, skid marks and smoke, more stations, hideouts and garages |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
-| [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
+| [G7-police-station.md](G7-police-station.md) | Assets | after the G5 batch in hand (0.10.50 on) | A district police station with a roof pad, and the roadblock barrier |
+| [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 and G7 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view
 contract (`archive/A13-pursuit-hud.md`) and the Most Wanted design for the police
