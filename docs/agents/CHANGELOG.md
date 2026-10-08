@@ -110,6 +110,17 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.61 (2026-10-08)
+
+Street racers: Halden Drifter (`rv_v8drift`).
+
+- `tools/blender/rv_v8drift.py`: Big V8 four-door sedan built for drifting in the Mark II / Chaser or Commodore spirit. 4.78 x 1.92 x 1.39 m, wheelbase 2.72 m (axles at z = +1.30 and -1.42 m), wheel radius 0.34 m at x = +-0.80.
+- Long hood (a third of total length, ~1.56 m long) with induction power bulge; set-back low greenhouse with raked glass, visible B/C pillars, door cut lines; short rear deck with integrated ducktail spoiler lip.
+- Wide, low stance with muscular fender flares (1.9200 m wide), deep front drift chin lip, sports side skirts, and gunmetal drift wheels.
+- Emissive headlights (`lamp`, z in [2.228, 2.240] m > 0), full-width continuous tail lamp band (`tail`, z in [-2.521, -2.511] m < 0) across tail, both proud of hull; quad chrome exhaust tips (two per side) to -2.530 m with dark bores.
+- 1,634 body triangles (budget <= 1,800), 2,338 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_v8drift.json` and `assets/models/rv_v8drift_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.60 (2026-10-08)
 
 Street racers: Kagero Lancer-X (`rv_boxer`).
