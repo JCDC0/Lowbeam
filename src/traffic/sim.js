@@ -25,7 +25,7 @@ import { DAMAGE, health, unitDamage } from '../police/units.js';
  *   x: number, y: number, z: number, yaw: number, vx: number, vz: number, yawRate: number,
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
- *   changePrevEx: number, changePrevEz: number,
+ *   changePrevEx: number, changePrevEz: number, changeFromLane?: Lane | null,
  *   mode: 'drive' | 'knocked' | 'wreck' | 'parked', age: number, wreckAge: number, knockAge?: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
@@ -308,7 +308,7 @@ export class TrafficSim {
       const dx = q.x - player.x;
       const dz = q.z - player.z;
       const d = Math.hypot(dx, dz);
-      if (d < min || d > max || this.crowded(lane, s, 40)) continue;
+      if (d < min || d > max || this.crowded(lane, s, 140)) continue;
       const dot = player.yaw !== undefined
         ? dx * Math.sin(player.yaw) + dz * Math.cos(player.yaw)
         : dx * q.tx + dz * q.tz;
@@ -403,10 +403,13 @@ export class TrafficSim {
   /** True when another agent is within `gap` meters of s on the lane. */
   crowded(lane, s, gap) {
     for (const o of this.agents) {
-      if (o.lane !== lane) continue;
+      const isSameLane = o.lane === lane;
+      const isChangingNear = o.changeDuration > 0 && o.lane && o.lane.road === lane.road && o.lane.dir === lane.dir;
+      if (!isSameLane && !isChangingNear) continue;
       let d = Math.abs(o.s - s);
       if (lane.closed) d = Math.min(d, lane.length - d);
-      if (d < gap) return true;
+      const reqGap = this.isRival(o) ? 140 : gap;
+      if (d < reqGap) return true;
     }
     return false;
   }
@@ -414,7 +417,7 @@ export class TrafficSim {
   /** Fills the roads around the player at the start. @param {{ x: number, z: number }} player */
   populate(player) {
     for (let i = 0; i < this.target * 8 && this.agents.length < this.target; i++) this.spawn(player, 70, SPAWN_MAX);
-    for (let i = 0; i < this.rivalTarget * 4 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 250, 460);
+    for (let i = 0; i < this.rivalTarget * 8 && this.countRivals() < this.rivalTarget; i++) this.spawnRival(player, 250, 460);
   }
 
   /**
@@ -654,6 +657,12 @@ export class TrafficSim {
       if (!list) this.byLane.set(a.lane, (list = []));
       list.push(a);
 
+      if (a.changeDuration > 0 && a.changeFromLane) {
+        let fromList = this.byLane.get(a.changeFromLane);
+        if (!fromList) this.byLane.set(a.changeFromLane, (fromList = []));
+        if (!fromList.includes(a)) fromList.push(a);
+      }
+
       if ((a.mode === 'parked' || a.mode === 'wreck') && a.lane && a.lane.road) {
         const siblings = (this.net.byRoad.get(a.lane.road.id) || []).filter((l) => l.dir === a.lane.dir);
         const reach = (a.mode === 'parked' ? Math.max(a.kind.length, a.kind.width) : a.kind.width) / 2;
@@ -674,10 +683,9 @@ export class TrafficSim {
 
   /**
    * The nearest obstacle ahead of an agent: another agent, a red light or the player.
-   * @param {Agent} a @param {{ x: number, z: number, speed: number }} player
+   * @param {Agent} a @param {{ x: number, z: number, speed: number }} player @param {Lane} [lane]
    */
-  leader(a, player) {
-    const lane = a.lane;
+  leader(a, player, lane = a.lane) {
     let gap = Infinity;
     let v = 0;
     const list = this.byLane.get(lane) || [];
@@ -698,8 +706,9 @@ export class TrafficSim {
       }
     }
     // Past the end of this lane, look into the lane it leads to.
+    const scanDist = this.isRival(a) ? Math.max(280, a.speed * 4) : SCAN;
     const room = lane.length - a.s;
-    if (gap > room && a.end && room < SCAN) {
+    if (gap > room && a.end && room < scanDist) {
       for (const o of this.byLane.get(a.end.lane) || []) {
         const ds = o.s - a.end.toS;
         if (ds < -2) continue;
@@ -746,7 +755,7 @@ export class TrafficSim {
     const tz = Math.cos(a.yaw);
     const ahead = px * tx + pz * tz;
     const side = px * tz - pz * tx;
-    if (!a.pursuit && ahead > 0 && ahead < SCAN && Math.abs(side) < 2.3) {
+    if (!a.pursuit && ahead > 0 && ahead < scanDist && Math.abs(side) < 2.3) {
       const g = ahead - half - 2.2;
       if (g < gap) {
         gap = g;
@@ -782,7 +791,11 @@ export class TrafficSim {
   /** @param {Agent} a @param {number} dt @param {{ x: number, z: number, speed: number }} player */
   stepDrive(a, dt, player) {
     const lane = a.lane;
-    const lead = this.leader(a, player);
+    let lead = this.leader(a, player, lane);
+    if (a.changeDuration > 0 && a.changeFromLane) {
+      const leadFrom = this.leader(a, player, a.changeFromLane);
+      if (leadFrom.gap < lead.gap) lead = leadFrom;
+    }
     const rival = this.isRival(a);
     // A racer in a duel stops cruising and goes for its top speed, and it will not drop
     // back to the slow lane while the duel is on.
@@ -796,7 +809,16 @@ export class TrafficSim {
     v0 = Math.min(v0, this.curveSpeed(a));
     const fast = rival || !!a.pursuit;
     const effAccel = a.pursuit ? a.kind.accel * 1.6 : rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
-    const acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, fast);
+    let acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, fast);
+    if (rival && lead.gap < Infinity && a.speed > lead.v) {
+      const closing = a.speed - lead.v;
+      const targetGap = Math.max(3.0, a.kind.length * 0.8);
+      const brakeDist = Math.max(0.5, lead.gap - targetGap);
+      const neededBrake = (closing * closing) / (2 * brakeDist);
+      if (neededBrake > 1.8) {
+        acc = Math.min(acc, -Math.min(9.0, neededBrake));
+      }
+    }
     a.brake = acc < -1.2 ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -9, effAccel) * dt);
     a.s += a.speed * dt;
@@ -860,6 +882,7 @@ export class TrafficSim {
         a.changeStartZ = 0;
         a.ex = 0;
         a.ez = 0;
+        a.changeFromLane = null;
         // The move is over, so the signal that announced it goes off.
         this.clearSignal(a);
       }
@@ -1158,7 +1181,11 @@ export class TrafficSim {
    */
   startLaneChange(a, target) {
     const old = { x: a.x, z: a.z };
+    a.changeFromLane = a.lane;
     a.lane = target;
+    let targetList = this.byLane.get(target);
+    if (!targetList) this.byLane.set(target, (targetList = []));
+    if (!targetList.includes(a)) targetList.push(a);
     const q = this.net.sample(target, a.s, this._q);
     a.changeStartX = old.x - q.x;
     a.changeStartZ = old.z - q.z;
@@ -1403,28 +1430,31 @@ export class TrafficSim {
     const wanted = a.duel ? lane.limit * a.kind.speed[1] : lane.limit * a.factor;
 
     if (rival) {
+      const minLeadGapToTurn = (a.speed - lead.v) * 0.8 + 2.0;
       if (a.duel) {
         // A duelling racer only moves to get past something or to take a clearer line; it
         // never drifts back to the slow lane while the race is on.
-        if (lead.gap < 140) {
+        if (lead.gap < 220 && (a.speed <= lead.v || lead.gap >= minLeadGapToTurn)) {
           for (const idx of [lane.index + 1, lane.index - 1]) {
             const next = same.find((l) => l.index === idx);
             if (next && this.openAhead(next, a.s) > lead.gap + 15) want = idx;
           }
         }
-      } else if (lead.gap < 140 && (wanted - lead.v > 1.5 || a.speed < wanted * 0.96)) {
-        let bestRoom = Math.max(lead.gap + 15, 50);
-        let bestIdx = -1;
-        for (const idx of [lane.index + 1, lane.index - 1]) {
-          const next = same.find((l) => l.index === idx);
-          if (!next) continue;
-          const room = this.openAhead(next, a.s);
-          if (room > bestRoom) {
-            bestRoom = room;
-            bestIdx = idx;
+      } else if (lead.gap < 220 && (wanted - lead.v > 1.5 || a.speed < wanted * 0.96)) {
+        if (a.speed <= lead.v || lead.gap >= minLeadGapToTurn) {
+          let bestRoom = Math.max(lead.gap + 15, 50);
+          let bestIdx = -1;
+          for (const idx of [lane.index + 1, lane.index - 1]) {
+            const next = same.find((l) => l.index === idx);
+            if (!next) continue;
+            const room = this.openAhead(next, a.s);
+            if (room > bestRoom) {
+              bestRoom = room;
+              bestIdx = idx;
+            }
           }
+          if (bestIdx >= 0) want = bestIdx;
         }
-        if (bestIdx >= 0) want = bestIdx;
       } else if (lane.index < same.length - 1 && lead.gap > 90) {
         const faster = same.find((l) => l.index === lane.index + 1);
         if (faster && this.openAhead(faster, a.s) > 90) {
@@ -1556,7 +1586,7 @@ export class TrafficSim {
           const distBehind = -pAhead;
           if (distBehind < 16) return false;
           const closing = player.speed - a.speed;
-          if (closing > 2 && distBehind < 50 && distBehind / closing < 3.5) return false;
+          if (closing > 2 && distBehind / closing < 3.5) return false;
         }
       }
     }
@@ -1572,15 +1602,21 @@ export class TrafficSim {
       }
       const gap = Math.abs(ds) - half - o.kind.length / 2;
       if (gap < minSafetyGap) return false;
-      if (ds > 0 && ds < (rival ? 10 + a.speed * 0.2 : 15 + a.speed * 0.4)) {
-        const timeToHit = ds / Math.max(0.1, a.speed - o.speed);
-        if (a.speed > o.speed && timeToHit < (rival ? 1.0 : 2.5)) return false;
+      if (ds > 0) {
+        const gapAhead = Math.max(0.1, ds - half - o.kind.length / 2);
+        const closing = a.speed - o.speed;
+        if (closing > 0.5) {
+          const timeToHit = gapAhead / closing;
+          if (timeToHit < (rival ? 2.5 : 3.5)) return false;
+        }
       }
       if (ds < 0) {
         const distBehind = -ds;
-        if (distBehind < (rival ? 6 : 16)) return false;
+        const minBehind = rival ? 8 : (this.isRival(o) ? 25 : 16);
+        if (distBehind < minBehind) return false;
         const closing = o.speed - a.speed;
-        if (closing > 2 && distBehind < 50 && distBehind / closing < (rival ? 2.0 : 3.5)) return false;
+        const timeNeeded = rival ? 2.0 : 3.5;
+        if (closing > 2 && distBehind / closing < timeNeeded) return false;
       }
     }
 
@@ -1908,6 +1944,11 @@ export class TrafficSim {
       if (Math.abs(a.x - state.x) > 14 || Math.abs(a.z - state.z) > 14) continue;
       if (Math.abs(a.y - state.y) > 2.5) continue;
       if (a.mode === 'parked') {
+        const savedX = state.x;
+        const savedZ = state.z;
+        const savedVx = state.vx;
+        const savedVz = state.vz;
+        const savedYawRate = state.yawRate;
         const body = this.bodyOfAgent(a);
         body.mass = Infinity;
         body.inertia = Infinity;
@@ -1915,6 +1956,11 @@ export class TrafficSim {
         if (hit <= 0) continue;
         hardest = Math.max(hardest, hit);
         if (hit > 6) {
+          state.x = savedX;
+          state.z = savedZ;
+          state.vx = savedVx;
+          state.vz = savedVz;
+          state.yawRate = savedYawRate;
           const bodyReal = this.bodyOfAgent(a);
           collideCars(me, bodyReal);
           this.applyBody(a, bodyReal);

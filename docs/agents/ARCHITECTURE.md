@@ -242,7 +242,8 @@ slides at tire grip (0.7 g) until it stops. Every agent is a solid body in every
 apart along the contact normal in proportion to inverse mass; a hit below 3 m/s closing speed nudges
 without knocking (0.9.22). Obstacle tracking in `leader` accounts for wrecks and parked roadblock units
 across sibling lanes: a car brakes to an equilibrium stop 6 m before a roadblock and, where an adjacent
-lane remains open, changes into it instead. Knocked cars and moving wrecks hit the other traffic, so
+lane remains open, changes into it instead; a player ram over 6 m/s restores player momentum and punches
+through (0.9.23). Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
@@ -252,7 +253,9 @@ pursuit, cars within 45 m of the player or of a chasing unit panic: they brake t
 toward the curb, screech if they were moving and maybe honk. The traffic refills everywhere: before
 0.9.79 no civilian spawned while the street racers were short, which far from Route 1 was always.
 Five street racers on
-Route 1 at 200 to 260 km/h. The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
+Route 1 cruise at 200 to 260 km/h, look ahead up to 280 m (or 4 s of travel), apply emergency braking
+up to 9 m/s² down to a leader's speed when unable to overtake, weave cleanly using safe lookaheads,
+and maintain 140 m clearance on spawn (0.9.23). The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,

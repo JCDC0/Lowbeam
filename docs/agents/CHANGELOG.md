@@ -672,6 +672,21 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.23 (2026-10-08)
+
+Racers fast but not blind: street racers brake hard when trapped and overtake cleanly without collisions; player punches through roadblocks above 6 m/s (B2 part 4).
+
+- `collideWithPlayer` in `src/traffic/sim.js`: saved player physical state (`x, z, vx, vz, yawRate`) before the initial infinite-mass parked unit contact; restored upon hits over 6 m/s before testing against actual masses, allowing high-speed rams through roadblocks to preserve player forward momentum and displace the roadblock unit.
+- `leader` in `src/traffic/sim.js`: extended rival obstacle lookahead to `Math.max(280, a.speed * 4)` meters (was 90 m). During lane transitions, evaluates leaders across both current lane and source lane (`changeFromLane`) to avoid clipping obstacles in either corridor.
+- `stepDrive` in `src/traffic/sim.js`: Newtonian emergency braking deceleration applied when closing on an obstacle ahead (`neededBrake = (closing * closing) / (2 * brakeDist)`), decelerating up to 9 m/s² down to the leader's speed when unable to change lanes.
+- `startLaneChange` and `sortLanes` in `src/traffic/sim.js`: records `changeFromLane` and immediately registers transitioning vehicles in the target lane list inside `this.byLane`, preventing cars evaluated later in the same frame from attempting concurrent lane changes into the same slot.
+- `changeSafe` and `maybeChange` in `src/traffic/sim.js`: extended rival overtaking lookahead to 220 m (was 140 m); required minimum gap before initiating lateral turns (`minLeadGapToTurn = (a.speed - lead.v) * 0.8 + 2.0`); removed 50 m cap on behind clearance check; enforced time-to-hit safety thresholds (> 2.5 s) for faster approaching vehicles in destination lanes.
+- `spawnRival` and `crowded` in `src/traffic/sim.js`: rival spawn clearance increased to 140 m (was 40 m); `crowded` checks sibling lanes for transitioning vehicles.
+- Measured before and after:
+  - Headless 3 minutes across 6 seeds on Route 1: racer contacts in `collideAgents` above 6 m/s closing 0 after (was 40 before); mean racer speed 203.7 km/h after (was 192.7 km/h before, required > 180 km/h); top speed 287.2 km/h after (was 288.0 km/h before, required > 240 km/h).
+  - Player roadblock ram at 20 m/s: player retains positive forward speed (+2.52 m/s forward speed) and displaces parked unit by 0.064 m (was bouncing backwards at -4 m/s with 0.000 m unit movement before).
+- Tests: `tests/traffic.test.mjs` (3-minute 6-seed run asserts 0 racer hard hits above 6 m/s closing alongside mean speed > 180 km/h and top speed > 240 km/h), `tests/traffic-solid.test.mjs` (player 20 m/s ram test moves roadblock unit and keeps forward momentum). 413 tests pass; type check clean.
+
 ## 0.9.22 (2026-10-08)
 
 Every car is solid: agents resolve overlap by inverse mass without phasing, and traffic avoids or stops 6 m before roadblocks (B2 part 3).

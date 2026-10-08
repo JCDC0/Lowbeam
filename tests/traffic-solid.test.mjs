@@ -4,6 +4,8 @@ import { Ground } from '../src/world/ground.js';
 import { TrafficNet } from '../src/traffic/net.js';
 import { TrafficSim } from '../src/traffic/sim.js';
 import { KINDS } from '../src/traffic/kinds.js';
+import { CARS } from '../src/vehicles/specs.js';
+import { createVehicleState } from '../src/vehicles/physics.js';
 
 const ground = new Ground();
 const net = new TrafficNet(ground.roads);
@@ -253,4 +255,29 @@ test('closing speed under 3 m/s pushes agents apart without knock, faster hit kn
     assert.equal(a.mode, 'knocked', 'hit at 5 m/s closing speed must knock');
     assert.equal(b.mode, 'knocked', 'hit at 5 m/s closing speed must knock');
   }
+});
+
+test('a player ram at 20 m/s moves the unit and keeps the player moving forward', () => {
+  const sim = new TrafficSim(net, { seed: 1, target: 0, rivals: 0, patrols: 0 });
+  const l0 = net.lane('c1-f', 1, 0);
+  const q0 = net.sample(l0, 1000, { x: 0, y: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  const parked = sim.spawnParked('police', { x: q0.x, y: q0.y, z: q0.z, yaw: Math.atan2(q0.tx, q0.tz) }, l0, 1000);
+  const startX = parked.x, startZ = parked.z;
+
+  const spec = CARS[0];
+  const state = createVehicleState(spec);
+  const qPlayer = net.sample(l0, 1000 - (parked.kind.length + spec.length) / 2 + 0.5, { x: 0, y: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  state.x = qPlayer.x;
+  state.y = qPlayer.y;
+  state.z = qPlayer.z;
+  state.yaw = Math.atan2(q0.tx, q0.tz);
+  state.vx = q0.tx * 20;
+  state.vz = q0.tz * 20;
+
+  const hit = sim.collideWithPlayer(state, spec);
+  assert.ok(hit > 6, `expected hit > 6, got ${hit.toFixed(2)}`);
+  const moved = Math.hypot(parked.x - startX, parked.z - startZ);
+  assert.ok(moved > 0.05, `parked unit did not move (moved ${moved.toFixed(3)} m)`);
+  const forwardSpeed = state.vx * q0.tx + state.vz * q0.tz;
+  assert.ok(forwardSpeed > 0, `player did not keep forward momentum, forwardSpeed = ${forwardSpeed.toFixed(2)} m/s`);
 });

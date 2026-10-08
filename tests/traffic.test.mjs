@@ -397,14 +397,20 @@ test('an agent in a duel aims for its top speed and ignores the slow lane', () =
   assert.ok(!calm.duel, 'a fresh racer is not in a duel');
 });
 
-test('over 3 minutes headless with traffic, racers average above 180 km/h over six seeds and top above 240', () => {
+test('over 3 minutes headless with traffic, racers average above 180 km/h over six seeds, top above 240 and no racer hits above 6 m/s closing', () => {
   let speedSum = 0;
   let speedCount = 0;
   let topSpeed = 0;
   let aheadCount = 0;
   let behindCount = 0;
+  let racerHardHits = 0;
   for (const seed of [77, 1, 2, 3, 4, 5]) {
     const sim = new TrafficSim(net, { seed, target: 38, rivals: 5 });
+    const origKnock = sim.knock.bind(sim);
+    sim.knock = (a, hit, m) => {
+      if (hit > 6 && sim.isRival(a)) racerHardHits++;
+      return origKnock(a, hit, m);
+    };
     const startLane = net.lane('c1-f', 1, 1);
     const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
     net.sample(startLane, 0, q);
@@ -438,6 +444,7 @@ test('over 3 minutes headless with traffic, racers average above 180 km/h over s
   assert.ok(meanSpeed > 180, `mean speed ${meanSpeed.toFixed(1)} km/h <= 180 km/h`);
   assert.ok(topSpeed > 240, `top speed ${topSpeed.toFixed(1)} km/h <= 240 km/h`);
   assert.ok(aheadCount > 0 && behindCount > 0, `ahead ${aheadCount}, behind ${behindCount}`);
+  assert.equal(racerHardHits, 0, `racer hard hits above 6 m/s closing: ${racerHardHits}`);
 });
 
 
