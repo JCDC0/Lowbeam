@@ -544,6 +544,18 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.67 (2026-10-08)
+
+Street racers: Vespera Zero (`rv_hyper`).
+
+- `tools/blender/rv_hyper.py`: Exotic mid-engine hypercar in the Pagani Zonda / Koenigsegg / Vespera GT spirit: 4.65 x 2.04 x 1.13 m, wheelbase 2.70 m (axles at z = +1.55 and -1.15 m), wheel radius 0.34 m at x = +-0.85.
+- Cab-forward teardrop canopy: narrow greenhouse (1.04 m wide across roof) over massive 2.04 m rear hips with sculpted mid-engine radiator side scoops.
+- Aerodynamic nose: dipped front hood between muscular arched front fenders, carbon chin splitter with vertical endplates, dual corner canards, and slim LED headlights (`lamp`, z in [2.52, 2.58] m > 0).
+- Long rear tail: louvered mid-engine cooling deck, twin swan-neck mounted carbon GT wing, full-width continuous red LED tail lamp bar (`tail`, z = -2.035 m < 0), and central twin chrome sports exhaust tips to -2.050 m with dark inner bores.
+- Deep aerodynamic rear under-diffuser with 4 vertical fins in `accent`.
+- 1,412 body triangles (budget <= 2,500), 2,116 full triangles with wheels (budget <= 3,200).
+- `assets/models/rv_hyper.json` and `assets/models/rv_hyper_full.json`. Bounds: body x: [-1.020, 1.020], y: [0.110, 1.130], z: [-2.050, 2.600]; full x: [-1.020, 1.020], y: [0.000, 1.130], z: [-2.050, 2.600]. Checked clean in props.html with 0 problems.
+
 ## 0.9.66 (2026-10-08)
 
 Street racers: Kagero RS-Wide (`rv_wide`).
