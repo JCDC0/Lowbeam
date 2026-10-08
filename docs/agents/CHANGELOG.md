@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.98 (2026-10-08)
+
+The test suite runs four files at a time; review of Gemini's 0.9.23 to 0.9.25.
+
+- `npm test` is now `node --test --test-concurrency=4`. Node ran every test file at once, one
+  process per file, and about 30 files each rebuild the whole island, so a full run kept all 16
+  threads busy for 40 to 50 s; run after every small edit, that held Jc's machine at 100 % for an
+  hour. The guide's Verification section now says to run only the files a change touches while
+  working and the full suite once before a commit.
+- B2 parts 4 to 6 pass review (the brief records it); one fix owed with part 7: the pursuit HUD's
+  units by kind count idle patrols across town.
+- Claude's new version range is 0.10.0 to 0.10.49 (0.9.99 is the last of the old one).
+
 ## 0.9.97 (2026-10-08)
 
 The vending machines light the pavement; the signals start lit.

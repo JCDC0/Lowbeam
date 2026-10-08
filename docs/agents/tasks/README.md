@@ -8,7 +8,7 @@ makes it. Claude reviews every commit before the next task starts.
 
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
-| Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 (used), now 0.9.70 to 0.9.99 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
+| Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 and 0.9.70 to 0.9.99 (used), now 0.10.0 to 0.10.49 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
 | Backend | Gemini 3.8 Flash (Antigravity) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.49 (0.9.22 next) | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
 | Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69, then 0.10.50 to 0.10.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
 
@@ -38,7 +38,7 @@ and leaves `package.json` alone.
 | [G3-police-cars.md](G3-police-cars.md) | Assets | done, all four passed (0.9.54 to 0.9.57) and in the game (0.9.70) | The four police cars (cruiser, unmarked, Rhino, interceptor) with red and blue light bars, cruiser first |
 | [G4-city-greenery.md](G4-city-greenery.md) | Assets | after G3, between racers when Claude needs it for the city | Street trees, planters, hedges, shrubs and benches for the city |
 | [G5-street-racers.md](G5-street-racers.md) | Assets | 8 of 11 built and in the game (0.9.58 to 0.9.66); the last three (0.9.67 to 0.9.69) after B2 | The other eleven street racers in Blender, two cars per review |
-| [B2-driving-patch.md](B2-driving-patch.md) | Backend (Gemini) | parts 1 and 2 done (0.9.20, 0.9.21); part 3 next (0.9.22) | From Jc's test drive: tougher cars, bumped cars that drive on or get out of the way, every car solid (no phasing into roadblocks), racers that brake, police that drive like people, the assigned pool and reinforcements, helicopters that refuel, louder traffic and exhaust |
+| [B2-driving-patch.md](B2-driving-patch.md) | Backend (Gemini) | parts 1 to 6 done (0.9.20 to 0.9.25); part 7 next (0.9.26) with the `byKind` fix | From Jc's test drive: tougher cars, bumped cars that drive on or get out of the way, every car solid (no phasing into roadblocks), racers that brake, police that drive like people, the assigned pool and reinforcements, helicopters that refuel, louder traffic and exhaust |
 | [C3-patch-queue.md](C3-patch-queue.md) | Claude | parts 1 to 6 and 8 to 13 done (0.9.81 to 0.9.96); part 7 rides on B2 | From the same drive: the Kurogane Line median, Most Wanted's radar, the pursuit HUD after Jc's sketch, the HUD fishnet, vignette and blur, skid marks and smoke, more stations, hideouts and garages; then Route 1's sign gantries, the traffic signals, zebra crossings, vending machines, utility poles, direction signs |
 | [C4-kurogane-ramps.md](C4-kurogane-ramps.md) | Claude (and the backend for the links) | planned | The Kurogane Line's ramps down to downtown: slips off a deck, parapets, portals, streets, links |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |

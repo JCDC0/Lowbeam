@@ -109,6 +109,19 @@ and the units destroyed, and reinforcements when the assigned run low:
 
 Stop here for review.
 
+Review (Claude, after 0.9.23 to 0.9.25): all three pass, and the ram fix from part 3 holds (a 20 m/s
+ram now leaves the player at +10.2 m/s and shoves the unit at 14.6 m/s). The two edits to older tests
+are fair: the racer test only gains a stricter check (no racer hit above 6 m/s), and the chase test
+steps 0.6 s instead of one frame because units now react after 0.18 s, its angle limit unchanged.
+The `reinforcements` banner is in. One fix owed, with part 7: `pursuitView().byKind` counts every
+unit on the island (`traffic.units()`), so idle patrols across town show in the pursuit HUD's row;
+count only the units in this pursuit (`u.pursuit`, as `withKinds` in `main.js` did).
+
+Testing: run only the test files your change touches while you work, and the full suite once before
+each commit. `npm test` now runs four files at a time; a full run rebuilds the island in about 30
+files and pegs every core for 40 to 50 s, so running it after every edit kept Jc's machine at 100 %
+for an hour.
+
 ## 7. Helicopters run out of fuel, and stations (0.9.26)
 
 Jc struggled to get rid of the helicopters.

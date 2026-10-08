@@ -23,7 +23,7 @@ Prologue (`docs/DESIGN.md`).
 |---|---|
 | Install | `npm install` (dev only: `three` for types, `typescript`, the font packages) |
 | Run | `npm start`, then open http://localhost:8040 |
-| Test | `npm test` (`node --test tests/*.test.mjs`) |
+| Test | `npm test` (`node --test --test-concurrency=4 tests/*.test.mjs`); one file: `node --test tests/<name>.test.mjs` |
 | Type-check (the lint step) | `npm run check` (`tsc`, JSDoc types, no emit) |
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
@@ -73,7 +73,12 @@ Tests prove the rules; the game is verified by looking at it.
   `input.endFrame()`) when the loop is not running. Add `?v=N` to the URL to defeat caching.
 - Models from Blender are checked in `tools/props.html?models=a,b` (night, a road, a car for scale,
   collider boxes, light markers, a report from `__props.check()`), landmarks in `tools/landmarks.html`.
-- `npm test` and `npm run check` before every commit.
+- `npm test` and `npm run check` once before every commit, not after every edit. The full suite is
+  expensive: about 30 of its files each rebuild the whole island (the roads, the city's streets, the
+  junctions, often the traffic net), and the traffic and police tests run minutes of simulation, so a
+  run is 40 to 50 s with every core busy on a 16-thread machine. `npm test` caps it at four files
+  at a time so the machine stays usable. While working, run only the files your change touches
+  (`node --test tests/traffic-solid.test.mjs`), and never run the suite in a loop.
 
 ## Blender
 
