@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.9.83 (2026-10-08)
+
+Most Wanted's radar (C3 part 2), after Jc's reference.
+
+- The minimap is a dark disc with the sea and Kami-ike in blue (the coast polygon and the lakes) and
+  the roads in greys (`drawRoads` takes a 'radar' style; the Tab map keeps its bright one).
+- The heat: a flame with "x N" (the level) at the top left outside the disc, and an amber arc round
+  the rim filling with the heat's progress to the next level (the fraction of `heat.value`), emptying
+  as it cools. The five rim marks and the red and blue rim of 0.9.76 are gone. The minimap reads the
+  heat through `__lowbeam.getHeat()` so the Drive's call stays as it was.
+- Police markers simpler: a car is a small chevron flashing red and blue in a pursuit (units out of
+  phase), grey on patrol, amber blinking while it watches; its sight is a cone in its own red or blue
+  (a chaser 70 m, a searcher what the director sends) fading to nothing with distance, a patrol's a
+  faint 60 m disc; a white ring on a unit that sees the player. A helicopter is a plain disc with a
+  short tail (no spinning rotor) and its searchlight a soft glow.
+- New icons for every place, on the minimap and the Tab map: round badges with a dark rim and a white
+  glyph (a pump in the brand's colour, a star for the police, a wrench for a garage, a house for a
+  hideout, a gate for a toll) and a checkered flag for the rally start.
+- Checked in a pursuit at heat 3 with the progress at 62 %, a unit seeing the player behind, a patrol
+  and a unit off the disc on the rim.
+
 ## 0.9.82 (2026-10-08)
 
 Briefs from Jc's test drive.

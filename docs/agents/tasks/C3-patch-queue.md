@@ -5,7 +5,7 @@ models are G5 and G7.
 
 1. **The Kurogane Line's median** (done in 0.9.81): its barrier was missing, so a car crossed the
    median and fell through where the ramps fork.
-2. **Most Wanted's radar.** The minimap restyled after Jc's reference: a dark disc, grey roads, the
+2. **Most Wanted's radar** (done in 0.9.83). The minimap restyled after Jc's reference: a dark disc, grey roads, the
    sea and the river in blue; the heat as a flame icon with "x N" at the top left outside the disc;
    the rim an amber arc filling with the heat's progress to the next level (red and blue in a
    pursuit as now). New icons for the stations, garages, hideouts, gas and the race starts. Police

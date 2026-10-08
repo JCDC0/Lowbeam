@@ -338,6 +338,12 @@ window.__lowbeam = {
   clearWaypoint() {
     tracker.clear();
   },
+  /** The police heat for the minimap's flame and rim: the level, its value (the fraction is the progress to the next level) and whether a pursuit is on. */
+  getHeat() {
+    const police = /** @type {any} */ (drive)?.police;
+    if (!police || state !== 'drive') return null;
+    return { level: police.level, value: police.heat?.value ?? police.level, pursuit: !!police.active };
+  },
   getRoute() {
     return tracker.getRouteInfo();
   },

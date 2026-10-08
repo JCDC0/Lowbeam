@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.81)
+## Current state (0.9.83)
 
 375 tests pass; the type check is clean. By area:
 
@@ -290,10 +290,11 @@ square and a saw through a band-pass, panned, muffled in the cockpit) and the he
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
 speedometer style, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
-routing, a 220 px minimap with the route and police markers (Most Wanted's radar: the heat as five
-marks over the top of the rim, the rim red on the left and blue on the right in a pursuit, an amber
-sight cone ahead of each searching unit, a white ring on each unit that sees the player, the
-helicopters' searchlights), area names with their Japanese names, F3 stats.
+routing, a 220 px minimap after Most Wanted's radar (the sea and the lake in blue, grey roads, the
+places as round badges; the heat as a flame and "x N" at the top left and an amber rim arc filling
+with the progress to the next level; police cars as small chevrons flashing red and blue, grey on
+patrol and amber while watching, each with its sight as a red or blue cone fading with distance and a
+white ring when it sees the player; helicopters as a disc with a tail and the searchlight's glow), area names with their Japanese names, F3 stats.
 Typefaces: Michroma (`Lowbeam Display`) for labels and the area name, Orbitron for headings, Teko for
 race numbers, Share Tech Mono for readouts and body text, DSEG7 and DSEG14 for segment digits, Dela
 Gothic One for banners, M PLUS 1p for Japanese.

@@ -88,6 +88,7 @@ function createMockContext() {
     fillText: log('fillText'),
     drawImage: log('drawImage'),
     setLineDash: log('setLineDash'),
+    createRadialGradient: (...args) => (calls.push({ fn: 'createRadialGradient', args }), { addColorStop() {} }),
     fillStyle: '',
     strokeStyle: '',
     lineWidth: 1,
@@ -132,7 +133,7 @@ test('mapDataOf handles fake island data with a square coast, lifted expressway 
   assert.deepEqual(kinds.sort(), ['garage', 'hideout', 'police', 'start', 'station', 'toll']);
 });
 
-test('drawPoiIcon renders police shield, garage wrench, and hideout dashed square', async () => {
+test('drawPoiIcon renders round badges: a police star, a garage wrench, a hideout house, a toll gate', async () => {
   const { drawPoiIcon } = await import('../src/ui/map.js');
   assert.equal(typeof drawPoiIcon, 'function');
 
@@ -146,7 +147,7 @@ test('drawPoiIcon renders police shield, garage wrench, and hideout dashed squar
 
   const gHideout = createMockContext();
   drawPoiIcon(gHideout, 'hideout', 100, 100);
-  assert.ok(gHideout.calls.some((c) => c.fn === 'setLineDash'));
+  assert.ok(gHideout.calls.some((c) => c.fn === 'arc') && gHideout.calls.some((c) => c.fn === 'closePath'), 'a badge with a house in it');
 
   const gToll = createMockContext();
   drawPoiIcon(gToll, 'toll', 100, 100);
@@ -191,7 +192,7 @@ test('Minimap draws a landmark icon for a lot near the car and none for a far on
     mm.draw(2400, -2100, 0, 0, 1);
     const scales = g.calls.filter((c) => c.fn === 'scale');
     assert.equal(scales.length, 1);
-    assert.ok(g.calls.some((c) => c.fn === 'closePath'), 'the shield is a closed path');
+    assert.ok(g.calls.some((c) => c.fn === 'closePath'), 'the star is a closed path');
     assert.ok(g.calls.findIndex((c) => c.fn === 'clip') < g.calls.findIndex((c) => c.fn === 'scale'), 'drawn inside the clip');
   } finally {
     globalThis.document = saved;
@@ -222,8 +223,9 @@ test('Minimap draws police and helicopter markers, rotates along heading, and cl
     mm.draw(100, 100, 0, 0, 0.1);
 
     const arcCalls = g.calls.filter((c) => c.fn === 'arc');
-    // Searchlight circle, helicopter hub, player circle, north ring etc.
-    assert.ok(arcCalls.length >= 3, 'searchlight circle and heli rotor hub drawn');
+    // The searchlight's glow, the helicopter's disc, the units' sight and the rim.
+    assert.ok(arcCalls.length >= 3, 'searchlight glow and helicopter disc drawn');
+    assert.ok(g.calls.some((c) => c.fn === 'createRadialGradient'), 'sight and searchlight fade out');
 
     const rotateCalls = g.calls.filter((c) => c.fn === 'rotate');
     assert.ok(rotateCalls.length >= 3, 'inside markers and clamped rim marker rotated');

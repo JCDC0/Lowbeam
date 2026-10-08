@@ -821,7 +821,9 @@ export function mapScreen(ui, world = null, getMarkers, getRoute, setWaypoint, c
 }
 
 /**
- * Draws a tactical map icon for a POI kind onto a 2D canvas context.
+ * Draws the icon of a place onto a 2D canvas, as Most Wanted's radar does: a round badge in the
+ * place's colour with a dark rim and a white glyph (a pump, a star, a wrench, a door, a gate, a
+ * flag). The same icons on the minimap and the Tab map.
  * @param {CanvasRenderingContext2D} g
  * @param {string} kind
  * @param {number} px
@@ -829,73 +831,84 @@ export function mapScreen(ui, world = null, getMarkers, getRoute, setWaypoint, c
  * @param {string} [brand]
  */
 export function drawPoiIcon(g, kind, px, py, brand) {
-  if (kind === 'station') {
-    const isHoshi = brand === 'hoshi';
-    const brandColor = isHoshi ? '#3a7bff' : '#ff6a1f';
-    g.fillStyle = brandColor;
-    g.fillRect(px - 7, py - 7, 14, 14);
+  if (kind === 'start') {
     g.fillStyle = '#fff';
-    g.fillRect(px - 3, py - 4, 6, 8);
-  } else if (kind === 'start') {
-    g.fillStyle = '#fff';
-    g.fillRect(px - 2, py - 9, 3, 16);
+    g.fillRect(px - 3, py - 9, 2, 17);
     for (let i = 0; i < 3; i++) {
-      for (let j = 0; j < 2; j++) {
+      for (let j = 0; j < 3; j++) {
         g.fillStyle = (i + j) % 2 ? '#111' : '#fff';
-        g.fillRect(px + 1 + i * 3, py - 9 + j * 3, 3, 3);
+        g.fillRect(px - 1 + i * 3, py - 9 + j * 3, 3, 3);
       }
     }
-  } else if (kind === 'toll') {
-    g.fillStyle = '#ffb43c';
-    g.fillRect(px - 8, py - 4, 16, 8);
-    g.fillStyle = '#111';
-    g.fillRect(px - 6, py - 2, 12, 4);
-    g.fillStyle = '#00e676';
-    g.fillRect(px - 4, py - 1, 3, 2);
-    g.fillRect(px + 1, py - 1, 3, 2);
-  } else if (kind === 'police') {
-    g.fillStyle = '#2060df';
+    return;
+  }
+  const colour = { station: brand === 'hoshi' ? '#2f6fe0' : '#ef6a1f', police: '#2456c8', garage: '#21a564', hideout: '#8a4fd8', toll: '#e09a20' }[kind] ?? '#6b7280';
+  g.save();
+  g.translate(px, py);
+  g.beginPath();
+  g.arc(0, 0, 7.5, 0, Math.PI * 2);
+  g.fillStyle = colour;
+  g.fill();
+  g.lineWidth = 1.6;
+  g.strokeStyle = 'rgba(8, 10, 14, 0.95)';
+  g.stroke();
+  g.fillStyle = '#fff';
+  g.strokeStyle = '#fff';
+  g.lineCap = 'round';
+  if (kind === 'station') {
+    g.fillRect(-3.5, -4, 5, 8);
+    g.fillStyle = colour;
+    g.fillRect(-2.5, -3, 3, 2.4);
+    g.lineWidth = 1.2;
     g.beginPath();
-    g.moveTo(px, py - 8);
-    g.lineTo(px + 7, py - 4);
-    g.lineTo(px + 6, py + 3);
-    g.lineTo(px, py + 8);
-    g.lineTo(px - 6, py + 3);
-    g.lineTo(px - 7, py - 4);
+    g.moveTo(1.5, -2);
+    g.lineTo(3.5, 0);
+    g.lineTo(3.5, 3);
+    g.stroke();
+  } else if (kind === 'police') {
+    g.beginPath();
+    for (let k = 0; k < 10; k++) {
+      const r = k % 2 ? 2.2 : 5;
+      const t = -Math.PI / 2 + (k * Math.PI) / 5;
+      if (k) g.lineTo(Math.cos(t) * r, Math.sin(t) * r);
+      else g.moveTo(Math.cos(t) * r, Math.sin(t) * r);
+    }
     g.closePath();
     g.fill();
-    g.strokeStyle = '#fff';
-    g.lineWidth = 1.2;
-    g.stroke();
-    g.fillStyle = '#fff';
-    g.fillRect(px - 1, py - 4, 2, 7);
-    g.fillRect(px - 3, py - 2, 6, 2);
   } else if (kind === 'garage') {
-    g.fillStyle = '#2eb872';
-    g.fillRect(px - 7, py - 7, 14, 14);
-    g.strokeStyle = '#fff';
-    g.lineWidth = 2.2;
+    g.lineWidth = 2;
     g.beginPath();
-    g.moveTo(px - 4, py + 4);
-    g.lineTo(px + 3, py - 3);
+    g.moveTo(-3.5, 3.5);
+    g.lineTo(2, -2);
     g.stroke();
-    g.fillStyle = '#fff';
     g.beginPath();
-    g.arc(px + 3, py - 3, 2.8, 0, Math.PI * 2);
+    g.arc(2.6, -2.6, 2.4, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = '#2eb872';
+    g.fillStyle = colour;
     g.beginPath();
-    g.arc(px + 4, py - 4, 1.4, 0, Math.PI * 2);
+    g.arc(3.4, -3.4, 1.2, 0, Math.PI * 2);
     g.fill();
   } else if (kind === 'hideout') {
-    g.save();
-    g.setLineDash([3, 2]);
-    g.strokeStyle = '#c060ff';
-    g.lineWidth = 2;
-    g.strokeRect(px - 6, py - 6, 12, 12);
-    g.fillStyle = 'rgba(192, 96, 255, 0.25)';
-    g.fillRect(px - 5, py - 5, 10, 10);
-    g.restore();
+    g.beginPath();
+    g.moveTo(0, -5);
+    g.lineTo(5, -0.5);
+    g.lineTo(3.5, -0.5);
+    g.lineTo(3.5, 4.5);
+    g.lineTo(-3.5, 4.5);
+    g.lineTo(-3.5, -0.5);
+    g.lineTo(-5, -0.5);
+    g.closePath();
+    g.fill();
+    g.fillStyle = colour;
+    g.fillRect(-1.2, 1, 2.4, 3.5);
+  } else if (kind === 'toll') {
+    g.fillRect(-4.5, -1, 9, 2);
+    g.fillRect(-4.5, -4, 2, 8);
+  } else {
+    g.beginPath();
+    g.arc(0, 0, 2.5, 0, Math.PI * 2);
+    g.fill();
   }
+  g.restore();
 }
 

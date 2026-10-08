@@ -602,6 +602,28 @@ html, body {
   width: 220px;
   height: 220px;
 }
+/* The heat on the radar, as Most Wanted's: a flame and x N at the top left of the disc. */
+#hud .mm-heat {
+  position: absolute;
+  left: -6px;
+  top: -14px;
+  display: none;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: #ffd9a0;
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+}
+#hud .mm-heat svg {
+  width: 15px;
+  height: 19px;
+  fill: #ff8a1f;
+  filter: drop-shadow(0 1px 0 #000);
+}
+#hud .mm-heat.hot svg { fill: #ff5a1f; }
 .route-hud {
   position: absolute;
   left: 2.5vw;
