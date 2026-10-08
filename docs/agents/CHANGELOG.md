@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.97 (2026-10-08)
+
+The vending machines light the pavement; the signals start lit.
+
+- Each vending cluster adds a light (`GLOW` in `vending.js`): a cool white (0.62, 0.7, 0.82) 1.1 m in
+  front of the machines at 1 m, reaching 5.5 m, so the pavement glows as it does in front of a real
+  one. It is dimmer than a street lamp, so in a light cell that is already full (12 lights, the pools
+  keep the strongest) it gives way. The island has about 13,350 lights now.
+- `SignalView` sets every lamp at build (`setLamps(0)`): until the first frame's update the lamps
+  were black, which showed in shots taken with no frame running. `update` is now `setLamps` and
+  `placeFlares`.
+- `tests/vending.test.mjs`: every glow has machines behind it. 412 pass.
+
 ## 0.9.96 (2026-10-08)
 
 Blue direction signs (案内標識) before the avenue crossings.

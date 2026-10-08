@@ -39,6 +39,7 @@ export class SignalView {
     this.buildStatic(grid);
     this.buildLamps();
     this.buildFlares();
+    this.setLamps(0);
   }
 
   /** @param {import('../render/bake.js').LightGrid} grid */
@@ -147,6 +148,12 @@ export class SignalView {
    * @param {{ x: number, z: number }} eye
    */
   update(t, eye) {
+    this.setLamps(t);
+    this.placeFlares(eye);
+  }
+
+  /** Rewrites the lamps of the signals whose phase changed since the last call. @param {number} t */
+  setLamps(t) {
     const attr = this.colorAttr;
     let changed = false;
     attr.clearUpdateRanges();
@@ -162,7 +169,10 @@ export class SignalView {
       changed = true;
     }
     if (changed) attr.needsUpdate = true;
+  }
 
+  /** The glows over the lit lamps near the camera. @param {{ x: number, z: number }} eye */
+  placeFlares(eye) {
     let f = 0;
     const reach = Math.ceil(FLARE_RANGE / NEAR_CELL);
     const cx = Math.floor(eye.x / NEAR_CELL);

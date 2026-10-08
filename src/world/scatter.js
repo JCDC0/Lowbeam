@@ -129,7 +129,7 @@ export function scatterWorld(ground, { models = {} } = {}) {
   const lamps = placeLamps(ground, lights, circles);
   const guides = placeGuideSigns(ground, circles);
   const poles = placePoles(ground, circles);
-  const vending = placeVending(ground, circles, boxes);
+  const vending = placeVending(ground, circles, boxes, lights);
   const lot = lotContents(ground.lots, models);
   boxes.push(...lot.boxes);
   lights.push(...lot.lights);

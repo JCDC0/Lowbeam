@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Ground } from '../src/world/ground.js';
 import { scatterWorld } from '../src/world/scatter.js';
-import { VENDING } from '../src/world/vending.js';
+import { GLOW, VENDING } from '../src/world/vending.js';
 
 const g = new Ground();
 const world = scatterWorld(g);
@@ -29,5 +29,14 @@ test('a machine stands on its sidewalk facing the road, never in a carriageway o
     const facing = (Math.sin(m.yaw) * toRoad[0] + Math.cos(m.yaw) * toRoad[1]) / len;
     assert.ok(facing > 0.9, `machine on ${hit.road.id} faces away from the road`);
     for (const j of g.junctions) assert.ok(Math.hypot(j.x - m.x, j.z - m.z) > j.r + 8, 'machine in a junction');
+  }
+});
+
+test('every cluster lights the pavement in front of it', () => {
+  const glows = world.lights.filter((l) => l.range === GLOW.range && l.c[0] === GLOW.c[0] && l.c[2] === GLOW.c[2]);
+  assert.ok(glows.length >= machines.length / 3, `${glows.length} glows for ${machines.length} machines`);
+  for (const l of glows) {
+    const near = machines.some((m) => Math.hypot(m.x - l.x, m.z - l.z) < VENDING.d / 2 + GLOW.ahead + 2.5);
+    assert.ok(near, 'a glow with no machine behind it');
   }
 });

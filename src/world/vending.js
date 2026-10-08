@@ -2,7 +2,8 @@
  * Vending machines along the town's streets, the lit boxes every Japanese street has at night:
  * one to three side by side at the outer edge of a sidewalk, their backs to the frontage and their
  * fronts to the road, more in the residential streets than downtown. They keep clear of the
- * junctions, the lamp posts, the forecourts and the lots, and they are solid. Pure.
+ * junctions, the lamp posts, the forecourts and the lots, and they are solid. Each cluster throws a
+ * small cool light on the pavement in front of it (`GLOW`). Pure.
  */
 
 import { makeRng } from '../core/rng.js';
@@ -11,6 +12,11 @@ import { padDistance } from './ground.js';
 
 /** A machine's size, meters, and how many front designs there are. */
 export const VENDING = { w: 0.95, d: 0.78, h: 1.83, designs: 4 };
+/**
+ * A cluster's light: a dim cool white, so in a crowded light cell it gives way to the street lamps
+ * (the pools keep the strongest), meters in front of the machines, high and far it reaches.
+ */
+export const GLOW = { c: [0.62, 0.7, 0.82], ahead: 1.1, y: 1.0, range: 5.5 };
 /** Meters of street between clusters, by the area's style. */
 const EVERY = { residential: [70, 150], midtown: [110, 220], downtown: [160, 300] };
 
@@ -23,9 +29,10 @@ const EVERY = { residential: [70, 150], midtown: [110, 220], downtown: [160, 300
  * @param {import('./ground.js').Ground} ground
  * @param {import('./scatter.js').Circle[]} circles the lamp posts placed so far; the machines' own boxes go in `boxes`
  * @param {import('./scatter.js').Box[]} boxes
+ * @param {import('./scatter.js').BakeLight[]} [lights]
  * @returns {Machine[]}
  */
-export function placeVending(ground, circles, boxes) {
+export function placeVending(ground, circles, boxes, lights = []) {
   const rng = makeRng(SEED ^ 0x7e4d);
   /** @type {Machine[]} */
   const out = [];
@@ -89,6 +96,9 @@ export function placeVending(ground, circles, boxes) {
           out.push({ x, y, z, yaw, design: (design + (k === 1 ? 1 : 0)) % VENDING.designs });
           boxes.push({ x, z, hx: VENDING.w / 2, hz: VENDING.d / 2, yaw, y0: y - 0.2, y1: y + VENDING.h });
         });
+        const cx = q.x + lx * (off - VENDING.d / 2 - GLOW.ahead);
+        const cz = q.z + lz * (off - VENDING.d / 2 - GLOW.ahead);
+        lights.push({ x: cx, y: y + GLOW.y, z: cz, c: [...GLOW.c], range: GLOW.range });
       }
       s += rng.range(gap[0], gap[1]);
     }
