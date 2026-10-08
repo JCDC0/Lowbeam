@@ -117,6 +117,13 @@ The `reinforcements` banner is in. One fix owed, with part 7: `pursuitView().byK
 unit on the island (`traffic.units()`), so idle patrols across town show in the pursuit HUD's row;
 count only the units in this pursuit (`u.pursuit`, as `withKinds` in `main.js` did).
 
+A second fix owed, found in the game: `PoliceDirector.backup` takes a unit out of `assigned` when it
+orders one, but `traffic.spawnUnit` in `drive.js` often finds no spot and spawns nothing. The pool
+then drains by one every 1.5 s with no car arriving: in a forced heat 1 pursuit, REINFORCEMENTS
+fired after 8 s with only 2 units ever on the scene (pool 10 down to under 5). Take a unit from the
+pool only when it actually spawns (the Drive reports each spawned unit back to the director, or the
+director counts the units that arrived), and add a test: failed spawns leave the pool alone.
+
 Testing: run only the test files your change touches while you work, and the full suite once before
 each commit. `npm test` now runs four files at a time; a full run rebuilds the island in about 30
 files and pegs every core for 40 to 50 s, so running it after every edit kept Jc's machine at 100 %

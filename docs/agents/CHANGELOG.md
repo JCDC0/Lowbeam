@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.99 (2026-10-08)
+
+A second fix owed in B2 part 6, found in the game.
+
+- In a forced heat 1 pursuit REINFORCEMENTS fired after 8 s with two units on the scene: the
+  director takes a unit from the pool when it orders backup, and the Drive's `spawnUnit` often finds
+  no spot, so the pool drained with no car arriving. Recorded in the B2 brief for the backend,
+  with the `byKind` fix, to ship with part 7. The pursuit HUD otherwise shows the new numbers as
+  briefed (on scene, assigned, destroyed, the units by kind).
+
 ## 0.9.98 (2026-10-08)
 
 The test suite runs four files at a time; review of Gemini's 0.9.23 to 0.9.25.
