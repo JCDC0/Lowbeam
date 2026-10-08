@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2 (2026-10-08)
+
+Docs only: the guide's current-state heading names 0.10.2 and the task list says the backend's next
+version is 0.9.28 (the two helicopter fuel fixes from the B2 review).
+
 ## 0.10.1 (2026-10-08)
 
 The test suite builds the island four times instead of thirty: a full run is 17 s, not 48.

@@ -9,7 +9,7 @@ makes it. Claude reviews every commit before the next task starts.
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
 | Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 and 0.9.70 to 0.9.99 (used), now 0.10.0 to 0.10.49 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
-| Backend | Gemini 3.8 Flash (Antigravity) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.49 (0.9.22 next) | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
+| Backend | Gemini 3.8 Flash (Antigravity) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.49 (0.9.28 next) | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
 | Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69, then 0.10.50 to 0.10.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
 
 Ask Claude for a new range when yours runs out.
