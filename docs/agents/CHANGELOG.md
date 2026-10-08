@@ -277,6 +277,19 @@ All four police units drive with Gemini's models (C1 part 7), and G3 passes revi
   the cruiser applied. G3 is done; G5 (the street racers) is Gemini's next task.
 - First version in Claude's new range (0.9.70 to 0.9.99).
 
+## 0.9.65 (2026-10-08)
+
+Street racers: Hoshi Beat (`rv_roadster`).
+
+- `tools/blender/rv_roadster.py`: Mid-engine kei roadster in the Honda Beat / Cappuccino spirit: 3.40 x 1.40 x 0.86 m, wheelbase 2.28 m (axles at z = +1.20 and -1.08 m), wheel radius 0.27 m at x = +-0.61.
+- Open-top cockpit with low windshield frame and raked glass (z in [0.205, 0.445], y up to 0.845 m), interior tub with two sports bucket seats and steering wheel.
+- Twin roll hoops behind seats reaching crown height 0.860 m.
+- Mid-engine rear deck with five dark horizontal cooling louver slots behind cockpit (z in [-1.32, -0.68]).
+- Sculpted side radiator cooling intakes ahead of rear wheels (z in [-0.82, -0.58]).
+- Small round front headlamps (`lamp`, z in [1.734, 1.744] m > 0), slim horizontal tail lamps (`tail`, z in [-1.642, -1.634] m < 0), front chin lip to +1.750 m, rear bumper and chrome sports exhaust tip to -1.650 m.
+- 1,486 body triangles (budget <= 1,800), 2,190 full triangles with wheels (budget <= 2,600).
+- `assets/models/rv_roadster.json` and `assets/models/rv_roadster_full.json`. Checked clean in props.html with 0 problems.
+
 ## 0.9.64 (2026-10-08)
 
 Street racers: Kenro Hardtop rework (`rv_hardtop`).
