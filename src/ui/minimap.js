@@ -1,13 +1,18 @@
 /**
  * Rotating minimap, bottom left: roads, forecourts, station and event icons, with the
- * car at the center pointing up. It zooms out with speed.
+ * car at the center pointing up. It zooms out with speed. As on Most Wanted's radar the police
+ * heat sits on its rim (five marks over the top), the rim turns red on the left and blue on the
+ * right in a pursuit, searching units show their sight cone and units that see the player a ring.
  */
 
 import { RALLY } from '../world/layout.js';
 import { FONT } from '../render/fonts.js';
 import { drawPoiIcon } from './map.js';
 
-const SIZE = 168;
+const SIZE = 220;
+const HEAT_MARKS = 5;
+/** The arc the heat marks span over the top of the rim, in radians. */
+const HEAT_ARC = 1.1;
 const R = SIZE / 2;
 const LOT_ICON = 0.8;
 
@@ -15,7 +20,7 @@ export class Minimap {
   /**
    * @param {HTMLElement} parent
    * @param {import('../world/ground.js').Ground} ground
-   * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number } }>} [getMarkers]
+   * @param {() => Array<{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number }, cone?: { r: number, half: number }, active?: boolean, sees?: boolean }>} [getMarkers]
    * @param {() => { route?: any, destination?: any, distance?: number, arrived?: boolean } | null} [getRoute]
    */
   constructor(parent, ground, getMarkers, getRoute) {
@@ -51,8 +56,9 @@ export class Minimap {
   /**
    * @param {number} x @param {number} z @param {number} yaw @param {number} speed m/s
    * @param {number} dt
+   * @param {{ level: number, pursuit: boolean }} [heat] the police heat (held after a pursuit too)
    */
-  draw(x, z, yaw, speed, dt) {
+  draw(x, z, yaw, speed, dt, heat = { level: 0, pursuit: false }) {
     const g = this.g;
     const want = 0.62 - Math.min(0.3, speed * 0.006);
     this.scale += (want - this.scale) * Math.min(1, dt * 2);
@@ -156,13 +162,36 @@ export class Minimap {
 
       const [mx, my] = toScreen(m.x, m.z);
       const distFromCenter = Math.hypot(mx - R, my - R);
+      const screenYaw = Math.atan2(cc * Math.sin(m.yaw) + d * Math.cos(m.yaw), a * Math.sin(m.yaw) + b * Math.cos(m.yaw));
+
+      if (m.cone && m.cone.r > 0 && distFromCenter <= R + m.cone.r * s) {
+        g.save();
+        g.beginPath();
+        g.moveTo(mx, my);
+        g.arc(mx, my, m.cone.r * s, screenYaw - m.cone.half, screenYaw + m.cone.half);
+        g.closePath();
+        g.fillStyle = 'rgba(255, 176, 32, 0.16)';
+        g.fill();
+        g.strokeStyle = 'rgba(255, 176, 32, 0.5)';
+        g.lineWidth = 1;
+        g.stroke();
+        g.restore();
+      }
 
       if (distFromCenter <= R - 6) {
         // Inside minimap circle
-        const screenAngle = Math.atan2(cc * Math.sin(m.yaw) + d * Math.cos(m.yaw), a * Math.sin(m.yaw) + b * Math.cos(m.yaw));
         g.save();
         g.translate(mx, my);
-        g.rotate(screenAngle);
+        if (m.kind === 'police' && m.active && m.sees) {
+          g.beginPath();
+          g.arc(0, 0, 8, 0, Math.PI * 2);
+          g.fillStyle = 'rgba(255, 255, 255, 0.22)';
+          g.fill();
+          g.strokeStyle = '#fff';
+          g.lineWidth = 1.4;
+          g.stroke();
+        }
+        g.rotate(screenYaw);
 
         if (m.kind === 'heli') {
           // Helicopter rotor glyph (cross with spinning rotor blades)
@@ -296,11 +325,25 @@ export class Minimap {
     g.closePath();
     g.fill();
     g.stroke();
-    g.strokeStyle = 'rgba(255, 180, 60, 0.6)';
-    g.lineWidth = 2;
-    g.beginPath();
-    g.arc(R, R, R - 2, 0, Math.PI * 2);
-    g.stroke();
+    if (heat.pursuit) {
+      // Red on the left, blue on the right, as the light bars; it holds, it does not flash.
+      g.lineWidth = 3;
+      g.strokeStyle = '#ff2b3d';
+      g.beginPath();
+      g.arc(R, R, R - 2, Math.PI / 2, Math.PI * 1.5);
+      g.stroke();
+      g.strokeStyle = '#2b7fff';
+      g.beginPath();
+      g.arc(R, R, R - 2, -Math.PI / 2, Math.PI / 2);
+      g.stroke();
+    } else {
+      g.strokeStyle = 'rgba(255, 180, 60, 0.6)';
+      g.lineWidth = 2;
+      g.beginPath();
+      g.arc(R, R, R - 2, 0, Math.PI * 2);
+      g.stroke();
+    }
+    drawHeatMarks(g, heat.level, heat.pursuit);
     // North is world -Z; put an N on the ring in that direction.
     const nl = Math.hypot(cc, d) || 1;
     const nx = R + (-cc / nl) * (R - 11);
@@ -311,6 +354,32 @@ export class Minimap {
     g.textBaseline = 'middle';
     g.fillText('N', nx, ny);
   }
+}
+
+/**
+ * The heat level on the rim: five marks spread over the top, lit up to the level (the held heat
+ * shows dim after a pursuit, lit in one).
+ * @param {CanvasRenderingContext2D} g @param {number} level @param {boolean} pursuit
+ */
+function drawHeatMarks(g, level, pursuit) {
+  const lit = Math.max(0, Math.min(HEAT_MARKS, Math.floor(level)));
+  g.save();
+  g.lineCap = 'butt';
+  const step = HEAT_ARC / HEAT_MARKS;
+  for (let i = 0; i < HEAT_MARKS; i++) {
+    const mid = -Math.PI / 2 - HEAT_ARC / 2 + step * (i + 0.5);
+    g.beginPath();
+    g.arc(R, R, R - 4, mid - step * 0.38, mid + step * 0.38);
+    g.strokeStyle = '#000';
+    g.lineWidth = 11;
+    g.stroke();
+    g.beginPath();
+    g.arc(R, R, R - 4, mid - step * 0.32, mid + step * 0.32);
+    g.strokeStyle = i < lit ? (pursuit ? '#ff3b4a' : 'rgba(255, 110, 120, 0.7)') : 'rgba(196, 204, 220, 0.5)';
+    g.lineWidth = 7;
+    g.stroke();
+  }
+  g.restore();
 }
 
 /**

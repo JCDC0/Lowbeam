@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9.76 (2026-10-08)
+
+A bigger minimap with the heat on it (C2 part 7).
+
+- The minimap grows from 168 to 220 px.
+- The heat on the rim, as on Most Wanted's radar: five marks over the top, lit red up to the level
+  in a pursuit, dimmer for the heat the police still hold after one, grey above it.
+- In a pursuit the rim is red on the left and blue on the right, as the light bars; it holds and
+  does not flash.
+- Searching units draw their 60 m sight cone ahead of them in amber; a unit that sees the player
+  wears a white ring (a pursuing unit too now, not only a watching patrol). The helicopters keep
+  their searchlight circles.
+- `Minimap.draw` takes the heat (`{ level, pursuit }`) from the Drive.
+
 ## 0.9.75 (2026-10-08)
 
 The Hoshi Kei-S and the Kagero Hot-GT race with Gemini's models.

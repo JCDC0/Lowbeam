@@ -72,7 +72,7 @@ spread round the player so their searchlights cover different streets. The count
   the unit and the bounty it added (`COP TAKEN OUT  +¥5,000`). The same family for BUSTED, ESCAPED,
   ROADBLOCK, SPIKE STRIP and the heat going up.
 
-## 7. A bigger minimap with the heat on it
+## 7. A bigger minimap with the heat on it (done in 0.9.76)
 
 - The minimap grows from 168 to about 220 px (it scales with the window as now).
 - The heat level sits on its rim, as on Most Wanted's radar: five marks lit by heat, the rim red

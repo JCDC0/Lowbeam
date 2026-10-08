@@ -37,8 +37,8 @@
  *   active?: boolean,
  *   sees?: boolean,
  * }} PoliceMarker
- * `active` is a unit in a pursuit (lights on); `sees` a patrol that sees the player and is filling
- * the detection bar.
+ * `active` is a unit in a pursuit (lights on); `sees` a unit that sees the player (a patrol filling
+ * the detection bar, or a pursuing unit with the player in sight).
  */
 
 const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;

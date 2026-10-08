@@ -221,7 +221,7 @@ export class Drive {
     const searching = this.police.active && pursuit?.pstate === 'cooldown';
     const units = this.traffic.units();
     for (const u of units) {
-      const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw, active: !!u.pursuit, sees: !this.police.active && !!this.detect?.watchers.includes(u.id) };
+      const m = { kind: 'police', x: u.x, z: u.z, yaw: u.yaw, active: !!u.pursuit, sees: !!this.detect?.watchers.includes(u.id) };
       if (searching) m.cone = { r: 60, half: 0.61 };
       out.push(m);
     }
@@ -922,7 +922,7 @@ export class Drive {
       mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally, traffic: this.traffic.agents,
       sirens: sirenVoices(this.traffic.units(), s, this.time), rotor: this.rotorSound(dt, s), pursuit: this.police.active,
     });
-    this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt);
+    this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt, { level: this.police.level, pursuit: this.police.active });
     return null;
   }
 
