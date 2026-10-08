@@ -12,7 +12,7 @@ models are G5 and G7.
    markers simpler: a car is a small red or blue chevron by its light bar's phase, a helicopter a
    plain disc with a short tail (no spinning lines); a unit's sight is a cone in its own red or blue
    that fades out with distance, not the flat yellow wedge.
-3. **The pursuit HUD after Jc's sketch.** Above the panel a row of the units on the scene by kind
+3. **The pursuit HUD after Jc's sketch** (done in 0.9.84). Above the panel a row of the units on the scene by kind
    with an icon each (cruiser, unmarked, interceptor, Rhino) and the helicopters; in the panel the
    units on the scene, the units assigned (B2 part 6; a dash until it lands) and the units
    destroyed, the meter along the bottom; a REINFORCEMENTS line when they come.

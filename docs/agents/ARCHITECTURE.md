@@ -142,7 +142,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.9.83)
+## Current state (0.9.84)
 
 375 tests pass; the type check is clean. By area:
 
@@ -262,10 +262,13 @@ and decks fill it three times faster), escaped with the bounty paid. Stopped wit
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
 police HQ. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
 destroyed among them. The pursuit
-HUD (`ui/pursuit.js`) is Most Wanted's: one panel at the bottom center, in Michroma, with the heat
-marks and the time, the bounty counting up, the evade and busted meter split from the middle (a blue
-COOLDOWN bar while they search), the units on the scene, in sight and taken out, a helicopter icon for
-each one up, and the result card with the fine or the bounty at the end; before a pursuit only the
+HUD (`ui/pursuit.js`) is Most Wanted's after Jc's sketch: at the bottom center, in Michroma, a row of
+the units on the scene by kind (cruiser, unmarked, interceptor, Rhino, each with its icon) and the
+helicopters, over one panel with the heat marks, the bounty counting up and the time on one line,
+the units on the scene, assigned (the pursuit's pool, a dash until the director keeps it) and
+destroyed, a REINFORCEMENTS line while they come, and the evade and busted meter along the bottom
+split from the middle (a blue COOLDOWN bar while they search); the result card with the fine or the
+bounty at the end; before a pursuit only the
 detection bar shows. It never fades or pulses, and it shows only on the drive screen. Events (a pursuit, a heat level,
 a roadblock, a unit taken out, escaped, busted, a blown engine, a duel) are banners (`bannerer` in
 `ui/menus.js`) that slam in, hold and leave, ruled by tone; a unit taken out also flashes the

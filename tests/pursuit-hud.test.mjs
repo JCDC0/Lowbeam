@@ -117,3 +117,15 @@ test('layoutPursuit counts the scene, the units in sight, the units taken out an
   assert.equal(res.isTerminal, true);
   assert.equal(layoutPursuit({ state: 'pursuit', heat: 3, evade: 0, cooldown: 0, bust: 0, units: 1, heli: true, bounty: 0, time: 0 }).helis, 1, 'an old view with only `heli` shows one');
 });
+
+test('layoutPursuit lays out Jc\'s sketch: the units by kind, assigned and destroyed', () => {
+  const view = { state: 'pursuit', heat: 3, evade: 0.2, cooldown: 0, bust: 0, units: 7, heli: true, helis: 1, bounty: 9000, time: 30, disabled: 4, byKind: { police: 4, 'police-fast': 2, 'police-int': 1 }, assigned: 52 };
+  const l = layoutPursuit(view);
+  assert.deepEqual(l.kinds.map((k) => k.kind), ['police', 'police-fast', 'police-int', 'police-heavy']);
+  assert.deepEqual(l.kinds.map((k) => k.n), [4, 2, 1, 0]);
+  assert.equal(l.assignedText, '52');
+  assert.equal(l.destroyedText, '04');
+  assert.equal(l.helis, 1);
+  assert.equal(layoutPursuit({ ...view, assigned: undefined, byKind: undefined }).assignedText, '--', 'a dash until the director keeps the pool');
+  assert.equal(layoutPursuit({ ...view, reinforcements: true }).reinforcements, true);
+});

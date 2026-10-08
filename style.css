@@ -1167,12 +1167,12 @@ html, body {
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 10px;
-  margin: 4px 0 6px;
+  gap: 8px;
+  margin: 0;
 }
 #pursuit-hud .ph-bounty b {
   font-weight: 400;
-  font-size: 24px;
+  font-size: 19px;
   letter-spacing: 0.06em;
   color: var(--amber);
 }
@@ -1209,6 +1209,32 @@ html, body {
 #pursuit-hud .ph-stat em { font-style: normal; font-size: 15px; color: var(--ink); }
 #pursuit-hud .ph-stat small { font-size: 8px; letter-spacing: 0.16em; color: var(--ink-dim); }
 #pursuit-hud .ph-kills em { color: var(--amber); }
+#pursuit-hud .ph-stats { justify-content: space-around; margin: 6px 0 8px; }
+#pursuit-hud .ph-stats .ph-stat { flex-direction: column; align-items: center; gap: 1px; }
+#pursuit-hud .ph-stats .ph-stat em { font-size: 20px; }
+/* The units on the scene by kind, over the panel (Jc's sketch). */
+#pursuit-hud .ph-kinds {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin-bottom: 5px;
+  text-shadow: 0 1px 0 #000;
+}
+#pursuit-hud .ph-kind { display: flex; align-items: center; gap: 5px; }
+#pursuit-hud .ph-kind svg { width: 30px; height: 15px; fill: #dfe5ee; filter: drop-shadow(0 1px 0 #000); }
+#pursuit-hud .ph-kind svg .r { fill: #ff2b3d; }
+#pursuit-hud .ph-kind svg .b { fill: #2b7fff; }
+#pursuit-hud .ph-heli-count svg { width: 26px; height: 15px; fill: none; stroke: #dfe5ee; stroke-width: 1.4; }
+#pursuit-hud .ph-kind em { font-style: normal; font-size: 15px; color: var(--ink); }
+#pursuit-hud .ph-kind.none { opacity: 0.35; }
+#pursuit-hud .ph-reinforce {
+  display: none;
+  margin: -2px 0 6px;
+  text-align: center;
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--amber);
+}
 #pursuit-hud svg {
   width: 20px;
   height: 11px;
@@ -1219,8 +1245,6 @@ html, body {
   stroke-linejoin: round;
   align-self: center;
 }
-#pursuit-hud .ph-helis { display: flex; gap: 4px; min-width: 20px; justify-content: flex-end; }
-#pursuit-hud .ph-helis svg { width: 24px; height: 14px; stroke: var(--cyan); }
 #pursuit-hud .ph-result {
   display: none;
   align-items: baseline;

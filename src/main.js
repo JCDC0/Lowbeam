@@ -123,6 +123,22 @@ async function enterWorld() {
   setState('drive');
 }
 
+/**
+ * The pursuit view with the units on the scene counted by kind, for the row over the pursuit HUD,
+ * when the Drive does not count them itself.
+ * @param {any} view
+ */
+function withKinds(view) {
+  if (!view || view.byKind) return view;
+  /** @type {Record<string, number>} */
+  const byKind = {};
+  for (const u of drive?.traffic?.units?.() ?? []) {
+    if (!u.pursuit || u.mode === 'wreck') continue;
+    byKind[u.kind.id] = (byKind[u.kind.id] || 0) + 1;
+  }
+  return { ...view, byKind };
+}
+
 /** Free camera for development: WASD to move, arrows to look, Q and E for height, Shift for speed. */
 function updateFly(dt) {
   const k = (c) => input.key(c);
@@ -250,7 +266,7 @@ function frame(now) {
   rHud.update(tracker, dt);
   // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.
   const driving = state === 'drive';
-  pursuit.update(pursuitMock ?? (driving ? /** @type {any} */ (drive)?.pursuitView?.() ?? null : null), dt, driving ? drive?.detect ?? null : null);
+  pursuit.update(pursuitMock ?? (driving ? withKinds(/** @type {any} */ (drive)?.pursuitView?.() ?? null) : null), dt, driving ? drive?.detect ?? null : null);
   input.endFrame();
   requestAnimationFrame(frame);
 }

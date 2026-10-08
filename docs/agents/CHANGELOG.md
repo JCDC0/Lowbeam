@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.9.84 (2026-10-08)
+
+The pursuit HUD after Jc's sketch (C3 part 3).
+
+- Over the panel, a row of the units on the scene by kind, each with a small side-view icon told
+  apart by its roof (the cruiser's red and blue bar, the unmarked car's grille light, the
+  interceptor's low bar, the Rhino's tall body) and its count, then the helicopters; a kind with none
+  is dimmed. `main.js` counts them from the live units until the Drive's view carries `byKind`.
+- In the panel: the heat marks, the bounty and the time on one line; ON SCENE, ASSIGNED and DESTROYED
+  (two digits) large; a REINFORCEMENTS line while `reinforcements` is set; the evade and busted meter
+  along the bottom. ASSIGNED shows a dash until B2 part 6 gives the director its pool. IN SIGHT is
+  gone from the panel (the radar's white rings show it).
+- The panel is no taller than before, so it still sits under the prompt line.
+- Tests: the layout of the sketch (kinds in order, the dash, the padded count). Checked in a pursuit
+  at heat 4 with three kinds on the scene, two helicopters and units destroyed.
+
 ## 0.9.83 (2026-10-08)
 
 Most Wanted's radar (C3 part 2), after Jc's reference.

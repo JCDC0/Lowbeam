@@ -1,12 +1,15 @@
 /**
- * The pursuit HUD, after Need for Speed: Most Wanted (2005): one panel at the bottom center of the
- * screen. The heat as five marks and the pursuit's time; the bounty, counting up; the evade and
- * busted meter, split from the middle (green to the left as the police lose sight, red to the right
- * as they box the player in), a blue cooldown bar while they search; then the units on the scene,
- * the units in sight, the units taken out, and a helicopter for each one up. Before a pursuit, while
- * a patrol watches, only the detection bar shows. At the end the result card, then nothing: the
- * panel never fades or pulses, and leaves at once when the pursuit or the drive screen does.
- * Every word and number is in Michroma (`--font-display`).
+ * The pursuit HUD, after Need for Speed: Most Wanted (2005) and Jc's sketch: at the bottom center of
+ * the screen, a row of the units on the scene by kind (a cruiser, an unmarked car, an interceptor, a
+ * Rhino and the helicopters, each with its icon and count) over one panel. In the panel the heat as
+ * five marks and the pursuit's time; the bounty, counting up; the units on the scene, the units
+ * assigned to the pursuit (the pool reinforcements come from) and the units destroyed; and along the
+ * bottom the evade and busted meter, split from the middle (green to the left as the police lose
+ * sight, red to the right as they box the player in), a blue cooldown bar while they search. A
+ * REINFORCEMENTS line shows while they arrive. Before a pursuit, while a patrol watches, only the
+ * detection bar shows. At the end the result card, then nothing: the panel never fades or pulses,
+ * and leaves at once when the pursuit or the drive screen does. Every word and number is in
+ * Michroma (`--font-display`).
  */
 
 /**
@@ -24,9 +27,14 @@
  *   nearby?: number,
  *   disabled?: number,
  *   report?: { fine?: number } | null,
+ *   byKind?: Record<string, number>,
+ *   assigned?: number | null,
+ *   reinforcements?: boolean,
  * }} PursuitView
  * `units` are the units on the scene (in the pursuit), `nearby` those that see the player now,
- * `disabled` those taken out, `helis` the helicopters up.
+ * `disabled` those taken out, `helis` the helicopters up, `byKind` the units on the scene by kind
+ * id, `assigned` the units the pursuit still has to send (null until the director keeps the pool),
+ * `reinforcements` true while reinforcements are arriving.
  *
  * @typedef {{
  *   kind: 'police' | 'heli',
@@ -42,6 +50,9 @@
  */
 
 const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;
+
+/** The unit kinds in the row over the panel, in the sketch's order. */
+export const KIND_ROW = ['police', 'police-fast', 'police-int', 'police-heavy'];
 
 /**
  * Pure layout / data formatting helper for unit tests and rendering.
@@ -81,6 +92,10 @@ export function layoutPursuit(view) {
     helis: Math.max(0, Math.min(3, view.helis ?? (view.heli ? 1 : 0))),
     nearby: view.nearby || 0,
     destroyed: view.disabled || 0,
+    destroyedText: String(Math.min(99, view.disabled || 0)).padStart(2, '0'),
+    kinds: KIND_ROW.map((kind) => ({ kind, n: Math.max(0, view.byKind?.[kind] ?? 0) })),
+    assignedText: view.assigned == null ? '--' : String(Math.max(0, Math.round(view.assigned))),
+    reinforcements: !!view.reinforcements,
     bountyText,
     fineText: yen(view.report?.fine || 0),
     timeText,
@@ -89,7 +104,13 @@ export function layoutPursuit(view) {
 }
 
 const HELI_ICON = '<svg viewBox="0 0 24 14" aria-hidden="true"><path d="M2 2h20M12 2v3"/><path d="M6 7c0-1.5 2-2.5 6-2.5s6 1 6 3.5-2 3-6 3H8z"/><path d="M18 7.5h5M22 6v3M9 11.5v2M14 11.5v2M7 13.5h9"/></svg>';
-const CAR_ICON = '<svg viewBox="0 0 24 12" aria-hidden="true"><path d="M2 9V6l3-1 3-3h7l4 3 3 1v3z"/><circle cx="7" cy="9.5" r="1.8"/><circle cx="17" cy="9.5" r="1.8"/></svg>';
+/** The four unit kinds as small side views: the bar on the roof is what tells them apart. */
+const KIND_ICONS = {
+  police: '<svg viewBox="0 0 28 14" aria-hidden="true"><path class="b" d="M11 2.2h3v1.4h-3z"/><path class="r" d="M14 2.2h3v1.4h-3z"/><path d="M2 11V8l4-1 3-3.4h9l4 3.4 4 1v3z"/><circle cx="8" cy="11.4" r="2"/><circle cx="20" cy="11.4" r="2"/></svg>',
+  'police-fast': '<svg viewBox="0 0 28 14" aria-hidden="true"><path d="M2 11V8l4-1 3-3.4h9l4 3.4 4 1v3z"/><path class="r" d="M23 8h2v1.2h-2z"/><circle cx="8" cy="11.4" r="2"/><circle cx="20" cy="11.4" r="2"/></svg>',
+  'police-int': '<svg viewBox="0 0 28 14" aria-hidden="true"><path class="b" d="M12 3.6h2.4v1.2H12z"/><path class="r" d="M14.4 3.6h2.4v1.2h-2.4z"/><path d="M1.5 11.2V9.4l5-1.6 4-3h7l5.5 3 3.5 1v2.4z"/><circle cx="7.5" cy="11.5" r="1.9"/><circle cx="21" cy="11.5" r="1.9"/></svg>',
+  'police-heavy': '<svg viewBox="0 0 28 14" aria-hidden="true"><path class="b" d="M10 0.8h3.5v1.4H10z"/><path class="r" d="M13.5 0.8H17v1.4h-3.5z"/><path d="M2 11.4V6.5l3-0.5 2-3.6h13l3 3.6 3 0.5v4.9z"/><circle cx="8" cy="11.6" r="2.2"/><circle cx="20" cy="11.6" r="2.2"/></svg>',
+};
 
 /**
  * Mounts the pursuit HUD into `parent`.
@@ -105,24 +126,25 @@ export function pursuitHud(parent) {
       <span class="ph-label">DETECTION</span>
       <div class="ph-track"><div class="ph-detect-fill"></div></div>
     </div>
+    <div class="ph-kinds">${KIND_ROW.map((k) => `<span class="ph-kind" data-kind="${k}">${KIND_ICONS[k]}<em></em></span>`).join('')}<span class="ph-kind ph-heli-count">${HELI_ICON}<em></em></span></div>
     <div class="ph-panel">
       <div class="ph-row ph-head">
         <div class="ph-heat"><span class="ph-label">HEAT</span>${'<i></i>'.repeat(5)}</div>
+        <div class="ph-bounty"><span class="ph-label">BOUNTY</span><b></b></div>
         <div class="ph-time"></div>
       </div>
-      <div class="ph-bounty"><span class="ph-label">BOUNTY</span><b></b></div>
+      <div class="ph-row ph-stats">
+        <span class="ph-stat"><em class="ph-scene"></em><small>ON SCENE</small></span>
+        <span class="ph-stat"><em class="ph-assigned"></em><small>ASSIGNED</small></span>
+        <span class="ph-stat ph-kills"><em class="ph-out"></em><small>DESTROYED</small></span>
+      </div>
+      <div class="ph-reinforce">REINFORCEMENTS</div>
       <div class="ph-meter">
         <span class="ph-side ph-evade-label">EVADE</span>
         <div class="ph-track ph-split">
           <div class="ph-evade"></div><div class="ph-busted"></div><div class="ph-cool"></div><div class="ph-mid"></div>
         </div>
         <span class="ph-side ph-busted-label">BUSTED</span>
-      </div>
-      <div class="ph-row ph-stats">
-        <span class="ph-stat">${CAR_ICON}<em class="ph-scene"></em><small>ON SCENE</small></span>
-        <span class="ph-stat"><em class="ph-near"></em><small>IN SIGHT</small></span>
-        <span class="ph-stat ph-kills"><em class="ph-out"></em><small>TAKEN OUT</small></span>
-        <span class="ph-helis"></span>
       </div>
       <div class="ph-result"><b></b><span></span></div>
     </div>
@@ -142,15 +164,17 @@ export function pursuitHud(parent) {
   const meterEl = q('.ph-meter');
   const evadeLabel = q('.ph-evade-label');
   const sceneEl = q('.ph-scene');
-  const nearEl = q('.ph-near');
+  const assignedEl = q('.ph-assigned');
   const outEl = q('.ph-out');
-  const helisEl = q('.ph-helis');
+  const kindsEl = q('.ph-kinds');
+  const kindEls = KIND_ROW.map((k) => /** @type {HTMLElement} */ (el.querySelector(`.ph-kind[data-kind="${k}"]`)));
+  const heliCountEl = q('.ph-heli-count');
+  const reinforceEl = q('.ph-reinforce');
   const resultEl = q('.ph-result');
   const resultHead = q('.ph-result b');
   const resultLine = q('.ph-result span');
 
   let shownBounty = 0;
-  let helisShown = -1;
 
   /**
    * @param {PursuitView | null} view the pursuit, or null when there is none (or the screen is not the drive)
@@ -164,6 +188,7 @@ export function pursuitHud(parent) {
       const level = detect?.level || 0;
       el.style.display = level > 0.01 ? 'block' : 'none';
       panel.style.display = 'none';
+      kindsEl.style.display = 'none';
       detectEl.style.display = level > 0.01 ? 'flex' : 'none';
       detectFill.style.width = `${(level * 100).toFixed(1)}%`;
       detectEl.classList.toggle('hot', level > 0.66);
@@ -172,6 +197,7 @@ export function pursuitHud(parent) {
     el.style.display = 'block';
     detectEl.style.display = 'none';
     panel.style.display = 'block';
+    kindsEl.style.display = layout.isTerminal ? 'none' : 'flex';
     panel.dataset.state = layout.state;
 
     for (let i = 0; i < 5; i++) heatMarks[i].classList.toggle('on', i < layout.heat);
@@ -193,12 +219,15 @@ export function pursuitHud(parent) {
     coolEl.style.width = cooldown ? `${(layout.barFill * 100).toFixed(1)}%` : '0';
 
     sceneEl.textContent = String(layout.units);
-    nearEl.textContent = String(layout.nearby);
-    outEl.textContent = String(layout.destroyed);
-    if (layout.helis !== helisShown) {
-      helisShown = layout.helis;
-      helisEl.innerHTML = HELI_ICON.repeat(layout.helis);
-    }
+    assignedEl.textContent = layout.assignedText;
+    outEl.textContent = layout.destroyedText;
+    layout.kinds.forEach(({ n }, i) => {
+      /** @type {HTMLElement} */ (kindEls[i].querySelector('em')).textContent = String(n);
+      kindEls[i].classList.toggle('none', n === 0);
+    });
+    /** @type {HTMLElement} */ (heliCountEl.querySelector('em')).textContent = String(layout.helis);
+    heliCountEl.classList.toggle('none', layout.helis === 0);
+    reinforceEl.style.display = layout.reinforcements && !layout.isTerminal ? 'block' : 'none';
 
     resultEl.style.display = layout.isTerminal ? 'flex' : 'none';
     if (layout.isTerminal) {
