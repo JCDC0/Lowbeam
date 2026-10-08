@@ -56,6 +56,15 @@ Civilians and racers phase into roadblocks and stop inside them. Every agent mus
 
 Stop here for review.
 
+Review (Claude, after 0.9.22): passes for the traffic, with one fix owed. In `collideWithPlayer` a
+parked unit is first collided as an immovable body, which already moves and bounces the player's
+car (`bodyOf` writes through to the car's state); above 6 m/s it is collided again with real masses,
+but the player has already bounced: at 20 m/s the player comes back at -4 m/s and the unit does not
+move (35 m/s: -7 m/s, the unit a standing wreck). Ramming through a roadblock must work, as in Most
+Wanted and as before 0.9.22 (the player kept 7.1 m/s of a 20 m/s ram). Fix: keep the player's state before the first test and restore it when
+the hit is over 6 m/s, as `collideAgents` already does with fresh bodies; add a test (a player ram at
+20 m/s moves the unit and keeps the player moving forward). Ship it with part 4 (0.9.23).
+
 ## 4. Racers fast but not blind (0.9.23)
 
 Street racers drive at their speed and brake hard when they cannot pass:
@@ -93,6 +102,8 @@ and the units destroyed, and reinforcements when the assigned run low:
   pool gains the heat's 25 %, an event `{ type: 'reinforcements', count }`.
 - `pursuitView()` in `drive.js` adds `assigned` and `byKind: { police, 'police-fast', 'police-int',
   'police-heavy' }` (units on the scene by kind) and `helis` stays. Claude draws them (C3).
+- The banner, in the `banners` table of `policeEvent` in `drive.js` (Claude's wording):
+  `` reinforcements: ['REINFORCEMENTS', { sub: `+${e.count} UNITS ASSIGNED`, tone: 'police' }] ``.
 - Tests: the pool falls as units go out, destroyed units do not come back, reinforcements fire once
   per low point.
 
@@ -103,7 +114,9 @@ Stop here for review.
 Jc struggled to get rid of the helicopters.
 - Each helicopter has about 100 s of fuel over the pursuit (`heli.js`); at 15 s left it breaks off
   and flies to the nearest police station to refuel for 40 s, then may come back if the heat still
-  calls for it. Events `heliLeaving` and `heliBack` (Claude makes the banners).
+  calls for it. Events `heliLeaving` and `heliBack`, with these banners in `policeEvent`'s table:
+  `heliLeaving: ['CHOPPER BREAKING OFF', { sub: 'LOW ON FUEL', tone: 'good' }]` and
+  `heliBack: ['CHOPPER BACK', { sub: 'REFUELED', tone: 'police' }]`.
 - A helicopter loses sight under a deck or a dense block (the line from the spot to the player
   crosses a building box or a deck), as the units do.
 - Police stations: there are three since 0.9.88 (`LOTS` with `kind: 'police'`: the HQ first, then

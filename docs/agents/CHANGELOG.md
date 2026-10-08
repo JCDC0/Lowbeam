@@ -19,10 +19,12 @@ The traffic lights can be seen: a Japanese signal for every way into every lit c
   The poles are solid (`Colliders.addCircles`, new).
 - `tests/signals.test.mjs`: nine in ten crossings signed, every head over its own lanes past its
   crossing and facing its traffic, no pole in a carriageway, the lamps match `lightState` and the
-  two ways of a crossing are never green together. 396 pass.
+  two ways of a crossing are never green together. 401 pass with 0.9.22's.
 - The guide's note on steep streets was stale (20 %): measured now, the steepest is 12.6 % over 10 m.
 - B2 brief: Claude's wording for the banners of B2's new events (reinforcements, a helicopter leaving
   and coming back) goes in parts 6 and 7, since the banner table is in `drive.js`.
+- This entry and the guide's text for the signals went into the tree first and were committed with
+  Gemini's 0.9.22 (the same slip as 0.9.21's); the code and the test land here.
 
 ## 0.9.91 (2026-10-08)
 

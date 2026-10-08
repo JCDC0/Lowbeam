@@ -26,10 +26,13 @@ models are G5 and G7.
 6. **More places** (done in 0.9.88). Two more police stations (Gemini's district station model from G7, the HQ model
    until it lands), more hideouts and repair garages spread over the island (the existing models), on
    the map and the minimap with their icons. B2 part 7 makes the police use the nearest station.
-7. **Banners for B2's events** as they land: reinforcements, a helicopter leaving to refuel and
-   coming back.
+7. **Banners for B2's events**: reinforcements, a helicopter leaving to refuel and coming back. The
+   banner table is in `drive.js`, the backend's file, so the wording is in the B2 brief (parts 6 and
+   7) and Gemini adds the lines; Claude checks them in review.
 
 While Gemini works through B2, Claude takes the open items in its own files that wait on no one:
 
 8. **Route 1's sign gantries** (done in 0.9.91): a gantry about 500 m before every exit and one where
    the exit lane opens, with Shuto-style green guide signs.
+9. **Traffic signals you can see** (done in 0.9.92): the traffic has stopped at lights since 0.4,
+   but nothing drew them.

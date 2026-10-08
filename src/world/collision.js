@@ -47,6 +47,17 @@ export class Colliders {
     this._c = { nx: 0, nz: 0, depth: 0, px: 0, pz: 0 };
   }
 
+  /**
+   * Files more circles after the build: the traffic signals' poles, placed once the traffic net
+   * exists. @param {Circle[]} list
+   */
+  addCircles(list) {
+    for (const c of list) {
+      const i = this.circles.push(c) - 1;
+      this.insert(c.x, c.z, c.r, (cell) => cell.c.push(i));
+    }
+  }
+
   insert(x, z, r, add) {
     r += MARGIN;
     const x0 = Math.floor((x - r + OFF) / CELL);

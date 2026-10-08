@@ -20,6 +20,8 @@ import { Drive } from './drive.js';
 import { audio } from './audio/audio.js';
 import { store } from './core/store.js';
 import { applyNet, speedFx } from './ui/screen-fx.js';
+import { placeSignals, SIGNAL } from './world/signals.js';
+import { SignalView } from './world/build-signals.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
 const ui = /** @type {HTMLElement} */ (document.getElementById('ui'));
@@ -68,6 +70,8 @@ let prevControlsState = 'menu';
 let world = null;
 /** @type {Drive | null} */
 let drive = null;
+/** The traffic signals, made once the Drive has its traffic net. @type {SignalView | null} */
+let signals = null;
 /** @type {import('./ui/pursuit.js').PursuitView | null} */
 let pursuitMock = null;
 /** @type {import('./ui/pursuit.js').PoliceMarker[] | null} */
@@ -119,6 +123,10 @@ async function enterWorld() {
     });
     console.log(`world built in ${world.buildMs.toFixed(0)} ms`);
     drive = new Drive({ world, stage, input, hud, toast, banner, flash });
+    signals = new SignalView(placeSignals(drive.trafficNet, world.ground), world.grid);
+    world.add(signals.group);
+    world.groundChunks.push(...signals.chunks);
+    drive.colliders.addCircles(signals.signals.map((s) => ({ x: s.px, z: s.pz, r: SIGNAL.pole + 0.05 })));
     map.setWorld(world);
   }
   drive.start(garage.spec, garage.model.paintIndex);
@@ -264,6 +272,7 @@ function frame(now) {
     stage.render(world.scene, stage.camera);
   }
   if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
+  if (signals && drive) signals.update(drive.traffic.time, stage.camera.position);
   if (drive?.car) tracker.update(drive.car, dt);
   rHud.update(tracker, dt);
   // The pursuit HUD belongs to the drive screen: anywhere else (the garage, a menu, the map) it is gone.

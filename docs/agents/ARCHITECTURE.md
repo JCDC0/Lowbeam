@@ -146,7 +146,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.9.92)
 
-396 tests pass; the type check is clean. By area:
+401 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
