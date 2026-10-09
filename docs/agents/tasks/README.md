@@ -46,7 +46,7 @@ and leaves `package.json` alone.
 | [B4-civilian-world-collisions.md](B4-civilian-world-collisions.md) | Backend (Gemini) | after B3 part 3 | Civilians that turn along real curves, collide with the world and stay on the road, measured by `tools/clipbench.mjs` |
 | [C4-kurogane-ramps.md](C4-kurogane-ramps.md) | Claude (and the backend for the links) | planned | The Kurogane Line's ramps down to downtown: slips off a deck, parapets, portals, streets, links |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
-| [G7-police-station.md](G7-police-station.md) | Assets | done (0.10.50, 0.10.51) | A district police station with a roof pad, and the roadblock barrier |
+| [G7-police-station.md](G7-police-station.md) | Assets | done and reviewed (0.10.50, 0.10.51); the roadblock wiring is with the backend | A district police station with a roof pad, and the roadblock barrier |
 | [G6-civilian-cars.md](G6-civilian-cars.md) | Assets | after G5 and G7 | The fourteen traffic kinds remade, and seven new ones (kei van, executive sedan, coupe, crossover, delivery van, garbage truck, ambulance) |
 
 Finished and cancelled briefs are in `archive/`. Two still matter as references: the pursuit view

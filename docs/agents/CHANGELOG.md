@@ -28,6 +28,11 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.14 (2026-10-09)
+
+Review of Gemini's 0.10.51, the roadblock barrier model: it passes (the G7 brief records it). The
+backend's wiring of it at the roadblocks is the next commit from it.
+
 ## 0.10.13 (2026-10-09)
 
 The invisible obstacles on the Kurogane Line; plans for the clipping and for filling the map.

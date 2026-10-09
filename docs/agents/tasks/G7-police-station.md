@@ -42,3 +42,11 @@ TOGE POLICE), the barred windows, the mast with its beacon and the boundary wall
 helipad (an H in a yellow ring, green edge lights) sits at y 7.5, x 0, z -6 where `helipadOf` puts the
 helicopter's pad. Note for the next model: the facade is dark and low in contrast at night (blue trim
 on grey); a lit window row or two on the ground floor would read from further down the road.
+
+## Review: the roadblock barrier (Claude, 0.10.14)
+
+Passes. Checked in the prop viewer beside the cruiser and a racer: 174 triangles, 2.4 by 1.1 by 0.5 m,
+five materials, one collider, one light; red and white striped boards on A-frame legs with an amber
+lamp on top, and it reads at the size of a police car from the front, the side and the back. The
+backend places it at the roadblocks and flashes the lamp (B2-style wiring in `0.9.29`); that is the
+last of G7.
