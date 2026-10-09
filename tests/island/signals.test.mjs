@@ -84,3 +84,24 @@ test('nothing static stops a car on the lanes of the Kurogane Line', () => {
     }
   }
 });
+
+test('no pole stands within a car\'s width of a lane center, so a civilian is never driven into one', () => {
+  const o = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  const poles = signals.map((s) => ({ x: s.px, z: s.pz, y: s.py }));
+  let close = 0;
+  const worst = [];
+  for (const lane of net.lanes) {
+    for (let s = 2; s < lane.length - 2; s += 2) {
+      net.sample(lane, s, o);
+      for (const p of poles) {
+        if (Math.abs(p.x - o.x) > 1.2 || Math.abs(p.z - o.z) > 1.2 || Math.abs(p.y - o.y) > 3) continue;
+        const d = Math.hypot(p.x - o.x, p.z - o.z);
+        if (d < 1.0) {
+          close++;
+          if (worst.length < 4) worst.push(`${lane.id} at ${s.toFixed(0)}: ${d.toFixed(2)} m from the pole at ${p.x.toFixed(0)}, ${p.z.toFixed(0)}`);
+        }
+      }
+    }
+  }
+  assert.ok(close <= 12, `${close} lane samples pass within 1 m of a pole: ${worst.join('; ')}`);
+});

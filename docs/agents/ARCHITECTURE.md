@@ -163,7 +163,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-446 tests pass; the type check is clean. By area:
+449 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -245,7 +245,8 @@ indicator flares larger and the three nearest throw a small amber pool. The traf
 at each of the 962 lit crossings every way in has a Japanese signal (`world/signals.js`), a pole on
 the far left corner with an arm over its lanes and a horizontal head (blue-green, amber, red from the
 left), its lamps following `lightState` on the traffic's own clock with a glow on the lit lamp near
-the camera; about 3,000 heads, the poles solid, made in `main.js` once the Drive has its traffic net
+the camera; about 3,000 heads, the poles solid (a pole under a deck ends under its slab, and none
+stands within 1.3 m of a lane of its crossing), made in `main.js` once the Drive has its traffic net
 (`Colliders.addCircles`). Every car the player hits
 answers by mass, the same contact rules as the player's car (`vehicles/contact.js`): a kei car is
 thrown, a bus stops the player. A hit under 18 m/s closing (0.9.20) knocks a car off its line: it slides on
@@ -403,9 +404,9 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The GPS route test measures planning time and can fail when the machine is busy, and
   `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
   under load and passes alone.
-- Civilians driving on their lanes are not checked against the static world: at junctions they cut the
-  corner and clip the signal poles, and a few ramps put a body off the carriageway (118 clips in 34,420
-  samples, `tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
+- Civilians driving on their lanes are not checked against the static world: they cut corners, 15 clips
+  in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
+  (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
 - The map is thin outside the city: 3 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
   to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).

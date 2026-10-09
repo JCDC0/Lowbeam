@@ -11,9 +11,10 @@ import { ELEVATED } from './roads.js';
 
 /**
  * The head's height over the road and its width, the pole's radius, how far past the crossing's
- * far edge the pole stands and the shortest arm.
+ * far edge the pole stands, the shortest arm, and how far a pole keeps from every lane's center line
+ * (a wide car's half width, the pole and a margin).
  */
-export const SIGNAL = { height: 5.3, head: 1.25, pole: 0.13, past: 2.2, minArm: 1.2 };
+export const SIGNAL = { height: 5.3, head: 1.25, pole: 0.13, past: 2.2, minArm: 1.2, clear: 1.3 };
 
 /**
  * @typedef {{ x: number, y: number, z: number, yaw: number, px: number, py: number, pz: number,
@@ -33,6 +34,40 @@ export function placeSignals(net, ground) {
   const out = [];
   const seen = new Set();
   const o = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  // The lanes through each crossing, sampled every 1.5 m from before its stop to 48 m after, so a
+  // pole is never put where another road's lane passes the corner.
+  /** @type {Map<any, { lane: any, s: number }[]>} */
+  const through = new Map();
+  for (const lane of net.lanes) {
+    for (const stop of lane.stops) {
+      if (!stop.node || stop.axis === undefined) continue;
+      let list = through.get(stop.node);
+      if (!list) through.set(stop.node, (list = []));
+      list.push({ lane, s: stop.s });
+    }
+  }
+  /** @type {Map<any, Float32Array>} */
+  const lanePoints = new Map();
+  const around = (/** @type {any} */ node) => {
+    let a = lanePoints.get(node);
+    if (a) return a;
+    /** @type {number[]} */
+    const v = [];
+    const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+    for (const { lane, s } of through.get(node) || []) {
+      for (let t = Math.max(0, s - 6); t <= Math.min(lane.length, s + 48); t += 1.5) {
+        net.sample(lane, t, q);
+        v.push(q.x, q.z);
+      }
+    }
+    lanePoints.set(node, (a = new Float32Array(v)));
+    return a;
+  };
+  const clear = (/** @type {any} */ node, /** @type {number} */ x, /** @type {number} */ z) => {
+    const a = around(node);
+    for (let i = 0; i < a.length; i += 2) if (Math.hypot(a[i] - x, a[i + 1] - z) < SIGNAL.clear) return false;
+    return true;
+  };
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
   for (const lane of net.lanes) {
     for (const stop of lane.stops) {
@@ -60,11 +95,19 @@ export function placeSignals(net, ground) {
       const road = lane.road;
       const ps = net.laneS(lane, fs);
       const hw = road.hwAt(road.path.closed ? road.path.wrapS(ps) : ps);
-      const side = hw + Math.max(1, road.walk) * 0.5;
-      const px = cx + lx * side;
-      const pz = cz + lz * side;
-      // A pole never stands in a carriageway: where the corner is another road's, no signal.
-      if (ground.roads.query(px, pz, hit, 0) && Math.abs(hit.d) < hit.road.hwAt(hit.s) + 0.3) continue;
+      let side = hw + Math.max(1, road.walk) * 0.5;
+      let px = cx + lx * side;
+      let pz = cz + lz * side;
+      const inRoad = () => ground.roads.query(px, pz, hit, 0) && Math.abs(hit.d) < hit.road.hwAt(hit.s) + 0.3;
+      // A pole never stands in a carriageway: where the corner is another road's, no signal. Nor
+      // where a lane of the crossing road passes: it steps back from the road, or there is none.
+      if (inRoad()) continue;
+      for (let k = 0; k < 4 && !clear(node, px, pz); k++) {
+        side += 0.6;
+        px = cx + lx * side;
+        pz = cz + lz * side;
+      }
+      if (inRoad() || !clear(node, px, pz)) continue;
       const head = hw / 2;
       const x = cx + lx * head;
       const z = cz + lz * head;

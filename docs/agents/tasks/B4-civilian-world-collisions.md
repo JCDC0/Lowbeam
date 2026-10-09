@@ -3,16 +3,23 @@
 Jc saw cars driving on the edges of the road and clipping into things at the side, and wants every car
 to have collisions. Measured with `node tools/clipbench.mjs` (Claude, 0.10.13: the traffic run for 70 s at
 seven places, 34,420 samples of civilians on their lanes), 118 samples had a civilian with a body circle
-inside a static shape, and 10 had the body off the carriageway:
+inside a static shape, and 10 had the body off the carriageway. 103 of the 118 were signal poles
+(Minatomachi 48, Ginza-machi 42, Shinmachi 13): Claude fixed those in 0.10.15 by keeping each pole
+clear of every lane through its crossing (`SIGNAL.clear`, 1.3 m; a pole steps back from the road, or is
+left out), which brought the bench to 15 clips. What is left, for the backend:
 
 | Clips | Where | What |
 |---|---|---|
-| 48 | the Minatomachi streets (`minato-a*`) | a traffic signal pole (r 0.18), a car's body 0.25 m or more into it |
-| 42 | the Ginza-machi streets | the same |
-| 13 | the Shinmachi streets | the same |
 | 6 | the Ginza-machi back streets | a 0.6 m circle (a vending machine or a pole), up to 0.6 m in |
 | 7 | the toll plaza islands on Route 1 and Route 2 (`c1-r`, `c2-f`) | a 1.3 by 24.4 m island box, up to 0.6 m in |
+| 2 | Ginza-machi, Dori | a 0.6 by 6 m box and a 0.6 m circle |
 | 10 off the carriageway | the Harbor and Route 18 ramps, Route 1 | a pickup, a hatch, a kei |
+
+A second audit of every lane's center line (200,159 samples, probing a circle of a car's half width)
+also found the ramps' guard rails (`bay-ramp-*`, `c3-ramp-*`: 0.3 by 6 m boxes) within 0.1 to 0.5 m of
+the first 30 m of the ramp lane, where it leaves the carriageway: the lane starts too close to the
+rail's end. Claude owns the rails (`highway.js`); say in your report which lanes you move and Claude
+moves the rail starts, or move the lane offsets in `net.js` yourself.
 
 Why: only wrecks, knocked cars and units driving free are checked against the static world
 (`collideWorld`, in `step` when `a.mode` is `wreck`, `knocked` or `a.free`). A civilian in `drive` mode

@@ -28,6 +28,18 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.15 (2026-10-09)
+
+Signal poles stay out of the lanes.
+
+- A civilian turning at a corner cut it and drove into the signal pole standing there: 103 of the 118
+  clips `tools/clipbench.mjs` measured. `placeSignals` now keeps each pole at least `SIGNAL.clear`
+  (1.3 m) from every lane that passes through its crossing (sampled every 1.5 m from 6 m before its
+  stop to 48 m after): it steps back from the road in 0.6 m steps, or the signal is left out, and it
+  is checked again against the other roads' carriageways. The bench is down to 15 clips in 34,420
+  samples, and a test holds that no lane center passes within a meter of a pole (12 samples of slack for
+  the tight corners). `tasks/B4-civilian-world-collisions.md` records the rest and the ramp rails.
+
 ## 0.10.14 (2026-10-09)
 
 Review of Gemini's 0.10.51, the roadblock barrier model: it passes (the G7 brief records it). The
