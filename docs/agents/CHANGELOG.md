@@ -28,6 +28,33 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.18 (2026-10-10)
+
+The lot search, and a police station in every district (C6 step 1, first part). Jc chose one per
+district.
+
+- `tools/lotsearch.mjs`: scans the roads a lot may front (`LOT_ROADS`: the avenues, the coast roads, the
+  pass and the city's frame, both sides every 6 m) for a pad that is on land, within 3 m of flat against
+  its road, clear of every other road (a street's center line 14 m from the pad, any other road 6 m from
+  its edge) and 14 m clear of every other lot and forecourt; `check` runs the rules on the lots already
+  in `layout.js`, `police` finds a station for each district with none near, and both print `LOTS`
+  lines. The old lots were laid with the streets generated round them, so their final street centers can
+  sit closer than 14 m (7 m at Tsurugi Works) and `check` says so; it is the new ones that must keep it.
+- `layout.js` exports `DISTRICTS` (the nine, the same objects the street generator took), `LOT_ROADS`
+  and `LOT_MARGIN`; `lotDefs` adds Harbor Ave and the city frame (Chuo-dori, Kurogane-dori, the Naikan
+  and Sotokan rings), and a closed road's lot rectangle now follows the loop.
+- Seven new `police_station` lots: Ginza (Chuo-dori), Shinmachi (Kurogane-dori), Minatomachi (Naikan
+  ring), Higashimachi (Sotokan ring), Hamacho (Sotokan ring, which also serves Kurogane Futo, 390 m
+  away: nothing fits in the port's grid), Higashi Kogyo (the coast road) and Nishimachi (West Ave). Ten
+  stations with the HQ, Kitamachi (Route 18) and Toge; every district has one within 1,100 m of its
+  center and eight of nine within 700 m (nothing fits beside Kitamachi's own streets; Route 18's station
+  serves it).
+- No street moved: a fingerprint of every road point (401 roads, 10,413 points) is the same before and
+  after, and the world build is unchanged (about 3 s for the pure stages in `npm run bench`; 10,483
+  buildings, 13,345 lights).
+- Tests in `tests/island/lots.test.mjs`: ten stations with the HQ first, every district served, no two
+  lots of a kind within 250 m, and the lots the search placed keep their margins.
+
 ## 0.10.17 (2026-10-10)
 
 Review of Gemini's 0.9.29 (barriers at the roadblocks) and 0.9.30 (wet grip, B3 part 1). Docs only; the

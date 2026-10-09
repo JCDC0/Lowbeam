@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { LOTS } from '../../src/world/layout.js';
+import { DISTRICTS, LOTS } from '../../src/world/layout.js';
+import { padDistance } from '../../src/world/ground.js';
 import { lotContents, lotFrame, toWorld } from '../../src/world/lots.js';
 import { scatterWorld } from '../../src/world/scatter.js';
 import { island } from '../island.mjs';
@@ -60,6 +61,58 @@ test('the scatter takes the lots\' colliders and lights, and builds nothing on a
       const dx = b.x - pad.cx;
       const dz = b.z - pad.cz;
       assert.ok(Math.abs(dx * pad.ux + dz * pad.uz) > pad.hw || Math.abs(dx * pad.vx + dz * pad.vz) > pad.hd, `a building stands on ${pad.lot.id}`);
+    }
+  }
+});
+
+/** The lots the placement search of 0.10.18 added come after the thirteen laid by hand. */
+const SEARCHED = LOTS.slice(13);
+
+test('the search added a police station for every district it could, and each district has one near', () => {
+  const stations = g.lots.filter((p) => p.lot.kind === 'police');
+  assert.equal(stations.length, 10);
+  assert.equal(stations[0].lot.id, 'police', 'the HQ stays first');
+  let close = 0;
+  for (const d of DISTRICTS) {
+    const nearest = Math.min(...stations.map((p) => Math.hypot(p.cx - d.center[0], p.cz - d.center[1])));
+    assert.ok(nearest < 1100, `${d.name} has no station within 1100 m (${nearest.toFixed(0)} m)`);
+    if (nearest < 700) close++;
+  }
+  assert.ok(close >= 8, `only ${close} districts have a station within 700 m`);
+});
+
+test('no two lots of a kind stand within 250 m of each other', () => {
+  for (let i = 0; i < g.lots.length; i++) {
+    for (let j = i + 1; j < g.lots.length; j++) {
+      const a = g.lots[i];
+      const b = g.lots[j];
+      if (a.lot.kind !== b.lot.kind) continue;
+      const d = Math.hypot(a.cx - b.cx, a.cz - b.cz);
+      assert.ok(d >= 250, `${a.lot.id} and ${b.lot.id} are ${d.toFixed(0)} m apart`);
+    }
+  }
+});
+
+test('the lots the search placed keep 14 m from every street and from every other lot', () => {
+  for (const lot of SEARCHED) {
+    const pad = g.lots.find((p) => p.lot === lot);
+    for (const road of g.roads.roads) {
+      if (road.id === lot.road) continue;
+      const p = road.path;
+      for (let i = 0; i < p.n; i += 1) {
+        const dx = p.x[i] - pad.cx;
+        const dz = p.z[i] - pad.cz;
+        const u = Math.abs(dx * pad.ux + dz * pad.uz) - pad.hw;
+        const v = Math.abs(dx * pad.vx + dz * pad.vz) - pad.hd;
+        const d = Math.hypot(Math.max(u, 0), Math.max(v, 0));
+        const min = road.def.cls === 'street' ? 13.5 : 5;
+        assert.ok(d >= min || Math.max(u, v) > 40, `${road.id} passes ${d.toFixed(1)} m from ${lot.id}`);
+      }
+    }
+    for (const other of [...g.lots, ...g.pads]) {
+      if (other === pad) continue;
+      const corner = [[pad.hw, pad.hd], [-pad.hw, pad.hd], [pad.hw, -pad.hd], [-pad.hw, -pad.hd]].map(([u, v]) => padDistance(other, pad.cx + pad.ux * u + pad.vx * v, pad.cz + pad.uz * u + pad.vz * v));
+      assert.ok(Math.min(...corner) > 14, `${lot.id} is too close to ${other.id}`);
     }
   }
 });

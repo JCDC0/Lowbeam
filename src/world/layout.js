@@ -470,12 +470,23 @@ export const LOTS = [
   { id: 'garage-mori', kind: 'garage', model: 'garage', name: 'MORI TUNING', sign: 'MORI TUNING', road: 'r18', near: [557, -1754], side: 'right', w: 34, d: 32 },
   { id: 'hideout-kawa', kind: 'hideout', model: 'hideout', name: 'KAWA YARD', road: 'east', near: [2244, 1148], side: 'left', w: 48, d: 40 },
   { id: 'hideout-mine', kind: 'hideout', model: 'hideout', name: 'MINE SHED', road: 'kuro', near: [47, -2444], side: 'right', w: 48, d: 40 },
+  { id: 'police-ginza', kind: 'police', model: 'police_station', name: 'GINZA POLICE STATION', sign: 'GINZA POLICE', road: 'chuo', near: [15, 1064], side: 'left', w: 36, d: 28 },
+  { id: 'police-shin', kind: 'police', model: 'police_station', name: 'SHINMACHI POLICE STATION', sign: 'SHINMACHI POLICE', road: 'dori', near: [-941, 1183], side: 'left', w: 36, d: 28 },
+  { id: 'police-minato', kind: 'police', model: 'police_station', name: 'MINATOMACHI POLICE STATION', sign: 'MINATO POLICE', road: 'naikan', near: [499, 969], side: 'right', w: 36, d: 28 },
+  { id: 'police-kitae', kind: 'police', model: 'police_station', name: 'HIGASHIMACHI POLICE STATION', sign: 'HIGASHI POLICE', road: 'sotokan', near: [870, 291], side: 'right', w: 36, d: 28 },
+  { id: 'police-hama', kind: 'police', model: 'police_station', name: 'HAMACHO POLICE STATION', sign: 'HAMACHO POLICE', road: 'sotokan', near: [48, 1900], side: 'left', w: 36, d: 28 },
+  { id: 'police-kogyo', kind: 'police', model: 'police_station', name: 'HIGASHI KOGYO POLICE STATION', sign: 'KOGYO POLICE', road: 'higashi', near: [2541, 440], side: 'left', w: 36, d: 28 },
+  { id: 'police-nishi', kind: 'police', model: 'police_station', name: 'NISHIMACHI POLICE STATION', sign: 'NISHIMACHI POLICE', road: 'west', near: [-2029, 967], side: 'right', w: 36, d: 28 },
 ];
-const lotDefs = [...HIGASHI, ...KITA, ...WEST, ...R18, ...EAST, ...KURO];
+const lotDefs = [...HIGASHI, ...KITA, ...WEST, ...R18, ...EAST, ...KURO, ...HARBOR, ...CITY_FRAME];
+/** The roads a lot may front: the avenues, the coast roads, the pass and the city's frame. */
+export const LOT_ROADS = lotDefs.map((d) => d.id);
+/** How far a lot keeps from every generated street, meters, so that the streets do not move for it. */
+export const LOT_MARGIN = 14;
 /** The rectangle of a lot, the same way ground.js makes its pad. @param {Lot} lot */
 function lotRect(lot) {
   const def = /** @type {RoadDef} */ (lotDefs.find((d) => d.id === lot.road));
-  const path = new Path(def.points, { step: 2 });
+  const path = new Path(def.points, { closed: !!def.closed, step: 2 });
   const q = path.sample(path.nearest(lot.near[0], lot.near[1]).s);
   const sign = lot.side === 'left' ? 1 : -1;
   const vx = q.tz * sign;
@@ -488,13 +499,41 @@ const lotRects = LOTS.map(lotRect);
 const onLot = (x, z) => lotRects.some((r) => {
   const dx = x - r.cx;
   const dz = z - r.cz;
-  return Math.abs(dx * r.ux + dz * r.uz) < r.hw + 14 && Math.abs(dx * r.vx + dz * r.vz) < r.hd + 14;
+  return Math.abs(dx * r.ux + dz * r.uz) < r.hw + LOT_MARGIN && Math.abs(dx * r.vx + dz * r.vz) < r.hd + LOT_MARGIN;
 });
 
 const CITY_STREET = {
   surface: 'asphalt', hw: 4.6, priority: 2.5, smooth: 20, cls: /** @type {const} */ ('street'), lanes: 2, limit: 40,
   lines: /** @type {const} */ ('center'), maxGrade: 0.09, lamps: lampsAll(34), walk: 2.4,
 };
+/**
+ * The nine districts the city generator lays its grids in: where each is (`center`, `inside`) and
+ * how its streets run. The landmark lots are placed against them (`tools/lotsearch.mjs`: a police
+ * station in each).
+ */
+export const DISTRICTS = [
+  { id: 'ginza', name: 'GINZA-MACHI', center: [0, 1290], angle: 0.08, spacing: [100, 92], bend: 7, breaks: 0.2,
+    inside: (x, z) => inNaikan(x, z, -26) },
+  { id: 'shin', name: 'SHINMACHI', center: [-700, 1300], angle: -0.32, spacing: [118, 104], bend: 15, breaks: 0.35,
+    inside: (x, z) => x < -24 && inSoto(x, z) && !inNaikan(x, z, 26) },
+  { id: 'minato', name: 'MINATOMACHI', center: [700, 1300], angle: 0.36, spacing: [124, 110], bend: 15, breaks: 0.35,
+    inside: (x, z) => x > 24 && inSoto(x, z) && !inNaikan(x, z, 26) },
+  { id: 'kitaw', name: 'KITAMACHI', center: [-900, 0], angle: 0.55, spacing: [92, 84], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+    inside: (x, z) => x < -20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
+  { id: 'kitae', name: 'HIGASHIMACHI', center: [900, 0], angle: -0.42, spacing: [96, 86], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+    inside: (x, z) => x > 20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
+  { id: 'hama', name: 'HAMACHO', center: [0, 2000], angle: 0, spacing: [150, 70], bend: 10, breaks: 0.3, hw: 3.9, priority: 2.4, walk: 1.6,
+    inside: (x, z) => z >= 1700 && inLoop(x, z) && !inSoto(x, z) },
+  // Outside the loop: the industrial east coast, the port behind the Bayshore Line and the west
+  // side under the mountains. The ridge between the loop and the forest valley stays wooded.
+  { id: 'kogyo', name: 'HIGASHI KOGYO', center: [2350, 400], angle: 0.04, spacing: [170, 130], bend: 12, breaks: 0.45, hw: 4.6, priority: 2.45, walk: 1.2,
+    inside: (x, z) => x > 1950 && z > -1500 && z < 2330 && !inLoop(x, z) && inland(x, z) > 70 },
+  { id: 'futo', name: 'KUROGANE FUTO', center: [0, 2290], angle: 0, spacing: [180, 95], bend: 6, breaks: 0.3, hw: 4.6, priority: 2.45, walk: 1.2,
+    inside: (x, z) => z > 2150 && Math.abs(x) < 1900 && !inLoop(x, z) && inland(x, z) > 40 },
+  { id: 'nishi', name: 'NISHIMACHI', center: [-2150, 800], angle: 0.18, spacing: [110, 95], bend: 20, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
+    inside: (x, z) => x < -1900 && x > -2290 && z > -300 && z < 1950 && !inLoop(x, z) },
+];
+
 const STREETS = cityStreets({
   seed: SEED,
   blocked: onLot,
@@ -508,28 +547,7 @@ const STREETS = cityStreets({
     // The pass runs on a ledge above the west side's streets: they keep clear of it.
     ...KURO.map((d) => ({ path: new Path(d.points, { step: 2 }), clear: d.hw + 30 })),
   ],
-  districts: [
-    { id: 'ginza', name: 'GINZA-MACHI', center: [0, 1290], angle: 0.08, spacing: [100, 92], bend: 7, breaks: 0.2,
-      inside: (x, z) => inNaikan(x, z, -26) },
-    { id: 'shin', name: 'SHINMACHI', center: [-700, 1300], angle: -0.32, spacing: [118, 104], bend: 15, breaks: 0.35,
-      inside: (x, z) => x < -24 && inSoto(x, z) && !inNaikan(x, z, 26) },
-    { id: 'minato', name: 'MINATOMACHI', center: [700, 1300], angle: 0.36, spacing: [124, 110], bend: 15, breaks: 0.35,
-      inside: (x, z) => x > 24 && inSoto(x, z) && !inNaikan(x, z, 26) },
-    { id: 'kitaw', name: 'KITAMACHI', center: [-900, 0], angle: 0.55, spacing: [92, 84], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
-      inside: (x, z) => x < -20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
-    { id: 'kitae', name: 'HIGASHIMACHI', center: [900, 0], angle: -0.42, spacing: [96, 86], bend: 22, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
-      inside: (x, z) => x > 20 && z < 1700 && inLoop(x, z) && !inSoto(x, z) },
-    { id: 'hama', name: 'HAMACHO', center: [0, 2000], angle: 0, spacing: [150, 70], bend: 10, breaks: 0.3, hw: 3.9, priority: 2.4, walk: 1.6,
-      inside: (x, z) => z >= 1700 && inLoop(x, z) && !inSoto(x, z) },
-    // Outside the loop: the industrial east coast, the port behind the Bayshore Line and the west
-    // side under the mountains. The ridge between the loop and the forest valley stays wooded.
-    { id: 'kogyo', name: 'HIGASHI KOGYO', center: [2350, 400], angle: 0.04, spacing: [170, 130], bend: 12, breaks: 0.45, hw: 4.6, priority: 2.45, walk: 1.2,
-      inside: (x, z) => x > 1950 && z > -1500 && z < 2330 && !inLoop(x, z) && inland(x, z) > 70 },
-    { id: 'futo', name: 'KUROGANE FUTO', center: [0, 2290], angle: 0, spacing: [180, 95], bend: 6, breaks: 0.3, hw: 4.6, priority: 2.45, walk: 1.2,
-      inside: (x, z) => z > 2150 && Math.abs(x) < 1900 && !inLoop(x, z) && inland(x, z) > 40 },
-    { id: 'nishi', name: 'NISHIMACHI', center: [-2150, 800], angle: 0.18, spacing: [110, 95], bend: 20, breaks: 0.4, hw: 3.9, priority: 2.4, walk: 1.6,
-      inside: (x, z) => x < -1900 && x > -2290 && z > -300 && z < 1950 && !inLoop(x, z) },
-  ],
+  districts: DISTRICTS,
 });
 
 /**

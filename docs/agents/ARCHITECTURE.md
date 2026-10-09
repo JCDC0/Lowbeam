@@ -10,8 +10,8 @@ The history, version by version, is `docs/agents/CHANGELOG.md`. This file says w
 A PS1-style night driving game in the browser, in the line of Night-Runners Prologue, Tokyo Xtreme
 Racer and Need for Speed: Most Wanted (2005). The current level is Kurogane, a 6 km island: a city on
 a bay, Route 1 (an expressway loop with toll plazas and two viaducts) round it, the Bayshore Line, a
-mountain pass, a forest and a lake, four gas stations, thirteen landmark lots (police HQ and two
-district stations, five garages, five hideouts). Five cars: Hayate RS-4 (rally tuner), Rampart 440 (muscle), Vespera GT (exotic),
+mountain pass, a forest and a lake, four gas stations, twenty landmark lots (the police HQ and nine
+stations, five garages, five hideouts). Five cars: Hayate RS-4 (rally tuner), Rampart 440 (muscle), Vespera GT (exotic),
 Tsurugi GT-X (modern GT), Hikari 300ZR (1984 turbo coupe). Traffic, street racers with duels, a rally
 time attack, the police helicopter and a first police pursuit are in. The police, the pursuit and
 its HUD follow Most Wanted (2005); the world, the rendering and the driving follow Night-Runners
@@ -28,6 +28,7 @@ Prologue (`docs/DESIGN.md`).
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
 | Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
+| Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
 | Music track list | `npm run music` (`node tools/music-manifest.mjs`; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
@@ -117,7 +118,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shop signs, awnings, noise |
 | `src/render/cameras.js` | `CameraRig`: chase, car, hood, bumper, cockpit |
 | `src/render/sky.js`, `daylight.js` | The sky (`SkyView`: a gradient dome with banded clouds, stars, moon, sun) and the clock (`skyLook(hour, cloud)`: palettes, light, fog, lamps) |
-| `src/world/layout.js` | Authored data: roads, viaducts, the city frame, ramps, stations, tolls, lots, zones, rally, `AREA_JP` |
+| `src/world/layout.js` | Authored data: roads, viaducts, the city frame, ramps, stations, tolls, lots (`LOTS`, `LOT_ROADS`, `LOT_MARGIN`), the nine `DISTRICTS`, zones, rally, `AREA_JP` |
 | `src/world/roads.js`, `spline.js`, `ground.js` | Road profiles (smoothing, grade clamp, lifts, junction blending), the arc-length path, `Ground.at(x, z, y)` |
 | `src/world/heightfield.js`, `island.js` | Terrain and the coast |
 | `src/world/citygen.js`, `junctions.js`, `merge.js`, `roadgen.js` | City streets, junctions, slip roads, generated road shapes |
@@ -159,11 +160,11 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
 | `assets/music/` | The recorded soundtrack and `tracks.json`, the list the game plays from (mood, title, measured loudness, vocal) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
-| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
+| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
 ## Current state (0.10.51)
 
-459 tests pass; the type check is clean. By area:
+462 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -197,7 +198,7 @@ direction signs (`guide-signs.js`) on the avenues before the crossings where two
 crossing drawn as arrows, each way out labeled in kanji and romaji with the district or zone it
 leads to (no place twice on a sign), never with a side street between the sign and its crossing.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
-pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations, Kitamachi and Toge, on Gemini's `police_station`: two storeys, a lit canopy with the red globe, a roof helipad and a mast). Lights are per-pixel pools in seven
+pylon, kiosk, pit bay). Twenty landmark lots with Blender models (nine stations on Gemini's `police_station`: two storeys, a lit canopy with the red globe, a roof helipad and a mast; Kitamachi, on Route 18 in the north, and Toge on the pass, and one in each of Ginza, Shinmachi, Minatomachi, Higashimachi, Hamacho, Higashi Kogyo and Nishimachi; the port's Futo is served from Hamacho's, ten stations with the HQ). Lights are per-pixel pools in seven
 bands, street lamps as spot cones, each lamp within 190 m wearing a glow (a flare, `LampGlow`; off by
 day, bigger and brighter in rain); about 13,350 lights. World build about 6 to 8 s. A downtown view is
 about 124 draw calls and 500k triangles.
@@ -413,7 +414,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - Civilians driving on their lanes are not checked against the static world: they cut corners, 15 clips
   in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
   (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
-- The map is thin outside the city: 3 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
+- The map is thin outside the city: 10 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
   to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
 - Nothing has been checked at real frame rates on a gaming desktop yet.

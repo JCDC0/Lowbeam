@@ -19,7 +19,7 @@ and repair stations around the island.
 
 | What | Now | Target | Notes |
 |---|---|---|---|
-| Police stations | 3 | the HQ and one in each of the nine districts (10) | the three that exist count; the others are `police_station` lots; each has a helipad |
+| Police stations | 10 (done, 0.10.18) | the HQ and one in each of the nine districts (10) | the three that exist count; the others are `police_station` lots; each has a helipad |
 | Hideouts | 5 | 12 | spread over the island, some out by the lake, the pass and the port |
 | Repair garages | 5 | 12 | at least one in every district, along the avenues |
 | Gas stations | 4 | 10 | on Route 1's service roads, the avenues and the pass |
@@ -65,8 +65,20 @@ Kurogane Futo and Nishimachi (`AREA_JP`).
 Each step is one commit with its tests and a look at the game from the road; none of it waits on Gemini
 except the model variants.
 
-## Question for Jc
+## Decided
 
-"One per map": one police station in every district (the reading above), or one more per "map" meaning
-per region (north, south, east, west) of the island? The plan stays the same for the lot generator
-either way; only the count differs.
+Jc (2026-10-10): one police station per district, as read above.
+
+## Progress
+
+- Step 1, first part, done in 0.10.18: `tools/lotsearch.mjs` (node tools/lotsearch.mjs check | police),
+  `DISTRICTS`, `LOT_ROADS` and `LOT_MARGIN` in `layout.js`, and seven new stations: Ginza, Shinmachi,
+  Minatomachi, Higashimachi, Hamacho, Higashi Kogyo, Nishimachi. Ten stations with the HQ, Kitamachi and
+  Toge. Kurogane Futo has none of its own (nothing fits in the port's grid) and is served from
+  Hamacho's, 390 m away; Kitamachi's own streets leave no frontage, so Route 18's station serves it.
+- What the tool teaches for the next kinds: the avenues and the city's frame roads are the only frontage
+  there is inside the ring, and they give a spot within 200 to 400 m of a district's center; a pad is
+  accepted at 3 m from flat, and the old lots would not pass the tool's own clearance (their streets
+  were generated round them), so test the new ones only. To add a kind, add a request beside `police()`
+  in the tool (its size, its names, the rule that picks a district) and paste what it prints.
+- Next: the stakeout spots (`world/stakeouts.js`), then gas stations, garages and hideouts.
