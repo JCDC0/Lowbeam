@@ -16,6 +16,14 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.12 (2026-10-09)
+
+Review of Gemini's 0.10.50; the district stations in the game.
+
+- Kitamachi and Toge stand on `police_station` (G7) instead of the garage model: 36 by 28 m lots,
+  the lit canopy and red globe, the station sign, a roof helipad where `helipadOf` expects it. The G7
+  brief records the review; the barrier is next.
+
 ## 0.10.11 (2026-10-09)
 
 Street lamps glow.

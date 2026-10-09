@@ -32,3 +32,13 @@ The sawhorse barrier the roadblocks stand behind, between the cars:
 - Check in `tools/props.html` beside a police car.
 
 Stop after each model for Claude's review.
+
+## Review: the district station (Claude, 0.10.12)
+
+Passes and is in the game: Kitamachi and Toge stand on `police_station` (36 by 28 m lots in
+`layout.js`). Checked in the prop viewer (798 triangles, 16 materials, 12 colliders, 10 lights, no
+problems) and from the road at night: the lit canopy with the red globe, the sign (KITAMACHI POLICE,
+TOGE POLICE), the barred windows, the mast with its beacon and the boundary wall read well; the roof's
+helipad (an H in a yellow ring, green edge lights) sits at y 7.5, x 0, z -6 where `helipadOf` puts the
+helicopter's pad. Note for the next model: the facade is dark and low in contrast at night (blue trim
+on grey); a lit window row or two on the ground floor would read from further down the road.

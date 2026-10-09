@@ -448,8 +448,8 @@ const inNaikan = (x, z, m) => ((x - NAIKAN.x) / (NAIKAN.rx + m)) ** 2 + ((z - NA
  * away from it), with the model's front on the road. The street generator keeps clear of them.
  * `sign` is the text painted on the model's sign. Logic for them (the police, the helicopter,
  * hiding) comes later and finds them here. The headquarters comes first: the code that wants "the
- * police HQ" takes the first police lot. The two district stations (0.9.88) stand on the garage
- * model under a police sign until Gemini's district station (G7) lands.
+ * police HQ" takes the first police lot. The two district stations (0.9.88) have their own model,
+ * `police_station` (G7, 0.10.50), 36 by 28 m with a helipad on the roof.
  * Every lot was placed with a search that keeps it on land, flat and 14 m clear of every street the
  * city generator lays, so adding one does not move a single street.
  * @typedef {{ id: string, kind: 'police' | 'garage' | 'hideout', model: string, name: string, sign?: string,
@@ -464,8 +464,8 @@ export const LOTS = [
   { id: 'hideout-futo', kind: 'hideout', model: 'hideout', name: 'FUTO WAREHOUSE', road: 'higashi', near: [2430, 2120], side: 'right', w: 48, d: 40 },
   { id: 'hideout-kita', kind: 'hideout', model: 'hideout', name: 'KITA WAREHOUSE', road: 'kita', near: [1650, -2470], side: 'right', w: 48, d: 40 },
   { id: 'hideout-nishi', kind: 'hideout', model: 'hideout', name: 'NISHI WAREHOUSE', road: 'west', near: [-2240, 640], side: 'right', w: 48, d: 40 },
-  { id: 'police-kita', kind: 'police', model: 'garage', name: 'KITAMACHI POLICE STATION', sign: 'KITAMACHI POLICE', road: 'r18', near: [-321, -862], side: 'right', w: 36, d: 32 },
-  { id: 'police-toge', kind: 'police', model: 'garage', name: 'KURO PASS POLICE STATION', sign: 'TOGE POLICE', road: 'kuro', near: [-2258, -2045], side: 'left', w: 36, d: 32 },
+  { id: 'police-kita', kind: 'police', model: 'police_station', name: 'KITAMACHI POLICE STATION', sign: 'KITAMACHI POLICE', road: 'r18', near: [-321, -862], side: 'right', w: 36, d: 28 },
+  { id: 'police-toge', kind: 'police', model: 'police_station', name: 'KURO PASS POLICE STATION', sign: 'TOGE POLICE', road: 'kuro', near: [-2258, -2045], side: 'left', w: 36, d: 28 },
   { id: 'garage-sakura', kind: 'garage', model: 'garage', name: 'SAKURA MOTORS', sign: 'SAKURA MOTORS', road: 'west', near: [-1395, 1200], side: 'right', w: 34, d: 32 },
   { id: 'garage-mori', kind: 'garage', model: 'garage', name: 'MORI TUNING', sign: 'MORI TUNING', road: 'r18', near: [557, -1754], side: 'right', w: 34, d: 32 },
   { id: 'hideout-kawa', kind: 'hideout', model: 'hideout', name: 'KAWA YARD', road: 'east', near: [2244, 1148], side: 'left', w: 48, d: 40 },

@@ -196,7 +196,7 @@ direction signs (`guide-signs.js`) on the avenues before the crossings where two
 crossing drawn as arrows, each way out labeled in kanji and romaji with the district or zone it
 leads to (no place twice on a sign), never with a side street between the sign and its crossing.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
-pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
+pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations, Kitamachi and Toge, on Gemini's `police_station`: two storeys, a lit canopy with the red globe, a roof helipad and a mast). Lights are per-pixel pools in seven
 bands, street lamps as spot cones, each lamp within 190 m wearing a glow (a flare, `LampGlow`; off by
 day, bigger and brighter in rain); about 13,350 lights. World build about 6 to 8 s. A downtown view is
 about 124 draw calls and 500k triangles.
