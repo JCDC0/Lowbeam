@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.50 (2026-10-09)
+
+The district police station model (police_station).
+
+- `tools/blender/police_station.py` and `assets/models/police_station.json`: a two-storey Japanese district
+  police station on a 36 by 28 m lot, facing +z toward the street.
+- Main block 22 by 12 m with a 7.4 m roof deck, blue trim bands, a lit entrance canopy with two support columns,
+  a koban red globe lamp over the door, the station name sign board (sign:police), and barred ground-floor windows.
+- Helipad centered at local x = 0, y = 7.5, z = -6 exactly where helipadOf in heli.js expects it, with a painted
+  yellow ring, an H marking, 12 perimeter green lamps, and edge lights.
+- East wing carries a roof stairhouse and a steel radio mast up to y = 18 m with communications dishes and a red
+  aviation obstruction beacon.
+- Forecourt with three marked parking bays for police cars, concrete wheel stops, a floodlight pole, gate posts
+  and boundary walls with colliders.
+- 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
+
 ## 0.10.10 (2026-10-09)
 
 Dawn and dusk are on their own sides of the sky.
