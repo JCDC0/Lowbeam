@@ -28,6 +28,15 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.16 (2026-10-09)
+
+Plan: `tasks/B5-police-dispatch.md`, from Jc's list. The police stations dispatch the units from their
+bays; when the pursuit runs low there is a one-minute wait with one car left on the player (and an
+empty road if it is destroyed) before the nearest station sends more; hidden undercover cars wait at
+stakeout spots (Claude places them, in C6) and wake for a speeder; and the street racers get the
+player's pursuit, a heat of their own to 5 with the same rosters, roadblocks and up to three
+helicopters, ending in an escape, a bust or a wreck. Docs only.
+
 ## 0.10.15 (2026-10-09)
 
 Signal poles stay out of the lanes.

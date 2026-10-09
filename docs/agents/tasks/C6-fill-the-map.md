@@ -54,7 +54,10 @@ Kurogane Futo and Nishimachi (`AREA_JP`).
 
 ## 3. Order
 
-1. The lot generator with the test, and the districts' police stations (they use the model that exists).
+1. The lot generator with the test, and the districts' police stations (they use the model that exists),
+   and the stakeout spots for B5's hidden undercover cars (`world/stakeouts.js`, pure: about 16 positions
+   on lay-bys, side street mouths, car parks and beside the toll plazas, each with a yaw and the road it
+   watches, 80 m from a station and clear of every lane).
 2. Gas stations, garages, hideouts, then the three model variants of each that Gemini makes (`G8`: two
    more garages, two more hideouts and a second police station in the district style, so copies differ).
 3. Suburbs and the village, then the port, then the new building kinds.
