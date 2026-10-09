@@ -28,6 +28,35 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.20 (2026-10-10)
+
+The stakeout spots for B5 (C6 step 1, second part).
+
+- `src/world/stakeouts.js`: eighteen spots where an unmarked car can wait, pure data with `placeStakeouts(ground)`
+  adding the height; `world.stakeouts` carries them to the drive. Each has an id, a kind, a name, a position,
+  a yaw turned toward the road and the ids of the roads it watches (`lane.road.id`). Eight lay-bys on Route 18,
+  Harbor, West and East Ave and the Higashi and Kita coast roads, four shoulders behind Route 1's rail, three
+  corners by the toll plazas, two side street mouths on the Naikan ring and the foot of Kuro Pass.
+- `tools/stakeoutsearch.mjs` finds them from a hint and a radius each: on land, level with the road it
+  watches (never beside a deck), the car's footprint off every lane and every static shape, 80 m from every
+  police station, 250 m from each other, and a clear line to at least four of the six stretches of road it can
+  see (`clearLine`, as the police see). Coin car parks are left out: their bays are full of colliders.
+- Tests in `tests/island/stakeouts.test.mjs` (the places group): the counts and kinds, the heights, on land
+  and level, the spacing, a car's footprint clear of lanes, pads and shapes, and the view of the road; checked
+  to fail by moving a spot onto Route 18.
+- Looked at in the game with an unmarked car parked at three of them: on Route 18's verge, behind the rail on
+  Route 1 and at the curb of a city side street. Seen: a parked car glows (its brake lights, `stepParked` sets
+  `brake = 1`, and its headlamp flares), which would give a hidden car away; the backend's part 3 sets a
+  `stakeout` flag and `brake = 0`, and `traffic/render.js` (Claude's) will skip the lamps for it
+  (`tasks/B5-police-dispatch.md`).
+
+## 0.10.19 (2026-10-10)
+
+The RAIN AUDIO row. Settings built the new rain channel's row from `CHANNELS` but named it from `CH_NAMES` in
+`ui/menus.js`, which had no entry for it, so the row would have read undefined: it now says RAIN AUDIO (the
+backend's 0.9.31 asked for it; I had said the row would come by itself, which was wrong). Seen in Settings at
+1280 by 720: the row, its pill and its meter at 85 %, above BACK.
+
 ## 0.10.18 (2026-10-10)
 
 The lot search, and a police station in every district (C6 step 1, first part). Jc chose one per

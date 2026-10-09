@@ -261,6 +261,7 @@ export function settingsScreen(ui, stage = null) {
     effects: 'TIRES & WIND FX',
     ambience: 'ENVIRONMENT SOUNDS',
     music: 'SOUNDTRACK MUSIC',
+    rain: 'RAIN AUDIO',
   };
   const HEIGHTS = RENDER_HEIGHTS;
 

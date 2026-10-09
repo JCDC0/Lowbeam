@@ -14,3 +14,4 @@ import './island/gantries.test.mjs';
 import './island/toll.test.mjs';
 import './island/world.test.mjs';
 import './island/rain-cover.test.mjs';
+import './island/stakeouts.test.mjs';

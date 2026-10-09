@@ -66,6 +66,18 @@ Read `src/police/director.js` (`PoliceDirector`, `backup`, `ASSIGNED_BY_HEAT`, t
   the player has to be speeding to wake it. Smart play (slow past, or take another road) avoids it.
 - Tests: a stakeout wakes for a speeder and not for a car at the limit, a racer is taken up, it is not on
   the minimap list until it is awake, it is put away when far.
+- The spots are done (Claude, 0.10.20): `world.stakeouts`, eighteen of `{ id, kind, name, x, y, z, yaw,
+  roads }` (`kind` one of `layby`, `route1`, `toll`, `mouth`, `pass`; `roads` are the ids to match with
+  `a.lane.road.id`: Route 1's spots list both carriageways, `c1-f` and `c1-r`). `yaw` points the nose
+  toward the road. Read them in `Drive` from `world.stakeouts` and give `TrafficSim` the list; spawn a
+  unit with `spawnParked('police-fast', spot, lane, s)` where `lane` is `net.lanesAt(x, z, y, 16)[0]`
+  (the spot is a few meters off the lane, so pass a reach). Spawn them only while the player is within
+  500 m: the sim removes an agent farther than `KEEP` from the player.
+- What the game shows when one is parked (checked in the browser): the car glows. `stepParked` sets
+  `brake = 1`, so its tail lamps burn, and the nearest cars wear headlamp flares. A hidden car must be
+  dark: give the agent `stakeout: true`, keep `brake` at 0 for it (`stepParked` must not set it), and
+  Claude will make `traffic/render.js` skip the lamp flares and beams for a `stakeout` agent until it
+  wakes (tell me the flag's name when it exists; the lamp change is one commit of mine).
 
 ## 4. A heat for the racers
 

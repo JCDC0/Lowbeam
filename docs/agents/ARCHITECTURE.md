@@ -128,6 +128,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/gantries.js`, `build-gantries.js` | Route 1's sign gantries before every exit and their green guide signs |
 | `src/world/gas-station.js` | The Japanese gas stations |
 | `src/world/lots.js`, `build-lots.js` | Landmark lots and the Blender model loader |
+| `src/world/stakeouts.js` | The undercover cars' eighteen waiting spots (`STAKEOUTS`, `placeStakeouts(ground)`, `world.stakeouts`), found by `tools/stakeoutsearch.mjs` |
 | `src/world/build-*.js` | Meshes: terrain, roads, bridges, trees |
 | `src/world/markings.js` | Zebra crossings and stop lines at the town's junctions |
 | `src/world/vending.js`, `build-vending.js` | The street vending machines |
@@ -160,11 +161,11 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
 | `assets/music/` | The recorded soundtrack and `tracks.json`, the list the game plays from (mood, title, measured loudness, vocal) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
-| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
+| `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `stakeoutsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
 ## Current state (0.10.51)
 
-471 tests pass; the type check is clean. By area:
+477 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -198,7 +199,7 @@ direction signs (`guide-signs.js`) on the avenues before the crossings where two
 crossing drawn as arrows, each way out labeled in kanji and romaji with the district or zone it
 leads to (no place twice on a sign), never with a side street between the sign and its crossing.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
-pylon, kiosk, pit bay). Twenty landmark lots with Blender models (nine stations on Gemini's `police_station`: two storeys, a lit canopy with the red globe, a roof helipad and a mast; Kitamachi, on Route 18 in the north, and Toge on the pass, and one in each of Ginza, Shinmachi, Minatomachi, Higashimachi, Hamacho, Higashi Kogyo and Nishimachi; the port's Futo is served from Hamacho's, ten stations with the HQ). Lights are per-pixel pools in seven
+pylon, kiosk, pit bay). Twenty landmark lots with Blender models (nine stations on Gemini's `police_station`: two storeys, a lit canopy with the red globe, a roof helipad and a mast; Kitamachi, on Route 18 in the north, and Toge on the pass, and one in each of Ginza, Shinmachi, Minatomachi, Higashimachi, Hamacho, Higashi Kogyo and Nishimachi; the port's Futo is served from Hamacho's, ten stations with the HQ). Eighteen stakeout spots for the undercover cars of B5 (`world/stakeouts.js`: eight lay-bys on the avenues and coast roads, four shoulders behind Route 1's rail, three corners by the toll plazas, two side street mouths in the city, the foot of Kuro Pass; each off every lane, with a clear line to the road it watches, 80 m from a station, 250 m from each other); nothing uses them until the backend's part 3. Lights are per-pixel pools in seven
 bands, street lamps as spot cones, each lamp within 190 m wearing a glow (a flare, `LampGlow`; off by
 day, bigger and brighter in rain); about 13,350 lights. World build about 6 to 8 s. A downtown view is
 about 124 draw calls and 500k triangles.

@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { Ground } from './ground.js';
 import { scatterWorld } from './scatter.js';
+import { placeStakeouts } from './stakeouts.js';
 import { LightGrid, sampleLight } from '../render/bake.js';
 import { addBeamLight, psxUniforms } from '../render/psx.js';
 import { installPools } from '../render/pools.js';
@@ -56,6 +57,7 @@ export class World {
     /** Every Blender model loaded for the world (the landmarks, the police helicopter, the spike strip). */
     w.models = models;
     w.scatter = scatterWorld(w.ground, { models });
+    w.stakeouts = placeStakeouts(w.ground);
     w.grid = new LightGrid(w.scatter.lights);
     installPools(w.scatter.lights, WORLD_HALF + 100);
     w.rain.setCover(new CoverGrid(coverAt(w.ground, placeRoofs(w.scatter.stations, w.scatter.highway.plazas))));
@@ -123,6 +125,8 @@ export class World {
     this.ground = null;
     /** @type {ReturnType<typeof scatterWorld>} */
     this.scatter = null;
+    /** Where the undercover cars wait, with the ground's height under each (world/stakeouts.js). @type {import('./stakeouts.js').StakeoutSpot[]} */
+    this.stakeouts = [];
     /** @type {LightGrid} */
     this.grid = null;
     /** @type {{ mesh: THREE.InstancedMesh, x: number, z: number }[]} */

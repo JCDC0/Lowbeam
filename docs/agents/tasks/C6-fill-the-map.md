@@ -81,4 +81,7 @@ Jc (2026-10-10): one police station per district, as read above.
   accepted at 3 m from flat, and the old lots would not pass the tool's own clearance (their streets
   were generated round them), so test the new ones only. To add a kind, add a request beside `police()`
   in the tool (its size, its names, the rule that picks a district) and paste what it prints.
-- Next: the stakeout spots (`world/stakeouts.js`), then gas stations, garages and hideouts.
+- Step 1, second part, done in 0.10.20: the stakeout spots (`world/stakeouts.js`, `tools/stakeoutsearch.mjs`),
+  eighteen: eight lay-bys, four Route 1 shoulders, three toll corners, two side street mouths, the foot of
+  the pass. No coin car park: their bays are full of colliders (a spot there would need an empty bay).
+- Next: gas stations, garages and hideouts (step 2), then the model variants.
