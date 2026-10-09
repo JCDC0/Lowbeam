@@ -9,7 +9,7 @@ makes it. Claude reviews every commit before the next task starts.
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
 | Orchestrator | Claude (Claude Code) | 0.9.0 to 0.9.19 and 0.9.70 to 0.9.99 (used), now 0.10.0 to 0.10.49 | Plans and briefs, reviews and verifies every commit, keeps the guide true; owns rendering, the world, the UI and fitting assets into the game |
-| Backend | Gemini 3.8 Flash (Antigravity) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.49 (0.9.33 next) | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
+| Backend | Gemini 3.8 Flash (Antigravity) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.49 (0.9.34 next) | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
 | Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69, then 0.10.50 to 0.10.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
 
 Ask Claude for a new range when yours runs out.
@@ -41,7 +41,7 @@ and leaves `package.json` alone.
 | [B2-driving-patch.md](B2-driving-patch.md) | Backend (Gemini) | done (0.9.20 to 0.9.28) | From Jc's test drive: tougher cars, bumped cars that drive on or get out of the way, every car solid (no phasing into roadblocks), racers that brake, police that drive like people, the assigned pool and reinforcements, helicopters that refuel, louder traffic and exhaust |
 | [C3-patch-queue.md](C3-patch-queue.md) | Claude | done (0.9.81 to 0.9.96; part 7's banners came with B2) | From the same drive: the Kurogane Line median, Most Wanted's radar, the pursuit HUD after Jc's sketch, the HUD fishnet, vignette and blur, skid marks and smoke, more stations, hideouts and garages; then Route 1's sign gantries, the traffic signals, zebra crossings, vending machines, utility poles, direction signs |
 | [C5-weather.md](C5-weather.md) | Claude | rain done (0.10.3), the day and night cycle with clouds done (0.10.5); what is left of the look is in the brief | Rain and a day and night cycle, as visuals first |
-| [B3-wet-weather.md](B3-wet-weather.md) | Backend (Gemini) | parts 1 and 2 done (0.9.30, 0.9.31); part 3 (0.9.33) next | What rain and the hour do to the drive: grip, sound, traffic, the racers and the police |
+| [B3-wet-weather.md](B3-wet-weather.md) | Backend (Gemini) | parts 1, 2 and 3 done (0.9.30, 0.9.31, 0.9.33); stop for review | What rain and the hour do to the drive: grip, sound, traffic, the racers and the police |
 | [C6-fill-the-map.md](C6-fill-the-map.md) | Claude (and Gemini for the model variants) | step 1 first part done (0.10.18: the lot search, ten police stations); the stakeouts, gas stations, garages and hideouts next | More buildings outside the city, a police station in every district, many more hideouts, garages and gas stations |
 | [B5-police-dispatch.md](B5-police-dispatch.md) | Backend (Gemini), with Claude's stakeout spots and HUD | after B4 | Stations dispatch the police, a one-minute resupply with one car left on the player, hidden undercover cars, and a heat system for the street racers up to heat 5 and three helicopters |
 | [B4-civilian-world-collisions.md](B4-civilian-world-collisions.md) | Backend (Gemini) | after B3 part 3 | Civilians that turn along real curves, collide with the world and stay on the road, measured by `tools/clipbench.mjs` |

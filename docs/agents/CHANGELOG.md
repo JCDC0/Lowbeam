@@ -999,6 +999,19 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.33 (2026-10-10)
+
+Traffic and police in rain (B3 part 3).
+
+- `src/police/director.js`: police sight distance scales with fog far distance (`weatherLook(level).fogFar / 420`), dropping chase sight range from 150 m dry to 82.1 m in a storm (230 m fogFar). Patrol notice radius scales to 85 % in a storm (60 m dry to 51 m storm). Searching cone distance and around radius scale by the same notice factor.
+- `src/police/heli.js`: helicopter searchlight reaches 70 % as far in a storm (190 m dry to 133 m storm).
+- `src/traffic/sim.js`:
+  - Civilians drive 12 % slower in a storm (`v0` desired speed scaled by `1 - 0.12 * weather`).
+  - IDM following model adjusts in wet weather: minimum gap `s0` and safe time headway `T` increase by 25 %, comfortable braking deceleration `b` drops by 15 %, and earlier brake threshold (-0.9 m/s² in storm vs -1.2 m/s² dry) causes traffic to follow further back and brake earlier.
+  - Police and rival grip drops in rain: lateral cornering grip in `stepChase` scales down to 75 % (8 m/s² dry to 6 m/s² in a storm), `curveSpeed` grip drops to 75 %, and knocked slide grip scales down to 75 %.
+- `src/drive.js`: passes world weather into `police.update`, `traffic.update`, and `heliWorld.weather`.
+- `tests/wet-traffic.test.mjs`: added 6 tests covering police sight distance dry (150 m) vs storm (82.1 m), patrol notice radius dry (60 m) vs storm (51 m), unit losing the player in a storm at 100 m, helicopter searchlight range reaching 70 % in storm, civilian speed reduction by 12 % with earlier braking, and police cornering grip falling to 75 % in a storm.
+
 ## 0.9.32 (2026-10-10)
 
 Roadblock barriers lie down, stay silent and stay out of the traffic count.

@@ -15,6 +15,7 @@ import { Heat, noticesSpeeding, noticesTrap } from './heat.js';
 import { roster, UNIT_BY_ID, helisFor } from './units.js';
 import { planSpikes, shouldSetRoadblock, tooNearBlock, hitSpikes, spikePenalty } from './roadblock.js';
 import { Pursuit } from '../race/pursuit.js';
+import { weatherLook } from '../render/weather.js';
 
 /** A unit with a clear line sees the player this far while chasing, meters. */
 export const SIGHT_RANGE = 150;
@@ -50,6 +51,7 @@ const BLOCK_GONE = 600;
  *   toll?: number | null, duel?: boolean, hitPolice?: number, wrecked?: number, destroyed?: string[],
  *   hiding?: boolean, money?: number,
  *   planBlock?: (heat: number) => any,
+ *   weather?: number,
  * }} PoliceWorld
  *   `toll` is the km/h of a toll gate crossed this frame (one event, not a state), `hitPolice`
  *   yen of damage to police cars this frame, `wrecked` civilians wrecked, `destroyed` the kind of
@@ -70,13 +72,17 @@ const BLOCK_GONE = 600;
  * SIGHT_RANGE; on patrol, all round within PATROL_RANGE; searching after it lost them, only in
  * its cone ahead or right beside it, so the player can slip past behind it.
  * @param {UnitSight} u @param {{ x: number, z: number }} p @param {'chase' | 'search' | 'patrol'} mode
+ * @param {number} [weather]
  */
-export function unitSees(u, p, mode) {
+export function unitSees(u, p, mode, weather = 0) {
   if (!u.clear) return false;
-  if (mode === 'chase') return u.d < SIGHT_RANGE;
-  if (mode === 'patrol') return u.d < PATROL_RANGE;
-  if (u.d < AROUND_RANGE) return true;
-  if (u.d > CONE_RANGE) return false;
+  const look = weatherLook(weather);
+  const sightScale = look.fogFar / 420;
+  if (mode === 'chase') return u.d < SIGHT_RANGE * sightScale;
+  const noticeScale = 0.85 + 0.15 * ((look.fogFar - 230) / (420 - 230));
+  if (mode === 'patrol') return u.d < PATROL_RANGE * noticeScale;
+  if (u.d < AROUND_RANGE * noticeScale) return true;
+  if (u.d > CONE_RANGE * noticeScale) return false;
   const bearing = Math.atan2(p.x - u.x, p.z - u.z);
   let off = bearing - u.yaw;
   off = Math.atan2(Math.sin(off), Math.cos(off));
@@ -144,6 +150,7 @@ export class PoliceDirector {
       detect: { level: 0, watchers: [] },
     };
     const mode = !this.active ? 'patrol' : /** @type {Pursuit} */ (this.pursuit).pstate === 'cooldown' ? 'search' : 'chase';
+    const weather = w.weather ?? 0;
     let nearest = Infinity;
     let seen = false;
     let watcher = null;
@@ -151,7 +158,7 @@ export class PoliceDirector {
     for (const u of w.units) {
       // Shaving past a unit fast enough is as good as hitting it.
       if (u.d < NEAR_MISS.range && Math.hypot((p.vx ?? 0) - (u.vx ?? 0), (p.vz ?? 0) - (u.vz ?? 0)) > NEAR_MISS.speed) nearMiss = true;
-      if (!unitSees(u, p, mode)) continue;
+      if (!unitSees(u, p, mode, weather)) continue;
       seen = true;
       out.detect.watchers.push(u.id);
       if (u.d < nearest) {

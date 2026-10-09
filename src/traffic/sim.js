@@ -117,13 +117,14 @@ const CONTACT_RANGE = 6;
 const PLAYER_HALF = 2.2;
 const RAM_REACH = 1.5;
 
-/** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] */
-function idm(v, v0, accel, gap, closing, rival = false) {
+/** IDM acceleration. @param {number} v @param {number} v0 @param {number} accel @param {number} gap @param {number} closing @param {boolean} [rival] @param {number} [weather] */
+function idm(v, v0, accel, gap, closing, rival = false, weather = 0) {
   const free = 1 - Math.pow(v / Math.max(v0, 0.1), 4);
   if (gap === Infinity) return accel * free;
-  const s0 = rival ? 1.0 : MIN_GAP;
-  const T = rival ? 0.6 : 1.25;
-  const b = rival ? 5.0 : 3.2;
+  const wet = rival ? 0 : clamp(weather, 0, 1);
+  const s0 = rival ? 1.0 : MIN_GAP * (1 + 0.25 * wet);
+  const T = rival ? 0.6 : 1.25 * (1 + 0.25 * wet);
+  const b = rival ? 5.0 : 3.2 * (1 - 0.15 * wet);
   const wanted = s0 + Math.max(0, v * T + (v * closing) / (2 * Math.sqrt(accel * b)));
   return accel * (free - (wanted / Math.max(gap, 0.2)) ** 2);
 }
@@ -148,6 +149,8 @@ export class TrafficSim {
     this.patrolTarget = patrols;
     /** 1 to 5 while a pursuit is on: how hard the units drive, and whether they ram. */
     this.heat = 0;
+    /** Weather level, 0 dry to 1 a storm. */
+    this.weather = 0;
     /** The civilians' horns and their panic in a pursuit (manners.js); `takeSounds` empties it. */
     this.manners = new Manners(seed + 14);
     /** When each civilian last blew its warning horn (`honk`), by id. @type {Map<number, number>} */
@@ -624,8 +627,10 @@ export class TrafficSim {
   /**
    * One step. `player` is the car being driven, so traffic can see it.
    * @param {number} dt @param {{ x: number, y?: number, z: number, speed: number, vx?: number, vz?: number, yaw?: number }} player
+   * @param {number} [weather]
    */
-  update(dt, player) {
+  update(dt, player, weather = this.weather) {
+    if (weather !== undefined) this.weather = weather;
     this.time += dt;
     const pvx = player.vx ?? (player.speed !== undefined && player.yaw !== undefined ? Math.sin(player.yaw) * player.speed : 0);
     const pvz = player.vz ?? (player.speed !== undefined && player.yaw !== undefined ? Math.cos(player.yaw) * player.speed : 0);
@@ -858,9 +863,11 @@ export class TrafficSim {
       if (leadFrom.gap < lead.gap) lead = leadFrom;
     }
     const rival = this.isRival(a);
+    const isCiv = !rival && !isUnit(a.kind);
     // A racer in a duel stops cruising and goes for its top speed, and it will not drop
     // back to the slow lane while the duel is on.
     let v0 = a.duel ? a.lane.limit * a.kind.speed[1] : a.lane.limit * a.factor * (rival ? 1.08 : 1.0);
+    if (isCiv && this.weather > 0) v0 *= 1 - 0.12 * clamp(this.weather, 0, 1);
     if (this.time < (a.hurryUntil ?? 0)) v0 = Math.max(v0, a.hurry ?? v0);
     // Sirens on: a unit drives as fast as the chase needs, up to its own top speed, whatever the
     // limit; a search is brisk but not flat out.
@@ -870,7 +877,7 @@ export class TrafficSim {
     v0 = Math.min(v0, this.curveSpeed(a));
     const fast = rival || !!a.pursuit;
     const effAccel = a.pursuit ? a.kind.accel * 1.6 : rival && v0 - a.speed > 3 ? a.kind.accel * 2.0 : a.kind.accel;
-    let acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, fast);
+    let acc = idm(a.speed, v0, effAccel, lead.gap, a.speed - lead.v, fast, isCiv ? this.weather : 0);
     if (rival && lead.gap < Infinity && a.speed > lead.v) {
       const closing = a.speed - lead.v;
       const targetGap = Math.max(3.0, a.kind.length * 0.8);
@@ -880,7 +887,8 @@ export class TrafficSim {
         acc = Math.min(acc, -Math.min(9.0, neededBrake));
       }
     }
-    a.brake = acc < -1.2 ? 1 : 0;
+    const brakeThreshold = isCiv && this.weather > 0 ? -1.2 + 0.3 * clamp(this.weather, 0, 1) : -1.2;
+    a.brake = acc < brakeThreshold ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -9, effAccel) * dt);
     a.s += a.speed * dt;
 
@@ -1050,7 +1058,9 @@ export class TrafficSim {
       aimYaw += 0.15 * Math.sin(2 * Math.PI * 0.6 * this.time + phase);
     }
     const diff = wrapAngle(aimYaw - a.yaw);
-    const maxYawRate = 8 / Math.max(1, a.speed);
+    const wet = clamp(this.weather || 0, 0, 1);
+    const latGrip = 8 * (1 - 0.25 * wet);
+    const maxYawRate = latGrip / Math.max(1, a.speed);
     const maxTurn = maxYawRate * dt;
     const turn = clamp(diff, -maxTurn, maxTurn);
     a.yawRate = dt > 0 ? turn / dt : 0;
@@ -1087,7 +1097,7 @@ export class TrafficSim {
 
     const excessTurn = Math.abs(diff) - maxTurn;
     if (excessTurn > 0) {
-      const vCorner = (8 * 0.8) / Math.max(0.1, Math.abs(diff));
+      const vCorner = (latGrip * 0.8) / Math.max(0.1, Math.abs(diff));
       v0 = Math.min(v0, vCorner);
     }
 
@@ -1314,7 +1324,10 @@ export class TrafficSim {
     const lane = a.lane;
     const rival = this.isRival(a) || !!a.pursuit;
     if (lane.cls === 'expressway' && !rival) return Infinity;
-    const grip = rival ? 8.83 : 3.2;
+    const wet = clamp(this.weather || 0, 0, 1);
+    const wetFactor = 1 - 0.25 * wet;
+    const baseGrip = rival ? 8.83 : 3.2;
+    const grip = (isUnit(a.kind) || rival) ? baseGrip * wetFactor : baseGrip;
     const q0 = this.net.sample(lane, a.s, this._q);
     const t0x = q0.tx;
     const t0z = q0.tz;
@@ -1956,8 +1969,10 @@ export class TrafficSim {
     const fz = Math.cos(a.yaw);
     let vF = a.vx * fx + a.vz * fz;
     let vL = a.vx * fz - a.vz * fx;
-    vL -= Math.sign(vL) * Math.min(Math.abs(vL), KNOCK.grip * dt);
-    vF -= Math.sign(vF) * Math.min(Math.abs(vF), KNOCK.brake * dt);
+    const knockGrip = KNOCK.grip * (1 - 0.25 * clamp(this.weather || 0, 0, 1));
+    const knockBrake = KNOCK.brake * (1 - 0.25 * clamp(this.weather || 0, 0, 1));
+    vL -= Math.sign(vL) * Math.min(Math.abs(vL), knockGrip * dt);
+    vF -= Math.sign(vF) * Math.min(Math.abs(vF), knockBrake * dt);
     a.vx = fx * vF + fz * vL;
     a.vz = fz * vF - fx * vL;
     a.yawRate *= Math.exp(-dt * KNOCK.spin);

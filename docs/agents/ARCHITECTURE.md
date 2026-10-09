@@ -164,7 +164,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-465 tests pass; the type check is clean. By area:
+471 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -298,8 +298,7 @@ reflection toward the viewer along the road), how far the fog closes in (420 m d
 and how many one-pixel rain streaks fall in a box round the camera (`RainView`, up to 3,200, placed in
 the vertex shader, leaning back with the car's speed, and not drawn under a roof: a bridge or
 viaduct deck, a gas station canopy or a toll plaza canopy, from a 64 m grid of roof heights round the
-camera, `rain-cover.js`, refilled in about 3 ms every 9 m of travel). Looks only: the grip, the sound, the traffic
-and the police do not change yet (`tasks/B3-wet-weather.md`). One draw call; a reflection reaches only
+camera, `rain-cover.js`, refilled in about 3 ms every 9 m of travel). Rain affects grip (tarmac grip falls to 75 %, 0.9.30), sound (rain bed, patter, roof drumming, wet tire hiss, 0.9.31), traffic (civilians drive 12 % slower, brake earlier, follow further back) and police (sight scales with fog to 82.1 m, helicopter searchlight to 70 %, unit grip to 75 %, 0.9.33). One draw call; a reflection reaches only
 as far as its lamp's light pool (about 15 m), not the whole way a real one would.
 
 **Races.** `RaceEvent` with three kinds: the duel (Tokyo Xtreme Racer gauges, challenge with H), the
@@ -317,11 +316,11 @@ speeding sometimes takes it up (`TAIL`): lights and siren on, driven like a purs
 its target, for up to 45 s; the racer pushes on 15 % faster, and a chase passing the player can
 draw them in. Heat climbs a level per 90 s of pursuit and per infraction, stays after an escape and
 cools a level per 120 s of quiet, and a bust wipes it. Chasing units see 150 m on a clear line
-(buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round.
+(scaling with the fog to 82.1 m in a storm; buildings and the hillside block it); searching units only in a 60 m cone ahead or 25 m round (notice radius scaled to 85 % in a storm).
 Units take the lanes by the shortest route (U-turns included), drive straight at the player when
 close with a clear line (`stepChase`), aiming at a delayed and smoothed target estimate (delay >= 0.18 s,
 tau ~ 0.4 s per unit by id, so sudden player steering reaches them softened; 0.9.24). A unit's yaw rate is capped
-at 8 / speed rad/s (8 m/s² lateral grip), braking into corners when the desired turn exceeds grip. A free
+at latGrip / speed rad/s (8 m/s² lateral grip, falling to 6 m/s² in a storm, 0.9.33), braking into corners when the desired turn exceeds grip. A free
 chasing unit scans its forward corridor for traffic, wrecks and parked units, decelerating to stop without contact;
 it drives flat out only when its path is clear and it is behind the player, matching player speed within 30 m and
 shoving from heat 2. Every unit has hit points (cruiser
@@ -343,7 +342,7 @@ the same way (`sky`); each holds its own station on the player (`HELI_SLOTS`: be
 left, wide on the right) so their searchlights cover different streets. Each helicopter has 100 s of pursuit fuel
 (115 s total, `heli.js`); at 15 s left it breaks off (CHOPPER BREAKING OFF) to the nearest of the three police stations
 (HQ, Kitamachi, Toge, each with a pad via `helipadOf`) to refuel for 40 s, returning (CHOPPER BACK) if heat warrants
-(0.9.26); its tank refills when parked at home, and its pad returns to basePad once refueled (0.9.28). Searchlights lose sight under decks and behind dense building blocks. While no player pursuit is active,
+(0.9.26); its tank refills when parked at home, and its pad returns to basePad once refueled (0.9.28). Searchlights lose sight under decks and behind dense building blocks, and reach 70 % as far in a storm (133 m, 0.9.33). While no player pursuit is active,
 a patrol tailing a street racer may summon one helicopter, with player pursuits taking precedence. The five landmark
 garages repair the engine, damage and tires at pump prices without selling fuel or nitrous. From heat 4 a
 roadblock of two or three units (Rhinos at 5) parks across the road 250 to 400 m ahead out of sight,

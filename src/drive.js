@@ -260,9 +260,12 @@ export class Drive {
    */
   stepPolice(dt, s) {
     const happened = this.traffic.takeEvents();
+    const weather = this.world.weather ?? 0;
+    const sightScale = weatherLook(weather).fogFar / 420;
+    const sightRange = SIGHT_RANGE * sightScale;
     const units = this.traffic.units().filter((a) => a.mode !== 'wreck').map((a) => {
       const d = Math.hypot(a.x - s.x, a.z - s.z);
-      const clear = d < SIGHT_RANGE && Math.abs(a.y - s.y) < 6 && clearLine(a, s, this.solid);
+      const clear = d < sightRange && Math.abs(a.y - s.y) < 6 && clearLine(a, s, this.solid);
       return { id: a.id, x: a.x, z: a.z, yaw: a.yaw, d, clear, kind: a.kind.id, vx: a.vx, vz: a.vz };
     });
     const road = this.world.ground.at(s.x, s.z, s.y).road;
@@ -283,6 +286,7 @@ export class Drive {
         const at = this.trafficNet.locate(s.x, s.z, s.yaw, s.y + 0.5);
         return at ? planRoadblock({ lane: at.lane, s: at.s, sample: (l, x, o) => this.trafficNet.sample(l, x, o) }, level) : null;
       },
+      weather,
     });
     this.tollKmh = null;
     this.policeOrders = orders;
@@ -913,7 +917,7 @@ export class Drive {
       steps++;
     }
     if (steps === MAX_STEPS) this.acc = 0;
-    this.traffic.update(dt, s);
+    this.traffic.update(dt, s, this.world.weather ?? 0);
     const crash = this.traffic.collideWithPlayer(s, spec);
     if (crash > 2.5) {
       this.rig.bump(crash);
@@ -922,6 +926,7 @@ export class Drive {
     this.trafficView.update(this.traffic.agents, this.car.state, this.time);
     this.damageFx.update(dt, this.traffic.agents, this.car.state);
     const tailedRacer = !this.police.active ? (this.traffic.agents.find((a) => a.quarry)?.quarry ?? null) : null;
+    if (this.heliWorld) this.heliWorld.weather = this.world.weather ?? 0;
     for (let i = 0; i < this.helis.length; i++) {
       const h = this.helis[i];
       if (this.police.active) {

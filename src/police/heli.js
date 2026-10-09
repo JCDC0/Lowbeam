@@ -47,7 +47,8 @@ export const HELI_SLOTS = [
  * @typedef {{ target: HeliTarget | null, skyline: Skyline, groundAt: (x: number, z: number) => number,
  *   covered?: (x: number, z: number, y: number) => boolean,
  *   stations?: { x: number, y: number, z: number, yaw: number }[],
- *   solid?: (x: number, z: number, y: number) => boolean }} HeliWorld
+ *   solid?: (x: number, z: number, y: number) => boolean,
+ *   weather?: number }} HeliWorld
  */
 
 /** The helipad on a police station in world space. @param {any} st */
@@ -413,7 +414,9 @@ export class Heli {
     sp.y = t && this.state === 'chase' && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 2 ? t.y : w.groundAt(sp.x, sp.z);
     const range = Math.hypot(sp.x - this.x, sp.y - this.y, sp.z - this.z);
     const clear = !w.solid || (clearLine(sp, t, w.solid) && clearLine({ x: this.x, y: this.y, z: this.z }, t, w.solid));
-    sp.sees = !!t && this.state === 'chase' && range < HELI.lightRange && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 1.2 && !(w.covered && w.covered(t.x, t.z, t.y)) && clear;
+    const weather = clamp(w.weather ?? 0, 0, 1);
+    const lightRange = HELI.lightRange * (1 - 0.3 * weather);
+    sp.sees = !!t && this.state === 'chase' && range < lightRange && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 1.2 && !(w.covered && w.covered(t.x, t.z, t.y)) && clear;
     this.lost = sp.sees ? 0 : this.lost + dt;
   }
 }
