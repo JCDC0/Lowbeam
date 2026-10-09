@@ -7,6 +7,7 @@
  */
 
 import { lightState } from '../traffic/net.js';
+import { ELEVATED } from './roads.js';
 
 /**
  * The head's height over the road and its width, the pole's radius, how far past the crossing's
@@ -79,4 +80,21 @@ export function placeSignals(net, ground) {
 export function litLamp(s, t) {
   const state = lightState(s.node, s.axis, t);
   return state === 'green' ? 0 : state === 'yellow' ? 1 : 2;
+}
+
+/**
+ * The solid foot of each pole, for the colliders. A pole standing under a deck (the Kurogane Line
+ * over Kurogane-dori) ends under its slab, so it stops the traffic below and not a car driving on the
+ * deck above, which an unbounded circle did.
+ * @param {Signal[]} signals @param {import('./ground.js').Ground} ground
+ * @returns {import('./scatter.js').Circle[]}
+ */
+export function signalCircles(signals, ground) {
+  const hit = { road: null, s: 0, d: 0, h: 0, edge: 0, lift: 0 };
+  return signals.map((s) => {
+    /** @type {import('./scatter.js').Circle} */
+    const c = { x: s.px, z: s.pz, r: SIGNAL.pole + 0.05 };
+    if (ground.roads.query(s.px, s.pz, hit, 0, -Infinity, Infinity) && hit.lift > ELEVATED && hit.edge <= 0.5 && hit.h > s.py + 2.5) c.y1 = hit.h - 1.0;
+    return c;
+  });
 }

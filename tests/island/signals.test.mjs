@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { island, trafficNet } from '../island.mjs';
+import { island, scattered, trafficNet } from '../island.mjs';
 import { lightState } from '../../src/traffic/net.js';
-import { placeSignals, litLamp, SIGNAL } from '../../src/world/signals.js';
+import { placeSignals, litLamp, signalCircles, SIGNAL } from '../../src/world/signals.js';
+import { Colliders } from '../../src/world/collision.js';
 
 const g = island();
 const net = trafficNet();
@@ -50,6 +51,36 @@ test('the lamps show the phase the traffic obeys, and crossing ways are never gr
         if (state === 'green') green.add(s.axis);
       }
       assert.ok(green.size < 2);
+    }
+  }
+});
+
+test('a pole under a deck stops the traffic below it but not a car on the deck', () => {
+  const circles = signalCircles(signals, g);
+  const under = circles.filter((c) => c.y1 !== undefined);
+  assert.ok(under.length > 10, `${under.length} poles stand under a deck`);
+  const col = new Colliders(circles, []);
+  const hit = { road: null, s: 0, d: 0, h: 0, edge: 0, lift: 0 };
+  for (const c of under) {
+    assert.ok(g.roads.query(c.x, c.z, hit, 0, -Infinity, Infinity));
+    assert.equal(col.probe(c.x + 0.5, c.z, 0.9, hit.h + 0.3), null, 'a car on the deck passes over the pole');
+    assert.ok(col.probe(c.x + 0.5, c.z, 0.9, g.at(c.x, c.z).h + 0.3), 'a car on the street below meets it');
+  }
+});
+
+test('nothing static stops a car on the lanes of the Kurogane Line', () => {
+  const col = new Colliders(scattered().circles.slice(), scattered().boxes);
+  col.addCircles(signalCircles(signals, g));
+  for (const id of ['c3-f', 'c3-r']) {
+    const road = g.roads.byId.get(id);
+    const lanes = road.def.lanes;
+    for (let s = 0; s < road.path.length; s += 2) {
+      const q = road.path.sample(s);
+      for (let k = 0; k < lanes; k++) {
+        const d = (k - (lanes - 1) / 2) * 3.5;
+        const hit = col.probe(q.x + q.tz * d, q.z - q.tx * d, 0.9, road.heightAt(s) + 0.3);
+        assert.equal(hit, null, `${id} at ${s} m, lane ${k}: something stops a car on the deck`);
+      }
     }
   }
 });

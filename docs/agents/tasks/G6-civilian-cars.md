@@ -46,3 +46,12 @@ traffic budget: they are drawn many at a time.
 | `civ_ambulance` | An ambulance, white with a red stripe (`accent`), roof lamps (`lens-l`, `lens-r`) | 5.60 x 1.90 x 2.50 |
 
 Ambulances and their lamps are for the traffic only; they do not join the police.
+
+## Sizes are collision sizes (added 2026-10-09)
+
+Jc saw cars clipping into things at the side of the road. The civilians collide as the size their kind
+says (`bodyOf` in `vehicles/contact.js` takes `length` and `width` from `kinds.js`), so a model must fill
+that size and not stick out of it: the widest point of the body, mirrors included, within `width`, and
+the nose and tail within `length`. Quote the plan-view width along the body and the bounds from the
+JSON as G5 did, and Claude extends `tests/kind-models.test.mjs` to the civilians as each one lands. See
+`B4-civilian-world-collisions.md` for what the backend does about corners, poles and edges.

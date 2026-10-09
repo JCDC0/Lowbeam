@@ -28,6 +28,25 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.13 (2026-10-09)
+
+The invisible obstacles on the Kurogane Line; plans for the clipping and for filling the map.
+
+- A car on the Kurogane Line was stopped by something invisible, and could drive on past it only from
+  the side. The cause: the traffic signals' poles stand on the avenue's sidewalks under the elevated
+  road, and their collider circles had no height, so they blocked at every height, including 12 m up
+  on the deck over them. `signalCircles` (`world/signals.js`) gives a pole under a deck a ceiling just
+  under the slab, so it stops the traffic below and not the car above. Two tests: a pole under a deck
+  stops a street-level car and not a car on the deck, and nothing static stops a car on either lane of
+  the Kurogane Line along its whole length. (The piers, lamps and the rest already had their heights;
+  the audit of every road's lanes found only the signal poles.)
+- `tools/clipbench.mjs` runs the traffic and counts civilians inside static shapes and off the
+  carriageway: 118 clips and 10 off-road bodies in 34,420 samples, mostly corner-cutting turns that
+  clip a signal pole on the narrow streets (the sim only checks wrecks and units against the world).
+- Plans: `tasks/B4-civilian-world-collisions.md` (the backend: turns along curves, solid civilians,
+  edges), `tasks/C6-fill-the-map.md` (a police station per district, more hideouts, garages, gas
+  stations and buildings), a note in `G6-civilian-cars.md` that a model's size is its collision size.
+
 ## 0.10.12 (2026-10-09)
 
 Review of Gemini's 0.10.50; the district stations in the game.

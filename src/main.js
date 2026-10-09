@@ -23,7 +23,7 @@ import { applyNet, speedFx } from './ui/screen-fx.js';
 import { LEVELS } from './render/weather.js';
 import { HOURS } from './render/daylight.js';
 import { applyTime, currentTime, currentWeather } from './ui/weather-setting.js';
-import { placeSignals, SIGNAL } from './world/signals.js';
+import { placeSignals, signalCircles } from './world/signals.js';
 import { SignalView } from './world/build-signals.js';
 
 const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('view'));
@@ -129,7 +129,7 @@ async function enterWorld() {
     signals = new SignalView(placeSignals(drive.trafficNet, world.ground), world.grid);
     world.add(signals.group);
     world.groundChunks.push(...signals.chunks);
-    drive.colliders.addCircles(signals.signals.map((s) => ({ x: s.px, z: s.pz, r: SIGNAL.pole + 0.05 })));
+    drive.colliders.addCircles(signalCircles(signals.signals, world.ground));
     map.setWorld(world);
   }
   world.setWeather(LEVELS[currentWeather()]);

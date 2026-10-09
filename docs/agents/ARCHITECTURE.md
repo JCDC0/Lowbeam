@@ -26,6 +26,7 @@ Prologue (`docs/DESIGN.md`).
 | Test | `npm test` (`node --test --test-concurrency=4 tests/*.test.mjs`); one file: `node --test tests/<name>.test.mjs` or `tests/island/<name>.test.mjs` |
 | Type-check (the lint step) | `npm run check` (`tsc`, JSDoc types, no emit) |
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
+| Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Music track list | `npm run music` (`node tools/music-manifest.mjs`; `-- --all` to re-measure) |
 
@@ -399,7 +400,14 @@ Gothic One for banners, M PLUS 1p for Japanese.
 
 - The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51).
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
-- The GPS route test measures planning time and can fail when the machine is busy.
+- The GPS route test measures planning time and can fail when the machine is busy, and
+  `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
+  under load and passes alone.
+- Civilians driving on their lanes are not checked against the static world: at junctions they cut the
+  corner and clip the signal poles, and a few ramps put a body off the carriageway (118 clips in 34,420
+  samples, `tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
+- The map is thin outside the city: 3 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
+  to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
 - Nothing has been checked at real frame rates on a gaming desktop yet.
 - The game is not published. Shipping it to GitHub Pages is the last milestone (`docs/DESIGN.md`
