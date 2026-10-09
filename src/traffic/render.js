@@ -3,6 +3,9 @@
  * calls. Paint is the instance color, brake lights come from an instanced attribute, and the
  * vehicles are lit by the same local light as the player's car.
  *
+ * Each car within SHADOW_RANGE has a blob shadow on the road (one more draw call for all of them),
+ * darker by day, as the player's car has.
+ *
  * Their lamps: every car within FLARE_RANGE gets four flares (one more draw call for all of
  * them), white at the headlamps and red at the tail lamps, brighter when braking, found from the
  * body's own `lamp` vertices so they sit on the modeled lamps. The world shader's moving lights
@@ -11,9 +14,9 @@
  */
 
 import * as THREE from 'three';
-import { BEAMS, psxFlare, psxUniforms } from '../render/psx.js';
+import { BEAMS, psxBasic, psxFlare, psxUniforms } from '../render/psx.js';
 import { psxPhong } from '../render/psx.js';
-import { flareTexture } from '../render/textures.js';
+import { flareTexture, shadowTexture } from '../render/textures.js';
 import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
 import { barFlash, barOn } from '../police/lights.js';
@@ -28,6 +31,12 @@ const UP = new THREE.Vector3(0, 1, 0);
 /** Cars this close to the player show their lamp flares, meters. */
 const FLARE_RANGE = 420;
 const MAX_FLARE_CARS = 60;
+/** Cars this close to the player have a shadow (a flat quad: at a distance it fights the road), at most MAX_SHADOWS. */
+const SHADOW_RANGE = 160;
+const MAX_SHADOWS = 64;
+/** The shadow's opacity by day and by night: the sun throws a hard one, the lamps a faint one. */
+const SHADOW_DAY = 0.9;
+const SHADOW_NIGHT = 0.45;
 /** Flares per car: four lamps, two on the roof of a police car with a light bar, and its watch mark. */
 const FLARES_PER_CAR = 7;
 /** The mark over a unit that sees the player before a pursuit: amber, red once the bar is nearly full. */
@@ -122,6 +131,14 @@ export class TrafficRenderer {
       this.root.add(mesh);
       this.meshes.set(kind.id, { mesh, brake, max, n: 0, lamps: lampSpots(geo, kind), bar: geo.userData.bar || null });
     }
+    const flat = new THREE.PlaneGeometry(1, 1);
+    flat.rotateX(-Math.PI / 2);
+    this.shadows = new THREE.InstancedMesh(flat, psxBasic({ map: shadowTexture(), transparent: true, depthWrite: false, color: 0xffffff }), MAX_SHADOWS);
+    this.shadows.frustumCulled = false;
+    this.shadows.renderOrder = -1;
+    this.shadows.count = 0;
+    this.shadows.name = 'traffic-shadows';
+    this.root.add(this.shadows);
     const quad = new THREE.PlaneGeometry(1, 1);
     this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(MAX_FLARE_CARS * FLARES_PER_CAR * 3), 3);
     quad.setAttribute('aDir', this.flareDir);
@@ -151,6 +168,7 @@ export class TrafficRenderer {
     this.focus = focus;
     for (const m of this.meshes.values()) m.n = 0;
     this.near.length = 0;
+    let shadows = 0;
     for (const a of agents) {
       const m = this.meshes.get(a.kind.id);
       if (!m || m.n >= m.max) continue;
@@ -167,6 +185,12 @@ export class TrafficRenderer {
       else if (isUnit(a.kind) && health(a) < DAMAGE.smoke) _c.multiplyScalar(0.72);
       m.mesh.setColorAt(i, _c);
       m.brake.setX(i, a.brake);
+      if (shadows < MAX_SHADOWS && (!focus || Math.hypot(a.x - focus.x, a.z - focus.z) < SHADOW_RANGE)) {
+        _p.set(a.x, a.y + 0.04, a.z);
+        _s.set((a.kind.width + 0.5) * f, 1, (a.kind.length + 0.7) * f);
+        _m.compose(_p, _q, _s);
+        this.shadows.setMatrixAt(shadows++, _m);
+      }
       if (focus) {
         const d = Math.hypot(a.x - focus.x, a.z - focus.z);
         // A burnt-out unit throws no light.
@@ -174,6 +198,10 @@ export class TrafficRenderer {
       }
     }
     this.lamps();
+    this.shadows.count = shadows;
+    this.shadows.visible = shadows > 0;
+    this.shadows.instanceMatrix.needsUpdate = true;
+    /** @type {THREE.MeshBasicMaterial} */ (this.shadows.material).opacity = SHADOW_DAY + (SHADOW_NIGHT - SHADOW_DAY) * psxUniforms.uLamp.value;
     for (const m of this.meshes.values()) {
       m.mesh.count = m.n;
       m.mesh.visible = m.n > 0;

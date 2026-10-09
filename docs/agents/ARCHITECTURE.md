@@ -159,7 +159,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.8)
+## Current state (0.10.9)
 
 445 tests pass; the type check is clean. By area:
 
@@ -236,7 +236,8 @@ digital styles a tall display whose rev bar curves up the side. Warnings are sym
 inside the main dial (`dialLamps`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
-turns, exits, blinkers and lane holds; wrecks; lamp flares and headlight beams; a blinking
+turns, exits, blinkers and lane holds; wrecks; a blob shadow on the road under each car within 160 m (one
+draw call, black at 90 % by day and 45 % by night); lamp flares and headlight beams; a blinking
 indicator flares larger and the three nearest throw a small amber pool. The traffic lights are seen:
 at each of the 962 lit crossings every way in has a Japanese signal (`world/signals.js`), a pole on
 the far left corner with an arm over its lanes and a horizontal head (blue-green, amber, red from the

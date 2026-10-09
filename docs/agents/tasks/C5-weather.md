@@ -53,8 +53,9 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 
 - The vending machines' fronts and the sign atlases stay as bright by day as by night (signs are,
   in life); the traffic lights' lamps could take a brighter day value.
-- Shadows are not drawn: a sun with no shadows reads flat at noon. A blob shadow under each car and a
-  few long ones for the buildings at dawn and dusk would help.
+- The cars have blob shadows (0.10.9) but nothing else casts one: the buildings, poles and trees have
+  none, so a sun at noon still reads a little flat. Long soft shadows from the buildings at dawn and
+  dusk would help.
 - Dawn and dusk look alike (the glow follows the sun's direction, not the side of the sky).
 - Stars twinkle, and the moon's phase follows a calendar; fireflies or birds by day, in the audio
   (`B3-wet-weather.md` part 4).

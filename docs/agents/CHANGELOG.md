@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.9 (2026-10-09)
+
+Every car on the road has a shadow.
+
+- `traffic/render.js`: an instanced flat quad with the soft ellipse (`shadowTexture`, the player's)
+  under each civilian, racer and police car within 160 m, up to 64, in one more draw call. Black at 90 %
+  by day and 45 % by night (from `uLamp`), so by day the cars sit on the road instead of floating over
+  it. The player's own shadow was already there.
+
 ## 0.10.8 (2026-10-09)
 
 By day the lamps and shop windows go out.
