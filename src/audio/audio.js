@@ -24,13 +24,15 @@ import { clamp } from '../core/mathx.js';
 import { MusicPlayer } from './music.js';
 import { PassBy, passbyDuration, passbyGain } from './passby.js';
 import { TRAFFIC_VOICES, trafficVoices, hornOf, panOf } from './traffic-voices.js';
+import { rainGains } from './rain.js';
+import { weatherLook } from '../render/weather.js';
 
-/** @typedef {'master' | 'engine' | 'effects' | 'ambience' | 'music'} Channel */
+/** @typedef {string} Channel */
 /** @typedef {'title' | 'garage' | 'loading' | 'drive' | 'pause' | 'free'} Mode */
 /** @typedef {{ volume: number, on: boolean }} ChannelSetting */
 /** @typedef {import('./passby.js').PassByEvent} PassByEvent */
 
-export const CHANNELS = /** @type {const} */ (['master', 'engine', 'effects', 'ambience', 'music']);
+export const CHANNELS = /** @type {const} */ (['master', 'engine', 'effects', 'ambience', 'music', 'rain']);
 
 /** @type {Record<Channel, ChannelSetting>} */
 const DEFAULTS = {
@@ -39,16 +41,17 @@ const DEFAULTS = {
   effects: { volume: 0.9, on: true },
   ambience: { volume: 0.8, on: true },
   music: { volume: 0.55, on: true },
+  rain: { volume: 0.85, on: true },
 };
 
 /** How loud each part of the world is on each screen. */
 const MODES = {
-  title: { engine: 0, fx: 0, amb: 0, music: 1 },
-  garage: { engine: 0.75, fx: 0, amb: 0, music: 0.8 },
-  loading: { engine: 0, fx: 0, amb: 0, music: 0.5 },
-  drive: { engine: 1, fx: 1, amb: 1, music: 1 },
-  pause: { engine: 0, fx: 0, amb: 0.2, music: 0.45 },
-  free: { engine: 1, fx: 1, amb: 1, music: 1 },
+  title: { engine: 0, fx: 0, amb: 0, music: 1, rain: 0 },
+  garage: { engine: 0.75, fx: 0, amb: 0, music: 0.8, rain: 0.25 },
+  loading: { engine: 0, fx: 0, amb: 0, music: 0.5, rain: 0 },
+  drive: { engine: 1, fx: 1, amb: 1, music: 1, rain: 1 },
+  pause: { engine: 0, fx: 0, amb: 0.2, music: 0.45, rain: 0.4 },
+  free: { engine: 1, fx: 1, amb: 1, music: 1, rain: 1 },
 };
 
 /** Low-pass cutoff and loudness of the vehicle sounds per camera. The cockpit is a closed room. */
@@ -271,6 +274,7 @@ export class AudioSystem {
     bus.modeFx = g(0);
     bus.modeAmb = g(0);
     bus.musicMode = g(0);
+    bus.modeRain = g(0);
     bus.view = bq('lowpass', 9000, 0.7);
     bus.viewGain = g(1);
     bus.view.connect(bus.viewGain);
@@ -282,9 +286,14 @@ export class AudioSystem {
     bus.modeEngine.connect(bus.viewE);
     bus.viewE.connect(bus.viewEGain);
     bus.viewEGain.connect(bus.engine);
+    bus.viewRain = bq('lowpass', 9500, 0.7);
+    bus.viewRainGain = g(1);
+    bus.viewRain.connect(bus.viewRainGain);
+    bus.viewRainGain.connect(bus.modeRain);
     bus.modeFx.connect(bus.effects);
     bus.modeAmb.connect(bus.ambience);
     bus.musicMode.connect(bus.music);
+    bus.modeRain.connect(bus.rain);
     bus.ui = g(0.5);
     bus.ui.connect(bus.effects);
     // The pass-by whoosh is panned to the side the car went past on.
@@ -319,7 +328,29 @@ export class AudioSystem {
       squeal2: layer(white, bq('bandpass', 2150, 9)),
       // Nitrous: a high hiss from the lines while it flows.
       n2o: layer(white, bq('highpass', 3400, 0.7)),
+      // Wet tire hiss on tarmac at speed.
+      wetTire: layer(white, bq('highpass', 3200, 0.7)),
     };
+
+    // Rain bed, stationary patter and roof drumming (under shelter).
+    const rainBedFilter = bq('lowpass', 2400, 0.7);
+    const rainBedGain = g(0);
+    loop(pink).connect(rainBedFilter).connect(rainBedGain).connect(bus.viewRain);
+
+    const rainPatterFilter = bq('bandpass', 1500, 1.8);
+    const rainPatterGain = g(0);
+    loop(crackle).connect(rainPatterFilter).connect(rainPatterGain).connect(bus.viewRain);
+
+    const roofPatterFilter = bq('bandpass', 920, 2.5);
+    const roofPatterGain = g(0);
+    loop(white).connect(roofPatterFilter).connect(roofPatterGain).connect(bus.viewRain);
+
+    this.rainNodes = {
+      bedFilter: rainBedFilter, bedGain: rainBedGain,
+      patterFilter: rainPatterFilter, patterGain: rainPatterGain,
+      roofFilter: roofPatterFilter, roofGain: roofPatterGain,
+    };
+
     const pumpHum = c.createOscillator();
     pumpHum.type = 'triangle';
     pumpHum.frequency.value = 93;
@@ -426,11 +457,12 @@ export class AudioSystem {
       subOsc.connect(sub).connect(tone);
       tone.connect(gain).connect(pan);
       const tire = g(0);
-      loop(white).connect(bq('bandpass', 900, 0.7)).connect(tire).connect(pan);
+      const tireFilter = bq('bandpass', 900, 0.7);
+      loop(white).connect(tireFilter).connect(tire).connect(pan);
       pan.connect(bus.view);
       osc.start();
       subOsc.start();
-      return { osc, subOsc, sub, tone, gain, tire, pan, key: -1 };
+      return { osc, subOsc, sub, tone, gain, tire, tireFilter, pan, key: -1 };
     });
     // The rotor: low noise chopped by the blade pass.
     {
@@ -463,6 +495,7 @@ export class AudioSystem {
     glide(this.bus.modeFx.gain, m.fx, t, 0.08);
     glide(this.bus.modeAmb.gain, m.amb, t, 0.4);
     glide(this.bus.musicMode.gain, m.music, t, 0.5);
+    glide(this.bus.modeRain.gain, m.rain ?? 0, t, 0.3);
     if (mode === 'title' || mode === 'loading') this.pump(false, t);
     this.music?.setMode(mode, t);
   }
@@ -480,6 +513,9 @@ export class AudioSystem {
       glide(filter.frequency, v.lp, t, 0.05);
       glide(gain.gain, v.gain, t, 0.05);
     }
+    const interior = view === 'cockpit';
+    glide(this.bus.viewRain.frequency, interior ? 1600 : 9500, t, 0.05);
+    glide(this.bus.viewRainGain.gain, interior ? 0.55 : 1, t, 0.05);
   }
 
   /** Builds a fresh engine voice for the car. @param {import('../vehicles/specs.js').CarSpec} spec */
@@ -536,7 +572,7 @@ export class AudioSystem {
    * `f.sirens` are the police sirens heard this frame and `f.rotor` the helicopter (siren.js);
    * `f.pursuit` says the police are after the player, for the music.
    * `f.horns` and `f.screeches` are the civilians' horns and tires since the last frame (manners.js).
-   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[], sirens?: ReturnType<typeof import('./siren.js').sirenVoices>, rotor?: { rate: number, gain: number }, pursuit?: boolean, horns?: import('../traffic/manners.js').Horn[], screeches?: import('../traffic/manners.js').Screech[] }} f
+   * @param {{ dt: number, state: any, spec: any, boost: number, view: string, env: { forest: number, town: number, water: number }, pad: boolean, mountain?: boolean, rival?: number, rally?: boolean, traffic?: any[], sirens?: ReturnType<typeof import('./siren.js').sirenVoices>, rotor?: { rate: number, gain: number }, pursuit?: boolean, horns?: import('../traffic/manners.js').Horn[], screeches?: import('../traffic/manners.js').Screech[], weather?: number, underRoof?: boolean }} f
    * @param {number} [at]
    */
   update(f, at) {
@@ -544,14 +580,16 @@ export class AudioSystem {
     const t = at ?? this.ctx.currentTime;
     const s = f.state;
     const spec = f.spec;
+    const weather = f.weather || 0;
+    const wet = weatherLook(weather).wet;
     this.setView(/** @type {any} */ (f.view), t);
     this.music?.setSpeed(f.state.speed * 3.6, t);
     this.music?.setScene(!!f.mountain, f.rival ?? Infinity, !!f.pursuit);
     this.sirens(f.sirens || [], f.rotor || { rate: 0, gain: 0 }, t);
     if (f.traffic) for (const ev of this.passby.update(s, f.traffic)) this.passbyVoice(ev, t);
-    this.trafficEngines(f.traffic ? trafficVoices(f.traffic, s) : [], t);
+    this.trafficEngines(f.traffic ? trafficVoices(f.traffic, s, wet) : [], t);
     for (const h of f.horns || []) this.horn(h, s, t);
-    for (const k of f.screeches || []) this.screech(k, s, t);
+    for (const k of f.screeches || []) this.screech(k, s, t, wet);
 
     const e = this.engine;
     const shifting = s.shiftTimer > 0;
@@ -599,9 +637,10 @@ export class AudioSystem {
     glide(fx.wind.filter.frequency, 450 + speed * 14, t);
     glide(fx.scrub.gain.gain, skidN * (loose ? 0.45 : 0.12), t);
     // A narrow band-pass keeps only a sliver of the noise power, so the gains are large.
-    const sq = loose ? 0 : Math.pow(skidN, 1.2) * 1.9;
-    glide(fx.squeal.gain.gain, sq, t, 0.04);
-    glide(fx.squeal2.gain.gain, sq * 0.55, t, 0.04);
+    const sq = loose ? 0 : Math.pow(skidN, 1.2) * 1.9 * (1 - 0.35 * wet);
+    const sqTau = 0.04 + 0.04 * wet;
+    glide(fx.squeal.gain.gain, sq, t, sqTau);
+    glide(fx.squeal2.gain.gain, sq * 0.55, t, sqTau);
     const pitch = 820 + speed * 9 + skidN * 260;
     glide(fx.squeal.filter.frequency, pitch, t, 0.08);
     glide(fx.squeal2.filter.frequency, pitch * 1.63, t, 0.08);
@@ -616,6 +655,16 @@ export class AudioSystem {
     glide(a.water.gain, env.water * 0.65 * quiet, t, 0.5);
     glide(a.town.gain, env.town * 0.06, t, 0.5);
     glide(a.pad.gain, f.pad ? 0.05 : 0, t, 0.3);
+
+    if (this.rainNodes) {
+      const rg = rainGains(weather, { speed, underRoof: !!f.underRoof });
+      const rn = this.rainNodes;
+      glide(rn.bedGain.gain, rg.bed, t, 0.25);
+      glide(rn.bedFilter.frequency, rg.filterFreq, t, 0.25);
+      glide(rn.patterGain.gain, rg.patter, t, 0.2);
+      glide(rn.roofGain.gain, rg.roof, t, 0.25);
+      if (fx.wetTire) glide(fx.wetTire.gain.gain, rg.wetTire, t, 0.1);
+    }
   }
 
   /**
@@ -673,6 +722,7 @@ export class AudioSystem {
       glide(slot.tone.frequency, v.cutoff, t, 0.08);
       glide(slot.gain.gain, v.gain * TRAFFIC_LEVEL, t, 0.08);
       glide(slot.tire.gain, v.tire * TRAFFIC_TIRE_LEVEL, t, 0.08);
+      if (slot.tireFilter) glide(slot.tireFilter.frequency, v.tireFilter ?? 900, t, 0.08);
       if ('pan' in slot.pan) glide(slot.pan.pan, v.pan * 0.85, t, 0.06);
     }
     for (const s of slots) {
@@ -724,13 +774,14 @@ export class AudioSystem {
   /**
    * A civilian's tires screeching as it brakes hard: a narrow band of noise that falls in pitch as
    * the car slows, longer from a higher speed.
-   * @param {import('../traffic/manners.js').Screech} k @param {{ x: number, z: number, yaw: number }} player @param {number} t
+   * @param {import('../traffic/manners.js').Screech} k @param {{ x: number, z: number, yaw: number }} player @param {number} t @param {number} [wet]
    */
-  screech(k, player, t) {
+  screech(k, player, t, wet = 0) {
     const d = Math.hypot(k.x - player.x, k.z - player.z);
     if (d > 120) return;
-    const gain = (1 / (1 + d / 10)) * (1 - d / 120) * SCREECH_LEVEL;
-    const dur = Math.min(1.4, 0.35 + k.speed * 0.035);
+    const wetFactor = 1 - 0.35 * clamp(wet, 0, 1);
+    const gain = (1 / (1 + d / 10)) * (1 - d / 120) * SCREECH_LEVEL * wetFactor;
+    const dur = Math.min(1.8, (0.35 + k.speed * 0.035) * (1 + 0.35 * clamp(wet, 0, 1)));
     const c = this.ctx;
     const src = c.createBufferSource();
     src.buffer = this.white;

@@ -972,6 +972,16 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.31 (2026-10-10)
+
+Rain sound: the bed, the patter, wet tires (B3 part 2).
+
+- `src/audio/rain.js`: pure gain and filter calculations for the rain bed (filtered pink noise opening from 1600 Hz in drizzle to 4200 Hz in a storm), windshield and car patter (rises when the car stops, dies by 20 m/s), roof drumming (replaces the bed under a canopy or bridge deck with an 88 % bed drop), and wet tire hiss.
+- `src/audio/audio.js`: added `rain` to `CHANNELS` and settings defaults, wired `viewRain` bus with cockpit lowpass muffling (1600 Hz, gain 0.55 vs 9500 Hz, gain 1.0 exterior) in `setView`, `modeRain` in `setMode`, and real-time automation of rain bed, patter, roof drumming, and wet tire hiss in `update`. Looser skid screech in wet weather (lower gain, longer duration).
+- `src/audio/traffic-voices.js`: added `wet` parameter and `tireFilter` shifting up to 2400 Hz for high-frequency wet tire hiss on passing cars; skips roadblock barriers (`a.barrier`) so they do not take a voice slot as an idling engine.
+- `src/drive.js`: samples `world.rain.cover` against camera height to detect shelter under roofs, passing weather level and `underRoof` into `audio.update`.
+- `tests/rain-audio.test.mjs`: verified zero rain sound when dry, growth with weather level, roof suppression, stopped car patter, traffic voice wet tire hiss and filter shift, barrier voices skipped, and measured rain bed levels sitting safely below engine idle.
+
 ## 0.9.30 (2026-10-09)
 
 Wet weather grip: tarmac grip falls with rain (B3 part 1).

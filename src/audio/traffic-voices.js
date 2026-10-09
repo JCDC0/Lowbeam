@@ -100,20 +100,21 @@ export function panOf(player, x, z) {
 }
 
 /**
- * @typedef {{ key: number, wave: OscillatorType, pitch: number, sub: number, cutoff: number, gain: number, tire: number, pan: number }} TrafficVoice
+ * @typedef {{ key: number, wave: OscillatorType, pitch: number, sub: number, cutoff: number, gain: number, tire: number, tireFilter: number, pan: number, wet?: number }} TrafficVoice
  */
 
 /**
  * The cars the player hears this frame, nearest first: wrecks are silent, as is a car on another
  * level of the road (a deck over a street).
- * @param {{ id: number, x: number, y: number, z: number, vx: number, vz: number, mode?: string, kind: { id: string } }[]} agents
+ * @param {{ id: number, x: number, y: number, z: number, vx: number, vz: number, mode?: string, kind: { id: string }, barrier?: boolean }[]} agents
  * @param {{ x: number, y: number, z: number, vx: number, vz: number, yaw: number }} player
+ * @param {number} [wet]
  * @returns {TrafficVoice[]}
  */
-export function trafficVoices(agents, player) {
+export function trafficVoices(agents, player, wet = 0) {
   const heard = [];
   for (const a of agents) {
-    if (a.mode === 'wreck') continue;
+    if (a.mode === 'wreck' || a.barrier) continue;
     if (Math.abs(a.y - player.y) > 8) continue;
     const dx = a.x - player.x;
     const dz = a.z - player.z;
@@ -132,6 +133,8 @@ export function trafficVoices(agents, player) {
     const left = Math.cos(player.yaw) * nx - Math.sin(player.yaw) * nz;
     const rev = (rpm - v.idle) / (v.redline - v.idle);
     const near = trafficGain(d);
+    const wetHiss = near * Math.min(1, speed / 25) * wet * 0.4;
+    const tireFilter = 900 + wet * 1500;
     return {
       key: a.id,
       wave: v.wave,
@@ -139,7 +142,9 @@ export function trafficVoices(agents, player) {
       sub: v.sub,
       cutoff: v.cutoff * (0.45 + 0.55 * rev),
       gain: near * v.gain * (0.35 + 0.65 * rev),
-      tire: near * v.tire * Math.min(1, speed / 30),
+      tire: near * v.tire * Math.min(1, speed / 30) + wetHiss,
+      tireFilter,
+      wet,
       pan: Math.max(-1, Math.min(1, -left)),
     };
   });

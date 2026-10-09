@@ -988,11 +988,14 @@ export class Drive {
     audio.pump(refueling);
     const around = this.env.at(s.x, s.z);
     const sounds = this.traffic.takeSounds();
+    const camPos = this.stage.camera.position;
+    const underRoof = this.world.rain?.cover ? this.world.rain.cover.at(camPos.x, camPos.z) > camPos.y : false;
     audio.update({
       dt, state: s, spec, boost: this.gauges.boost, view: this.rig.view, env: around, pad: s.surfFront === 'concrete',
       mountain: this.onPass, rival: this.rivalDistance, rally: !!this.rally, traffic: this.traffic.agents,
       sirens: sirenVoices(this.traffic.units(), s, this.time), rotor: this.rotorSound(dt, s), pursuit: this.police.active,
       horns: sounds.horns, screeches: sounds.screeches,
+      weather: this.world.weather ?? 0, underRoof,
     });
     this.minimap.draw(car.lerped.x, car.lerped.z, car.lerped.yaw, s.speed, dt, { level: this.police.level, pursuit: this.police.active });
     return null;

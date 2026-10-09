@@ -163,7 +163,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-449 tests pass; the type check is clean. By area:
+459 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -382,7 +382,10 @@ in four moods with crossfades and a swell that follows the speed: silent below 3
 `npm run music` (it measures the loudness with ffmpeg and keeps the moods already set), set the new
 file's mood in the JSON; the game keeps its built-in list if a mood would have no track. Police sirens (three voices, a
 square and a saw through a band-pass, panned, muffled in the cockpit) and the helicopter's rotor
-(`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs).
+(`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs). Rain audio
+(`rain.js`, 0.9.31): filtered pink noise bed following weather level, stationary car patter fading with speed,
+roof drumming under canopies and bridges from rain cover (bed suppressed 88 %), and high-frequency wet tire
+hiss on the player's car and passing traffic.
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
 speedometer style, the weather, the time of day, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
