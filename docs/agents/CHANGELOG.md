@@ -28,6 +28,18 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.21 (2026-10-10)
+
+Review of Gemini's 0.9.31 (rain sound), 0.9.32 (the barrier fixes) and 0.9.33 (traffic and police in rain,
+B3 part 3): all three pass; the review is in `tasks/B3-wet-weather.md`. Docs only.
+
+- Driven in the game: a hard hit leaves a roadblock barrier knocked and flat with its yaw unchanged; a
+  storm runs the drive loop with the audio context running and no console errors; the rain bed sits at
+  gain 0.16 in a storm and fades over a few seconds after it clears, 13 dB under the engine at idle.
+- One loose end for 0.9.34 (the start of B4): a barrier the sim has faded out can stay drawn until the
+  roadblock comes down. One brittle spot: `unitSees` writes the fog's 230 and 420 into the notice scale (`FOG_STORM.far` and `FOG_DRY.far` exist).
+- B4 is next (0.9.34), then B5; part 4 of B3 waits behind them.
+
 ## 0.10.20 (2026-10-10)
 
 The stakeout spots for B5 (C6 step 1, second part).

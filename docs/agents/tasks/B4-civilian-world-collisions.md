@@ -27,6 +27,14 @@ follows its lane and, at a junction, `moveTo` carries it from the old lane to th
 (`changeStartX/Z`), which cuts the corner: the chord passes the signal pole at the corner and the
 sidewalk. Nothing looks at what it passes through.
 
+## 0. A loose end from B3's review
+
+First, in the same commit as your first part: `Drive` passes `this.blockBarriers` to `PursuitView.step`
+even after the sim has faded a barrier out, so a knocked barrier can stay drawn on the road. Pass only
+the agents still in `this.traffic.agents`, and add a test (a barrier whose agent has gone is not drawn).
+Also in `unitSees` (`police/director.js`), use `FOG_DRY.far` and `FOG_STORM.far` from `render/weather.js` for
+the notice scale in place of the literals 230 and 420. Details in `B3-wet-weather.md`, "Review: parts 2 and 3".
+
 ## 1. Turns that follow the road
 
 - A civilian turning at a junction follows a real curve: a left turn (traffic keeps left) is a tight arc

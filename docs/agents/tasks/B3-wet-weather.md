@@ -87,3 +87,33 @@ new object per call while it is wet (twice a physics step); harmless, leave it.
 The traffic and the police do not use `stepVehicle`, so their grip is part 3's. The order from here:
 part 2 (rain sound) as 0.9.31, the barrier fixes in `tasks/G7-police-station.md` as 0.9.32, part 3 as
 0.9.33, then stop for review.
+
+## Review: parts 2 and 3 (Claude, 0.10.21)
+
+Both pass, with one loose end below. Checked in the browser at 1280 by 720 after the commits
+(0.9.31, 0.9.32, 0.9.33): a storm in the drive loop for 6 s with the audio context running, no console
+errors, the rain nodes present and driven.
+
+- **Part 2 (0.9.31).** The pure gains, the roof and the wet hiss read well and the tests hold them. In a
+  storm the rain bed's gain is 0.16 (measured on the node); 1.5 s after the weather clears it is still at
+  0.10, so it fades over a few seconds and does not cut. Against the engine at idle (0.71) that is 13 dB
+  below outside and 18 dB inside (the report said 13 to 15). I cannot listen from here; Jc to judge the
+  mix by ear. The Settings row needed a name in `ui/menus.js` (`CH_NAMES`), which is Claude's and was
+  missing: fixed in 0.10.20, the row reads RAIN AUDIO above BACK. The barrier skip in `trafficVoices`
+  (the G7 review's fix 1) landed here, with its test.
+- **The barrier fixes (0.9.32).** Driven in the game at 25 m/s into one barrier of a roadblock: it goes
+  `knocked` and `flattened` at once, its yaw does not change, the mesh lies down (`rotation.x` 1.57), the
+  car slows from 25 to 7 m/s over 1.2 s pushing it, and it is gone after the roadblock comes down. The
+  civilians' count and the tests are as reported. Loose end: `PursuitView.step` draws whatever is in
+  `Drive.blockBarriers`, which keeps a barrier after the sim has faded it out (`fade` 0 after 24 s of
+  `knockAge`) until the roadblock comes down, so a knocked barrier could stay drawn, flat on the road,
+  with nothing there. First thing in 0.9.34: pass only the agents still in `traffic.agents`, and a test.
+- **Part 3 (0.9.33).** Read in full. The sight scale is applied in both `stepPolice` (`clear`) and
+  `unitSees`, but to the same distance, not compounded; the patrol notice radius, the cone and the
+  around range follow the 85 % and the helicopter's light reach 133 m in a storm; the heli world gets
+  the weather (`heliWorld` exists). Civilians slow by 12 %, gap and headway 25 % wider, the brake lamps
+  at -0.9 m/s2, police and racers corner at 75 % grip. One brittle spot: `unitSees` writes the fog's 230
+  and 420 into the notice scale (`0.85 + 0.15 * ((fogFar - 230) / (420 - 230))`); they are `weather.js`
+  numbers, already exported as `FOG_DRY.far` and `FOG_STORM.far`, so a change there would skew it; use them
+  in place of the literals (0.9.34, with the barrier fix). Not driven in a pursuit in the game; the six tests hold the numbers.
+- Part 4 (the hour of the day) waits behind B4 and B5, as the queue says.
