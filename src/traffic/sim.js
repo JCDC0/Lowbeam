@@ -685,9 +685,17 @@ export class TrafficSim {
       // Racers only spawn on Route 1; far from it no racer can be placed, and the civilians must
       // still be refilled (before 0.9.79 the city emptied once its first traffic had gone).
       const racer = rivals < this.rivalTarget ? this.spawnRival(player, 250, 460) : null;
-      if (!racer && this.agents.length - rivals < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
+      if (!racer && this.countCivilians() < this.target) this.spawn(player, SPAWN_MIN, SPAWN_MAX);
       this.spawnTimer = 0.25;
     }
+  }
+
+  countCivilians() {
+    let n = 0;
+    for (const a of this.agents) {
+      if (!this.isRival(a) && !isUnit(a.kind) && !a.barrier && a.mode !== 'parked') n++;
+    }
+    return n;
   }
 
   countRivals() {
@@ -1832,7 +1840,7 @@ export class TrafficSim {
     a.speed = Math.max(0, a.vx * fx + a.vz * fz);
     if (isUnit(a.kind)) {
       if (this.hurt(a, unitDamage(hardest, Infinity, a.kind.mass))) this.destroy(a);
-    } else if (hardest > CIVIL_WRECK_HIT) {
+    } else if (!a.barrier && hardest > CIVIL_WRECK_HIT) {
       a.mode = 'wreck';
       a.wreckAge = 0;
       a.free = false;
@@ -1852,6 +1860,14 @@ export class TrafficSim {
     if (a.mode === 'wreck') return;
     if (hit < 3) return;
     if (a.mode === 'parked' && hit <= 6) return;
+    if (a.barrier) {
+      a.mode = 'knocked';
+      a.knockAge = 0;
+      a.flattened = true;
+      a.ex = a.ez = 0;
+      a.changeDuration = 0;
+      return;
+    }
     const unit = isUnit(a.kind);
     if (unit ? this.hurt(a, unitDamage(hit, other, a.kind.mass)) : hit > CIVIL_WRECK_HIT) {
       if (unit) {
@@ -1871,7 +1887,6 @@ export class TrafficSim {
       a.knockAge = 0;
       a.ex = a.ez = 0;
       a.changeDuration = 0;
-      if (a.barrier) a.flattened = true;
       return;
     }
     if (unit && a.pursuit) {
@@ -1882,7 +1897,6 @@ export class TrafficSim {
     a.mode = 'knocked';
     a.ex = a.ez = 0;
     a.changeDuration = 0;
-    if (a.barrier) a.flattened = true;
   }
 
   /**
@@ -1935,6 +1949,7 @@ export class TrafficSim {
         const q = this.net.sample(a.lane, a.s, this._q);
         a.s = clamp(a.s + (a.vx * q.tx + a.vz * q.tz) * dt, 0, a.lane.length);
       }
+      if (a.knockAge > WRECK_TIME - 3) a.fade = Math.max(0, (WRECK_TIME - a.knockAge) / 3);
       return;
     }
     const fx = Math.sin(a.yaw);

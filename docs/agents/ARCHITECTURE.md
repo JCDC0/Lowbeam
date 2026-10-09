@@ -164,7 +164,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-462 tests pass; the type check is clean. By area:
+465 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -260,7 +260,7 @@ apart along the contact normal in proportion to inverse mass; a hit below 3 m/s 
 without knocking (0.9.22). Obstacle tracking in `leader` accounts for wrecks and parked roadblock units
 across sibling lanes: a car brakes to an equilibrium stop 6 m before a roadblock and, where an adjacent
 lane remains open, changes into it instead; a player ram over 6 m/s restores player momentum and punches
-through (0.9.23). Knocked cars and moving wrecks hit the other traffic, so
+through (0.9.23). Knocked roadblock barriers flatten and lie flat on the road, damping their slide quickly with no yaw spin, and barriers and parked units do not count against the civilian spawn target (0.9.32). Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,

@@ -999,6 +999,16 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.32 (2026-10-10)
+
+Roadblock barriers lie down, stay silent and stay out of the traffic count.
+
+- `src/traffic/sim.js`:
+  - Barriers never become a wreck: any hit (including hard hits > 18 m/s closing) takes the knocked path in `knock`, setting `flattened` to true, dampening slide and yaw rate exponentially (`exp(-dt * 4)` and `exp(-dt * 6)`), and fading out after `WRECK_TIME` (24 s). Barrier wall collisions in `collideWorld` also never convert to wrecks.
+  - Civilian spawn target in `TrafficSim.update`: added `countCivilians()` counting only non-rival, non-unit, non-barrier, non-parked agents, so standing roadblocks (parked cruisers and barriers) do not reduce the civilian population around the player.
+  - Soft hits under 6 m/s closing keep the barrier parked and upright (`flattened` false), stopping the approaching vehicle.
+- `tests/island/roadblock.test.mjs`: added tests verifying that a soft hit stops the car while keeping the barrier parked and upright, a hard 25 m/s hit knocks and flattens the barrier without yaw spin and fades after 24 s, roadblocks and barriers do not count toward civilian spawn targets, and traffic brakes for a barrier across its lane.
+
 ## 0.9.31 (2026-10-10)
 
 Rain sound: the bed, the patter, wet tires (B3 part 2).

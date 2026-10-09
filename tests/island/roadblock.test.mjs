@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planRoadblock, shouldSetRoadblock, tooNearBlock, planSpikes, hitSpikes, spikePenalty } from '../../src/police/roadblock.js';
+import { TrafficSim } from '../../src/traffic/sim.js';
+import { carById } from '../../src/vehicles/specs.js';
+import { createVehicleState } from '../../src/vehicles/physics.js';
 import { island, trafficNet } from '../island.mjs';
 
 const ground = island();
@@ -118,4 +121,104 @@ test('planRoadblock barrier placement is deterministic', () => {
   const b1 = planRoadblock(ctx(1500), 4, seed1);
   const b2 = planRoadblock(ctx(1500), 4, seed2);
   assert.deepEqual(b1.barriers, b2.barriers);
+});
+
+test('barrier hit: soft hit stops the car, hard hit knocks and flattens without yaw spin', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const sim = new TrafficSim(net, { target: 0, rivals: 0, patrols: 0 });
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 100, q);
+  const yaw = Math.atan2(q.tx, q.tz);
+  const spec = carById('hayate');
+
+  // Soft hit (closing speed under 6 m/s): place car 2.0 m behind barrier so front bumper contacts
+  const barrier = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw, w: 2.4 }, lane, 100);
+  const softState = createVehicleState(spec);
+  softState.x = q.x - q.tx * 2.0;
+  softState.y = q.y;
+  softState.z = q.z - q.tz * 2.0;
+  softState.yaw = yaw;
+  softState.vx = q.tx * 5;
+  softState.vz = q.tz * 5;
+  softState.speed = 5;
+  const softHit = sim.collideWithPlayer(softState, spec);
+  assert.ok(softHit > 0 && softHit <= 6, `soft hit closing speed is <= 6 (got ${softHit.toFixed(2)})`);
+  assert.equal(barrier.mode, 'parked', 'barrier stays parked on soft hit');
+  assert.equal(barrier.flattened, false, 'barrier is not flattened on soft hit');
+  const dotV = softState.vx * q.tx + softState.vz * q.tz;
+  assert.ok(dotV < 0, 'car bounced / stopped by parked barrier');
+
+  // Hard hit (25 m/s closing)
+  net.sample(lane, 200, q);
+  const hardYaw = Math.atan2(q.tx, q.tz);
+  const hardBarrier = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: hardYaw, w: 2.4 }, lane, 200);
+  const hardState = createVehicleState(spec);
+  hardState.x = q.x - q.tx * 2.0;
+  hardState.y = q.y;
+  hardState.z = q.z - q.tz * 2.0;
+  hardState.yaw = hardYaw;
+  hardState.vx = q.tx * 25;
+  hardState.vz = q.tz * 25;
+  hardState.speed = 25;
+  const hardHit = sim.collideWithPlayer(hardState, spec);
+  assert.ok(hardHit > 6, `hard hit closing speed > 6 (got ${hardHit.toFixed(2)})`);
+  assert.equal(hardBarrier.mode, 'knocked', 'barrier becomes knocked, never a wreck');
+  assert.equal(hardBarrier.flattened, true, 'barrier is flattened on hard hit');
+
+  // Slide damping: barrier slides a short distance and yaw spin dies
+  for (let t = 0; t < 2; t += 1 / 30) {
+    sim.stepKnocked(hardBarrier, 1 / 30);
+  }
+  assert.ok(Math.abs(hardBarrier.yawRate) < 0.01, 'yaw spin settles to virtually zero');
+  assert.ok(hardBarrier.speed < 0.5, 'slide damped quickly');
+
+  // Fades after usual wreck time
+  for (let t = 0; t < 25; t += 1) {
+    sim.stepKnocked(hardBarrier, 1);
+  }
+  assert.equal(hardBarrier.fade, 0, 'barrier fades out after usual time');
+});
+
+test('TrafficSim civilian target counts civilians only, excluding roadblocks and barriers', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const sim = new TrafficSim(net, { target: 5, rivals: 0, patrols: 0 });
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 100, q);
+  sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 100);
+  sim.spawnBarrier({ x: q.x + 3, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 100);
+  sim.spawnParked('police', { x: q.x + 6, y: q.y, z: q.z, yaw: 0 }, lane, 100);
+  sim.spawnParked('police', { x: q.x + 9, y: q.y, z: q.z, yaw: 0 }, lane, 100);
+  sim.spawnParked('police', { x: q.x + 12, y: q.y, z: q.z, yaw: 0 }, lane, 100);
+
+  assert.equal(sim.agents.length, 5, '5 roadblock obstacle agents present');
+  assert.equal(sim.countCivilians(), 0, '0 civilians counted among roadblock obstacles');
+
+  const player = { x: q.x, z: q.z, speed: 0 };
+  sim.spawnTimer = 0;
+  sim.update(1 / 30, player);
+
+  assert.ok(sim.countCivilians() > 0, 'civilian spawned because obstacles do not take civilian slots');
+});
+
+test('traffic brakes for a barrier across its lane', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const sim = new TrafficSim(net, { target: 0, rivals: 0, patrols: 0 });
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 100, q);
+  const civ = sim.spawn({ x: q.x, z: q.z, speed: 0 }, 0, 1e9);
+  assert.ok(civ);
+  civ.lane = lane;
+  civ.s = 100;
+  civ.speed = 25;
+
+  net.sample(lane, 130, q);
+  const barrier = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), w: 2.4 }, lane, 130);
+  barrier.s = 130;
+
+  sim.sortLanes();
+  const player = { x: 1000, z: 1000, speed: 0 };
+  sim.stepDrive(civ, 1 / 30, player);
+
+  assert.equal(civ.brake, 1, 'civilian triggers brake for barrier ahead');
+  assert.ok(civ.speed < 25, 'civilian slows down before barrier');
 });
