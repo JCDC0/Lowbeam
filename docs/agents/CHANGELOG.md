@@ -946,6 +946,29 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.29 (2026-10-09)
+
+Put barriers at police roadblocks.
+
+- `src/police/roadblock.js`: `planRoadblock` calculates and returns `barriers` (one or two 2.4 m wide
+  sawhorse barriers positioned at the edge of the gap and between units, aligned along the road normal
+  axis `nx, nz`, staying inside the carriageway, clearing the gap and parked units with longitudinal
+  offset `ds = -2.2` m ahead of the roadblock, deterministic).
+- `src/police/pursuit-view.js`: added `police_barrier` to `PURSUIT_MODELS`, created barrier mesh group and
+  procedural fallback box, flashing the emissive amber warning lamp at 2 Hz (`0xff9c14` / `0x221100`).
+- `src/traffic/kinds.js`: registered `BARRIER_KIND` (`police-barrier`, 2.4 m wide, 0.6 m deep, 1.1 m high,
+  mass 600 kg) in `KIND_BY_ID`.
+- `src/traffic/sim.js`: `spawnBarrier` creates roadblock barrier obstacles as parked agents.
+  `bodyOfAgent` sets `yaw: a.barrier ? a.yaw + Math.PI / 2 : a.yaw` to span contact circles across the road.
+  Solid contact uses parked unit rules (immovable below 6 m/s closing speed); hard collisions knock the
+  barrier aside, set `flattened: true` to tilt the barrier flat onto the road, and slow down the car.
+  `stepKnocked` applies ground friction and spin damping without resuming lane drive. Traffic brakes for
+  the barrier as for a parked unit.
+- `src/drive.js`: manages `this.blockBarriers`, spawns them with `orders.roadblock`, fades/clears them with
+  `orders.clearRoadblock` and `orders.release`, and steps `pursuitView3d`.
+- `tests/island/roadblock.test.mjs`: verified barrier count, width, carriageway bounds, gap clearance, unit
+  clearance, and deterministic generation (9 passing tests).
+
 ## 0.9.28 (2026-10-08)
 
 Helicopter tank refills when parked at home, and pad resets to basePad after refuel.

@@ -148,7 +148,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/race/event.js`, `duel.js`, `rally.js`, `pacenotes.js`, `pursuit.js` | `RaceEvent` and its kinds |
 | `src/police/heli.js`, `heli-view.js` | The helicopter and its searchlight |
 | `src/police/director.js` | `PoliceDirector`: the whole pursuit from the first notice to the report, as orders the Drive carries out |
-| `src/police/units.js`, `heat.js`, `roadblock.js`, `sight.js`, `lights.js`, `pursuit-view.js` | Unit kinds and the roster per heat, attention and heat, roadblocks and spike strips, line of sight, the light bar's flash pattern, the strip on the road |
+| `src/police/units.js`, `heat.js`, `roadblock.js`, `sight.js`, `lights.js`, `pursuit-view.js` | Unit kinds and the roster per heat, attention and heat, roadblocks, spike strips and barriers, line of sight, the light bar's flash pattern, the strip and barriers on the road |
 | `src/audio/*` | Engine synthesis (worklet), effects, ambience, pass-by, the engines of the cars around (`traffic-voices.js`), sirens and the rotor (`siren.js`), the recorded soundtrack and its moods |
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
@@ -399,7 +399,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 
 ## Open work and known issues
 
-- The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51).
+- The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51 and placed at roadblocks in 0.9.29).
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy, and
   `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once

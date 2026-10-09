@@ -63,7 +63,58 @@ export function planRoadblock(ctx, heat, rand = Math.random) {
     });
   }
   const gap = { side: gapAtLeft ? -1 : 1, half: step / 2 };
-  return { lane, s: ahead, x: cx, z: cz, y: q.y, units, gap, tx: q.tx, tz: q.tz, halfW };
+
+  // Barriers: 2.4 m wide folding sawhorse barriers across the road (axis nx, nz),
+  // positioned at the edge of the gap and between units, clearing the gap and units.
+  const BARRIER_W = 2.4;
+  const halfBW = BARRIER_W / 2;
+  const nx = -q.tz;
+  const nz = q.tx;
+  const yaw = Math.atan2(q.tx, q.tz);
+  const ds = -2.2;
+  const barriers = [];
+
+  if (gapAtLeft) {
+    const lat1 = -halfW + step + halfBW;
+    if (lat1 + halfBW <= halfW + 0.05) {
+      barriers.push({
+        x: cx + nx * lat1 + q.tx * ds,
+        z: cz + nz * lat1 + q.tz * ds,
+        y: q.y,
+        yaw, nx, nz, w: BARRIER_W, lateral: lat1, ds, index: 0,
+      });
+    }
+    const lat2 = -halfW + 2 * step;
+    if (lat2 - lat1 >= BARRIER_W - 0.1 && lat2 + halfBW <= halfW + 0.05) {
+      barriers.push({
+        x: cx + nx * lat2 + q.tx * ds,
+        z: cz + nz * lat2 + q.tz * ds,
+        y: q.y,
+        yaw, nx, nz, w: BARRIER_W, lateral: lat2, ds, index: 1,
+      });
+    }
+  } else {
+    const lat1 = halfW - step - halfBW;
+    if (lat1 - halfBW >= -halfW - 0.05) {
+      barriers.push({
+        x: cx + nx * lat1 + q.tx * ds,
+        z: cz + nz * lat1 + q.tz * ds,
+        y: q.y,
+        yaw, nx, nz, w: BARRIER_W, lateral: lat1, ds, index: 0,
+      });
+    }
+    const lat2 = halfW - 2 * step;
+    if (lat1 - lat2 >= BARRIER_W - 0.1 && lat2 - halfBW >= -halfW - 0.05) {
+      barriers.push({
+        x: cx + nx * lat2 + q.tx * ds,
+        z: cz + nz * lat2 + q.tz * ds,
+        y: q.y,
+        yaw, nx, nz, w: BARRIER_W, lateral: lat2, ds, index: 1,
+      });
+    }
+  }
+
+  return { lane, s: ahead, x: cx, z: cz, y: q.y, units, gap, barriers, tx: q.tx, tz: q.tz, halfW };
 }
 
 /**

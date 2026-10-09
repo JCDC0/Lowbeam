@@ -86,3 +86,36 @@ test('running over a strip flattens the tires, and they mend over time', () => {
   assert.equal(done.active, false, 'the tires mend after the timer');
   assert.ok(done.grip > worse.grip, 'and grip comes back');
 });
+
+test('planRoadblock returns barriers clearing units and gap, within carriageway', () => {
+  for (let i = 0; i < 20; i++) {
+    const block = planRoadblock(ctx(1500), 4);
+    assert.ok(block.barriers.length >= 1 && block.barriers.length <= 2, 'returns 1 or 2 barriers');
+    for (const b of block.barriers) {
+      assert.equal(b.w, 2.4, 'barrier is 2.4 m wide');
+      assert.ok(b.lateral - b.w / 2 >= -block.halfW - 0.05, 'barrier inside left edge');
+      assert.ok(b.lateral + b.w / 2 <= block.halfW + 0.05, 'barrier inside right edge');
+
+      if (block.gap.side < 0) {
+        const gapRight = -block.halfW + 2 * block.gap.half;
+        assert.ok(b.lateral - b.w / 2 >= gapRight - 0.01, 'barrier does not intrude into left gap');
+      } else {
+        const gapLeft = block.halfW - 2 * block.gap.half;
+        assert.ok(b.lateral + b.w / 2 <= gapLeft + 0.01, 'barrier does not intrude into right gap');
+      }
+
+      for (const u of block.units) {
+        const d = Math.hypot(b.x - u.x, b.z - u.z);
+        assert.ok(d > 1.2, `barrier clears unit, distance is ${d.toFixed(2)}`);
+      }
+    }
+  }
+});
+
+test('planRoadblock barrier placement is deterministic', () => {
+  const seed1 = () => 0.42;
+  const seed2 = () => 0.42;
+  const b1 = planRoadblock(ctx(1500), 4, seed1);
+  const b2 = planRoadblock(ctx(1500), 4, seed2);
+  assert.deepEqual(b1.barriers, b2.barriers);
+});

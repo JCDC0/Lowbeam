@@ -151,6 +151,8 @@ export class Drive {
     this.tollKmh = null;
     /** The roadblock's parked units, so they can be sent after the player when it comes down. @type {any[]} */
     this.blockUnits = [];
+    /** The roadblock's barriers. @type {any[]} */
+    this.blockBarriers = [];
     this.pursuitView3d = new PursuitView(world.models || {});
     world.add(this.pursuitView3d.group);
     // The units see through what the player can see through, and drive on the ground.
@@ -297,6 +299,8 @@ export class Drive {
     if (orders.release) {
       this.traffic.command(false, { keep: this.traffic.patrolTarget, unpark: true });
       this.blockUnits = [];
+      for (const a of this.blockBarriers) a.fade = 0;
+      this.blockBarriers = [];
     }
     this.traffic.search = orders.search;
     if (this.police.active) this.traffic.command(orders.chase === 'search' ? 'search' : 'chase');
@@ -308,6 +312,8 @@ export class Drive {
       const kind = this.police.level >= 5 ? 'police-heavy' : 'police';
       this.blockUnits = b.units.map((u) => this.traffic.spawnParked(kind, u, b.lane, b.s));
       for (const a of this.blockUnits) this.police.pursuit?.involve();
+      for (const a of this.blockBarriers) a.fade = 0;
+      this.blockBarriers = (b.barriers || []).map((spot) => this.traffic.spawnBarrier(spot, b.lane, b.s));
     }
     if (orders.clearRoadblock) {
       for (const a of this.blockUnits) if (a.mode === 'parked') {
@@ -317,8 +323,11 @@ export class Drive {
         if (!this.police.active) a.leave = true;
       }
       this.blockUnits = [];
+      for (const a of this.blockBarriers) a.fade = 0;
+      this.blockBarriers = [];
     }
     this.pursuitView3d.setStrip(this.police.spikes);
+    this.pursuitView3d.step(dt, this.blockBarriers);
 
     // One helicopter goes up at heat 3, two at 4, three at 5; they go home when the pursuit ends.
     // When no player pursuit is on, a police tail on a street racer may call one helicopter.

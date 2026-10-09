@@ -10,7 +10,7 @@
 
 import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
-import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit } from './kinds.js';
+import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit, BARRIER_KIND } from './kinds.js';
 import { lightState } from './net.js';
 import { Manners, HORN_GAP, HORN_EVERY } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
@@ -33,7 +33,8 @@ import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js'
  *   free?: boolean, blind?: number, offroad?: number, routeTimer?: number, routeLane?: Lane | null,
  *   noRoute?: number, leave?: boolean, hp?: number, destroyed?: boolean,
  *   quarry?: Agent | null, tailTime?: number, chasedBy?: number | null, shy?: number, shyUntil?: number,
- *   hurry?: number, hurryUntil?: number, playerEst?: { x: number, z: number, vx: number, vz: number, speed?: number, yaw?: number } | null
+ *   hurry?: number, hurryUntil?: number, playerEst?: { x: number, z: number, vx: number, vz: number, speed?: number, yaw?: number } | null,
+ *   barrier?: boolean, flattened?: boolean
  * }} Agent
  * A police unit's `pursuit` is 'chase' (drive at the player: along the lanes by the shortest
  * route, straight at them once close with a clear line, `free`), 'search' (drive to where they
@@ -491,6 +492,42 @@ export class TrafficSim {
       mode: 'parked', age: 0, wreckAge: 0, laneHold: 0, duel: false, signal: 0, signalTimer: 0, signalTarget: null,
       nextChange: 0, inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
       brake: 1, fade: 1, pursuit: false,
+    });
+    this.agents.push(a);
+    return a;
+  }
+
+  /**
+   * Spawns a roadblock barrier obstacle that is solid to traffic and the player.
+   * @param {{ x: number, y: number, z: number, yaw: number, w: number, index?: number }} spot
+   * @param {Lane} lane
+   * @param {number} s
+   * @returns {Agent}
+   */
+  spawnBarrier(spot, lane, s) {
+    const kind = BARRIER_KIND;
+    let targetLane = lane;
+    let targetS = s;
+    if (lane && lane.road) {
+      const siblings = (this.net.byRoad.get(lane.road.id) || []).filter((l) => l.dir === lane.dir);
+      let bestD = Infinity;
+      for (const l of siblings) {
+        const q = this.net.sample(l, s, this._q);
+        const d = Math.hypot(q.x - spot.x, q.z - spot.z);
+        if (d < bestD) {
+          bestD = d;
+          targetLane = l;
+        }
+      }
+    }
+    const a = /** @type {Agent} */ ({
+      id: this.nextId++, kind, paint: kind.paint[0], lane: targetLane, s: targetS, speed: 0, factor: 1,
+      x: spot.x, y: spot.y, z: spot.z, yaw: spot.yaw, vx: 0, vz: 0, yawRate: 0,
+      ex: 0, ez: 0, cap: Infinity, capUntil: 0, plan: null, end: null,
+      changeDuration: 0, changeTimer: 0, changeStartX: 0, changeStartZ: 0, changePrevEx: 0, changePrevEz: 0,
+      mode: 'parked', age: 0, wreckAge: 0, laneHold: 0, duel: false, signal: 0, signalTimer: 0, signalTarget: null,
+      nextChange: 0, inertia: kind.mass * (kind.length ** 2 + kind.width ** 2) / 12,
+      brake: 1, fade: 1, pursuit: false, barrier: true, knockAge: 0, flattened: false,
     });
     this.agents.push(a);
     return a;
@@ -1834,6 +1871,7 @@ export class TrafficSim {
       a.knockAge = 0;
       a.ex = a.ez = 0;
       a.changeDuration = 0;
+      if (a.barrier) a.flattened = true;
       return;
     }
     if (unit && a.pursuit) {
@@ -1844,6 +1882,7 @@ export class TrafficSim {
     a.mode = 'knocked';
     a.ex = a.ez = 0;
     a.changeDuration = 0;
+    if (a.barrier) a.flattened = true;
   }
 
   /**
@@ -1883,6 +1922,21 @@ export class TrafficSim {
    */
   stepKnocked(a, dt) {
     a.knockAge = (a.knockAge || 0) + dt;
+    if (a.barrier) {
+      a.vx *= Math.exp(-dt * 4);
+      a.vz *= Math.exp(-dt * 4);
+      a.yawRate *= Math.exp(-dt * 6);
+      a.x += a.vx * dt;
+      a.z += a.vz * dt;
+      a.yaw += a.yawRate * dt;
+      a.speed = Math.hypot(a.vx, a.vz);
+      if (this.groundAt) a.y = this.groundAt(a.x, a.z, a.y);
+      if (a.lane) {
+        const q = this.net.sample(a.lane, a.s, this._q);
+        a.s = clamp(a.s + (a.vx * q.tx + a.vz * q.tz) * dt, 0, a.lane.length);
+      }
+      return;
+    }
     const fx = Math.sin(a.yaw);
     const fz = Math.cos(a.yaw);
     let vF = a.vx * fx + a.vz * fz;
@@ -1997,7 +2051,7 @@ export class TrafficSim {
   /** @param {Agent} a */
   bodyOfAgent(a) {
     return {
-      x: a.x, z: a.z, yaw: a.yaw, vx: a.vx, vz: a.vz, yawRate: a.yawRate,
+      x: a.x, z: a.z, yaw: a.barrier ? a.yaw + Math.PI / 2 : a.yaw, vx: a.vx, vz: a.vz, yawRate: a.yawRate,
       mass: a.kind.mass, inertia: a.inertia, width: a.kind.width, length: a.kind.length, offset: 0,
     };
   }

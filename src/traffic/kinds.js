@@ -44,10 +44,17 @@ export const KINDS = [
   { id: 'semi', name: 'Semi trailer', length: 16, width: 2.5, height: 3.6, mass: 24000, accel: 0.9, speed: [0.72, 0.9], paint: [0xe8e8e6, 0xc9ccd0, 0x24407a], weights: { expressway: 2, arterial: 0.5, street: 0, ramp: 1, mountain: 0 } },
 ];
 
+/** Roadblock barrier obstacle kind. @type {Kind} */
+export const BARRIER_KIND = {
+  id: 'police-barrier', name: 'Roadblock barrier', length: 2.4, width: 0.6, height: 1.1, mass: 600,
+  accel: 0, speed: [0, 0], paint: [0xd42418], weights: { expressway: 0, arterial: 0, street: 0, ramp: 0, mountain: 0 },
+};
+
 /** @type {Map<string, Kind>} */
 export const KIND_BY_ID = new Map(KINDS.map((k) => [k.id, k]));
 
 for (const k of UNIT_KINDS) KIND_BY_ID.set(k.id, k);
+KIND_BY_ID.set(BARRIER_KIND.id, BARRIER_KIND);
 export const POLICE = UNIT_KINDS[0];
 export const isPolice = isUnit;
 export { UNIT_KINDS, isUnit };
