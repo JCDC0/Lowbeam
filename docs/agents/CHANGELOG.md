@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.7 (2026-10-09)
+
+Review of Gemini's 0.9.69; the Kagero Aristo VIP in the game, which closes G5.
+
+- The VIP passes (the G5 brief records the review) and is in `KIND_MODELS`: all eleven street racers
+  of G5 now draw from their Blender bodies. `tests/kind-models.test.mjs` checks its size, materials
+  and groups.
+- `B3-wet-weather.md` part 2 notes that the rain bed should go quiet under a roof, with the rain
+  cover's lookup.
+
 ## 0.10.6 (2026-10-09)
 
 The rain no longer falls through bridges, decks and canopies.

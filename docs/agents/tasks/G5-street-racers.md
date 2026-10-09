@@ -62,3 +62,10 @@ hips and 1.9 m over most of its length, the Sakura 1.65 to 1.75 m; both lit and 
 - The Sakura's front shows dark wedges under the lamps (the air dam and fog lamp housings stand
   proud of the bumper); keep the VIP's bumper clean, with the lamps set in.
 - Quote the plan-view width along the body, as the brief says, not only the bounds.
+
+## Review: Kagero Aristo VIP (Claude, 0.10.7)
+
+Passes and is in the game, which closes G5: all eleven racers draw from their Blender bodies. Measured
+from the JSON: 4.95 m long, 1.7 to 1.9 m wide along the body (1.88 at the front fenders), 1.45 m high.
+It reads as a long, low luxury sedan from the front and the side in the game, with a clean front end
+and the lamps set in, as asked.

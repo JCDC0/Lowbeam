@@ -98,6 +98,7 @@ export const KIND_MODELS = {
   'rv-wide': 'rv_wide_full',
   'rv-hyper': 'rv_hyper_full',
   'rv-sakura': 'rv_sakura_full',
+  'rv-vip': 'rv_vip_full',
   police: 'police_cruiser_full',
   'police-fast': 'police_unmarked_full',
   'police-heavy': 'police_rhino_full',

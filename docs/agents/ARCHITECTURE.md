@@ -159,7 +159,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.6)
+## Current state (0.10.7)
 
 445 tests pass; the type check is clean. By area:
 
@@ -271,7 +271,7 @@ and maintain 140 m clearance on spawn (0.9.23). The Hikari is not among the race
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
 Kagero Hot-GT, Kagero Lancer-X, Halden Drifter, Tsurugi Wedge, Kenro Hardtop, Hoshi Beat and Kagero
-RS-Wide, Vespera Zero and Kenro Sakura S racers and all four police units so far; the rest keep their lofted or boxy bodies until their models pass review.
+RS-Wide, Vespera Zero, Kenro Sakura S and Kagero Aristo VIP racers (all eleven of G5) and all four police units; the civilians keep their lofted or boxy bodies until G6.
 
 **Time of day.** Night (the default), dusk, dawn, day or a cycle (`render/daylight.js`; Settings,
 saved as `time`; `__lowbeam.time('day' | 18.5 | 'cycle')`). A cycle runs from 17:36 and a day takes 24

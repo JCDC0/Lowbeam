@@ -25,6 +25,9 @@ Versions: the backend range, one commit per part, stop for Claude's review after
   rises when the car stops. Its own channel in Settings' audio list if the channels are a list.
 - Tires on wet tarmac hiss: the tire noise gains a band of high-frequency noise with speed and the
   wetness, and the skid screech is a little looser (lower gain, longer).
+- Under a roof the rain bed goes quiet and a patter on the roof replaces it: Claude's rain cover
+  (`world.rain.cover`, a `CoverGrid` from `src/world/rain-cover.js`) says whether a roof is over the
+  camera: `cover.at(x, z) > camera.y` (a value of `NONE` is open sky).
 - Passing cars (`traffic-voices.js`) hiss on the wet at speed.
 - Thunder is not wanted.
 - Tests on the pure parts (the gains for a level), and a measured level of the rain bed against the
