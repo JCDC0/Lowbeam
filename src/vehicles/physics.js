@@ -18,7 +18,7 @@
  * the money shift live in `thermal.js`.
  */
 
-import { surface, slipFactor } from './surfaces.js';
+import { surface, slipFactor, wetFactor } from './surfaces.js';
 import { clamp, approach, lerp } from '../core/mathx.js';
 import { LIMP_RPM, healthScale, stepEngineHealth, thermalDerate, TEMP_START, EXH_START } from './thermal.js';
 import { createFx, stepExhaust } from './exhaust.js';
@@ -68,6 +68,8 @@ export function createVehicleState(spec) {
     handbrake: false, braking: false,
     // Spiked tires (police/roadblock.js): grip and top speed as fractions of whole tires.
     tireGrip: 1, tireTop: 1,
+    // Road wetness 0..1 (render/weather.js, B3).
+    wet: 0,
     // Nitrous (nitrous.js): the bottle 0..1 and whether it flows this step.
     n2o: 1, n2oOn: false,
   };
@@ -380,8 +382,8 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   const transfer = (spec.cgHeight / L) * m * s.aLong;
   const Nf = clamp((W * c) / L - transfer, 0.15 * W, 0.85 * W);
   const Nr = W - Nf;
-  const sfF = surface(s.surfFront);
-  const sfR = surface(s.surfRear);
+  const sfF = surface(s.surfFront, s.wet);
+  const sfR = surface(s.surfRear, s.wet);
   // Downforce adds grip on hard surfaces only; on loose ground the tires sink in and it does little.
   const v2 = speed * speed;
   const downF = sfF.loose ? 0 : spec.aero.front * v2;
@@ -426,7 +428,7 @@ export function stepVehicle(s, spec, input, ground, dt = DT) {
   let brakeF = 0;
   let brakeR = 0;
   if (s.braking) {
-    const fb = spec.brake * brakeIn * Math.sign(vF);
+    const fb = spec.brake * brakeIn * Math.sign(vF) * wetFactor(sfF, s.wet);
     brakeF = -fb * 0.62;
     brakeR = -fb * 0.38;
   }

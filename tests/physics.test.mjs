@@ -467,3 +467,65 @@ test('downforce adds grip with speed on tarmac and none on gravel', () => {
   assert.ok(Math.abs(withWing - without) / without < 0.005, `gravel ${without} with downforce ${withWing}`);
   assert.ok(cornering(vespera, 'asphalt', 50, 5) > cornering(bare, 'asphalt', 50, 5) * 1.1, 'no gain on tarmac');
 });
+
+test('tarmac grip falls in wet weather while gravel and dirt do not change', () => {
+  const hayate = carById('hayate');
+  const gDry = flat('asphalt');
+  const gWet = flat('asphalt');
+
+  const sDry = createVehicleState(hayate);
+  sDry.wet = 0;
+  placeVehicle(sDry, hayate, 0, 0, 0, gDry);
+  sDry.vz = 100 / 3.6;
+  sDry.speed = 100 / 3.6;
+  sDry.gear = 3;
+  let t = 0;
+  while (sDry.speed > 0.3 && t < 15) {
+    stepVehicle(sDry, hayate, { throttle: 0, brake: 1, steer: 0, handbrake: 0 }, gDry, DT);
+    t += DT;
+  }
+
+  const sWet = createVehicleState(hayate);
+  sWet.wet = 1;
+  placeVehicle(sWet, hayate, 0, 0, 0, gWet);
+  sWet.vz = 100 / 3.6;
+  sWet.speed = 100 / 3.6;
+  sWet.gear = 3;
+  t = 0;
+  while (sWet.speed > 0.3 && t < 15) {
+    stepVehicle(sWet, hayate, { throttle: 0, brake: 1, steer: 0, handbrake: 0 }, gWet, DT);
+    t += DT;
+  }
+
+  const ratio = sWet.z / sDry.z;
+  assert.ok(ratio > 1.2 && ratio < 1.35, `wet braking distance should be ~1.25x dry, got ${ratio.toFixed(2)} (${sDry.z.toFixed(1)} m vs ${sWet.z.toFixed(1)} m)`);
+
+  for (const surf of ['gravel', 'dirt', 'grass']) {
+    const sGravelDry = createVehicleState(hayate);
+    sGravelDry.wet = 0;
+    const gSurf = flat(surf);
+    placeVehicle(sGravelDry, hayate, 0, 0, 0, gSurf);
+    sGravelDry.vz = 100 / 3.6;
+    sGravelDry.speed = 100 / 3.6;
+    sGravelDry.gear = 3;
+    t = 0;
+    while (sGravelDry.speed > 0.3 && t < 15) {
+      stepVehicle(sGravelDry, hayate, { throttle: 0, brake: 1, steer: 0, handbrake: 0 }, gSurf, DT);
+      t += DT;
+    }
+
+    const sGravelWet = createVehicleState(hayate);
+    sGravelWet.wet = 1;
+    placeVehicle(sGravelWet, hayate, 0, 0, 0, gSurf);
+    sGravelWet.vz = 100 / 3.6;
+    sGravelWet.speed = 100 / 3.6;
+    sGravelWet.gear = 3;
+    t = 0;
+    while (sGravelWet.speed > 0.3 && t < 15) {
+      stepVehicle(sGravelWet, hayate, { throttle: 0, brake: 1, steer: 0, handbrake: 0 }, gSurf, DT);
+      t += DT;
+    }
+
+    assert.equal(sGravelDry.z.toFixed(2), sGravelWet.z.toFixed(2), `${surf} braking distance must not change with wetness`);
+  }
+});

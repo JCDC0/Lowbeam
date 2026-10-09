@@ -946,6 +946,21 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.30 (2026-10-09)
+
+Wet weather grip: tarmac grip falls with rain (B3 part 1).
+
+- `src/vehicles/surfaces.js`: added `wetGrip` property (0.75 on tarmac: asphalt and concrete; 1.0 on loose
+  surfaces: gravel, dirt, grass, sand, rock, water). `surface(name, wet)` scales tarmac grip down to 75 % at
+  full storm (`wet = 1`). Added `wetFactor(surf, wet)`.
+- `src/vehicles/physics.js`: vehicle state carries `wet: 0` (0 dry to 1 soaked). `stepVehicle` samples surfaces
+  using `s.wet`, scaling peak tire grip (`capF`, `capR`), lateral forces, and braking force by the surface wet
+  factor. Loose surfaces remain completely unaffected.
+- `src/drive.js`: passes road wetness from `weatherLook(world.weather).wet` into `car.state.wet` each frame.
+- Dry numbers in `tools/sim.mjs` and existing tests remain strictly identical down to the last decimal digit.
+- Braking from 100 km/h on wet asphalt takes ~25 % to 31 % more meters (e.g. Hayate 34.7 m dry vs 43.3 m wet),
+  while gravel and dirt braking distances remain unchanged.
+
 ## 0.9.29 (2026-10-09)
 
 Put barriers at police roadblocks.

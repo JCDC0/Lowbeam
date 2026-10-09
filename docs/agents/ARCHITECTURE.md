@@ -135,7 +135,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/collision.js` | Circles and oriented boxes in a grid; the car as three circles |
 | `src/world/world.js` | `World.create(step)` builds the scene in stages; `update(camera, focus)` |
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
-| `src/vehicles/physics.js`, `surfaces.js`, `thermal.js`, `nitrous.js` | 120 Hz bicycle model, gearbox N R 1..n, wheel slip, engine heat, over-rev, damage, limp mode, the nitrous bottle |
+| `src/vehicles/physics.js`, `surfaces.js`, `thermal.js`, `nitrous.js` | 120 Hz bicycle model, gearbox N R 1..n, surface grip and wet scaling, wheel slip, engine heat, over-rev, damage, limp mode, the nitrous bottle |
 | `src/vehicles/gauges.js` | The readings every gauge shows, from the physics |
 | `src/vehicles/models.js`, `loft.js`, `bodies/*` | The lofted car bodies (player cars, racers, traffic) |
 | `src/vehicles/cockpit.js`, `dash.js`, `instruments.js`, `screens.js` | The cockpit interior and each car's instruments; the canvas painters shared with the HUD |

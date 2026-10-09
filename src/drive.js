@@ -36,6 +36,7 @@ import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
 import { Heli, Skyline, helipadOf, nearestStation } from './police/heli.js';
 import { HeliView } from './police/heli-view.js';
+import { weatherLook } from './render/weather.js';
 
 /** How close to the rally start the car has to be stopped to begin a run. */
 const RALLY_NEAR = 15;
@@ -897,6 +898,7 @@ export class Drive {
       this.toast('ENGINE OVERHEATING   EASE OFF', 2.5);
     } else if (s.temp < TEMP_RED - 6) this.hotWarned = false;
 
+    s.wet = weatherLook(this.world.weather ?? 0).wet;
     const x0 = s.x;
     const z0 = s.z;
     this.acc += dt;
