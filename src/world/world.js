@@ -19,6 +19,7 @@ import { buildVending } from './build-vending.js';
 import { buildPoles } from './build-poles.js';
 import { buildGuideSigns } from './build-guide-signs.js';
 import { buildLamps, buildTown } from './props.js';
+import { LampGlow } from './build-lamp-glow.js';
 import { buildTrees } from './build-trees.js';
 import { buildLots, loadModels } from './build-lots.js';
 import { HELI_MODELS } from '../police/heli-view.js';
@@ -73,6 +74,8 @@ export class World {
     w.groundChunks.push(...highway.userData.chunks);
     await step('BUILDING THE CITY');
     w.add(buildLamps(w.scatter.lamps, w.grid));
+    w.lampGlow = new LampGlow(w.scatter.lamps);
+    w.add(w.lampGlow.mesh);
     w.add(buildVending(w.scatter.vending, w.grid));
     w.add(buildGuideSigns(w.scatter.guides, w.grid));
     const poles = buildPoles(w.scatter.poles, w.grid);
@@ -127,6 +130,8 @@ export class World {
     /** @type {{ mesh: THREE.Mesh, x: number, z: number }[]} */
     this.groundChunks = [];
     this.buildMs = 0;
+    /** @type {LampGlow | null} */
+    this.lampGlow = null;
   }
 
   /** @param {THREE.Object3D} obj */
@@ -214,6 +219,7 @@ export class World {
   update(camera, focus) {
     const p = camera.position;
     this.sky.position.copy(p);
+    this.lampGlow?.update(p, this.look.lamp, psxUniforms.uWet.value);
     for (const c of this.treeChunks) c.mesh.visible = Math.hypot(c.x - p.x, c.z - p.z) < TREE_DRAW;
     for (const c of this.groundChunks) c.mesh.visible = Math.hypot(c.x - p.x, c.z - p.z) < GROUND_DRAW;
     if (focus) {

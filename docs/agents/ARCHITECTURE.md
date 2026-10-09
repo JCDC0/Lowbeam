@@ -109,6 +109,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
 | `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`), lights that go out by day (`lit`, `uLamp`) |
 | `src/render/weather.js`, `rain.js` | The weather as numbers (`weatherLook`: wet, fog, streaks) and the rain, streaks moved in the vertex shader |
+| `src/world/build-lamp-glow.js` | The glow round every street lamp's head within 190 m (one instanced flare mesh, off by day, a halo in rain) |
 | `src/world/rain-cover.js` | Where it does not rain: the roof over any point (a deck, a canopy) and the grid of it round the camera the rain shader reads |
 | `src/render/pools.js`, `pool-grid.js` | Per-pixel light pools: every world light in a float texture and a 24 m grid of up to 12 lights per cell |
 | `src/render/fonts.js` | `FONT` (display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, awaited before any canvas is drawn |
@@ -196,7 +197,8 @@ crossing drawn as arrows, each way out labeled in kanji and romaji with the dist
 leads to (no place twice on a sign), never with a side street between the sign and its crossing.
 About 120k instanced trees of nine species. Four Japanese gas stations (hanging dispensers, price
 pylon, kiosk, pit bay). Thirteen landmark lots with Blender models (the two district stations on the garage model until G7). Lights are per-pixel pools in seven
-bands, street lamps as spot cones; about 13,350 lights. World build about 6 to 8 s. A downtown view is
+bands, street lamps as spot cones, each lamp within 190 m wearing a glow (a flare, `LampGlow`; off by
+day, bigger and brighter in rain); about 13,350 lights. World build about 6 to 8 s. A downtown view is
 about 124 draw calls and 500k triangles.
 
 **Cars and driving.** Five cars with honest bars (`node tools/sim.mjs`):

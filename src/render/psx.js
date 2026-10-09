@@ -105,9 +105,9 @@ void wetStreak(vec3 p, vec3 n, vec3 lp, float range, vec3 col, float e) {
   float along = smoothstep(-1.5, 1.0, a) * (1.0 - smoothstep(0.0, range * 0.9, a));
   float width = 0.7 + 0.08 * max(a, 0.0);
   float puddle = smoothstep(0.5 - uWet * 0.35, 0.8, 0.5 + 0.5 * sin(p.x * 0.13 + 2.0 * sin(p.z * 0.11)) * sin(p.z * 0.17 + 2.0 * sin(p.x * 0.09)));
-  float s = exp(-(c * c) / (width * width)) * along * clamp(e * 6.0, 0.0, 1.0) * mix(0.5, 1.0, puddle);
+  float s = exp(-(c * c) / (width * width)) * along * clamp(e * 6.0, 0.0, 1.0) * mix(0.5, 1.0, puddle) * smoothstep(3.0, 14.0, length(p - cameraPosition));
   s = floor(s * 4.0 + 0.5) / 4.0;
-  gWet += col * s * uWet * 2.2 * uLamp * uLamp;
+  gWet += col * s * uWet * 1.6 * uLamp * uLamp;
 }
 uniform sampler2D uPoolLights;
 uniform sampler2D uPoolCells;

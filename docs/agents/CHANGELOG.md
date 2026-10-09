@@ -16,6 +16,17 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.11 (2026-10-09)
+
+Street lamps glow.
+
+- `world/build-lamp-glow.js`: `LampGlow` puts a soft additive flare on the head of every street lamp
+  within 190 m of the camera, up to 720 in one draw call (the same `psxFlare` as the traffic's lamps),
+  a sodium orange that goes out by day with the lamps (`look.lamp`) and swells by about 110 % in rain,
+  where a lamp wears a halo. `World.update` runs it each frame.
+- The wet reflection no longer blows out beside the camera: it fades over the first 14 m and its
+  gain is 1.6 (was 2.2).
+
 ## 0.10.10 (2026-10-09)
 
 Dawn and dusk are on their own sides of the sky.

@@ -39,6 +39,9 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 - Twilight on the sun's side only (0.10.10): `skyLook` gives the sky toward the sun (`zenith`, `mid`,
   `horizon`) and away from it (`zenithCool`, ...), and the dome blends them by the azimuth, so a dusk is
   orange in the west and a dawn in the east.
+- Lamp glow (0.10.11): `world/build-lamp-glow.js`, a flare on every lamp head within 190 m (up to 720,
+  one draw call, off by day), a third bigger and brighter in the rain, so a lamp reads from far down a
+  street. The wet reflection fades within 14 m of the camera (a lamp beside it blew out the corner).
 - `world.js`: `setTime`, `startCycle`, `applySky`, `stepSky`; the weather sets the cloud cover
   (`weatherLook(...).cloud`), so rain greys the sky and puts the stars and the moon out.
 - Settings: a TIME OF DAY row; `__lowbeam.time('day')`.
@@ -61,8 +64,7 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
   dusk would help.
 - Stars twinkle, and the moon's phase follows a calendar; fireflies or birds by day, in the audio
   (`B3-wet-weather.md` part 4).
-- A halo round each lamp head in the wet (the glow on a wet lens), and the headlights' reflection on
-  the road in front of the player's car.
+- The headlights' reflection on the road in front of the player's car.
 - Rain under cover: no streaks under a deck, a canopy or a gas station roof.
 - The rest of the road surfaces (bridge decks, plazas, lots), and the sidewalks' brown pools read too
   warm when wet; try a cooler tint.
