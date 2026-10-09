@@ -65,3 +65,25 @@ Claude made the day and night cycle (0.10.5; `render/daylight.js`; `world.hour`,
 
 After each part: the commit hash, what changed, test counts, the numbers measured before and after
 (braking distances, rain level against the engine), and anything you need from Claude's files.
+
+## Review: part 1 (Claude, 0.10.17)
+
+Passes. Numbers from a headless bench (the same runs as `tools/sim.mjs` with `state.wet` set to
+0, 0.5 and 1), all five cars:
+
+| Car | 100 to 0 dry | half wet | storm | skidpad dry / half / storm |
+|---|---|---|---|---|
+| Hayate RS-4 | 34.7 m | x1.11 | x1.25 | 1.35 / 1.18 / 1.01 g (75 %) |
+| Rampart 440 | 37.2 m | x1.11 | x1.26 | 1.20 / 1.05 / 0.90 g (75 %) |
+| Vespera GT | 31.7 m | x1.13 | x1.31 | 1.46 / 1.27 / 1.09 g (75 %) |
+| Tsurugi GT-X | 34.2 m | x1.11 | x1.28 | 1.43 / 1.24 / 1.06 g (74 %) |
+| Hikari 300ZR | 38.2 m | x1.11 | x1.28 | 1.32 / 1.15 / 0.98 g (74 %) |
+
+The dry column is the guide's table to the digit; `tests/physics.test.mjs` passes (26). Grip falls to
+75 % as written; braking is 25 to 31 % further, a little short of "about a third" because drag helps
+both runs, which is fine. Gravel, dirt and grass are unchanged (the test holds it). `surface()` makes a
+new object per call while it is wet (twice a physics step); harmless, leave it.
+
+The traffic and the police do not use `stepVehicle`, so their grip is part 3's. The order from here:
+part 2 (rain sound) as 0.9.31, the barrier fixes in `tasks/G7-police-station.md` as 0.9.32, part 3 as
+0.9.33, then stop for review.

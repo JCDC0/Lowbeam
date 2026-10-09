@@ -50,3 +50,33 @@ five materials, one collider, one light; red and white striped boards on A-frame
 lamp on top, and it reads at the size of a police car from the front, the side and the back. The
 backend places it at the roadblocks and flashes the lamp (B2-style wiring in `0.9.29`); that is the
 last of G7.
+
+## Review: the backend's wiring of the barrier (Claude, 0.10.17)
+
+Placement and drawing pass; three fixes are owed and one test is missing. Checked in the game: a
+roadblock planned and spawned the way `stepPolice` does, on the Harbor avenue. Two striped sawhorses
+stand 2.2 m in front of two of the three cruisers, the amber lamp flashes, the gap at the right-hand
+end stays open, and the light bars throw red and blue across them. `tests/island/roadblock.test.mjs`
+passes (9 tests).
+
+Fixes, for the backend (0.9.32):
+1. A parked barrier is heard as an engine. `trafficVoices` (`src/audio/traffic-voices.js`) skips only
+   wrecks, and `police-barrier` is not in `VOICE_OF`, so it falls to the sedan class and idles at 750
+   rpm; measured: one voice, a 26 Hz sawtooth, from a barrier 36 m away, and it takes one of the four
+   voice slots. Skip `a.barrier` (this one-line change goes in 0.9.31, in the same file as the rain
+   work), with a test.
+2. A hard hit leaves the barrier standing. Driving into it at 25 m/s made it a `wreck` that slid 15 m
+   and spun to yaw 2.08 with `flattened` false and the mesh's `rotation.x` 0: upright, turning on the
+   road, for the whole wreck time. The brief says it flattens when knocked aside; only the `knocked`
+   path (under 18 m/s closing) sets `flattened`. A barrier should never be a `wreck`: take the knocked
+   branch for any hit, set `flattened`, damp its slide like `stepKnocked`'s barrier case, let it lie
+   and fade after the usual time. A test for both a soft and a hard hit.
+3. The civilians' target counts the barriers: `this.agents.length - rivals < this.target` in
+   `TrafficSim.update` includes every barrier (and every parked unit), so a roadblock of two barriers
+   and three cars leaves five fewer civilians around the player while it stands. Count only the
+   civilians.
+4. Missing test: a car below 6 m/s closing stops at a barrier, and traffic brakes for one (the claims
+   in the 0.9.29 changelog entry have only a placement test behind them).
+
+Not checked: the barriers' colliders against the player at low speed (the claim above), left to the
+test in 4.

@@ -28,6 +28,23 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.17 (2026-10-10)
+
+Review of Gemini's 0.9.29 (barriers at the roadblocks) and 0.9.30 (wet grip, B3 part 1). Docs only; the
+reviews are in `tasks/B3-wet-weather.md` and `tasks/G7-police-station.md`.
+
+- 0.9.30 passes. The dry numbers in `tools/sim.mjs` are unchanged (the guide's table, to the digit). In a
+  storm the skidpad grip is 75 % of the dry for all five cars, and 100 to 0 km/h takes 25 to 31 % further
+  (the brief asked for about a third; the drag that helps both runs accounts for the rest); half wet is
+  about 11 % further. Gravel, dirt and grass do not move.
+- 0.9.29 places and draws the barriers well: planned and spawned the way `stepPolice` does on the
+  Harbor avenue, two striped sawhorses stand in front of two of the three cruisers, the lamp flashes, the
+  gap stays open. Three fixes are owed, all in the backend's files: a parked barrier is heard as an idling
+  sedan (`trafficVoices` skips only wrecks); a barrier hit at 25 m/s becomes a `wreck`, which spins away
+  upright and never lies down (`flattened` is set only in the `knocked` path); and the barriers count
+  against the civilians' target. No test covers a barrier stopping a car or traffic.
+- The fixes go in 0.9.32; 0.9.31 stays the rain sound (part 2), and part 3 moves to 0.9.33.
+
 ## 0.10.16 (2026-10-09)
 
 Plan: `tasks/B5-police-dispatch.md`, from Jc's list. The police stations dispatch the units from their

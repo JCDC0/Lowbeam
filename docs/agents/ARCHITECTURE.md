@@ -400,6 +400,9 @@ Gothic One for banners, M PLUS 1p for Japanese.
 ## Open work and known issues
 
 - The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51 and placed at roadblocks in 0.9.29).
+- The roadblock barriers (0.9.29) have three known faults, fixes owed in `tasks/G7-police-station.md`: a
+  parked barrier is heard as an idling engine, one hit hard stays upright instead of lying down, and the
+  barriers count against the civilians' target.
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy, and
   `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
