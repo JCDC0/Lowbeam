@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.51 (2026-10-09)
+
+The roadblock barrier model (police_barrier).
+
+- `tools/blender/police_barrier.py` and `assets/models/police_barrier.json`: a 2.4 m wide, 1.1 m tall folding
+  sawhorse barrier for police roadblocks.
+- Two A-frame folding legs with horizontal spreader braces and top hinge blocks, two horizontal boards
+  striped red and white with diagonal chevrons on both sides.
+- Centered mounting bracket and flashing amber warning lamp on top with an emissive lamp material and a light point.
+- Exactly one axis-aligned collider box (2.4 by 0.56 m, y 0 to 1.1 m).
+- 174 triangles (budget 300), 5 materials, 1 collider, 1 light; checked in props.html beside the cruiser with 0 problems.
+
 ## 0.10.50 (2026-10-09)
 
 The district police station model (police_station).

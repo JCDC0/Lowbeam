@@ -153,14 +153,14 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
 | `src/ui/minimap.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route |
 | `src/ui/pursuit.js`, `stats.js`, `screen-fx.js` | Pursuit HUD, F3 stats, the screen effects and their toggles |
-| `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `garage.py`, `hideout.py`, `heli.py` |
+| `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `police_barrier.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON) |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
 | `assets/music/` | The recorded soundtrack and `tracks.json`, the list the game plays from (mood, title, measured loudness, vocal) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.50)
+## Current state (0.10.51)
 
 446 tests pass; the type check is clean. By area:
 
@@ -397,7 +397,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 
 ## Open work and known issues
 
-- The roadblock barrier and the pursuit breakers have no models yet (task G1).
+- The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51).
 - The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
 - The GPS route test measures planning time and can fail when the machine is busy.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).
