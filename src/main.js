@@ -279,7 +279,7 @@ function frame(now) {
   if (drive?.trafficNet && tracker.net !== drive.trafficNet) tracker.net = drive.trafficNet;
   if (signals && drive) signals.update(drive.traffic.time, stage.camera.position);
   if (world) {
-    world.stepWeather(dt, state === 'drive' && drive?.car ? drive.car.state : undefined);
+    world.stepWeather(dt, state === 'drive' && drive?.car ? drive.car.state : undefined, stage.camera.position);
     if (state === 'drive' || state === 'free') world.stepSky(dt);
   }
   if (drive?.car) tracker.update(drive.car, dt);

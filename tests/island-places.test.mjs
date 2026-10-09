@@ -13,3 +13,4 @@ import './island/guide-signs.test.mjs';
 import './island/gantries.test.mjs';
 import './island/toll.test.mjs';
 import './island/world.test.mjs';
+import './island/rain-cover.test.mjs';

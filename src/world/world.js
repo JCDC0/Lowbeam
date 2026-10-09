@@ -30,6 +30,7 @@ import { buildStations } from './gas-station.js';
 import { SkyView, setSrgb } from '../render/sky.js';
 import { CYCLE_START, HOURS, advanceClock, skyLook } from '../render/daylight.js';
 import { RainView } from '../render/rain.js';
+import { CoverGrid, coverAt, placeRoofs } from './rain-cover.js';
 import { weatherLook } from '../render/weather.js';
 
 const _dir = new THREE.Vector3();
@@ -56,6 +57,7 @@ export class World {
     w.scatter = scatterWorld(w.ground, { models });
     w.grid = new LightGrid(w.scatter.lights);
     installPools(w.scatter.lights, WORLD_HALF + 100);
+    w.rain.setCover(new CoverGrid(coverAt(w.ground, placeRoofs(w.scatter.stations, w.scatter.highway.plazas))));
     await step('CUTTING THE TERRAIN');
     const terrain = buildTerrain(w.ground, w.grid);
     w.add(terrain);
@@ -197,9 +199,10 @@ export class World {
   /**
    * Per frame: moves the rain. @param {number} dt
    * @param {{ vx: number, vy?: number, vz: number }} [vel] the camera's velocity
+   * @param {{ x: number, z: number }} [at] the camera's position
    */
-  stepWeather(dt, vel) {
-    this.rain.update(dt, this.weather, vel);
+  stepWeather(dt, vel, at) {
+    this.rain.update(dt, this.weather, vel, at);
   }
 
   /**

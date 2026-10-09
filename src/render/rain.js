@@ -3,11 +3,13 @@
  * are placed and moved entirely in the vertex shader from a seed and the time, so the CPU does
  * nothing per streak; each leans away from the way the camera is moving, so at speed the rain
  * rushes at the windshield. They fade out with distance and are not vertex snapped (a streak is a
- * line, it would kink).
+ * line, it would kink). A streak whose column has a roof over it (`world/rain-cover.js`: a deck, a
+ * canopy) is not drawn below that roof, read from a grid texture round the camera.
  */
 
 import * as THREE from 'three';
 import { STREAKS, weatherLook } from './weather.js';
+import { COVER, NONE } from '../world/rain-cover.js';
 
 /** The size of the box round the camera that holds the streaks, in meters. */
 const BOX = new THREE.Vector3(44, 26, 44);
@@ -21,6 +23,8 @@ uniform vec3 uRain;
 uniform vec3 uRel;
 uniform float uTime;
 uniform float uCount;
+uniform sampler2D uCover;
+uniform vec3 uCoverGrid;
 varying float vFade;
 void main() {
   float tail = float(gl_VertexID & 1);
@@ -28,9 +32,13 @@ void main() {
   vec3 c = cameraPosition;
   vec3 w = c + mod(p - c + uBox * 0.5, uBox) - uBox * 0.5;
   w.y += uBox.y * 0.15;
+  vec2 cuv = (w.xz - uCoverGrid.xy) / uCoverGrid.z;
+  float roof = -1.0e4;
+  if (cuv.x >= 0.0 && cuv.y >= 0.0 && cuv.x < 1.0 && cuv.y < 1.0) roof = texture2D(uCover, cuv).r;
+  float open = step(roof, w.y);
   w -= uRel * SHUTTER * tail;
   float d = length(w - c);
-  vFade = (1.0 - smoothstep(9.0, 21.0, d)) * step(aSeed.w, uCount) * smoothstep(0.6, 2.0, d);
+  vFade = (1.0 - smoothstep(9.0, 21.0, d)) * step(aSeed.w, uCount) * smoothstep(0.6, 2.0, d) * open;
   gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
 }
 `.replace('SHUTTER', SHUTTER.toFixed(3));
@@ -70,6 +78,8 @@ export class RainView {
         uCount: { value: 0 },
         uColor: { value: new THREE.Color(0.5, 0.58, 0.74) },
         uAlpha: { value: 0.5 },
+        uCover: { value: this.coverTexture(null) },
+        uCoverGrid: { value: new THREE.Vector3(0, 0, COVER.cells * COVER.cell) },
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -83,17 +93,44 @@ export class RainView {
     this.lines.renderOrder = 20;
     this.lines.visible = false;
     this.time = 0;
+    /** @type {import('../world/rain-cover.js').CoverGrid | null} */
+    this.cover = null;
+  }
+
+  /**
+   * A float texture over a grid's cells (a 1 by 1 one of open sky without a grid).
+   * @param {import('../world/rain-cover.js').CoverGrid | null} grid
+   */
+  coverTexture(grid) {
+    const n = grid ? grid.cells : 1;
+    const t = new THREE.DataTexture(grid ? grid.data : new Float32Array([NONE]), n, n, THREE.RedFormat, THREE.FloatType);
+    t.minFilter = t.magFilter = THREE.NearestFilter;
+    t.generateMipmaps = false;
+    t.needsUpdate = true;
+    return t;
+  }
+
+  /** Gives the rain the roofs to keep out from under. @param {import('../world/rain-cover.js').CoverGrid} grid */
+  setCover(grid) {
+    this.cover = grid;
+    this.material.uniforms.uCover.value.dispose();
+    this.material.uniforms.uCover.value = this.coverTexture(grid);
   }
 
   /**
    * @param {number} dt seconds
    * @param {number} level 0 to 1
    * @param {{ vx: number, vy?: number, vz: number }} [cam] the camera's velocity
+   * @param {{ x: number, z: number }} [at] where the camera is, for the roofs
    */
-  update(dt, level, cam) {
+  update(dt, level, cam, at) {
     const look = weatherLook(level);
     this.lines.visible = look.streaks > 0;
     if (!this.lines.visible) return;
+    if (this.cover && at && this.cover.follow(at.x, at.z)) {
+      this.material.uniforms.uCover.value.needsUpdate = true;
+      this.material.uniforms.uCoverGrid.value.set(this.cover.x0, this.cover.z0, this.cover.size);
+    }
     this.time += dt;
     const u = this.material.uniforms;
     u.uTime.value = this.time;

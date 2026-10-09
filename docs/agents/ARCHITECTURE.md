@@ -109,6 +109,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
 | `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`) |
 | `src/render/weather.js`, `rain.js` | The weather as numbers (`weatherLook`: wet, fog, streaks) and the rain, streaks moved in the vertex shader |
+| `src/world/rain-cover.js` | Where it does not rain: the roof over any point (a deck, a canopy) and the grid of it round the camera the rain shader reads |
 | `src/render/pools.js`, `pool-grid.js` | Per-pixel light pools: every world light in a float texture and a 24 m grid of up to 12 lights per cell |
 | `src/render/fonts.js` | `FONT` (display, seg7, seg14, mono, impact, jp, tech, race) and `loadFonts`, awaited before any canvas is drawn |
 | `src/render/textures.js` | Canvas-drawn textures: glass, rims, plates, shop signs, awnings, noise |
@@ -158,9 +159,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.5)
+## Current state (0.10.6)
 
-441 tests pass; the type check is clean. By area:
+445 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -287,7 +288,9 @@ sky in rain: the stars and the moon go out, the sun dims, the sky and the fog tu
 shoulders, sidewalks, zebras and stop lines darken and every street lamp throws a bright, stretched
 reflection toward the viewer along the road), how far the fog closes in (420 m dry, 230 m in a storm),
 and how many one-pixel rain streaks fall in a box round the camera (`RainView`, up to 3,200, placed in
-the vertex shader, leaning back with the car's speed). Looks only: the grip, the sound, the traffic
+the vertex shader, leaning back with the car's speed, and not drawn under a roof: a bridge or
+viaduct deck, a gas station canopy or a toll plaza canopy, from a 64 m grid of roof heights round the
+camera, `rain-cover.js`, refilled in about 3 ms every 9 m of travel). Looks only: the grip, the sound, the traffic
 and the police do not change yet (`tasks/B3-wet-weather.md`). One draw call; a reflection reaches only
 as far as its lamp's light pool (about 15 m), not the whole way a real one would.
 

@@ -37,6 +37,15 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
   (`weatherLook(...).cloud`), so rain greys the sky and puts the stars and the moon out.
 - Settings: a TIME OF DAY row; `__lowbeam.time('day')`.
 
+## Done (0.10.6): no rain under a roof
+
+- `world/rain-cover.js`: `placeRoofs` (the gas stations' and the toll plazas' canopies), `coverAt` (the
+  height of the roof over a point: a lifted road found with the asker held high, or a canopy) and
+  `CoverGrid` (64 by 64 cells of 1 m round the camera, refilled when it moves 9 m, slits of up to 3
+  cells between roofs closed, the Kurogane Line's two carriageways stand a median apart).
+  `RainView` reads it as a float texture in the vertex shader and hides a streak under the roof.
+- Not covered yet: shop awnings, building overhangs, the Route 1 gantries (open frames), trees.
+
 ## To do
 
 - The shop signs, vending machines and window displays stay lit by day; give the emissive signs a

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.6 (2026-10-09)
+
+The rain no longer falls through bridges, decks and canopies.
+
+- `world/rain-cover.js` (pure) works out the height of the roof over any point: a lifted road (a
+  viaduct, the Kurogane Line, an overpass) found from above, the gas stations' canopies and the toll
+  plazas' canopies. `CoverGrid` keeps it for the 64 m round the camera in 1 m cells (about 3 ms to
+  refill, every 9 m of travel) and closes the slits between two roofs, such as the median between
+  the Kurogane Line's carriageways.
+- `RainView` takes the grid as a float texture; the vertex shader hides a streak that is below the roof
+  of its column, so there is no rain under a bridge or a canopy, and rain still falls on the deck.
+- `tests/island/rain-cover.test.mjs` (in the places group): 4 tests. 445 pass.
+
 ## 0.10.5 (2026-10-09)
 
 A day and night cycle, and clouds that come with the rain.
