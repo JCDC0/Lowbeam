@@ -56,6 +56,14 @@ test('dusk and dawn warm the horizon', () => {
   assert.ok(sat(dusk.horizon) > sat(night.horizon));
 });
 
+test('the twilight warms the sky toward the sun only, so dawn and dusk differ', () => {
+  const dusk = skyLook(HOURS.dusk);
+  assert.ok(dusk.horizon[0] - dusk.horizon[2] > dusk.horizonCool[0] - dusk.horizonCool[2] + 0.15, 'warmer toward the sun');
+  const noon = skyLook(HOURS.day);
+  for (let i = 0; i < 3; i++) assert.ok(Math.abs(noon.horizon[i] - noon.horizonCool[i]) < 0.03, 'no side at noon');
+  assert.ok(sunDirection(HOURS.dawn)[0] > 0.8 && sunDirection(HOURS.dusk)[0] < -0.8, 'the sun is east at dawn and west at dusk');
+});
+
 test('clouds grey the sky, hide the stars and the moon and dim the sun', () => {
   const clear = skyLook(12.5, 0);
   const over = skyLook(12.5, 1);

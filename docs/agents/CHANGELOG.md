@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.10 (2026-10-09)
+
+Dawn and dusk are on their own sides of the sky.
+
+- `skyLook` returns the twilight-warmed sky (`zenith`, `mid`, `horizon`) and the same sky without it
+  (`zenithCool`, `midCool`, `horizonCool`); the dome shader blends them by the angle to the sun, so at
+  dusk the west is orange and the east deep blue, and at dawn the other way round, instead of one
+  uniform glow. At noon the two are the same. One test more (446 pass).
+
 ## 0.10.9 (2026-10-09)
 
 Every car on the road has a shadow.

@@ -36,6 +36,9 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 - `lit` materials (0.10.8): the street lamps' lenses, the shop windows and the gantry, plaza and gas
   station lamps dim to 12 % by day (`psxBasic({ lit: true })`), and the lit windows go out clean (a
   few amber squares were left at noon).
+- Twilight on the sun's side only (0.10.10): `skyLook` gives the sky toward the sun (`zenith`, `mid`,
+  `horizon`) and away from it (`zenithCool`, ...), and the dome blends them by the azimuth, so a dusk is
+  orange in the west and a dawn in the east.
 - `world.js`: `setTime`, `startCycle`, `applySky`, `stepSky`; the weather sets the cloud cover
   (`weatherLook(...).cloud`), so rain greys the sky and puts the stars and the moon out.
 - Settings: a TIME OF DAY row; `__lowbeam.time('day')`.
@@ -56,7 +59,6 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 - The cars have blob shadows (0.10.9) but nothing else casts one: the buildings, poles and trees have
   none, so a sun at noon still reads a little flat. Long soft shadows from the buildings at dawn and
   dusk would help.
-- Dawn and dusk look alike (the glow follows the sun's direction, not the side of the sky).
 - Stars twinkle, and the moon's phase follows a calendar; fireflies or birds by day, in the audio
   (`B3-wet-weather.md` part 4).
 - A halo round each lamp head in the wet (the glow on a wet lens), and the headlights' reflection on

@@ -159,9 +159,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.9)
+## Current state (0.10.10)
 
-445 tests pass; the type check is clean. By area:
+446 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -281,7 +281,8 @@ by day, the moon by night, whichever is brighter), the stars, and how bright the
 windows are (`uLamp`, `uWindows`: street lamps, shops and windows are out by day and come on at dusk,
 the lamp lenses, shop windows and canopy lamps dim to 12 % (`lit` materials), the lit windows go out
 below a quarter of the night's lamp; headlight pools and flares keep 30 %). The dome is a shader (`SkyView`) with banded clouds, a sun and
-a moon that cross the sky, a glow round the sun and the town's glow on the horizon at night. The world
+a moon that cross the sky, a glow round the sun, the twilight's orange on the side of the sky the sun
+is on (the west at dusk, the east at dawn, deep blue on the other) and the town's glow on the horizon at night. The world
 applies it each frame (`World.stepSky`).
 
 **Weather.** Clear, drizzle, rain or storm (`render/weather.js`; Settings, saved as `weather`;

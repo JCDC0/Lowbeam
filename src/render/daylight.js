@@ -91,7 +91,9 @@ const overcast = (c, grey, k) => {
 };
 
 /**
- * What the sky and the light are at an hour under a cloud cover.
+ * What the sky and the light are at an hour under a cloud cover. `zenith`, `mid` and `horizon` are the
+ * sky toward the sun, warmed by the twilight; the `Cool` ones are the sky away from it (the same
+ * without the twilight), so a dusk is orange in the west and a dawn in the east.
  * @param {number} hour 0 to 24
  * @param {number} [cloud] 0 clear to 1 overcast
  */
@@ -103,14 +105,16 @@ export function skyLook(hour, cloud = 0) {
   const twilight = Math.exp(-((alt / 0.21) ** 2)) * (1 - 0.5 * c);
 
   /** @param {keyof typeof NIGHT} key */
-  const pal = (key) => {
-    const base = mix(/** @type {Rgb} */ (NIGHT[key]), /** @type {Rgb} */ (DAY[key]), day);
-    return mix(base, /** @type {Rgb} */ (TWILIGHT[key]), twilight * 0.85);
-  };
+  const cool = (key) => mix(/** @type {Rgb} */ (NIGHT[key]), /** @type {Rgb} */ (DAY[key]), day);
+  /** @param {keyof typeof NIGHT} key */
+  const pal = (key) => mix(cool(key), /** @type {Rgb} */ (TWILIGHT[key]), twilight * 0.85);
   const grey = (/** @type {Rgb} */ col, /** @type {Rgb} */ g, k) => overcast(col, g, k * 0.8);
   const zenith = grey(pal('zenith'), GREY_DAY.sky, c);
   const mid = grey(pal('mid'), GREY_DAY.sky, c);
   const horizon = grey(pal('horizon'), GREY_DAY.fog, c * 0.9);
+  const zenithCool = grey(cool('zenith'), GREY_DAY.sky, c);
+  const midCool = grey(cool('mid'), GREY_DAY.sky, c);
+  const horizonCool = grey(cool('horizon'), GREY_DAY.fog, c * 0.9);
   const glow = grey(pal('glow'), GREY_DAY.fog, c * 0.9);
   const below = pal('below');
   const fog = grey(pal('fog'), GREY_DAY.fog, c);
@@ -136,7 +140,7 @@ export function skyLook(hour, cloud = 0) {
     sunAlt: alt,
     day,
     twilight,
-    zenith, mid, horizon, glow, below, fog,
+    zenith, mid, horizon, zenithCool, midCool, horizonCool, glow, below, fog,
     hemiSky, hemiGround, hemi,
     sunDir, moonDir,
     keyDir, keyColor, keyIntensity,
