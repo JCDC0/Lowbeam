@@ -549,7 +549,7 @@ function buildStation(st, grid) {
     brand: psxLambert({ color: B.color, baked: true }),
     brandLit: psxBasic({ color: B.color }),
     fascia: psxBasic({ map: tex.fascia, color: 0xe4e6e8 }),
-    lamp: psxBasic({ color: 0xf6f9ff }),
+    lamp: psxBasic({ color: 0xf6f9ff, lit: true }),
     ceiling: psxLambert({ map: slatTexture(), color: 0xd0d2d4, baked: true }),
     lane: psxLambert({ color: 0x6a3a32, baked: true }),
     steel: psxLambert({ color: 0x8a8e94, baked: true }),

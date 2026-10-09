@@ -183,13 +183,14 @@ if (uSnapOn > 0.5 && gl_Position.w > 0.0) {
 
 /**
  * @param {THREE.Material} mat
- * @param {{ baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean, wet?: boolean }} opts
- *   `wet` (with `baked`) makes the surface darken and shine in the rain: it mirrors every light in
+ * @param {{ baked?: boolean, local?: boolean, lamp?: boolean, paint?: boolean, wet?: boolean, lit?: boolean }} opts
+ *   `lit` is for a light that goes out by day (a street lamp's lens, a shop window): it dims to 12 %
+ *   with `uLamp`. `wet` (with `baked`) makes the surface darken and shine in the rain: it mirrors every light in
  *   it, sharply in puddles (`uWet`). `lamp` reads a `lamp` vertex color that is added as emissive light, scaled up on red
  *   lamps by an instanced `aBrake` attribute (brake lights). `paint` limits the instance
  *   color to the vertices whose `aPaint` attribute is 1, so glass and trim keep their color.
  */
-export function patchPsx(mat, { baked = false, local = false, lamp = false, paint = false, wet = false } = {}) {
+export function patchPsx(mat, { baked = false, local = false, lamp = false, paint = false, wet = false, lit = false } = {}) {
   mat.onBeforeCompile = (shader) => {
     shader.uniforms.uSnap = psxUniforms.uSnap;
     shader.uniforms.uSnapOn = psxUniforms.uSnapOn;
@@ -232,6 +233,11 @@ vPoolN = normalize(mat3(modelMatrix) * poolN);`);
       fs = 'uniform vec3 uLocalColor;\nuniform vec3 uLocalDir;\n' + fs;
       extra += '\ntotalEmissiveRadiance += uLocalColor * diffuseColor.rgb * (0.3 + 0.7 * max(dot(normal, uLocalDir), 0.0));';
     }
+    if (lit) {
+      shader.uniforms.uLamp = psxUniforms.uLamp;
+      if (!baked) fs = 'uniform float uLamp;\n' + fs;
+      fs = fs.replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb *= 0.12 + 0.88 * uLamp;');
+    }
     if (mat.emissiveMap) {
       shader.uniforms.uWindows = psxUniforms.uWindows;
       fs = 'uniform float uWindows;\n' + fs;
@@ -241,7 +247,7 @@ vPoolN = normalize(mat3(modelMatrix) * poolN);`);
     shader.vertexShader = vs;
     shader.fragmentShader = fs;
   };
-  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}${wet ? '-wet' : ''}${mat.emissiveMap ? '-win' : ''}`;
+  mat.customProgramCacheKey = () => `psx${baked ? '-baked' : ''}${local ? '-local' : ''}${lamp ? '-lamp' : ''}${paint ? '-paint' : ''}${wet ? '-wet' : ''}${lit ? '-lit' : ''}${mat.emissiveMap ? '-win' : ''}`;
   return mat;
 }
 
@@ -264,11 +270,13 @@ export function psxPhong(params = {}) {
 }
 
 /**
- * Unlit material with the PSX patch, for signs, lamps and anything that glows.
- * @param {THREE.MeshBasicMaterialParameters} params
+ * Unlit material with the PSX patch, for signs, lamps and anything that glows. `lit` marks a light
+ * that goes out by day.
+ * @param {THREE.MeshBasicMaterialParameters & { lit?: boolean }} params
  */
 export function psxBasic(params = {}) {
-  return patchPsx(new THREE.MeshBasicMaterial(params));
+  const { lit, ...rest } = params;
+  return patchPsx(new THREE.MeshBasicMaterial(rest), { lit });
 }
 
 /**

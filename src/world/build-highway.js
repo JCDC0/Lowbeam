@@ -420,7 +420,7 @@ function buildPlaza(pl, grid, shared) {
     tex: psxLambert({ map: atlas, baked: true, side: THREE.DoubleSide }),
     sign: psxBasic({ map: atlas, side: THREE.DoubleSide }),
     glass: psxBasic({ map: fasciaTexture(), color: 0x8a96a4, side: THREE.DoubleSide }),
-    lamp: psxBasic({ color: 0xf4f8ff }),
+    lamp: psxBasic({ color: 0xf4f8ff, lit: true }),
   };
   const geo = b.geometry(['c', 'post', 'steel', 'gray', 'blue', 'red', 'booth', 'tex', 'sign', 'glass', 'lamp']);
   const group = new THREE.Group();

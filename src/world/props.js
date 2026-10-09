@@ -44,7 +44,7 @@ export function buildLamps(lamps, grid) {
     arm(l.back.reach, backH, l.back.reach < LAMP_REACH ? 0.7 : 1);
     b.pop();
   }
-  const mesh = b.mesh({ pole: psxLambert({ color: 0x6c7076, baked: true }), lens: psxBasic({ color: 0xffb24c }) });
+  const mesh = b.mesh({ pole: psxLambert({ color: 0x6c7076, baked: true }), lens: psxBasic({ color: 0xffb24c, lit: true }) });
   bakeGeometry(mesh.geometry, grid);
   mesh.name = 'lamps';
   return mesh;
@@ -86,7 +86,7 @@ export function buildTown(buildings, grid) {
     roof: psxLambert({ vertexColors: true, baked: true }),
     metal: psxLambert({ map: metalTexture(), vertexColors: true, baked: true }),
     shutter: psxLambert({ map: shutterTexture(), vertexColors: true, baked: true }),
-    shop: psxBasic({ color: 0xe8f4ff }),
+    shop: psxBasic({ color: 0xe8f4ff, lit: true }),
     band: psxBasic({ vertexColors: true }),
     sign: psxBasic({ map: signAtlas(SIGN_COLORS) }),
     shopfront: psxBasic({ map: shopTexture(), vertexColors: true }),

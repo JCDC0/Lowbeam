@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.8 (2026-10-09)
+
+By day the lamps and shop windows go out.
+
+- `psxBasic({ lit: true })` marks a light that goes out by day: it dims to 12 % with `uLamp`. The
+  street lamps' lenses, the shop windows, and the gantry, plaza and gas station lamps use it.
+- `skyLook`'s `windows` is now `(lamp - 0.12) / 0.88`: at noon a clear sky's few percent of lamp had
+  left brown squares where the night's lit windows are; they are dark now.
+
 ## 0.10.7 (2026-10-09)
 
 Review of Gemini's 0.9.69; the Kagero Aristo VIP in the game, which closes G5.

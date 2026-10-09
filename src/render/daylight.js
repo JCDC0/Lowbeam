@@ -147,7 +147,7 @@ export function skyLook(hour, cloud = 0) {
     sunColor: sunCol,
     city: (1 - day) * (1 - 0.4 * c),
     lamp,
-    windows: clamp01(lamp * 1.0),
+    windows: clamp01((lamp - 0.12) / 0.88),
     cloudLit: grey(pal('cloudLit'), GREY_DAY.cloud, c * 0.5),
     cloudDark: grey(pal('cloudDark'), GREY_DAY.cloud, c * 0.9),
     cloud: c,

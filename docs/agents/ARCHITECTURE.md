@@ -107,7 +107,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/core/input.js` | Keyboard and gamepad, menu actions, `drive(dt)` with keyboard ramps, key bindings (`KEYS`, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
-| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`) |
+| `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`), lights that go out by day (`lit`, `uLamp`) |
 | `src/render/weather.js`, `rain.js` | The weather as numbers (`weatherLook`: wet, fog, streaks) and the rain, streaks moved in the vertex shader |
 | `src/world/rain-cover.js` | Where it does not rain: the roof over any point (a deck, a canopy) and the grid of it round the camera the rain shader reads |
 | `src/render/pools.js`, `pool-grid.js` | Per-pixel light pools: every world light in a float texture and a 24 m grid of up to 12 lights per cell |
@@ -159,7 +159,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.7)
+## Current state (0.10.8)
 
 445 tests pass; the type check is clean. By area:
 
@@ -277,8 +277,9 @@ RS-Wide, Vespera Zero, Kenro Sakura S and Kagero Aristo VIP racers (all eleven o
 saved as `time`; `__lowbeam.time('day' | 18.5 | 'cycle')`). A cycle runs from 17:36 and a day takes 24
 minutes. `skyLook(hour, cloud)` gives the dome's colors, the fog, the hemisphere and key light (the sun
 by day, the moon by night, whichever is brighter), the stars, and how bright the lamps and the lit
-windows are (`uLamp`, `uWindows`: street lamps, shops and windows are out by day and come on at dusk;
-headlight pools and flares keep 30 %). The dome is a shader (`SkyView`) with banded clouds, a sun and
+windows are (`uLamp`, `uWindows`: street lamps, shops and windows are out by day and come on at dusk,
+the lamp lenses, shop windows and canopy lamps dim to 12 % (`lit` materials), the lit windows go out
+below a quarter of the night's lamp; headlight pools and flares keep 30 %). The dome is a shader (`SkyView`) with banded clouds, a sun and
 a moon that cross the sky, a glow round the sun and the town's glow on the horizon at night. The world
 applies it each frame (`World.stepSky`).
 

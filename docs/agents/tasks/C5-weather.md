@@ -33,6 +33,9 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 - `psx.js`: `uLamp` scales every street lamp, shop and neon pool (and the wet reflections) and
   `uWindows` the lit windows (materials with an `emissiveMap`); headlight pools and lamp flares keep
   30 % by day.
+- `lit` materials (0.10.8): the street lamps' lenses, the shop windows and the gantry, plaza and gas
+  station lamps dim to 12 % by day (`psxBasic({ lit: true })`), and the lit windows go out clean (a
+  few amber squares were left at noon).
 - `world.js`: `setTime`, `startCycle`, `applySky`, `stepSky`; the weather sets the cloud cover
   (`weatherLook(...).cloud`), so rain greys the sky and puts the stars and the moon out.
 - Settings: a TIME OF DAY row; `__lowbeam.time('day')`.
@@ -48,8 +51,8 @@ look is Claude's (render, world, UI); what weather and the hour do to the drive 
 
 ## To do
 
-- The shop signs, vending machines and window displays stay lit by day; give the emissive signs a
-  daylight dim (`uWindows` on more materials), and the traffic lights' lamps a brighter day value.
+- The vending machines' fronts and the sign atlases stay as bright by day as by night (signs are,
+  in life); the traffic lights' lamps could take a brighter day value.
 - Shadows are not drawn: a sun with no shadows reads flat at noon. A blob shadow under each car and a
   few long ones for the buildings at dawn and dusk would help.
 - Dawn and dusk look alike (the glow follows the sun's direction, not the side of the sky).

@@ -47,7 +47,7 @@ export function buildGantries(gantries, grid, group, chunks) {
     steel: psxLambert({ color: 0x8e979e, baked: true }),
     back: psxLambert({ color: 0x4a5056, baked: true }),
     sign: psxBasic({ map: atlas, color: 0xd6d6d6, side: THREE.DoubleSide }),
-    lamp: psxBasic({ color: 0xf4f6ff }),
+    lamp: psxBasic({ color: 0xf4f6ff, lit: true }),
   };
   const { low, high } = GANTRY;
   gantries.forEach((gt, i) => {
