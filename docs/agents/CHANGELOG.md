@@ -28,6 +28,13 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.35 (2026-10-10)
+
+Review of B4 parts 3 and 4 (0.9.36, 0.9.37): accepted, and B4 is closed. The bug board gains what it left:
+T-01 is now the four geometry groups behind the 123 stalls (toll dividers, Ginza portal legs, a signal
+pole at node 82, the c3 ramp rails), Claude's, and T-04 the 32 turns the strict turn test names as
+exceptions, the backend to sort into curve faults and patch faults.
+
 ## 0.10.34 (2026-10-10)
 
 The bug board (`tasks/BUGS.md`) and its first fix: the minimap's police markers.

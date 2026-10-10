@@ -107,3 +107,13 @@ Claude's, fixed in 0.10.28). Before the edges, in the commit of part 3:
 
 Then part 3 (0.9.36, section 3 above) and part 4 (0.9.37, section 4), one commit each, and stop after part 4
 with the report: B5 goes to another agent.
+
+## Review: parts 3 and 4 (Claude, 0.10.35)
+
+Accepted (0.9.36, 0.9.37). The five review items are done: a civilian on its lane is never wrecked by the
+world (counted, 0), `onStall` and the bench's stall list, the strict turn test, the probes' cost (216 to
+224 ms for 1,000 steps of 45 agents, 3.6 %), the JSDoc and the guide. Clips 15 to 0, off the road 10 to 0,
+over 34,111 samples. Lane changes are refused within 55 m of a toll plaza and where the midpoint of the
+move would touch a shape. What is left is on the bug board: the 123 stalls are geometry (T-01, Claude),
+and the turn test passes by naming 14 clipping turns and 18 that leave the carriageway (T-04, Backend
+first). B4 is closed.

@@ -22,7 +22,8 @@ Rules:
 | M-02 | Hand-scripted models look poor: replace with outside low poly models that load clean (the plan below) | `tools/blender/`, `assets/models/`, `traffic/kinds.js` | Claude and Assets | plan below; a one-car trial first |
 | H-01 | Pursuit HUD half built: the reinforcement timer, the "seen" fade-in rule and the helicopter fuel pump have no data until B5 part 2 | `ui/pursuit.js` (done), `drive.js` `pursuitView()` | Hermes (data), Claude (HUD) | waiting on B5 part 2 |
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
-| T-01 | 123 civilian stalls: lanes that run into a shape (toll booth island widths, the portal pier legs in Ginza, tight avenue turns for the 10.5 m bus) | `traffic/net.js`, `world/scatter.js`, toll plaza data | Claude (geometry), Backend (lanes) | cataloged by B4 part 3, `node tools/clipbench.mjs` lists them |
+| T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
+| T-04 | Junction turns the strict turn test names as exceptions: 14 that clip a static shape at 7 junctions (Ginza and Dori, Kitae, Hama, Nishi) and 18 that leave the carriageway at 10 junctions (side streets meeting `r18`, `west` and `east`) | `traffic/net.js` (`buildTurn`), `world/junctions.js` (the patch) | Backend first, then Claude | sort each into "the curve is wrong" (fix it) or "the patch is too small" (list it for Claude); the lists in `tests/island/traffic-turns.test.mjs` shrink to empty |
 | T-02 | The Hikari is not among the street racers (two traffic tests sit near their limits when a kind is added) | `traffic/kinds.js`, tests | Backend | open |
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | Backend (flag), Claude (lamps) | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
@@ -36,7 +37,7 @@ Rules:
 |---|---|---|
 | F-01 | The game froze, the picture stopped while the music and the engine went on: a helicopter with no target crashed the frame loop (`Heli.light`); the loop now survives a faulting frame | 0.10.31 |
 | N-01 | Minimap: police arrows did not point where the cars drive and their sight turned with the player's car; the sight was a 70 m cone where the director uses 150 m all round | 0.10.34 |
-| N-02 | Civilians drove through static shapes and off the carriageway (15 clips, 10 off the road); now 0 and 0 | 0.9.34 to 0.9.37 |
+| N-02 | Civilians drove through static shapes and off the carriageway (15 clips, 10 off the road); now 0 and 0, never wrecked by the world, the cost of the probes 3.6 % | 0.9.34 to 0.9.37 |
 | N-03 | `tests/devserver.test.mjs` failed in any folder not named exactly Lowbeam (a worktree) | 0.10.32 |
 
 ## The gates: what "clean" means
