@@ -16,9 +16,6 @@ const CLIP_EXCEPTIONS = new Set([
   '66:ginza-b0:f0->dori:f0', '66:ginza-b0:f0->dori:r0',
   '67:dori:f0->ginza-b1:r0', '67:dori:f1->ginza-b1:r0', '67:dori:r0->ginza-b1:r0', '67:ginza-b1:r0->dori:r0',
   '75:ginza-b10:f0->dori:f0', '75:ginza-b10:f0->dori:r0',
-  '761:kitae-b194:f0->kitae-a217:r0', '761:kitae-b194:r0->kitae-a217:r0',
-  '803:hama-b244:f0->hama-a262:r0', '803:hama-b244:r0->hama-a262:r0',
-  '911:nishi-b330:f0->nishi-a338:r0', '911:nishi-b330:r0->nishi-a338:r0',
 ]);
 
 const ROAD_EXCEPTIONS = new Set([

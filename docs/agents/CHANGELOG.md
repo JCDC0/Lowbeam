@@ -1288,6 +1288,17 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.38 (2026-10-10)
+
+Junction turn exceptions audit and categorization (T-04).
+
+- `tests/island/traffic-turns.test.mjs`:
+  - Verified and removed 6 signal clipping turns from `CLIP_EXCEPTIONS` (`761:kitae-b194:f0->kitae-a217:r0`, `761:kitae-b194:r0->kitae-a217:r0`, `803:hama-b244:f0->hama-a262:r0`, `803:hama-b244:r0->hama-a262:r0`, `911:nishi-b330:f0->nishi-a338:r0`, `911:nishi-b330:r0->nishi-a338:r0`), now passing following 0.10.34 signal placement audit.
+  - Retained 8 clipping turns at 3 Ginza and Dori junctions (nodes 66, 67, 75) clipping Kurogane Line portal pier legs in `world/scatter.js` (T-01), where obstacles sit within 0.1 to 0.5 m of lane start/corner.
+  - Cataloged all 18 road edge exceptions across 10 junctions meeting Route 18, West, and East as junction patch faults (curve sweeps leaving straight rectangular road splines by 0.132 m to 0.529 m) for patch widening in `world/junctions.js`.
+- `docs/agents/tasks/BUGS.md`:
+  - Updated T-04 with backend audit counts (6 turns cleared, 8 pier clips and 18 patch faults listed for Claude).
+
 ## 0.9.37 (2026-10-10)
 
 Civilian kind dimensions verified against body models (B4 part 4).
