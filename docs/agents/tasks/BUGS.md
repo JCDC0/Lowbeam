@@ -26,7 +26,6 @@ Rules:
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
 | T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
 | T-04 | Junction turns the strict turn test names as exceptions: 14 that clip a static shape at 7 junctions (Ginza and Dori, Kitae, Hama, Nishi) and 18 that leave the carriageway at 10 junctions (side streets meeting `r18`, `west` and `east`) | `traffic/net.js` (`buildTurn`), `world/junctions.js` (the patch) | Claude | 6 signal clipping turns cleared and removed (0.9.38); 8 pier clips (nodes 66, 67, 75) and 18 patch faults (nodes 1, 4, 6, 12, 13, 15, 16, 17, 20, 22; 0.13 to 0.53 m) listed for patch widening |
-| T-02 | The Hikari is not among the street racers (two traffic tests sit near their limits when a kind is added) | `traffic/kinds.js`, tests | Backend | open |
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | Backend (flag), Claude (lamps) | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
 | X-01 | The GPS route test measures planning time and fails when the machine is busy; `tests/passby.test.mjs` "a loud swell that decays" failed once under load | `tests/` | Backend | make both deterministic |
@@ -37,6 +36,7 @@ Rules:
 
 | ID | Bug | Version |
 |---|---|---|
+| T-02 | Hikari 300ZR added to RIVALS (rv-hikari); 6-seed racer average 205.9 km/h (> 180 km/h) and civilian lane reversal rate 2.3 % (< 10 %) | 0.9.39 |
 | F-01 | The game froze, the picture stopped while the music and the engine went on: a helicopter with no target crashed the frame loop (`Heli.light`); the loop now survives a faulting frame | 0.10.31 |
 | P-01 | Signal poles in the road (Jc's screenshots: in junctions, one dead ahead, one under the Kurogane Line deck): 92 of 2,709 stood where cars drive, because a pole kept 1.3 m from a lane's center line (inside a 3 m lane) and the road check asked only the nearest road at any height. Now 0.6 m from the edge of every lane and every curve through a crossing, at the pole's height, with an independent test | 0.10.36 |
 | N-04 | The Tab map and the main menu still named the old valley (KIRIGAOKA TACTICAL MAP, KIRIGAOKA TOWN, LAKE KIRIGAOKA, KIRIGAOKA RIDGE, KIRIGAOKA TACTICAL RALLY); the map's labels are the island's own areas now | 0.10.36 |

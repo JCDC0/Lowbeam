@@ -370,8 +370,8 @@ test('fewer than one civilian lane change in ten is reversed within 6 s', () => 
   assert.ok(share < 0.1, `${reversed} of ${changes} civilian lane changes reversed within 6 s (${(share * 100).toFixed(1)} %)`);
 });
 
-// One 3-minute run lands anywhere from 170 to 207 km/h depending on the seed, so the mean is
-// taken over six of them.
+// One 3-minute run lands anywhere from 184 to 216 km/h depending on the seed (170 to 207 km/h
+// before Hikari joined the rivals), so the mean is taken over six of them.
 test('an agent in a duel aims for its top speed and ignores the slow lane', () => {
   const sim = new TrafficSim(net, { seed: 9, target: 0, rivals: 0 });
   const lane = net.lane('c1-f', 1, 1);

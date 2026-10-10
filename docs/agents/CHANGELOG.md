@@ -1288,6 +1288,21 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.39 (2026-10-10)
+
+Add Hikari 300ZR to street racers (T-02).
+
+- `src/traffic/kinds.js`:
+  - Included `rv-hikari` among `RIVALS` without filtering, expanding the street racer roster to 17 cars.
+- `tests/island/traffic.test.mjs`:
+  - Verified racer speed benchmarks across the 6-seed ensemble: runs average 184 to 216 km/h per seed (ensemble mean 205.9 km/h, well clear of the > 180 km/h requirement; top speed 286.3 km/h > 240 km/h; 0 hard hits).
+  - Verified civilian lane change stability: 86 lane changes sampled (> 60), with 2 reversals (2.3 %, comfortably within the < 10 % threshold).
+  - Updated the test comment documenting the measured per-seed speed range with Hikari present.
+- `docs/agents/tasks/BUGS.md`:
+  - Moved T-02 to Clear (0.9.39).
+- `docs/agents/ARCHITECTURE.md`:
+  - Updated the street racers description to note Hikari (rv-hikari) is among the racers.
+
 ## 0.9.38 (2026-10-10)
 
 Junction turn exceptions audit and categorization (T-04).

@@ -283,7 +283,7 @@ toward the curb, screech if they were moving and maybe honk. The traffic refills
 Five street racers on
 Route 1 cruise at 200 to 260 km/h, look ahead up to 280 m (or 4 s of travel), apply emergency braking
 up to 9 m/s² down to a leader's speed when unable to overtake, weave cleanly using safe lookaheads,
-and maintain 140 m clearance on spawn (0.9.23). The Hikari is not among the racers yet. Kinds named in `KIND_MODELS`
+and maintain 140 m clearance on spawn (0.9.23). The Hikari is among the racers (rv-hikari, 0.9.39). Kinds named in `KIND_MODELS`
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
