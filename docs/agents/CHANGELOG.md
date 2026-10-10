@@ -28,6 +28,14 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.33 (2026-10-10)
+
+Port 8041 is Jc's. It serves the worktree `C:\GitHub\Lowbeam-play` on the latest commit of `main`
+(a `post-commit` hook moves it, and a `play` configuration in `.claude/launch.json` starts it) for
+when Jc asks to play without interruption; 8040 stays the agents' shared tree. The agent guide says
+no agent uses 8041. Found while checking it: `origin/main` is still 0.4.4 (2026-10-03), 195 commits
+behind, because nothing has been pushed; the game is not published (the last milestone).
+
 ## 0.10.32 (2026-10-10)
 
 Housekeeping after Hermes's first run. His worktree stopped half way through a merge of his C8 code

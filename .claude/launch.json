@@ -9,6 +9,15 @@
         "8040"
       ],
       "port": 8040
+    },
+    {
+      "name": "play",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/GitHub/Lowbeam-play/tools/devserver.mjs",
+        "8041"
+      ],
+      "port": 8041
     }
   ]
 }

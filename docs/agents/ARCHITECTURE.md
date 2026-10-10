@@ -75,6 +75,13 @@ Tests prove the rules; the game is verified by looking at it.
   'garage')`, `drive` (the Drive: `start(spec, paint)`, `rig.mode` 0 chase to 4 cockpit, `gauges`,
   `traffic`, `pursuitView()`), `simulate(seconds, { throttle, brake, steer })` (runs the fixed-step
   loop with no frames), `shot(name)` (writes `tools/shots/<name>.png`), `world`, `input`.
+- Ports. 8040 is the shared working tree, for the agents; it shows uncommitted work. 8041 is Jc's, kept
+  for when Jc asks to play without being interrupted: the worktree `C:\GitHub\Lowbeam-play`, detached on
+  the latest commit of `main` (a `post-commit` hook in `.git/hooks` moves it; the hook is not versioned,
+  so if it is missing, `git -C C:/GitHub/Lowbeam-play checkout --detach main`). Claude starts it on
+  request with the `play` configuration of `.claude/launch.json` (or `node
+  C:/GitHub/Lowbeam-play/tools/devserver.mjs 8041`). No agent tests on 8041, starts or stops it, or edits
+  that folder.
 - Screenshots at 1280 by 720. A hidden browser pane renders a 1 by 1 canvas and runs no animation
   frames: set the viewport size, and step menus by hand (`input.poll()`, `screen.update(input)`,
   `input.endFrame()`) when the loop is not running. Add `?v=N` to the URL to defeat caching.
