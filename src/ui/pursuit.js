@@ -5,11 +5,17 @@
  * five marks and the pursuit's time; the bounty, counting up; the units on the scene, the units
  * assigned to the pursuit (the pool reinforcements come from) and the units destroyed; and along the
  * bottom the evade and busted meter, split from the middle (green to the left as the police lose
- * sight, red to the right as they box the player in), a blue cooldown bar while they search. A
- * REINFORCEMENTS line shows while they arrive. Before a pursuit, while a patrol watches, only the
- * detection bar shows. At the end the result card, then nothing: the panel never fades or pulses,
- * and leaves at once when the pursuit or the drive screen does. Every word and number is in
- * Michroma (`--font-display`).
+ * sight, red to the right as they box the player in), a blue cooldown bar while they search. Before a
+ * pursuit, while a patrol watches, only the detection bar shows. At the end the result card, then
+ * nothing: the panel leaves at once when the pursuit or the drive screen does. Every word and number
+ * is in Michroma (`--font-display`), except the unit counts and the resupply clock, which are in the
+ * Japanese face (`--font-jp`) and never zero-padded (0, not 00).
+ *
+ * The icons of the units by kind (v2, Jc's second sketch): each fades in the first time a unit of that
+ * kind is in the player's sight (`seen`), and from then on shows its live count, 0 included. When a
+ * unit of a kind is destroyed its icon plays a short fading glitch and its count drops, and the
+ * DESTROYED tally on the board below rises. While the police resupply (B5) a clock over the row counts
+ * down to the cars' arrival, with a bar draining behind it. The panel itself never fades or pulses.
  */
 
 /**
@@ -30,11 +36,15 @@
  *   byKind?: Record<string, number>,
  *   assigned?: number | null,
  *   reinforcements?: boolean,
+ *   seen?: string[],
+ *   resupply?: number | null,
  * }} PursuitView
  * `units` are the units on the scene (in the pursuit), `nearby` those that see the player now,
  * `disabled` those taken out, `helis` the helicopters up, `byKind` the units on the scene by kind
  * id, `assigned` the units the pursuit still has to send (null until the director keeps the pool),
- * `reinforcements` true while reinforcements are arriving.
+ * `reinforcements` true while reinforcements are arriving, `seen` the kind ids (and `'heli'`) the
+ * player has had in sight in this pursuit (absent on an old view: a kind counts as seen while it has
+ * units), `resupply` the seconds left before the next cars are dispatched (null when no clock runs).
  *
  * @typedef {{
  *   kind: 'police' | 'heli',
@@ -53,6 +63,30 @@ const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;
 
 /** The unit kinds in the row over the panel, in the sketch's order. */
 export const KIND_ROW = ['police', 'police-fast', 'police-int', 'police-heavy'];
+/** The seconds a resupply takes (B5: `RESUPPLY_TIME`), the full length of the clock's bar. */
+export const RESUPPLY_SECONDS = 60;
+/** Whether an icon whose units are all gone keeps its slot showing 0 (true) or leaves the row. */
+export const ZERO_KEEPS_SLOT = true;
+
+/** The resupply clock as seconds and hundredths, 60:00 down to 00:00. @param {number} left */
+export function clockText(left) {
+  const t = Math.max(0, left);
+  const s = Math.min(99, Math.floor(t));
+  const c = Math.min(99, Math.floor((t - Math.floor(t)) * 100));
+  return `${String(s).padStart(2, '0')}:${String(c).padStart(2, '0')}`;
+}
+
+/**
+ * The kinds whose icon should glitch between two layouts: units were destroyed (the tally rose) and
+ * the kind's count fell. A unit that merely went home does not glitch.
+ * @param {{ destroyed: number, kinds: { kind: string, n: number }[] } | null} prev
+ * @param {{ destroyed: number, kinds: { kind: string, n: number }[] } | null} next
+ * @returns {string[]}
+ */
+export function lostKinds(prev, next) {
+  if (!prev || !next || next.destroyed <= prev.destroyed) return [];
+  return next.kinds.filter((k, i) => k.n < (prev.kinds[i]?.n ?? 0)).map((k) => k.kind);
+}
 
 /**
  * Pure layout / data formatting helper for unit tests and rendering.
@@ -92,8 +126,13 @@ export function layoutPursuit(view) {
     helis: Math.max(0, Math.min(3, view.helis ?? (view.heli ? 1 : 0))),
     nearby: view.nearby || 0,
     destroyed: view.disabled || 0,
-    destroyedText: String(Math.min(99, view.disabled || 0)).padStart(2, '0'),
-    kinds: KIND_ROW.map((kind) => ({ kind, n: Math.max(0, view.byKind?.[kind] ?? 0) })),
+    destroyedText: String(Math.min(99, view.disabled || 0)),
+    kinds: KIND_ROW.map((kind) => {
+      const n = Math.max(0, view.byKind?.[kind] ?? 0);
+      return { kind, n, seen: view.seen ? view.seen.includes(kind) : n > 0 };
+    }),
+    heliSeen: view.seen ? view.seen.includes('heli') : (view.helis ?? (view.heli ? 1 : 0)) > 0,
+    resupply: typeof view.resupply === 'number' ? { left: view.resupply, fill: Math.max(0, Math.min(1, view.resupply / RESUPPLY_SECONDS)), text: clockText(view.resupply) } : null,
     assignedText: view.assigned == null ? '--' : String(Math.max(0, Math.round(view.assigned))),
     reinforcements: !!view.reinforcements,
     bountyText,
@@ -126,7 +165,12 @@ export function pursuitHud(parent) {
       <span class="ph-label">DETECTION</span>
       <div class="ph-track"><div class="ph-detect-fill"></div></div>
     </div>
-    <div class="ph-kinds">${KIND_ROW.map((k) => `<span class="ph-kind" data-kind="${k}">${KIND_ICONS[k]}<em></em></span>`).join('')}<span class="ph-kind ph-heli-count">${HELI_ICON}<em></em></span></div>
+    <div class="ph-resupply">
+      <div class="ph-rs-bar"><i></i></div>
+      <div class="ph-rs-time"></div>
+      <div class="ph-rs-label">REINFORCEMENTS ARRIVING</div>
+    </div>
+    <div class="ph-kinds">${KIND_ROW.map((k) => `<span class="ph-kind" data-kind="${k}">${KIND_ICONS[k]}<em>0</em></span>`).join('')}<span class="ph-kind ph-heli-count">${HELI_ICON}<em>0</em></span></div>
     <div class="ph-panel">
       <div class="ph-row ph-head">
         <div class="ph-heat"><span class="ph-label">HEAT</span>${'<i></i>'.repeat(5)}</div>
@@ -138,7 +182,6 @@ export function pursuitHud(parent) {
         <span class="ph-stat"><em class="ph-assigned"></em><small>ASSIGNED</small></span>
         <span class="ph-stat ph-kills"><em class="ph-out"></em><small>DESTROYED</small></span>
       </div>
-      <div class="ph-reinforce">REINFORCEMENTS</div>
       <div class="ph-meter">
         <span class="ph-side ph-evade-label">EVADE</span>
         <div class="ph-track ph-split">
@@ -169,12 +212,28 @@ export function pursuitHud(parent) {
   const kindsEl = q('.ph-kinds');
   const kindEls = KIND_ROW.map((k) => /** @type {HTMLElement} */ (el.querySelector(`.ph-kind[data-kind="${k}"]`)));
   const heliCountEl = q('.ph-heli-count');
-  const reinforceEl = q('.ph-reinforce');
+  const resupplyEl = q('.ph-resupply');
+  const rsFill = q('.ph-rs-bar i');
+  const rsTime = q('.ph-rs-time');
+  const killsEl = q('.ph-kills');
+  const cells = [...kindEls, heliCountEl];
+  for (const cell of [...cells, killsEl]) cell.addEventListener('animationend', () => cell.classList.remove('glitch', 'bump'));
   const resultEl = q('.ph-result');
   const resultHead = q('.ph-result b');
   const resultLine = q('.ph-result span');
 
   let shownBounty = 0;
+  /** The icons that have faded in this pursuit stay in; a unit of a kind in sight brings its icon. */
+  const shown = cells.map(() => false);
+  /** @type {ReturnType<typeof layoutPursuit>} */
+  let prev = null;
+
+  /** Plays a CSS animation again from the start. @param {HTMLElement} node @param {string} cls */
+  const play = (node, cls) => {
+    node.classList.remove(cls);
+    void node.offsetWidth;
+    node.classList.add(cls);
+  };
 
   /**
    * @param {PursuitView | null} view the pursuit, or null when there is none (or the screen is not the drive)
@@ -185,6 +244,10 @@ export function pursuitHud(parent) {
     const layout = layoutPursuit(view);
     if (!layout) {
       shownBounty = 0;
+      prev = null;
+      shown.fill(false);
+      for (const cell of cells) cell.classList.remove('in', 'none', 'glitch');
+      resupplyEl.style.display = 'none';
       const level = detect?.level || 0;
       el.style.display = level > 0.01 ? 'block' : 'none';
       panel.style.display = 'none';
@@ -221,13 +284,24 @@ export function pursuitHud(parent) {
     sceneEl.textContent = String(layout.units);
     assignedEl.textContent = layout.assignedText;
     outEl.textContent = layout.destroyedText;
-    layout.kinds.forEach(({ n }, i) => {
-      /** @type {HTMLElement} */ (kindEls[i].querySelector('em')).textContent = String(n);
-      kindEls[i].classList.toggle('none', n === 0);
+    const counts = [...layout.kinds.map((k) => ({ n: k.n, seen: k.seen })), { n: layout.helis, seen: layout.heliSeen }];
+    counts.forEach(({ n, seen }, i) => {
+      if (seen) shown[i] = true;
+      const cell = cells[i];
+      /** @type {HTMLElement} */ (cell.querySelector('em')).textContent = String(n);
+      cell.classList.toggle('in', shown[i] && (n > 0 || ZERO_KEEPS_SLOT));
+      cell.classList.toggle('none', n === 0);
     });
-    /** @type {HTMLElement} */ (heliCountEl.querySelector('em')).textContent = String(layout.helis);
-    heliCountEl.classList.toggle('none', layout.helis === 0);
-    reinforceEl.style.display = layout.reinforcements && !layout.isTerminal ? 'block' : 'none';
+    for (const kind of lostKinds(prev, layout)) play(kindEls[KIND_ROW.indexOf(kind)], 'glitch');
+    if (prev && layout.destroyed > prev.destroyed) play(killsEl, 'bump');
+    prev = layout;
+    const clock = layout.resupply;
+    resupplyEl.style.display = (clock || layout.reinforcements) && !layout.isTerminal ? 'block' : 'none';
+    resupplyEl.classList.toggle('timed', !!clock);
+    if (clock) {
+      rsFill.style.width = `${(clock.fill * 100).toFixed(1)}%`;
+      rsTime.textContent = clock.text;
+    }
 
     resultEl.style.display = layout.isTerminal ? 'flex' : 'none';
     if (layout.isTerminal) {

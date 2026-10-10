@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutPursuit } from '../src/ui/pursuit.js';
+import { layoutPursuit, clockText, lostKinds } from '../src/ui/pursuit.js';
 
 test('layoutPursuit returns null when view is null', () => {
   assert.equal(layoutPursuit(null), null);
@@ -124,8 +124,49 @@ test('layoutPursuit lays out Jc\'s sketch: the units by kind, assigned and destr
   assert.deepEqual(l.kinds.map((k) => k.kind), ['police', 'police-fast', 'police-int', 'police-heavy']);
   assert.deepEqual(l.kinds.map((k) => k.n), [4, 2, 1, 0]);
   assert.equal(l.assignedText, '52');
-  assert.equal(l.destroyedText, '04');
+  assert.equal(l.destroyedText, '4');
   assert.equal(l.helis, 1);
   assert.equal(layoutPursuit({ ...view, assigned: undefined, byKind: undefined }).assignedText, '--', 'a dash until the director keeps the pool');
   assert.equal(layoutPursuit({ ...view, reinforcements: true }).reinforcements, true);
+});
+
+test('counts are plain numbers: a destroyed tally of none reads 0, not 00', () => {
+  const base = { state: 'pursuit', heat: 1, evade: 0, cooldown: 0, bust: 0, units: 0, heli: false, bounty: 0, time: 0 };
+  assert.equal(layoutPursuit(base).destroyedText, '0');
+  assert.equal(layoutPursuit({ ...base, disabled: 12 }).destroyedText, '12');
+  assert.equal(layoutPursuit({ ...base, disabled: 140 }).destroyedText, '99', 'two digits at most');
+});
+
+test('an icon is seen once its kind has been in sight; an old view counts a kind with units as seen', () => {
+  const view = { state: 'pursuit', heat: 3, evade: 0, cooldown: 0, bust: 0, units: 3, heli: true, helis: 1, bounty: 0, time: 0, byKind: { police: 3, 'police-fast': 0, 'police-int': 0, 'police-heavy': 0 } };
+  const old = layoutPursuit(view);
+  assert.deepEqual(old.kinds.map((k) => k.seen), [true, false, false, false]);
+  assert.equal(old.heliSeen, true);
+  const l = layoutPursuit({ ...view, seen: ['police', 'police-heavy'] });
+  assert.deepEqual(l.kinds.map((k) => k.seen), [true, false, false, true], 'a seen kind with no units left still shows, at 0');
+  assert.deepEqual(l.kinds.map((k) => k.n), [3, 0, 0, 0]);
+  assert.equal(l.heliSeen, false, 'a helicopter overhead that has not been in sight stays hidden');
+  assert.equal(layoutPursuit({ ...view, seen: ['heli'] }).heliSeen, true);
+});
+
+test('the resupply clock reads seconds and hundredths and drains its bar over a minute', () => {
+  assert.equal(clockText(60), '60:00');
+  assert.equal(clockText(12.345), '12:34');
+  assert.equal(clockText(0.009), '00:00');
+  assert.equal(clockText(-3), '00:00');
+  const base = { state: 'pursuit', heat: 2, evade: 0, cooldown: 0, bust: 0, units: 1, heli: false, bounty: 0, time: 0 };
+  assert.equal(layoutPursuit(base).resupply, null, 'no clock until the backend sends one');
+  const r = layoutPursuit({ ...base, resupply: 45 }).resupply;
+  assert.equal(r.text, '45:00');
+  assert.equal(r.fill, 0.75);
+  assert.equal(layoutPursuit({ ...base, resupply: 0 }).resupply.fill, 0, 'an arrived clock is an empty bar');
+});
+
+test('a destroyed unit glitches its own icon, and a unit that left does not', () => {
+  const at = (n, destroyed) => ({ destroyed, kinds: [{ kind: 'police', n: n[0] }, { kind: 'police-fast', n: n[1] }, { kind: 'police-int', n: n[2] }, { kind: 'police-heavy', n: n[3] }] });
+  assert.deepEqual(lostKinds(at([3, 1, 0, 0], 0), at([2, 1, 0, 0], 1)), ['police']);
+  assert.deepEqual(lostKinds(at([3, 1, 1, 0], 0), at([2, 0, 1, 0], 2)), ['police', 'police-fast'], 'two at once glitch two icons');
+  assert.deepEqual(lostKinds(at([3, 1, 0, 0], 1), at([2, 1, 0, 0], 1)), [], 'the tally did not rise: they went home');
+  assert.deepEqual(lostKinds(at([2, 1, 0, 0], 1), at([3, 1, 0, 0], 1)), [], 'a unit arriving is not a loss');
+  assert.deepEqual(lostKinds(null, at([2, 1, 0, 0], 1)), [], 'nothing to compare on the first frame');
 });

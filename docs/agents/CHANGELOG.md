@@ -28,6 +28,22 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.22 (2026-10-10)
+
+The pursuit HUD after Jc's second sketch (`tasks/C7-pursuit-hud-v2.md`).
+
+- The unit icons are hidden until a unit of their kind has been in the player's sight, then fade in over
+  0.7 s; they sit over their counts, in the Japanese face at 26 px; at 0 they rest dimmed showing 0.
+- Counts are plain numbers: the DESTROYED tally read 00 and 01 and now reads 0 and 1.
+- A destroyed unit's icon glitches for 0.75 s (a sliced clip, a red and cyan split, a flicker) and the
+  DESTROYED number bumps; a unit that merely went home does not (`lostKinds`).
+- A resupply header over the row: a bar draining over 60 s, the clock as 60:00 (seconds and hundredths) and
+  REINFORCEMENTS ARRIVING, replacing the amber line inside the panel. It shows from `view.resupply`.
+- `view.seen` and `view.resupply` are B5's to add; without them an icon counts as seen while its kind
+  has units and there is no clock. Four tests; 481 in all.
+- Looked at in the game's page with scripted views at 1280 by 720: the empty row, five icons with a
+  38:42 clock, a destroyed Rhino resting at 0, a destroyed unmarked car mid-glitch.
+
 ## 0.10.21 (2026-10-10)
 
 Review of Gemini's 0.9.31 (rain sound), 0.9.32 (the barrier fixes) and 0.9.33 (traffic and police in rain,

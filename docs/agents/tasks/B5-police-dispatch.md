@@ -32,7 +32,9 @@ Read `src/police/director.js` (`PoliceDirector`, `backup`, `ASSIGNED_BY_HEAT`, t
   director today adds 25 % of the heat's pool at once (REINFORCEMENTS). Replace that with a wait.
 - When the pool runs low while the chase goes on, a resupply timer of 60 s starts (`RESUPPLY_TIME`, 60).
   The banner says REINFORCEMENTS IN 1:00 and the pursuit HUD shows the countdown (Claude draws it from
-  `pursuitView().resupply` seconds left, null otherwise: add the field).
+  `pursuitView().resupply` seconds left, null otherwise: add the field). Also add `pursuitView().seen`,
+  the kinds and `'heli'` that have been in the player's sight in this pursuit (the exact rule is in
+  `C7-pursuit-hud-v2.md`, "What waits for the backend"); the HUD fades each icon in on it.
 - One car stays on the player while it runs. If the units are heavily exhausted (the pool at zero and the
   cars lost, wrecked or out of the chase), the last unit on the scene is not recalled, is not counted
   out of the chase by the pool, keeps trying to chase the player, and drives as hard as its hit points

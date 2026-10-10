@@ -165,7 +165,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-477 tests pass; the type check is clean. By area:
+481 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -354,14 +354,18 @@ and decks fill it three times faster), escaped with the bounty paid. Stopped wit
 for 3 s: busted, the fine (bounty plus 30,000 yen, what the player has) taken and the car towed to the
 nearest police station. The end card shows for 6 s, then the units go home; `rapSheet` keeps the totals, units
 destroyed among them. The pursuit
-HUD (`ui/pursuit.js`) is Most Wanted's after Jc's sketch: at the bottom center, in Michroma, a row of
-the units on the scene by kind (cruiser, unmarked, interceptor, Rhino, each with its icon) and the
-helicopters, over one panel with the heat marks, the bounty counting up and the time on one line,
-the units on the scene, assigned (the pursuit's pool, a dash until the director keeps it) and
-destroyed, a REINFORCEMENTS line while they come, and the evade and busted meter along the bottom
-split from the middle (a blue COOLDOWN bar while they search); the result card with the fine or the
-bounty at the end; before a pursuit only the
-detection bar shows. It never fades or pulses, and it shows only on the drive screen. Events (a pursuit, a heat level,
+HUD (`ui/pursuit.js`) is Most Wanted's after Jc's sketches: at the bottom center, in Michroma, a row of
+icons for the units on the scene by kind (cruiser, unmarked, interceptor, Rhino) and the helicopters,
+each over its count in the Japanese face (a plain 0, never 00): an icon fades in the first time a unit
+of its kind is in the player's sight, rests dimmed at 0 when they are gone, and glitches when one is
+destroyed (`seen` and `lostKinds`; `tasks/C7-pursuit-hud-v2.md`); over the row, while the police
+resupply, a bar and a clock (`resupply`, seconds and hundredths) over REINFORCEMENTS ARRIVING; under it
+one panel with the heat marks, the bounty counting up and the time on one line, the units on the scene,
+assigned (the pursuit's pool, a dash until the director keeps it) and destroyed, and the evade and
+busted meter along the bottom split from the middle (a blue COOLDOWN bar while they search); the result
+card with the fine or the bounty at the end; before a pursuit only the detection bar shows. The panel
+never fades or pulses, and it shows only on the drive screen. `seen` and `resupply` come from B5; until
+then an icon counts as seen while its kind has units and there is no clock. Events (a pursuit, a heat level,
 a roadblock, a unit taken out, escaped, busted, a blown engine, a duel) are banners (`bannerer` in
 `ui/menus.js`) that slam in, hold and leave, ruled by tone; a unit taken out also flashes the
 screen white, jolts the camera and plays `audio.takedown()`. The markers
