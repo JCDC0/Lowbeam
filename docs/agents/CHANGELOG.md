@@ -28,6 +28,19 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.25 (2026-10-10)
+
+The pursuit HUD, corrected: 0.10.23 misread the sketch.
+
+- The bar at the top of the sketch is the reinforcements' timer, not the evade and busted meter. The bar
+  is back over the clock (draining over 60 s), and the meter is back along the bottom of the board, as
+  it was before 0.10.23. What stays from 0.10.23: the centered icon row that opens and closes, and the
+  clock counting whole hundredths.
+- `tasks/C7-pursuit-hud-v2.md` is rewritten with the layout top to bottom, so the next change starts
+  from it.
+- Checked in the game's page at 1280 by 720: the bar over 38:42, five icons, the board with the meter
+  at its bottom.
+
 ## 0.10.24 (2026-10-10)
 
 The police bays, for B5's dispatch from the stations (`tasks/B5-police-dispatch.md`, part 1).

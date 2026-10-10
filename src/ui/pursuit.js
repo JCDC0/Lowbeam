@@ -1,13 +1,13 @@
 /**
  * The pursuit HUD, after Need for Speed: Most Wanted (2005) and Jc's sketches: a column at the bottom
- * center of the screen. At its top the evade and busted meter, split from the middle (green to the
- * left as the police lose sight, red to the right as they box the player in), a blue cooldown bar
- * while they search; under it, while the police resupply, a clock over REINFORCEMENTS ARRIVING; then
- * a row of the units on the scene by kind (a cruiser, an unmarked car, an interceptor, a Rhino and
- * the helicopters, each with its icon and count); and last one panel: the heat as five marks and the
- * pursuit's time, the bounty counting up, and the units on the scene, the units assigned to the
- * pursuit (the pool reinforcements come from) and the units destroyed. Before a pursuit, while a
- * patrol watches, only the detection bar shows. At the end the result card, then
+ * center of the screen. At its top, while the police resupply, the reinforcements' bar draining over a
+ * minute, a clock under it and REINFORCEMENTS ARRIVING; then a row of the units on the scene by kind
+ * (a cruiser, an unmarked car, an interceptor, a Rhino and the helicopters, each with its icon and
+ * count); and last one panel: the heat as five marks and the pursuit's time, the bounty counting up,
+ * the units on the scene, the units assigned to the pursuit (the pool reinforcements come from) and
+ * the units destroyed, and along the bottom the evade and busted meter, split from the middle (green
+ * to the left as the police lose sight, red to the right as they box the player in), a blue cooldown
+ * bar while they search. Before a pursuit, while a patrol watches, only the detection bar shows. At the end the result card, then
  * nothing: the panel leaves at once when the pursuit or the drive screen does. Every word and number
  * is in Michroma (`--font-display`), except the unit counts and the resupply clock, which are in the
  * Japanese face (`--font-jp`) and never zero-padded (0, not 00).
@@ -17,7 +17,7 @@
  * (`seen`); it shows its live count; when a unit of the kind is destroyed its icon plays a short fading
  * glitch and its count drops, and the DESTROYED tally on the board below rises; and when the kind has
  * no units left the icon rests at 0 for a moment, fades out and the row closes up over the space. While the police resupply (B5) a clock over the row counts
- * down to the cars' arrival. The panel itself never fades or pulses.
+ * down to the cars' arrival, with its bar draining. The panel itself never fades or pulses.
  */
 
 /**
@@ -65,6 +65,8 @@ const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;
 
 /** The unit kinds in the row over the panel, in the sketch's order. */
 export const KIND_ROW = ['police', 'police-fast', 'police-int', 'police-heavy'];
+/** The seconds a resupply takes (B5: `RESUPPLY_TIME`), the full length of the reinforcements' bar. */
+export const RESUPPLY_SECONDS = 60;
 /** Seconds an icon rests at 0 (the glitch plays out) before it fades out of the row. */
 export const LEAVE_DELAY = 0.9;
 
@@ -144,7 +146,7 @@ export function layoutPursuit(view) {
       return { kind, n, seen: view.seen ? view.seen.includes(kind) : n > 0 };
     }),
     heliSeen: view.seen ? view.seen.includes('heli') : (view.helis ?? (view.heli ? 1 : 0)) > 0,
-    resupply: typeof view.resupply === 'number' ? { left: view.resupply, text: clockText(view.resupply) } : null,
+    resupply: typeof view.resupply === 'number' ? { left: view.resupply, fill: Math.max(0, Math.min(1, view.resupply / RESUPPLY_SECONDS)), text: clockText(view.resupply) } : null,
     assignedText: view.assigned == null ? '--' : String(Math.max(0, Math.round(view.assigned))),
     reinforcements: !!view.reinforcements,
     bountyText,
@@ -177,14 +179,8 @@ export function pursuitHud(parent) {
       <span class="ph-label">DETECTION</span>
       <div class="ph-track"><div class="ph-detect-fill"></div></div>
     </div>
-    <div class="ph-meter">
-      <span class="ph-side ph-evade-label">EVADE</span>
-      <div class="ph-track ph-split">
-        <div class="ph-evade"></div><div class="ph-busted"></div><div class="ph-cool"></div><div class="ph-mid"></div>
-      </div>
-      <span class="ph-side ph-busted-label">BUSTED</span>
-    </div>
     <div class="ph-resupply">
+      <div class="ph-rs-bar"><i></i></div>
       <div class="ph-rs-time"></div>
       <div class="ph-rs-label">REINFORCEMENTS ARRIVING</div>
     </div>
@@ -199,6 +195,13 @@ export function pursuitHud(parent) {
         <span class="ph-stat"><em class="ph-scene"></em><small>ON SCENE</small></span>
         <span class="ph-stat"><em class="ph-assigned"></em><small>ASSIGNED</small></span>
         <span class="ph-stat ph-kills"><em class="ph-out"></em><small>DESTROYED</small></span>
+      </div>
+      <div class="ph-meter">
+        <span class="ph-side ph-evade-label">EVADE</span>
+        <div class="ph-track ph-split">
+          <div class="ph-evade"></div><div class="ph-busted"></div><div class="ph-cool"></div><div class="ph-mid"></div>
+        </div>
+        <span class="ph-side ph-busted-label">BUSTED</span>
       </div>
       <div class="ph-result"><b></b><span></span></div>
     </div>
@@ -224,6 +227,7 @@ export function pursuitHud(parent) {
   const kindEls = KIND_ROW.map((k) => /** @type {HTMLElement} */ (el.querySelector(`.ph-kind[data-kind="${k}"]`)));
   const heliCountEl = q('.ph-heli-count');
   const resupplyEl = q('.ph-resupply');
+  const rsFill = q('.ph-rs-bar i');
   const rsTime = q('.ph-rs-time');
   const killsEl = q('.ph-kills');
   const cells = [...kindEls, heliCountEl];
@@ -258,7 +262,6 @@ export function pursuitHud(parent) {
       icons.forEach((_, i) => { icons[i] = { in: false, zero: 0 }; });
       for (const cell of cells) cell.classList.remove('in', 'none', 'glitch');
       resupplyEl.style.display = 'none';
-      meterEl.style.display = 'none';
       const level = detect?.level || 0;
       el.style.display = level > 0.01 ? 'block' : 'none';
       panel.style.display = 'none';
@@ -309,7 +312,10 @@ export function pursuitHud(parent) {
     const clock = layout.resupply;
     resupplyEl.style.display = (clock || layout.reinforcements) && !layout.isTerminal ? 'block' : 'none';
     resupplyEl.classList.toggle('timed', !!clock);
-    if (clock) rsTime.textContent = clock.text;
+    if (clock) {
+      rsFill.style.width = `${(clock.fill * 100).toFixed(1)}%`;
+      rsTime.textContent = clock.text;
+    }
 
     resultEl.style.display = layout.isTerminal ? 'flex' : 'none';
     if (layout.isTerminal) {

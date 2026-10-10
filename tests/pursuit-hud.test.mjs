@@ -149,7 +149,7 @@ test('an icon is seen once its kind has been in sight; an old view counts a kind
   assert.equal(layoutPursuit({ ...view, seen: ['heli'] }).heliSeen, true);
 });
 
-test('the resupply clock reads seconds and hundredths', () => {
+test('the resupply clock reads seconds and hundredths and drains its bar over a minute', () => {
   assert.equal(clockText(60), '60:00');
   assert.equal(clockText(12.345), '12:34');
   assert.equal(clockText(36.9), '36:90', 'a float that is a hair under 36.9 still reads 90');
@@ -160,7 +160,9 @@ test('the resupply clock reads seconds and hundredths', () => {
   assert.equal(layoutPursuit(base).resupply, null, 'no clock until the backend sends one');
   const r = layoutPursuit({ ...base, resupply: 45 }).resupply;
   assert.equal(r.text, '45:00');
-  assert.equal(layoutPursuit({ ...base, resupply: 0 }).resupply.text, '00:00', 'an arrived clock reads zero');
+  assert.equal(r.fill, 0.75);
+  assert.equal(layoutPursuit({ ...base, resupply: 0 }).resupply.fill, 0, 'an arrived clock is an empty bar');
+  assert.equal(layoutPursuit({ ...base, resupply: 90 }).resupply.fill, 1, 'the bar never overfills');
 });
 
 test('a destroyed unit glitches its own icon, and a unit that left does not', () => {

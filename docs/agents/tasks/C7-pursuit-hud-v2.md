@@ -4,12 +4,16 @@ Jc's second sketch (2026-10-10), from the first (`archive/A13-pursuit-hud.md`, t
 still holds), drawn to be like Need for Speed Unbound's pursuit HUD (Jc found no reference image; this is
 drawn from the sketch). A column at the bottom center, top to bottom:
 
-1. The evade and busted meter, a bar at the TOP of the column (it used to sit along the bottom of the
-   board; Jc: "the bar rests at the top, not beneath").
-2. While the police resupply: the clock (60:00) over REINFORCEMENTS ARRIVING.
+1. While the police resupply: a bar at the TOP of the column, the reinforcements' timer, draining over a
+   minute.
+2. Under it the clock (60:00) and REINFORCEMENTS ARRIVING.
 3. A row of icons, one per kind of police vehicle and the helicopter, each over its count.
-4. The board: heat, bounty, time, and the ON SCENE, ASSIGNED and DESTROYED tallies (the sketch's plain
-   rounded panel at the bottom).
+4. The board, the rounded panel at the bottom: heat, bounty, time, the ON SCENE, ASSIGNED and DESTROYED
+   tallies, and the evade and busted meter along its bottom (the bar drawn inside the panel).
+
+The evade and busted meter stays in the board. (Twice in the first day this was misread: the bar at the
+top of the sketch is the timer's, not the meter. 0.10.23 moved the meter to the top by mistake; 0.10.25
+put it back.)
 
 What Jc said about the icons, which this brief follows:
 
@@ -22,25 +26,25 @@ What Jc said about the icons, which this brief follows:
   when the last of a kind is gone the icon rests at 0 for a moment, fades out and the row closes up; the
   board's ON SCENE falls and DESTROYED rises.
 
-## Done in 0.10.22 and 0.10.23 (Claude: `ui/pursuit.js`, `style.css`, `tests/pursuit-hud.test.mjs`)
+## Done in 0.10.22, 0.10.23 and 0.10.25 (Claude: `ui/pursuit.js`, `style.css`, `tests/pursuit-hud.test.mjs`)
 
 - `layoutPursuit` gives each kind `{ kind, n, seen }` and `heliSeen`, the destroyed tally unpadded, and
-  `resupply: { left, text }` from `view.resupply` (seconds left; `60:00` is seconds and hundredths).
-  `lostKinds(prev, next)` says which icons glitch: the tally rose and the kind's count fell, so a unit
-  that went home does not glitch. `iconStep` is an icon's life in the row: it comes in when its kind is
-  seen and has units, stays while it has units, rests `LEAVE_DELAY` (0.9 s) at 0, then leaves; a kind that
-  comes back with units comes back in.
+  `resupply: { left, fill, text }` from `view.resupply` (seconds left; `fill` is left over
+  `RESUPPLY_SECONDS`, 60; `60:00` is seconds and hundredths). `lostKinds(prev, next)` says which icons
+  glitch: the tally rose and the kind's count fell, so a unit that went home does not glitch.
+  `iconStep` is an icon's life in the row: it comes in when its kind is seen and has units, stays while
+  it has units, rests `LEAVE_DELAY` (0.9 s) at 0, then leaves; a kind that comes back with units comes
+  back in.
 - The row is a flex row with `justify-content: center`; an icon is closed (no width, no margin, clear)
   until it is in: it opens, then fades in (0.3 s later); on its way out it fades, then closes (0.4 s
   later). A glitch is 0.75 s (a sliced clip, a red and cyan split, a flicker) and the DESTROYED number
   bumps. Counts are in the Japanese face at 26 px; at 0 an icon is dimmed.
-- The meter is the first child of the column, on its own plate, with the evade and busted labels at its
-  ends, split from the middle, a blue COOLDOWN bar while they search; it hides on the end card.
-- The clock has no bar of its own (the meter is the bar). It shows while `view.resupply` is a number, or
-  (no clock) while `view.reinforcements` is true.
-- Checked in the browser at 1280 by 720 with scripted views: the meter on top over a 38:42 clock and five
-  icons (3, 2, 1, 1, 1) over the board; a destroyed Rhino glitching, resting at 0, fading out and the row
-  closing up to four icons, centered.
+- The header: the bar (10 px, amber, draining), the clock, REINFORCEMENTS ARRIVING. It shows while
+  `view.resupply` is a number (all three), or (no clock) while `view.reinforcements` is true (the label
+  only). The board shows the meter at its bottom, as it always did.
+- Checked in the browser at 1280 by 720 with scripted views: the bar over a 38:42 clock, five icons
+  (3, 2, 1, 1, 1) and the board with the meter at its bottom; a destroyed Rhino glitching, resting at 0,
+  fading out and the row closing up to four icons, centered.
 
 ## What waits for the backend (B5, `pursuitView()` in `drive.js`)
 
