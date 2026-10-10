@@ -216,8 +216,29 @@ const size = flag('--size') ? flag('--size').split(',').map(Number) : null;
 const scale = size ? [size[1] / dims[0], size[2] / dims[1], size[0] / dims[2]] : [1, 1, 1];
 const place = (q) => [(q[0] - (lo[0] + hi[0]) / 2) * scale[0], (q[1] - lo[1]) * scale[1], (q[2] - (lo[2] + hi[2]) / 2) * scale[2]];
 
+// A wheel keeps its shape: its center follows the body's scale, but it is scaled by the vertical
+// factor in y and z, so a toy car stretched to a real one's length keeps round wheels on the ground.
+/** @type {Map<string, { lo: number[], hi: number[] }>} */
+const wheels = new Map();
+for (const t of tris) {
+  if (!/wheel/i.test(t.node)) continue;
+  let b = wheels.get(t.node);
+  if (!b) wheels.set(t.node, (b = { lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] }));
+  for (const q of t.p) for (let k = 0; k < 3; k++) {
+    b.lo[k] = Math.min(b.lo[k], q[k]);
+    b.hi[k] = Math.max(b.hi[k], q[k]);
+  }
+}
+const pts = (t) => {
+  const b = wheels.get(t.node);
+  if (!b) return t.p.map(place);
+  const c = [0, 1, 2].map((k) => (b.lo[k] + b.hi[k]) / 2);
+  const pc = place(c);
+  return t.p.map((q) => [pc[0] + (q[0] - c[0]) * scale[0], pc[1] + (q[1] - c[1]) * scale[1], pc[2] + (q[2] - c[2]) * scale[1]]);
+};
+
 const area = (t) => {
-  const [a, b, c] = t.p.map(place);
+  const [a, b, c] = pts(t);
   const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
   const v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
   const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
@@ -302,7 +323,7 @@ for (const t of tris) {
   g.sum[1] += c.g * ar;
   g.sum[2] += c.b * ar;
   g.area += ar;
-  for (const q of t.p) g.pos.push(...place(q).map((x) => Math.round(x * 10000) / 10000));
+  for (const q of pts(t)) g.pos.push(...q.map((x) => Math.round(x * 10000) / 10000));
   for (let i = 0; i < 3; i++) g.nrm.push(...normal.map((x) => Math.round(x * 10000) / 10000));
 }
 // One flat color a part: the area-weighted mean of its shades.

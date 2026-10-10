@@ -87,11 +87,20 @@ export const RIVALS = [
 export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
 
 /**
- * Bodies made in Blender, by kind: Gemini's models (tasks G2, G3, G5, G6) as they pass review. The
- * `_full` export carries its own wheels, which is all traffic needs (its wheels do not turn).
+ * Bodies made in Blender, by kind: Gemini's models (tasks G2, G3, G5, G6) as they pass review, and
+ * outside CC0 models converted with `tools/import-glb.mjs` (the `kenney_` ones, listed in
+ * `assets/models/SOURCES.md`). The `_full` export carries its own wheels, which is all traffic needs
+ * (its wheels do not turn).
  * @type {Record<string, string>}
  */
 export const KIND_MODELS = {
+  sedan: 'kenney_sedan',
+  hatch: 'kenney_hatch',
+  taxi: 'kenney_taxi',
+  suv: 'kenney_suv',
+  minivan: 'kenney_minivan',
+  pickup: 'kenney_pickup',
+  truck: 'kenney_boxtruck',
   'rv-rotary': 'rv_rotary_full',
   'rv-kei': 'rv_kei_full',
   'rv-hothatch': 'rv_hothatch_full',

@@ -28,6 +28,33 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.38 (2026-10-10)
+
+Seven civilian kinds drawn with Kenney's CC0 cars (M-02), with Jc's go while the backend is off, and a
+review of the backend's 0.9.38 to 0.9.40.
+
+- `KIND_MODELS` (`traffic/kinds.js`, the backend's file, changed by Claude with the backend off): `sedan`,
+  `hatch`, `taxi`, `suv`, `minivan`, `pickup` and `truck` (the box truck) draw `kenney_sedan`,
+  `kenney_hatch`, `kenney_taxi`, `kenney_suv`, `kenney_minivan`, `kenney_pickup` and `kenney_boxtruck`, each
+  converted at its kind's size. Their collision bodies are the kinds' (unchanged), and the head and tail
+  lamp flares now sit on each model's own lamps (`lampSpots` reads the new geometry). The taxi's yellow
+  roof sign falls in the lamp part and glows. `tests/kind-models.test.mjs` checks them: the paint, lamp and
+  tail parts, the sizes within its tolerances.
+- `tools/import-glb.mjs` keeps wheels round: Kenney's cars are short and tall, so stretched to a real car's
+  length (1.8 times for the sedan, 1.1 times in height) the wheels went oval. A wheel's center follows the
+  body's scale and the wheel itself takes the vertical factor in y and z, so it stays round and on the
+  ground. `kenney_sedan.json` is converted again with it.
+- The prop viewer finds nothing wrong but the triangle budget (2,032 to 2,476 of 2,000; the hardtop racer
+  is at 2,366). Looked at in the game on the city streets and Route 1 at night.
+- `assets/models/SOURCES.md` lists all seven. The wagon, kei car, panel van, kei truck, tanker, bus and semi
+  have no Kenney counterpart and keep their bodies until another source.
+- Review of 0.9.38 to 0.9.40 (backend): accepted. T-04's six turns cleared by the pole fix come off the
+  exception list and the rest are Claude's (eight clip the Kurogane Line's legs at nodes 66, 67 and 75;
+  eighteen leave the patch by 0.13 to 0.53 m at ten junctions); the Hikari is a street racer, the two tight
+  traffic tests measured again (86 lane changes with 2 reversals, racers 185 to 216 km/h by seed); the GPS
+  route test counts A* expansions (3,187 of a 4,000 bound) instead of milliseconds, and the pass-by test
+  compares 10 ms windows of RMS instead of single samples.
+
 ## 0.10.37 (2026-10-10)
 
 The outside model trial (M-02), with Jc's go: one car from Kenney's Car Kit, CC0.
