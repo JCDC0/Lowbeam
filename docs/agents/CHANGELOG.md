@@ -28,6 +28,30 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.37 (2026-10-10)
+
+The outside model trial (M-02), with Jc's go: one car from Kenney's Car Kit, CC0.
+
+- `tools/import-glb.mjs`: an outside low poly .glb into the game's model JSON with no Blender (it was not
+  running, and agents should not need it for this). It reads the glTF's nodes and meshes, decodes the
+  palette texture (a small PNG reader on Node's zlib), gives each triangle one flat color sampled at its
+  UVs and a flat normal, stands the model on y = 0 centered with its front to +z, and scales it to a
+  traffic kind's length, width and height. Kenney's palette has shading baked in (a single panel comes out
+  as dozens of near colors), so `--auto` sorts triangles into the parts the traffic draws by hue, value
+  and place: `paint` (the most common saturated hue, tinted per car), `glass`, `lamp` (yellow at the
+  front), `tail` (red at the back), `tire` and `rim` on the wheels, `plate`, `trim`, `under`, each the
+  area-weighted mean of its shades. `--report` lists the colors by area and place to check it.
+- `assets/models/kenney_sedan.json`: the Car Kit's sedan at the game's sedan size (4.55 by 1.78 by 1.42 m),
+  2,032 triangles, 9 parts. The prop viewer finds nothing wrong but the triangle budget (2,032 of 2,000;
+  the hardtop racer is at 2,366). Seen in the game by putting it on the sedans at runtime in Claude's pane:
+  clean at night, the toy proportions mostly gone at real size, head and tail lamps lit. Not wired in:
+  `KIND_MODELS` is the backend's file and Jc decides first. When it is, `lampSpots` must run on the new
+  geometry (the trial's flares sat where the old body's lamps were).
+- `assets/models/SOURCES.md`: every outside model with its source, author, license and the command that
+  converted it, for the shipping milestone.
+- The kit was downloaded with Jc's yes (4.8 MB, 268 files; the listing said 3.4 MB) and unpacked outside
+  the repository; only the converted JSON is committed.
+
 ## 0.10.36 (2026-10-10)
 
 Signal poles out of the road (P-01), from Jc's screenshots: white poles in junctions, one dead ahead in

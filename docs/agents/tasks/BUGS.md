@@ -21,7 +21,7 @@ Rules:
 | R-03 | Zebra crossings drawn at odd angles across turning lanes under the Kurogane Line (Jc's screenshot, 2026-10-10) | `world/markings.js` | Claude | open |
 | R-04 | Where the side streets meet the Sotokan ring the map shows small jogs: the streets bend to meet the ring instead of joining it cleanly (Jc's map screenshots) | `world/citygen.js`, `junctions.js` | Claude | with R-01 |
 | M-01 | Cars' mirrors broken (which cars, which view, which part: needs a screenshot) | `vehicles/bodies/*`, `models.js`, `cockpit.js` | Claude | needs a spot; check each car in `tools/bodies.html` |
-| M-02 | Hand-scripted models look poor: replace with outside low poly models that load clean (the plan below) | `tools/blender/`, `assets/models/`, `traffic/kinds.js` | Claude and Assets | plan below; a one-car trial first |
+| M-02 | Hand-scripted models look poor: replace with outside low poly models that load clean (the plan below) | `tools/import-glb.mjs`, `assets/models/`, `traffic/kinds.js` | Claude, Backend for `KIND_MODELS` | the trial is done (0.10.37): Kenney's sedan, CC0, converted with no Blender and seen in the prop viewer and on the road; waiting for Jc's yes before it replaces the sedan (`KIND_MODELS` is the backend's file) |
 | H-01 | Pursuit HUD half built: the reinforcement timer, the "seen" fade-in rule and the helicopter fuel pump have no data until B5 part 2 | `ui/pursuit.js` (done), `drive.js` `pursuitView()` | Hermes (data), Claude (HUD) | waiting on B5 part 2 |
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
 | T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
@@ -65,10 +65,11 @@ Free low poly models that load clean, instead of hand scripted ones, in this ord
    needed, any use): Kenney's Car Kit (over 40 vehicles, glTF, OBJ, FBX), Quaternius's low poly cars and
    public transport (FBX, OBJ, Blend), OpenGameArt's free low poly vehicles pack (police cars among them).
    Each needs its license read on its own page when we take it.
-2. One import script in Blender (`tools/blender/import_model.py`, run through the Blender MCP): load the
-   glTF or FBX, set the scale and the facing the kit uses (front +z, x right), merge by material, give
-   the paint panels the names the game tints, add the lamps, a collider and the size, and export to
-   `assets/models/<name>.json`. The cars come out of one pipeline, so they match.
+2. One import script, `tools/import-glb.mjs` (0.10.37, Node, no Blender): reads the .glb, gives each
+   triangle a flat color from the palette texture and a flat normal, sorts the parts by hue and place
+   (`paint` tinted per car, `glass`, `lamp` at the front, `tail` at the back, `tire`, `rim`, `plate`,
+   `trim`, `under`) with one color each, and scales the model to its traffic kind's length, width and
+   height. The cars come out of one pipeline, so they match.
 3. A source list, `assets/models/SOURCES.md`: every outside model with its origin, author and license, for
    the shipping milestone.
 4. A one-car trial before anything else: one Kenney or Quaternius sedan through the script into the game

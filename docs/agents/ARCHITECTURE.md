@@ -29,6 +29,7 @@ Prologue (`docs/DESIGN.md`).
 | Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
+| Outside model import | `node tools/import-glb.mjs <model.glb> <name> --size L,W,H --auto` (`--report` lists its colors): a low poly .glb into `assets/models/<name>.json`, no Blender; record it in `assets/models/SOURCES.md` |
 | Music track list | `npm run music` (`node tools/music-manifest.mjs`: scans the folders in `assets/music/`, measures each file with ffmpeg and keeps the roles already set; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
@@ -166,7 +167,8 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/ui/minimap.js`, `radar.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route; `radar.js` is the minimap's frame (`radarFrame`: world point and heading to the canvas, ahead is up) and what sight to draw for a police marker (`sightOf`) |
 | `src/ui/pursuit.js`, `stats.js`, `screen-fx.js` | Pursuit HUD, F3 stats, the screen effects and their toggles |
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `police_barrier.py`, `garage.py`, `hideout.py`, `heli.py` |
-| `assets/models/` | Exported models (JSON) |
+| `assets/models/` | Exported models (JSON); `SOURCES.md` lists the outside ones (origin, author, license) |
+| `tools/import-glb.mjs` | Outside low poly models (.glb) into the game's model JSON: flat color per triangle from the model's palette texture, flat normals, parts by hue and place (`paint`, `glass`, `lamp`, `tail`, `tire`, `rim`, `plate`, `trim`, `under`), scaled to a traffic kind |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
 | `assets/music/` | The recorded soundtrack in folders (Chase, Chill, LeisureRacing: a folder is a playlist) and `tracks.json`, the list the game plays from (the folders with the moods each plays for; each track's title, measured loudness, vocal flag) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
