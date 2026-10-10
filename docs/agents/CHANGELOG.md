@@ -1220,6 +1220,21 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.36 (2026-10-10)
+
+Ramps and edges clear of static obstacles, strict junction turns, and toll island protections (B4 part 3).
+
+- `src/traffic/net.js`:
+  - `linkRamp`: expressway exit merges link at the taper completion point (`toS = ramp.def.taper.s1`, `fromS` offset on carriage) and entry merges at the ramp taper start (`at = ramp.def.taper.s0`, `toS` on carriage), preventing cars from clipping gore noses and eliminating ramp off-carriageway samples (`harbor-ramp-fn`, `r18-ramp-rn`). Scoped slip offset adjustments to `slip.carriageId` matches.
+  - `addLanes`: clamps two-way narrow street lane offsets to maintain at least 0.3 m clearance from the carriageway edge for the widest civilian kind (2.5 m width).
+- `src/traffic/sim.js`:
+  - `changeSafe`: prohibits lane changes within 55 m of any toll plaza (`TOLLS`) and probes `hitWorld` at the midpoint of lateral lane changes, eliminating the 1.3 by 24.4 m toll plaza divider island clip on `c1-f`.
+  - `collideWorld`: civilian cars in `drive` mode are not wrecked by static world contacts; hard static contacts (`hardest > CIVIL_WRECK_HIT`) are counted in `this.worldWrecks` without transitioning the car to `wreck` mode.
+  - Filters sub-millimeter contact jitter (`c.depth > 0.005`) and accumulates `touchTime` only when the vehicle is attempting to drive (`a.brake < 1 || a.speed >= 0.1`), avoiding spurious stall holds for vehicles stopped at red lights or queueing in traffic. Calls `this.onStall(a)` when the 1 s hold triggers.
+  - Merged redundant stacked JSDoc comments into a single documentation block with `@param {number} [dt]`.
+- `tests/island/traffic-turns.test.mjs`: strict junction turn verification sampling the turn curve every 0.25 m once across island nodes; asserts zero unexpected obstacle clips and zero carriageway departures against explicit, named exception sets.
+- `tools/clipbench.mjs`: added `onStall` reporting and world-caused wreck tracking; clips drop to 0 and off-carriageway samples to 0 across 34,111 samples (was 1 clip and 4 off-carriageway at 0.9.35; 15 clips and 10 off-carriageway before B4).
+
 ## 0.9.35 (2026-10-10)
 
 Civilians solid against the world in drive mode (B4 part 2).

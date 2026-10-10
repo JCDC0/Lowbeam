@@ -266,7 +266,7 @@ lane remains open, changes into it instead; a player ram over 6 m/s restores pla
 through (0.9.23). Knocked roadblock barriers flatten and lie flat on the road, damping their slide quickly with no yaw spin, faded barriers are hidden from PursuitView (0.9.34), and barriers and parked units do not count against the civilian spawn target (0.9.32). Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
-out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians in drive mode are solid against the world too (`collideWorld` runs in `drive` mode: overlaps pushed out along contact normal and speed into wall zeroed, continuous contact > 1 s brakes and waits, 0.9.35), and turning civilians follow cubic Bezier curves inside junction patches (0.9.34). Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
+out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians in drive mode are solid against the world too (`collideWorld` runs in `drive` mode: overlaps pushed out along contact normal and speed into wall zeroed, continuous contact > 1 s brakes and waits, 0.9.35; ramp taper links and toll island protections eliminate clips and carriageway departures, 0.9.36), and turning civilians follow cubic Bezier curves inside junction patches (0.9.34). Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
 traffic keeps left), cut up close ahead (they brake too), crossed at speed while they wait at rest,
 or knocked aside, they honk with their own horn (a kei car's high beep, a truck's air horn). In a
 pursuit, cars within 45 m of the player or of a chasing unit panic: they brake to a crawl, edge
@@ -433,9 +433,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The GPS route test measures planning time and can fail when the machine is busy, and
   `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
   under load and passes alone.
-- Civilians driving on their lanes are not checked against the static world: they cut corners, 15 clips
-  in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
-  (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
+- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4 parts 1-3, 0.9.34 to 0.9.36): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4); 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in
   (0.10.30). Still to come: stingers for escaped and busted, and the vocal flags of the built-in tracks

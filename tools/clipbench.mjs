@@ -50,13 +50,20 @@ const wall = new Map();
 const shapes = new Map();
 const example = new Map();
 const off = new Map();
+const stalls = new Map();
 let seen = 0;
+let worldWrecks = 0;
 for (const [name, id, s] of spots) {
   const road = g.roads.byId.get(id);
   const ss = Math.min(s, road.path.length - 10);
   const q = road.path.sample(ss);
   const sim = new TrafficSim(net, { seed: 5, target: 45, rivals: 0, patrols: 0 });
   sim.hitWorld = (x, z, r, y) => col.probe(x, z, r, y);
+  sim.onStall = (a) => {
+    const road2 = a.lane?.road ? a.lane.road.id : '?';
+    const k = `${a.kind.id} on ${road2} at s=${Math.round(a.s)}`;
+    stalls.set(k, (stalls.get(k) || 0) + 1);
+  };
   const player = { x: q.x, y: road.heightAt(ss), z: q.z, speed: 0, yaw: 0 };
   for (let t = 0; t < 70; t += 1 / 30) {
     sim.update(1 / 30, player);
@@ -90,8 +97,12 @@ for (const [name, id, s] of spots) {
       }
     }
   }
+  worldWrecks += sim.worldWrecks;
 }
 console.log('samples', seen, 'with a clip', [...wall.values()].reduce((a, b) => a + b, 0));
 for (const [k, n] of [...shapes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18)) console.log(String(n).padStart(4), k, JSON.stringify(example.get(k)));
 console.log('off the carriageway', [...off.values()].reduce((a, b) => a + b, 0));
 for (const [k, n] of [...off.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(String(n).padStart(4), k);
+console.log('stalls', [...stalls.values()].reduce((a, b) => a + b, 0));
+for (const [k, n] of [...stalls.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(String(n).padStart(4), k);
+console.log('world-caused wrecks', worldWrecks);

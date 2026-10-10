@@ -15,6 +15,7 @@ import { lightState, buildTurn } from './net.js';
 import { Manners, HORN_GAP, HORN_EVERY } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js';
+import { TOLLS } from '../world/layout.js';
 
 /** @typedef {import('./net.js').Lane} Lane */
 /** @typedef {import('./net.js').Link} Link */
@@ -172,6 +173,13 @@ export class TrafficSim {
      * @type {((x: number, z: number, r: number, y: number) => { nx: number, nz: number, depth: number, px: number, pz: number } | null) | null}
      */
     this.hitWorld = null;
+    /**
+     * Called when a car touching a static shape for more than a second brakes and waits.
+     * @type {((a: Agent) => void) | null}
+     */
+    this.onStall = null;
+    /** Number of times a static world collision hit a civilian hard enough to wreck. @type {number} */
+    this.worldWrecks = 0;
     /** Where the searching units drive to while the police look for the player. @type {{ x: number, z: number, r: number } | null} */
     this.search = null;
     /**
@@ -1513,6 +1521,9 @@ export class TrafficSim {
    */
   changeSafe(a, target, player) {
     const rival = this.isRival(a);
+    for (const t of TOLLS) {
+      if (Math.hypot(a.x - t.x, a.z - t.z) < 55) return false;
+    }
     for (const stop of a.lane.stops) {
       const d = stop.s - a.s;
       if (d >= -2 && d < 40) return false;
@@ -1520,6 +1531,12 @@ export class TrafficSim {
     if (a.plan && a.plan.lane) {
       const d = a.plan.at - a.s;
       if (d >= 0 && d < 40) return false;
+    }
+    if (this.hitWorld) {
+      const qT = this.net.sample(target, a.s, this._q);
+      const midX = (a.x + qT.x) / 2;
+      const midZ = (a.z + qT.z) / 2;
+      if (this.hitWorld(midX, midZ, a.kind.width / 2, a.y)) return false;
     }
 
     if (player) {
@@ -1858,13 +1875,14 @@ export class TrafficSim {
     this.startLaneChange(a, target);
   }
 
-  /** @param {Agent} a @param {number} dt */
   /**
-   * A car off its lane against the world: three circles along its length, like the player's car.
+   * A car against the world: three circles along its length, like the player's car.
    * Each contact pushes it out, takes its speed into the wall with a little bounce and some
    * scrape, and spins it by where along the car it hit. A unit hit hard enough is wrecked and lost
-   * to the pursuit; a free unit keeps what is left of its speed along its heading.
+   * to the pursuit; a free unit keeps what is left of its speed along its heading. A civilian in
+   * drive mode is pushed out and stopped, braking if contact persists for more than a second.
    * @param {Agent} a
+   * @param {number} [dt]
    */
   collideWorld(a, dt = 1 / 30) {
     const hit = /** @type {NonNullable<TrafficSim['hitWorld']>} */ (this.hitWorld);
@@ -1877,7 +1895,7 @@ export class TrafficSim {
     for (const along of [reach, 0, -reach]) {
       const c = hit(a.x + fx * along, a.z + fz * along, r, a.y);
       if (!c) continue;
-      anyContact = true;
+      if (c.depth > 0.005) anyContact = true;
       a.x += c.nx * c.depth;
       a.z += c.nz * c.depth;
       if (a.mode === 'drive') {
@@ -1899,7 +1917,7 @@ export class TrafficSim {
       }
     }
     if (a.mode === 'drive') {
-      if (anyContact) {
+      if (anyContact && (a.brake < 1 || a.speed >= 0.1)) {
         a.touchTime = (a.touchTime ?? 0) + dt;
         if (a.touchTime > 1.0 && this.time >= a.capUntil) {
           a.speed = 0;
@@ -1907,6 +1925,7 @@ export class TrafficSim {
           a.capUntil = this.time + 1.2;
           a.brake = 1;
           a.touchTime = 0;
+          if (this.onStall) this.onStall(a);
         }
       } else {
         a.touchTime = 0;
@@ -1921,13 +1940,16 @@ export class TrafficSim {
     if (isUnit(a.kind)) {
       if (this.hurt(a, unitDamage(hardest, Infinity, a.kind.mass))) this.destroy(a);
     } else if (!a.barrier && hardest > CIVIL_WRECK_HIT) {
-      a.mode = 'wreck';
-      a.wreckAge = 0;
-      a.free = false;
-      a.curve = null;
-      a.changeFromLane = null;
-      a.ex = a.ez = 0;
-      a.changeDuration = 0;
+      this.worldWrecks++;
+      if (a.mode !== 'drive') {
+        a.mode = 'wreck';
+        a.wreckAge = 0;
+        a.free = false;
+        a.curve = null;
+        a.changeFromLane = null;
+        a.ex = a.ez = 0;
+        a.changeDuration = 0;
+      }
     }
   }
 

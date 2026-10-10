@@ -73,7 +73,8 @@ export class TrafficNet {
     for (const dir of /** @type {(1 | -1)[]} */ (oneway ? [1] : [1, -1])) {
       for (let i = 0; i < per; i++) {
         const width = oneway ? (2 * road.hw) / per : road.hw / per;
-        const offset = road.hw - (i + 0.5) * width;
+        let offset = road.hw - (i + 0.5) * width;
+        if (!oneway && per === 1) offset = Math.min(offset, road.hw - 0.3 - 1.25);
         list.push({
           id: `${road.id}:${dir > 0 ? 'f' : 'r'}${i}`,
           road, dir, index: i, offset, width,
@@ -300,7 +301,12 @@ export class TrafficNet {
     if (from.def.cls === 'expressway') {
       const cl = this.lane(from.id, 1, 0);
       const atEnd = !from.path.closed && link.from.s >= from.path.length - 1;
-      if (cl && !atEnd) cl.mids.push({ lane: rl, at: this.laneS(cl, link.from.s), toS: 0, kind: 'exit', weight: 0.22 });
+      if (cl && !atEnd) {
+        const hasSlip = ramp.def.slip && ramp.def.slip.carriageId === from.id;
+        const toS = hasSlip && ramp.def.taper && ramp.def.taper.from < ramp.def.taper.to ? ramp.def.taper.s1 : 0;
+        const fromS = hasSlip ? ramp.def.slip.attach[0] + (toS - ramp.def.slip.rampAttach[0]) : link.from.s;
+        cl.mids.push({ lane: rl, at: this.laneS(cl, fromS), toS, kind: 'exit', weight: 0.22 });
+      }
     } else {
       for (const dir of /** @type {const} */ ([1, -1])) {
         const al = this.lane(from.id, dir, 0);
@@ -311,7 +317,11 @@ export class TrafficNet {
       const cl = this.lane(to.id, 1, 0);
       if (cl) {
         rl.ends.length = 0;
-        rl.ends.push({ lane: cl, at: rl.length, toS: this.laneS(cl, link.to.s), kind: 'end', weight: 1 });
+        const hasSlip = ramp.def.slip && ramp.def.slip.carriageId === to.id;
+        const at = hasSlip && ramp.def.taper && ramp.def.taper.to < ramp.def.taper.from ? ramp.def.taper.s0 : rl.length;
+        const toS = hasSlip ? ramp.def.slip.attach[0] + (at - ramp.def.slip.rampAttach[0]) : link.to.s;
+        rl.length = at;
+        rl.ends.push({ lane: cl, at, toS: this.laneS(cl, toS), kind: 'end', weight: 1 });
       }
     }
   }
