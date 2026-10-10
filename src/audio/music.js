@@ -14,7 +14,8 @@
  */
 
 import { composeTrack, midiToHz, LAYERS, TRACKS } from './songs.js';
-import { SOUNDTRACK, OPTIONS, ENERGY, MANIFEST, MoodTracker, SpeedSwell, Shuffler, nextTrack, poolFor, parseManifest, setSoundtrack, trackGain } from './soundtrack.js';
+import { SOUNDTRACK, FOLDERS, OPTIONS, ENERGY, MoodTracker, SpeedSwell, Shuffler, mayPlay, nextTrack, poolFor, trackGain } from './soundtrack.js';
+import { loadCatalog, onCatalogChange } from './catalog.js';
 import { clamp } from '../core/mathx.js';
 
 /**
@@ -231,7 +232,7 @@ class Stream {
     this.blocked = false;
     this.el.play().catch((e) => {
       if (e && e.name === 'NotAllowedError') this.blocked = true;
-      else this.failed = true;
+      else if (!(e && e.name === 'AbortError')) this.failed = true;
     });
   }
 
@@ -331,22 +332,13 @@ export class MusicPlayer {
 
     /** False until the track list has loaded or failed: until then nothing is chosen, so no synthesized track starts for a moment. */
     this.loaded = !this.recorded;
+    /** Whether the player paused the music (it stays paused through the modes until resumed). */
+    this.paused = false;
+    /** Ids of the tracks played, the last the one playing, for the previous button. @type {string[]} */
+    this.history = [];
+    this.unwatch = this.recorded ? onCatalogChange(() => this.refresh()) : null;
     if (this.live) this.timer = window.setInterval(() => this.tick(), TICK_MS);
-    if (this.recorded) this.loadManifest().finally(() => { this.loaded = true; });
-  }
-
-  /** Reads the track list (assets/music/tracks.json) and plays from it from the next track on. */
-  async loadManifest() {
-    try {
-      const res = await fetch(MANIFEST, { cache: 'no-store' });
-      if (!res.ok) return;
-      const { tracks, folders, skipped } = parseManifest(await res.json());
-      if (skipped.length) console.warn(`music: ${MANIFEST} skipped ${skipped.join(', ')}`);
-      if (!setSoundtrack(tracks, folders)) console.warn(`music: ${MANIFEST} has no track; the synthesized music plays`);
-    } catch (err) {
-      // No manifest, or one that does not parse: the synthesized music plays.
-      console.warn('music: no track list', err);
-    }
+    if (this.recorded) loadCatalog().finally(() => { this.loaded = true; });
   }
 
   /** @param {import('./audio.js').Mode} mode @param {number} [at] */
@@ -436,23 +428,116 @@ export class MusicPlayer {
   startMood(mood, t, fade) {
     let track = nextTrack(mood, this.lastId, this.shuffler);
     for (let i = 0; track && i < SOUNDTRACK.length && this.broken.has(track.id); i++) track = nextTrack(mood, track.id, this.shuffler);
-    if (this.stream) {
-      this.stream.stop(t, fade);
-      this.fading.push(this.stream);
-      this.stream = null;
-    }
     if (!track || this.broken.has(track.id)) {
+      this.retire(t, fade);
       const synth = SYNTH_FOR[mood] || SYNTH_FOR.cruise;
       if (!this.current || this.current.id !== synth || this.current.finished) this.play(synth, t, { loops: Infinity, fade });
       return;
     }
+    this.begin(track, mood, t, fade);
+  }
+
+  /** Fades the playing recorded track out. @param {number} t @param {number} fade */
+  retire(t, fade) {
+    if (!this.stream) return;
+    this.stream.stop(t, fade);
+    this.fading.push(this.stream);
+    this.stream = null;
+  }
+
+  /**
+   * Starts a track, whatever else plays fading out. @param {import('./soundtrack.js').Track} track
+   * @param {string} mood @param {number} t @param {number} fade
+   */
+  begin(track, mood, t, fade) {
+    this.retire(t, fade);
     if (this.current && !this.current.finished) {
       this.current.stop(t, fade);
       this.current = null;
     }
     this.lastId = track.id;
+    this.history.push(track.id);
+    if (this.history.length > 60) this.history.shift();
+    this.paused = false;
     this.stream = new Stream(this, track, mood, t, fade);
     this.switchedAt = t;
+  }
+
+  /** The mood to pick from: the locked folder's, or the one the driving asks for. */
+  targetMood() {
+    return OPTIONS.lock ? 'locked' : this.wantedMood();
+  }
+
+  /** The next track, at once. */
+  skip() {
+    if (!this.recorded || !this.loaded) return;
+    this.startMood(this.targetMood(), this.ctx.currentTime, 0.8);
+  }
+
+  /** Back to the start of this track, or, within its first seconds, to the one played before. */
+  previous() {
+    if (!this.recorded || !this.loaded) return;
+    const s = this.stream;
+    if (s && s.el.currentTime > 4) {
+      s.el.currentTime = 0;
+      return;
+    }
+    const mine = this.history.pop();
+    const before = this.history.pop();
+    const track = SOUNDTRACK.find((tr) => tr.id === before);
+    if (track && poolFor(this.targetMood()).some((tr) => tr.id === track.id)) this.begin(track, this.targetMood(), this.ctx.currentTime, 0.8);
+    else {
+      if (before) this.history.push(before);
+      if (mine) this.history.push(mine);
+      if (s) s.el.currentTime = 0;
+    }
+  }
+
+  /** Plays one track now, whatever the mood. @param {string} id */
+  playId(id) {
+    const track = SOUNDTRACK.find((tr) => tr.id === id);
+    if (!track || !this.recorded || !this.loaded) return;
+    this.broken.delete(id);
+    this.begin(track, this.targetMood(), this.ctx.currentTime, 0.6);
+  }
+
+  pause() {
+    if (!this.stream) return;
+    this.paused = true;
+    this.stream.el.pause();
+  }
+
+  resume() {
+    this.paused = false;
+    if (this.stream) this.stream.play();
+  }
+
+  /** The playing track after a change in the folders or the options: it goes on if it may still play, else the next starts. */
+  refresh() {
+    if (!this.recorded || !this.loaded || !this.stream) return;
+    const want = this.targetMood();
+    const s = this.stream;
+    if (mayPlay(s.track)) {
+      s.mood = want;
+      return;
+    }
+    this.startMood(want, this.ctx.currentTime, 0.8);
+  }
+
+  /** What the player shows. */
+  state() {
+    const s = this.stream;
+    const folder = s ? FOLDERS.find((f) => f.id === s.track.folder) : null;
+    return {
+      ready: this.recorded && this.loaded,
+      track: s ? s.track : null,
+      folder: folder ? folder.name : '',
+      mood: s ? s.mood : null,
+      time: s ? s.el.currentTime : 0,
+      duration: s && Number.isFinite(s.el.duration) ? s.el.duration : 0,
+      paused: this.paused,
+      synth: !s && !!this.current,
+    };
   }
 
   /**
@@ -479,23 +564,23 @@ export class MusicPlayer {
     const dt = Math.min(1, now - this.lastTick);
     this.lastTick = now;
     if (this.mode === 'drive' || this.mode === 'free') this.moods.update(dt, this.scene);
-    const want = OPTIONS.lock ? 'locked' : this.wantedMood();
+    const want = this.targetMood();
     const s = this.stream;
     if (s && s.failed) {
       this.broken.add(s.track.id);
       this.startMood(want, now, 0.5);
-    } else if (s && s.blocked) s.play();
+    } else if (s && s.blocked && !this.paused) s.play();
     if (!this.stream) {
       const playingSynth = this.current && !this.current.finished && this.current.id === (SYNTH_FOR[want] || SYNTH_FOR.cruise);
       if (!playingSynth || poolFor(want).some((tr) => !this.broken.has(tr.id))) this.startMood(want, now, 1.5);
-    } else if (this.stream.mood !== want) {
+    } else if (this.stream.mood !== want && !this.paused) {
       const menuChange = want === 'menu' || this.stream.mood === 'menu';
       const chase = want === 'pursuit';
       const up = ENERGY[want] > ENERGY[this.stream.mood];
       const dwelt = now - this.switchedAt > MIN_DWELL;
       if (menuChange || chase || (up && dwelt) || this.override) this.startMood(want, now, menuChange || chase ? 1.5 : CROSSFADE);
     }
-    if (this.stream && this.stream.remaining() < CROSSFADE) this.startMood(want, now, CROSSFADE);
+    if (this.stream && !this.paused && this.stream.remaining() < CROSSFADE) this.startMood(want, now, CROSSFADE);
     this.applySwell(dt, now);
     this.fading = this.fading.filter((f) => {
       if (now < f.stopAt) return true;
@@ -726,6 +811,7 @@ export class MusicPlayer {
 
   dispose() {
     if (this.timer) clearInterval(this.timer);
+    this.unwatch?.();
     for (const st of [this.stream, ...this.fading]) st?.dispose();
     this.stream = null;
     this.fading = [];

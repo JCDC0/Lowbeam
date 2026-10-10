@@ -18,12 +18,13 @@ more music; Jc's own tracks came first.
 
 ## Still to do
 
-1. The music player in Settings (`tasks/C9-music-player.md`).
+1. Done (0.10.30): the music player in Settings (`tasks/C9-music-player.md`).
 2. Stingers: `audio.sting('escaped' | 'busted')` plays `assets/music/stings/<id>.mp3` over the music, the
    music ducked by 6 dB for its length and back over 1 s; the Drive calls it on the pursuit's escaped and
    busted events. A missing file does nothing. Needs the two files (`docs/music/flow-prompts.md`).
-3. Vocal flags: the Japanese tracks read as instrumental because the manifest cannot hear. Set
-   `"vocal": true` in `tracks.json` for the ones that have a singer (the vocals toggle uses it).
+3. Vocal flags: the Japanese tracks read as instrumental because the manifest cannot hear. The player can
+   mark a song VOCAL in Settings (kept in the browser), or set `"vocal": true` in `tracks.json` for the
+   ones that have a singer so every player gets it.
 4. Heat tiers for the pursuit (an easier track at heat 1 to 3, a harder at 4 and 5): dropped for now,
    because Chase has three tracks and no tiers; a `tier` on a track is the way back if Jc wants it.
 5. Before the game ships (the GitHub Pages milestone): the license of every generated track against the

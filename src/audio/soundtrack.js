@@ -15,10 +15,11 @@
 /**
  * @typedef {{
  *   id: string, title: string, file: string, folder: string, moods: Mood[], mood: Mood, lufs: number,
- *   vocal?: boolean, user?: boolean, url?: string,
+ *   vocal?: boolean, user?: boolean, url?: string, own?: boolean, size?: number,
  * }} Track
  * `file` is the path under assets/music/ (`Chill/Night Drive.m4a`); a track the player added has
- * `user` and an object URL in `url` instead. `mood` is the first of `moods`.
+ * `user` and an object URL in `url` instead. `mood` is the first of `moods`. A track plays for the
+ * moods of its folder (which the player can change) unless it names its own (`own`).
  * @typedef {{ id: string, name: string, moods: Mood[], enabled: boolean, user?: boolean }} Folder
  */
 
@@ -104,7 +105,7 @@ export function parseManifest(json) {
     }
     ids.add(id);
     tracks.push({
-      id, file, folder: fid, moods, mood: moods[0],
+      id, file, folder: fid, moods: [...moods], mood: moods[0], own: own.length > 0,
       title: typeof e.title === 'string' && e.title ? e.title : id,
       lufs: Number.isFinite(e.lufs) ? e.lufs : TARGET_LUFS,
       vocal: !!e.vocal,
@@ -130,10 +131,29 @@ export function trackGain(t) {
   return 10 ** ((TARGET_LUFS - t.lufs) / 20);
 }
 
+/** The moods a track plays for: its own, else its folder's. @param {Track} t @returns {Mood[]} */
+export function rolesOf(t) {
+  if (t.own) return t.moods;
+  const folder = FOLDERS.find((f) => f.id === t.folder);
+  return folder ? folder.moods : t.moods;
+}
+
 /** Whether a track may play now: its folder is on, and it has no vocals when they are off. @param {Track} t */
 function playable(t) {
   const folder = FOLDERS.find((f) => f.id === t.folder);
   return (!folder || folder.enabled) && (OPTIONS.vocals || !t.vocal);
+}
+
+/**
+ * Whether a track may be playing now whatever the mood: it is in the locked folder (when a folder is
+ * locked and has a track that may play), or its folder is on, and it has no vocals when they are off.
+ * @param {Track} t
+ */
+export function mayPlay(t) {
+  if (OPTIONS.lock && SOUNDTRACK.some((x) => x.folder === OPTIONS.lock && (OPTIONS.vocals || !x.vocal))) {
+    return t.folder === OPTIONS.lock && (OPTIONS.vocals || !t.vocal);
+  }
+  return playable(t);
 }
 
 /**
@@ -149,7 +169,7 @@ export function poolFor(mood) {
   }
   const chain = [mood, .../** @type {Mood[]} */ (MOOD_FALLBACK[/** @type {Mood} */ (mood)] || [])];
   for (const m of chain) {
-    const pool = SOUNDTRACK.filter((t) => t.moods.includes(/** @type {Mood} */ (m)) && playable(t));
+    const pool = SOUNDTRACK.filter((t) => rolesOf(t).includes(/** @type {Mood} */ (m)) && playable(t));
     if (pool.length) return pool;
   }
   return SOUNDTRACK.filter(playable);

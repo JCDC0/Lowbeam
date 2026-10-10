@@ -46,7 +46,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,library-rules,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - A test that needs the island (the ground, the traffic net, the scatter) takes it from
@@ -152,6 +152,8 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/police/director.js` | `PoliceDirector`: the whole pursuit from the first notice to the report, as orders the Drive carries out |
 | `src/police/units.js`, `heat.js`, `roadblock.js`, `sight.js`, `lights.js`, `pursuit-view.js` | Unit kinds and the roster per heat, attention and heat, roadblocks, spike strips and barriers, line of sight, the light bar's flash pattern, the strip and barriers on the road |
 | `src/audio/*` | Engine synthesis (worklet), effects, ambience, pass-by, the engines of the cars around (`traffic-voices.js`), sirens and the rotor (`siren.js`), the recorded soundtrack and its moods |
+| `src/audio/catalog.js`, `library.js`, `library-rules.js` | The music the game can play: `assets/music/tracks.json` and the player's own folders and songs (IndexedDB, `library.js`) put together with the saved music settings (`catalog.js`: `loadCatalog`, `setOption`, `setLock`, `setFolderEnabled`, `toggleFolderMood`, `setTrackVocal`, `addFiles`, `removeUserFolder`, `onCatalogChange`); the pure rules (audio file names, titles, ids, grouping a pick into folders, saving and applying the settings) are `library-rules.js` |
+| `src/ui/music-panel.js` | The music player in Settings: now playing and the transport, shuffle, vocals, the folders (on, roles, lock, songs, delete) and adding songs or a folder |
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
 | `src/ui/minimap.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route |
@@ -165,7 +167,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-492 tests pass; the type check is clean. By area:
+502 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -393,8 +395,15 @@ silent below 30 km/h, full at 75 (60 on the pass). The tracks come from `assets/
 file in a folder, run `npm run music`, and set the folder's moods in the JSON if it is a new one. Each
 mood deals its tracks from a shuffle bag (the first track is a surprise, none comes round before every
 track has played), a pursuit cuts in at once and a mood no folder plays for falls back to the nearest
-(`MOOD_FALLBACK`); with no list the synthesized tracks play. `OPTIONS` in `soundtrack.js` (vocals,
-shuffle, lock to one folder) are the hooks of the music settings (`tasks/C9-music-player.md`). Police sirens (three voices, a
+(`MOOD_FALLBACK`); with no list the synthesized tracks play. The player sets the
+music in Settings (the right half, the MUSIC tab; `ui/music-panel.js`): `OPTIONS` in `soundtrack.js`
+(vocals, shuffle, lock one folder to play alone), each folder's switch and the moods it plays for
+(`rolesOf`: a song follows its folder unless it names its own), previous, next, pause and a click on any
+song (`MusicPlayer.previous/skip/pause/resume/playId`, `state()`); the settings and the marks on songs
+that have a singer are saved under `music` in `localStorage`. The player adds songs or a whole folder with
+the browser's pickers; the files are copied into IndexedDB (`lowbeam.music`) and played from object URLs,
+never uploaded, so they stay in that browser (and are the player's own to license). A pause stays through
+the modes until resumed. Police sirens (three voices, a
 square and a saw through a band-pass, panned, muffled in the cockpit) and the helicopter's rotor
 (`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs). Rain audio
 (`rain.js`, 0.9.31): filtered pink noise bed following weather level, stationary car patter fading with speed,
@@ -402,7 +411,7 @@ roof drumming under canopies and bridges from rain cover (bed suppressed 88 %), 
 hiss on the player's car and passing traffic.
 
 **UI.** Title, Ace Combat style main menu, garage, settings (transmission, render height, the
-speedometer style, the weather, the time of day, the screen effects, audio channels), controls with key rebinding, pause, Tab map with GPS waypoint
+speedometer style, the weather, the time of day, the screen effects, audio channels, and on its right half the music player or the help, as two tabs), controls with key rebinding, pause, Tab map with GPS waypoint
 routing, a 220 px minimap after Most Wanted's radar (the sea and the lake in blue, grey roads, the
 places as round badges; the heat as a flame and "x N" at the top left and an amber rim arc filling
 with the progress to the next level; police cars as small chevrons flashing red and blue, grey on
@@ -428,9 +437,10 @@ Gothic One for banners, M PLUS 1p for Japanese.
   in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
   (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
-  prompts and lyrics in `docs/music/flow-prompts.md` are for more. Still to come: stingers for escaped and
-  busted, a vocal flag for the Japanese tracks (all read as instrumental), and the music player in Settings
-  that adds the player's own folders (`tasks/C8-soundtrack.md`, `tasks/C9-music-player.md`).
+  prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in
+  (0.10.30). Still to come: stingers for escaped and busted, and the vocal flags of the built-in tracks
+  (the Japanese ones read as instrumental until marked VOCAL in the player), `tasks/C8-soundtrack.md`,
+  `tasks/C9-music-player.md`.
 - The map is thin outside the city: 10 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
   to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).

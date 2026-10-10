@@ -28,6 +28,40 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.30 (2026-10-10)
+
+The music player in Settings (C9), on the right half of the screen, with the game's faces: Michroma for
+labels, M PLUS 1p for song and folder names (kana and kanji), Share Tech Mono for readouts, DSEG7 for the
+clock. The right half is now two tabs, MUSIC (the player, kept as the player's choice) and HELP.
+
+- Now playing: the title, its folder, the mood it plays for, a progress bar with the time, previous, play and
+  pause, next, SHUFFLE and VOCALS. Previous goes back to the start of a track, or within its first four
+  seconds to the one played before.
+- The mode: MOOD MUSIC (each folder plays for its moods) or one folder LOCKED to play alone. Each folder has
+  a switch (on or off), five role chips (MENU, CRUISE, RACE, PASS, CHASE: the moods it plays for), a LOCK
+  button and, when opened, its songs: a click plays one, and the INST or VOCAL tag beside a song is the
+  player's mark that it has a singer, which VOCALS OFF goes by (the Japanese tracks read as instrumental
+  until marked).
+- The player's own music: ADD FOLDER (a folder picker; a folder and its subfolders is one playlist) and ADD
+  SONGS (loose songs into the opened folder of the player's, or My Songs). The files are copied into the
+  browser's IndexedDB (`library.js`), played from object URLs and kept between visits, with a DELETE (two
+  clicks) and the size they take; a new folder plays for every mood until its chips are set. Nothing is
+  uploaded.
+- The settings (switches, roles, lock, shuffle, vocals, marks) are saved under `music` and put back at the
+  start. A folder's roles are the folder's to change: a song follows its folder's moods unless it names
+  its own (`rolesOf`). `mayPlay` says whether a song may go on after a change, so toggling shuffle does
+  not cut the song playing, while switching its folder off or locking another one does.
+- The MUSIC PLAYER row of Settings gives keys and pad: A and D for previous and next, Enter to pause. A pause
+  stays through the modes until resumed.
+- `music.js` loses `loadManifest` (`catalog.js` loads the track list and the player's folders, and the player
+  listens for its changes); `Stream` ignores the abort a pause causes; `startMood` is split into choosing
+  and `begin`.
+- Checked in the browser: all of the above with real clicks and keys, a Japanese-named song from a Blob
+  playing, the folder surviving a reload and its delete leaving IndexedDB empty. A bug found on the way: the
+  new row shared its id with the soundtrack volume row, so Enter on it left the screen.
+- Tests: `tests/library.test.mjs` (10): audio names, titles, ids, grouping a pick, the saved settings and
+  marks, and roles following the folder. 502 in all.
+
 ## 0.10.29 (2026-10-10)
 
 Review of B4 parts 1 and 2 (0.9.34, 0.9.35): accepted. `tasks/B4-civilian-world-collisions.md` gains a review section: a civilian on its lane must not be wrecked by the world, every one second hold is reported as a geometry fault, the turn test gets strict, the cost of the new probes is measured, and parts 3 and 4 follow.

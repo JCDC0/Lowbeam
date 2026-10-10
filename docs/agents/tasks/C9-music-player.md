@@ -48,9 +48,12 @@ folder lists are mouse and touch.
 
 ## Order
 
-1. The panel over the existing folders: now playing, transport, shuffle, lock, the folder toggles and roles.
-2. The player's own folders: add, remove, persist.
-3. Polish: gamepad focus, a loudness measure at import, vocal flags for the player's tracks.
+1. Done (0.10.30): the panel over the existing folders: now playing, transport, shuffle, lock, the folder
+   switches and roles, the songs of a folder, vocal marks.
+2. Done (0.10.30): the player's own folders: add (folder and songs), delete, persist (IndexedDB).
+3. Later: gamepad focus inside the panel (only the MUSIC PLAYER row is on the pad now: previous, next, pause),
+   a loudness measure at import (the songs play at the target as if they were -16 LUFS), dropping files or a
+   folder on the panel, renaming a folder, and an .m3u playlist import.
 
 ## Notes and limits
 

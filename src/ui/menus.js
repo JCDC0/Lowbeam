@@ -8,6 +8,7 @@ import { CLUSTER_STYLES } from './cluster-styles.js';
 import { LEVELS, nextWeather } from '../render/weather.js';
 import { applyTime, currentTime, currentWeather, saveTime, saveWeather } from './weather-setting.js';
 import { nextTime } from '../render/daylight.js';
+import { musicPanel } from './music-panel.js';
 import { CONTROL_ACTIONS, ACTION_LABELS, PAD_LABELS, KEYS, keyLabel, rebind } from '../core/input.js';
 
 /**
@@ -320,13 +321,21 @@ export function settingsScreen(ui, stage = null) {
               </div>
             </div>
           `).join('')}
+          <div class="ac-row click" data-row="player">
+            <span class="ac-rlabel">MUSIC PLAYER</span>
+            <span class="ac-pill click" data-act="music-toggle" id="set-music-val">PAUSE</span>
+            <span class="hints-inline">A / D PREVIOUS / NEXT TRACK</span>
+          </div>
           <div class="ac-row click" data-row="back">
             <span class="ac-rlabel">BACK</span>
             <span class="ac-pill click" data-act="back">RETURN</span>
             <span class="hints-inline">SAVE & RETURN TO MENU</span>
           </div>
         </div>
-        <div class="ac-info-panel">
+        <div class="ac-side">
+          <div class="ac-tabs"><span class="ac-tab click" data-tab="music">MUSIC</span><span class="ac-tab click" data-tab="help">HELP</span></div>
+          <div class="ac-info-panel ac-tabpane mp-pane" data-pane="music"></div>
+          <div class="ac-info-panel ac-tabpane" data-pane="help" hidden>
           <div class="ac-info-header">CONFIGURATION HELP</div>
           <div class="ac-info-row"><span class="k">TRANSMISSION</span><span class="v">AUTO / MANUAL</span></div>
           <div class="ac-info-row"><span class="k">DISPLAY TARGET</span><span class="v">240 TO 1080 LINES</span></div>
@@ -339,7 +348,9 @@ export function settingsScreen(ui, stage = null) {
             <b>SPEEDOMETER:</b> HUD cluster style in outside views. PER CAR matches each vehicle's instruments; or lock to Classic, Racing, Twin, Sport, Digital or VFD.<br><br>
             <b>WEATHER:</b> Rain soaks the roads so the lamps shine in them, closes the fog in and streaks the air; a storm is the thickest. Looks only for now: the car grips the same.<br><br>
             <b>TIME OF DAY:</b> Night, dusk, dawn or day, or a cycle that runs from dusk through the night to the next day in 24 minutes. The lamps and the lit windows go out by day; rain brings the clouds.<br><br>
-            <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.
+            <b>AUDIO DSP:</b> Procedural synthesis for engines, wind, tires and nature. Volumes and toggles save to local storage automatically.<br><br>
+            <b>MUSIC:</b> Each folder of songs plays for the moods you give it: the menus, a quiet drive, a race, the pass, a police chase. Lock one folder to hear only it, switch a folder off, add your own songs or a whole folder, and mark the songs with a singer to skip them with VOCALS OFF. Your songs stay in this browser.
+          </div>
           </div>
         </div>
       </div>
@@ -370,6 +381,7 @@ export function settingsScreen(ui, stage = null) {
   let clickedStep = null;
 
   const mark = () => {
+    if (rows[sel]?.dataset.row === 'player' && tab !== 'music') showTab('music');
     rows.forEach((r, i) => r.classList.toggle('sel', i === sel));
     SCREEN_FX.forEach((f, i) => /** @type {HTMLElement} */ (s.el.querySelector(`#set-fx-${f}`)).classList.toggle('focus', rows[sel]?.dataset.row === 'fx' && i === fxSel));
   };
@@ -378,6 +390,42 @@ export function settingsScreen(ui, stage = null) {
   const TIME_ROW = rows.findIndex((r) => r.dataset.row === 'time');
   const AUDIO_ROW = rows.findIndex((r) => r.dataset.row === CHANNELS[0]);
   const CONTROLS_ROW = rows.findIndex((r) => r.dataset.row === 'controls');
+  const MUSIC_ROW = rows.findIndex((r) => r.dataset.row === 'player');
+  const musicVal = /** @type {HTMLElement} */ (s.el.querySelector('#set-music-val'));
+  const tabs = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.ac-tab')]);
+  const panes = /** @type {HTMLElement[]} */ ([...s.el.querySelectorAll('.ac-tabpane')]);
+  const player = musicPanel({
+    onState: ({ paused, playing }) => {
+      musicVal.textContent = !playing ? 'PLAY' : paused ? 'PLAY' : 'PAUSE';
+      musicVal.classList.toggle('on', playing && !paused);
+    },
+  });
+  /** @type {HTMLElement} */ (s.el.querySelector('[data-pane="music"]')).appendChild(player.el);
+  /** The side of the screen shows the music player or the help; the choice is kept. @type {'music' | 'help'} */
+  let tab = store.get('settingsTab', /** @type {string} */ ('music')) === 'help' ? 'help' : 'music';
+  let visible = false;
+
+  /** @param {'music' | 'help'} name */
+  function showTab(name) {
+    tab = name;
+    store.set('settingsTab', name);
+    tabs.forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
+    panes.forEach((p) => {
+      p.hidden = p.dataset.pane !== name;
+    });
+    player.show(visible && name === 'music');
+  }
+  tabs.forEach((x) => x.addEventListener('click', () => {
+    audio.ui('select');
+    showTab(x.dataset.tab === 'help' ? 'help' : 'music');
+  }));
+
+  function toggleMusic() {
+    const m = audio.music;
+    if (!m) return;
+    if (m.paused) m.resume();
+    else m.pause();
+  }
 
   function setRenderHeight(h) {
     store.set('renderHeight', h);
@@ -530,6 +578,8 @@ export function settingsScreen(ui, stage = null) {
         unbindAudio();
         unbindAudio = null;
       }
+      visible = on;
+      showTab(tab);
       s.show(on);
     },
     /**
@@ -574,6 +624,9 @@ export function settingsScreen(ui, stage = null) {
         } else if (action === 'open-controls') {
           audio.ui('select');
           return 'controls';
+        } else if (action === 'music-toggle') {
+          toggleMusic();
+          audio.ui('select');
         } else if (action === 'toggle-audio' && ch) {
           audio.toggle(ch);
           audio.ui('select');
@@ -638,6 +691,9 @@ export function settingsScreen(ui, stage = null) {
           audio.setVolume(ch, nextV);
           audio.ui('move');
           sync();
+        } else if (sel === MUSIC_ROW) {
+          audio.music?.previous();
+          audio.ui('move');
         }
       }
       if (input.pressed('right')) {
@@ -676,6 +732,9 @@ export function settingsScreen(ui, stage = null) {
           audio.setVolume(ch, nextV);
           audio.ui('move');
           sync();
+        } else if (sel === MUSIC_ROW) {
+          audio.music?.skip();
+          audio.ui('move');
         }
       }
       if (input.pressed('confirm')) {
@@ -706,6 +765,9 @@ export function settingsScreen(ui, stage = null) {
           setFx(SCREEN_FX[fxSel]);
           audio.ui('select');
           sync();
+        } else if (sel === MUSIC_ROW) {
+          toggleMusic();
+          audio.ui('select');
         } else if (sel === CONTROLS_ROW) {
           audio.ui('select');
           return 'controls';
