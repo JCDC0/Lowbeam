@@ -79,3 +79,31 @@ makes unavoidable, a list Claude agrees), and a test in `tests/island/` holds th
 ## Report
 
 After each part: the commit hash, what changed, test counts, the clip counts before and after.
+
+## Review: parts 1 and 2 (Claude, 0.10.29)
+
+Parts 1 and 2 (0.9.34, 0.9.35) are accepted. The clip bench went from 15 clips and 10 cars off the road to
+1 and 4 over 34,006 samples. HEAD passes all 492 tests (the two soundtrack failures seen at 0.9.35 were
+Claude's, fixed in 0.10.28). Before the edges, in the commit of part 3:
+
+1. **The world can wreck a civilian on its lane.** `collideWorld` ends with `hardest > CIVIL_WRECK_HIT`
+   (18 m/s) turning the car into a wreck, and that now applies to a `drive` civilian whose lane meets a
+   shape head on. Count in the bench how many civilians this wrecks (it should be none) and say where. For
+   a car in `drive` mode keep the push and the stop, and leave the wreck to real hits (the player, a unit,
+   another car); the one second rule holds the car instead.
+2. **Every one second hold is a lane that runs into a shape.** Add an `onStall` callback on the sim, called
+   where the touch rule brakes the car, and have `tools/clipbench.mjs` list each stall (road, `s`, kind).
+   Those are geometry faults to fix in part 3, the same list as the 4 off-road samples or longer.
+3. **The turn test is loose.** `tests/island/traffic-turns.test.mjs` accepts 0.5 % of the turns failing,
+   and its two speeds (8 and 14 m/s) walk the same curve, so the second pass only changes the sample
+   spacing. Sample every 0.25 m once, and make the test strict: every turn clean, or the exceptions named in
+   the test (node and lane ids) and agreed in your report.
+4. **Cost.** The old test said lane followers cost nothing; each civilian now probes three circles a step.
+   Report the milliseconds of `sim.update` with 45 agents before and after (island, 1,000 steps). More than
+   10 % up: probe a car only every second step (by its id's parity).
+5. **Housekeeping.** Two JSDoc blocks are stacked above `collideWorld`; make it one, with `@param {number} [dt]`.
+   The open-work bullet in ARCHITECTURE.md about civilians and the static world (15 clips) is stale: write
+   the new numbers when part 3 lands.
+
+Then part 3 (0.9.36, section 3 above) and part 4 (0.9.37, section 4), one commit each, and stop after part 4
+with the report: B5 goes to another agent.

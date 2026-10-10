@@ -28,6 +28,10 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.29 (2026-10-10)
+
+Review of B4 parts 1 and 2 (0.9.34, 0.9.35): accepted. `tasks/B4-civilian-world-collisions.md` gains a review section: a civilian on its lane must not be wrecked by the world, every one second hold is reported as a geometry fault, the turn test gets strict, the cost of the new probes is measured, and parts 3 and 4 follow.
+
 ## 0.10.28 (2026-10-10)
 
 The soundtrack by folders: Jc replaced the eight tracks with three folders of their own (Chase, Chill,
