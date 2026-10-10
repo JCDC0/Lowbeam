@@ -1107,6 +1107,17 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.34 (2026-10-10)
+
+Turns that follow a curve, and roadblock barrier cleanup (B4 part 1).
+
+- `src/traffic/net.js`: `buildTurn(q0, q1)` constructs a smooth cubic Bezier arc between incoming and outgoing lane positions and tangents. Traffic in left-hand drive takes a tight arc on left turns and a wide arc across the junction on right turns.
+- `src/traffic/sim.js`: `moveTo` builds a turning curve when sharp or with significant heading change or distance (> 2.5 m), advancing the car along `a.curve` at `a.speed * dt` and keeping `a` in `byLane` for both incoming and outgoing lanes until the junction is cleared. Reset upon collision, knock or wreck.
+- `src/drive.js`: filters `this.blockBarriers` before stepping `PursuitView.step` so faded or removed barriers are no longer drawn. Uses `FOG_DRY.far` for sight distance scaling.
+- `src/police/director.js`: uses `FOG_DRY.far` (420) and `FOG_STORM.far` (230) from `render/weather.js` in `unitSees` instead of hardcoded magic numbers.
+- `tests/island/roadblock.test.mjs`: verified a faded roadblock barrier is not drawn by PursuitView.
+- `tests/island/traffic-turns.test.mjs`: tests over 18,000 junction turns across every junction of the island (`net.nodes`), verifying cars stay on the carriageway (`edge <= 0.1`) and clear of colliders at 8 and 14 m/s.
+
 ## 0.9.33 (2026-10-10)
 
 Traffic and police in rain (B3 part 3).

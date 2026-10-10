@@ -11,7 +11,7 @@
 import { makeRng } from '../core/rng.js';
 import { wrapAngle, clamp, smoothstep } from '../core/mathx.js';
 import { KINDS, RIVALS, UNIT_KINDS, UNIT_BY_ID, isUnit, BARRIER_KIND } from './kinds.js';
-import { lightState } from './net.js';
+import { lightState, buildTurn } from './net.js';
 import { Manners, HORN_GAP, HORN_EVERY } from './manners.js';
 import { collideCars, bodyOf } from '../vehicles/contact.js';
 import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js';
@@ -26,6 +26,7 @@ import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js'
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number, changeFromLane?: Lane | null,
+ *   curve?: ReturnType<typeof buildTurn> | null, curveProgress?: number,
  *   mode: 'drive' | 'knocked' | 'wreck' | 'parked', age: number, wreckAge: number, knockAge?: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
@@ -723,7 +724,7 @@ export class TrafficSim {
       if (!list) this.byLane.set(a.lane, (list = []));
       list.push(a);
 
-      if (a.changeDuration > 0 && a.changeFromLane) {
+      if ((a.changeDuration > 0 || a.curve) && a.changeFromLane) {
         let fromList = this.byLane.get(a.changeFromLane);
         if (!fromList) this.byLane.set(a.changeFromLane, (fromList = []));
         if (!fromList.includes(a)) fromList.push(a);
@@ -890,10 +891,34 @@ export class TrafficSim {
     const brakeThreshold = isCiv && this.weather > 0 ? -1.2 + 0.3 * clamp(this.weather, 0, 1) : -1.2;
     a.brake = acc < brakeThreshold ? 1 : 0;
     a.speed = Math.max(0, a.speed + clamp(acc, -9, effAccel) * dt);
-    a.s += a.speed * dt;
 
     // A signal waits in real time; the move happens when it runs out.
     if (a.signalTimer > 0) a.signalTimer = Math.max(0, a.signalTimer - dt);
+
+    if (a.curve) {
+      a.curveProgress = (a.curveProgress ?? 0) + a.speed * dt;
+      const u = a.curveProgress / Math.max(0.1, a.curve.length);
+      if (u >= 1) {
+        const overshoot = a.curveProgress - a.curve.length;
+        a.s = clamp(a.s + overshoot, 0, a.lane.length);
+        a.curve = null;
+        a.changeFromLane = null;
+        this.clearSignal(a);
+      } else {
+        const pt = a.curve.at(u);
+        a.x = pt.x;
+        a.y = pt.y;
+        a.z = pt.z;
+        a.yaw = pt.yaw;
+        a.vx = Math.sin(a.yaw) * a.speed;
+        a.vz = Math.cos(a.yaw) * a.speed;
+        a.yawRate = 0;
+        return;
+      }
+    } else {
+      a.s += a.speed * dt;
+    }
+
     if (!isUnit(a.kind) && !rival && a.changeDuration === 0 && this.closingBehind(a, player) > 0) this.avoid(a, player);
     this.maybeChange(a, lead, player);
 
@@ -1338,15 +1363,32 @@ export class TrafficSim {
 
   /** Moves an agent to another lane, keeping its place on screen and blending into the new one. */
   moveTo(a, lane, s, sharp) {
-    const old = { x: a.x, z: a.z };
+    const fromLane = a.lane;
+    const old = { x: a.x, y: a.y, z: a.z, tx: Math.sin(a.yaw), tz: Math.cos(a.yaw) };
     a.lane = lane;
     a.s = clamp(s, 0, lane.length);
     const q = this.net.sample(lane, a.s, this._q);
-    a.ex = old.x - q.x;
-    a.ez = old.z - q.z;
-    if (sharp && Math.hypot(a.ex, a.ez) > 2.5) {
-      a.cap = 9;
-      a.capUntil = this.time + 4;
+    const dx = old.x - q.x;
+    const dz = old.z - q.z;
+    const dist = Math.hypot(dx, dz);
+    const laneYaw = Math.atan2(q.tx, q.tz);
+    const headingDiff = Math.abs(wrapAngle(laneYaw - a.yaw));
+
+    if (sharp || headingDiff > 0.15 || dist > 2.5) {
+      a.curve = buildTurn(old, q);
+      a.curveProgress = 0;
+      a.changeFromLane = fromLane;
+      a.ex = 0;
+      a.ez = 0;
+      if (sharp && dist > 2.5) {
+        a.cap = 9;
+        a.capUntil = this.time + 4;
+      }
+    } else {
+      a.curve = null;
+      a.changeFromLane = null;
+      a.ex = dx;
+      a.ez = dz;
     }
     this.choose(a);
   }
@@ -1857,6 +1899,8 @@ export class TrafficSim {
       a.mode = 'wreck';
       a.wreckAge = 0;
       a.free = false;
+      a.curve = null;
+      a.changeFromLane = null;
       a.ex = a.ez = 0;
       a.changeDuration = 0;
     }
@@ -1873,6 +1917,8 @@ export class TrafficSim {
     if (a.mode === 'wreck') return;
     if (hit < 3) return;
     if (a.mode === 'parked' && hit <= 6) return;
+    a.curve = null;
+    a.changeFromLane = null;
     if (a.barrier) {
       a.mode = 'knocked';
       a.knockAge = 0;
@@ -1934,6 +1980,8 @@ export class TrafficSim {
     a.mode = 'wreck';
     a.wreckAge = 0;
     a.free = false;
+    a.curve = null;
+    a.changeFromLane = null;
     a.ex = a.ez = 0;
     a.changeDuration = 0;
     this.lost++;
@@ -2098,6 +2146,10 @@ export class TrafficSim {
     // What the hit left of its speed along its heading is what it drives on with.
     a.speed = a.mode === 'wreck' ? Math.hypot(a.vx, a.vz) : Math.max(0, a.vx * Math.sin(a.yaw) + a.vz * Math.cos(a.yaw));
     if (a.mode === 'drive' && a.lane) {
+      if (a.curve) {
+        a.curve = null;
+        a.changeFromLane = null;
+      }
       const q = this.net.sample(a.lane, a.s, this._q);
       const dx = a.x - oldX;
       const dz = a.z - oldZ;

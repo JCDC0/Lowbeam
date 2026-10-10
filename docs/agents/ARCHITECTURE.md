@@ -165,7 +165,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-483 tests pass; the type check is clean. By area:
+485 tests in the suite (483 pass while C8 soundtrack files land); the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -241,7 +241,7 @@ digital styles a tall display whose rev bar curves up the side. Warnings are sym
 inside the main dial (`dialLamps`).
 
 **Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
-turns, exits, blinkers and lane holds; wrecks; a blob shadow on the road under each car within 160 m (one
+turns following cubic curves inside junction patches (0.9.34), exits, blinkers and lane holds; wrecks; a blob shadow on the road under each car within 160 m (one
 draw call, black at 90 % by day and 45 % by night); lamp flares and headlight beams; a blinking
 indicator flares larger and the three nearest throw a small amber pool. The traffic lights are seen:
 at each of the 962 lit crossings every way in has a Japanese signal (`world/signals.js`), a pole on
@@ -261,7 +261,7 @@ apart along the contact normal in proportion to inverse mass; a hit below 3 m/s 
 without knocking (0.9.22). Obstacle tracking in `leader` accounts for wrecks and parked roadblock units
 across sibling lanes: a car brakes to an equilibrium stop 6 m before a roadblock and, where an adjacent
 lane remains open, changes into it instead; a player ram over 6 m/s restores player momentum and punches
-through (0.9.23). Knocked roadblock barriers flatten and lie flat on the road, damping their slide quickly with no yaw spin, and barriers and parked units do not count against the civilian spawn target (0.9.32). Knocked cars and moving wrecks hit the other traffic, so
+through (0.9.23). Knocked roadblock barriers flatten and lie flat on the road, damping their slide quickly with no yaw spin, faded barriers are hidden from PursuitView (0.9.34), and barriers and parked units do not count against the civilian spawn target (0.9.32). Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
 out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,

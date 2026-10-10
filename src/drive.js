@@ -36,7 +36,7 @@ import { paceNotes } from './race/pacenotes.js';
 import { RALLY, WORLD_HALF } from './world/layout.js';
 import { Heli, Skyline, helipadOf, nearestStation } from './police/heli.js';
 import { HeliView } from './police/heli-view.js';
-import { weatherLook } from './render/weather.js';
+import { weatherLook, FOG_DRY } from './render/weather.js';
 
 /** How close to the rally start the car has to be stopped to begin a run. */
 const RALLY_NEAR = 15;
@@ -261,7 +261,7 @@ export class Drive {
   stepPolice(dt, s) {
     const happened = this.traffic.takeEvents();
     const weather = this.world.weather ?? 0;
-    const sightScale = weatherLook(weather).fogFar / 420;
+    const sightScale = weatherLook(weather).fogFar / FOG_DRY.far;
     const sightRange = SIGHT_RANGE * sightScale;
     const units = this.traffic.units().filter((a) => a.mode !== 'wreck').map((a) => {
       const d = Math.hypot(a.x - s.x, a.z - s.z);
@@ -331,6 +331,7 @@ export class Drive {
       for (const a of this.blockBarriers) a.fade = 0;
       this.blockBarriers = [];
     }
+    this.blockBarriers = this.blockBarriers.filter((b) => this.traffic.agents.includes(b));
     this.pursuitView3d.setStrip(this.police.spikes);
     this.pursuitView3d.step(dt, this.blockBarriers);
 

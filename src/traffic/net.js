@@ -489,3 +489,82 @@ const _q = { x: 0, z: 0, tx: 0, tz: 1 };
 const _q2 = { x: 0, z: 0, tx: 0, tz: 1 };
 const _a = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
 const _s = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+
+/**
+ * Builds a cubic Bezier turn curve connecting two lane points and headings.
+ * Traffic keeps left: a left turn follows a tight arc inside the corner,
+ * while a right turn follows a wide arc across the junction.
+ * @param {{ x: number, z: number, tx: number, tz: number, y?: number }} q0
+ * @param {{ x: number, z: number, tx: number, tz: number, y?: number }} q1
+ */
+export function buildTurn(q0, q1) {
+  const dx = q1.x - q0.x;
+  const dz = q1.z - q0.z;
+  const dist = Math.hypot(dx, dz);
+  const cross = q1.tx * q0.tz - q1.tz * q0.tx;
+
+  let d0 = dist * 0.4;
+  let d1 = dist * 0.4;
+
+  if (Math.abs(cross) > 0.05) {
+    const t = (dz * q1.tx - dx * q1.tz) / cross;
+    const u = (q0.tz * dx - q0.tx * dz) / cross;
+    if (t > 0 && u > 0) {
+      if (cross < 0) {
+        d0 = Math.min(t * 0.55, dist * 0.5);
+        d1 = Math.min(u * 0.55, dist * 0.5);
+      } else {
+        d0 = Math.min(t * 0.65, dist * 0.75);
+        d1 = Math.min(u * 0.65, dist * 0.75);
+      }
+    } else if (cross < 0) {
+      d0 = dist * 0.35;
+      d1 = dist * 0.35;
+    } else {
+      d0 = dist * 0.55;
+      d1 = dist * 0.45;
+    }
+  }
+
+  const p0 = { x: q0.x, z: q0.z, y: q0.y ?? 0 };
+  const p1 = { x: q0.x + q0.tx * d0, z: q0.z + q0.tz * d0, y: q0.y ?? 0 };
+  const p2 = { x: q1.x - q1.tx * d1, z: q1.z - q1.tz * d1, y: q1.y ?? 0 };
+  const p3 = { x: q1.x, z: q1.z, y: q1.y ?? 0 };
+
+  let length = 0;
+  let prevX = p0.x;
+  let prevZ = p0.z;
+  for (let i = 1; i <= 8; i++) {
+    const u = i / 8;
+    const u1 = 1 - u;
+    const x = u1 * u1 * u1 * p0.x + 3 * u1 * u1 * u * p1.x + 3 * u1 * u * u * p2.x + u * u * u * p3.x;
+    const z = u1 * u1 * u1 * p0.z + 3 * u1 * u1 * u * p1.z + 3 * u1 * u * u * p2.z + u * u * u * p3.z;
+    length += Math.hypot(x - prevX, z - prevZ);
+    prevX = x;
+    prevZ = z;
+  }
+
+  return {
+    p0, p1, p2, p3, length,
+    at(u) {
+      const u1 = 1 - u;
+      const c0 = u1 * u1 * u1;
+      const c1 = 3 * u1 * u1 * u;
+      const c2 = 3 * u1 * u * u;
+      const c3 = u * u * u;
+
+      const x = c0 * p0.x + c1 * p1.x + c2 * p2.x + c3 * p3.x;
+      const z = c0 * p0.z + c1 * p1.z + c2 * p2.z + c3 * p3.z;
+      const y = u1 * p0.y + u * p3.y;
+
+      const d0 = 3 * u1 * u1;
+      const d1 = 6 * u1 * u;
+      const d2 = 3 * u * u;
+      const tx = d0 * (p1.x - p0.x) + d1 * (p2.x - p1.x) + d2 * (p3.x - p2.x);
+      const tz = d0 * (p1.z - p0.z) + d1 * (p2.z - p1.z) + d2 * (p3.z - p2.z);
+      const yaw = Math.atan2(tx, tz);
+
+      return { x, y, z, tx, tz, yaw };
+    },
+  };
+}

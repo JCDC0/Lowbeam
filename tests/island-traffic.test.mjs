@@ -7,3 +7,4 @@ import './island/traffic-solid.test.mjs';
 import './island/blinkers.test.mjs';
 import './island/traffic-walls.test.mjs';
 import './island/traffic-evade.test.mjs';
+import './island/traffic-turns.test.mjs';

@@ -15,7 +15,7 @@ import { Heat, noticesSpeeding, noticesTrap } from './heat.js';
 import { roster, UNIT_BY_ID, helisFor } from './units.js';
 import { planSpikes, shouldSetRoadblock, tooNearBlock, hitSpikes, spikePenalty } from './roadblock.js';
 import { Pursuit } from '../race/pursuit.js';
-import { weatherLook } from '../render/weather.js';
+import { weatherLook, FOG_DRY, FOG_STORM } from '../render/weather.js';
 
 /** A unit with a clear line sees the player this far while chasing, meters. */
 export const SIGHT_RANGE = 150;
@@ -77,9 +77,9 @@ const BLOCK_GONE = 600;
 export function unitSees(u, p, mode, weather = 0) {
   if (!u.clear) return false;
   const look = weatherLook(weather);
-  const sightScale = look.fogFar / 420;
+  const sightScale = look.fogFar / FOG_DRY.far;
   if (mode === 'chase') return u.d < SIGHT_RANGE * sightScale;
-  const noticeScale = 0.85 + 0.15 * ((look.fogFar - 230) / (420 - 230));
+  const noticeScale = 0.85 + 0.15 * ((look.fogFar - FOG_STORM.far) / (FOG_DRY.far - FOG_STORM.far));
   if (mode === 'patrol') return u.d < PATROL_RANGE * noticeScale;
   if (u.d < AROUND_RANGE * noticeScale) return true;
   if (u.d > CONE_RANGE * noticeScale) return false;

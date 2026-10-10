@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { planRoadblock, shouldSetRoadblock, tooNearBlock, planSpikes, hitSpikes, spikePenalty } from '../../src/police/roadblock.js';
+import { PursuitView } from '../../src/police/pursuit-view.js';
 import { TrafficSim } from '../../src/traffic/sim.js';
 import { carById } from '../../src/vehicles/specs.js';
 import { createVehicleState } from '../../src/vehicles/physics.js';
@@ -221,4 +222,31 @@ test('traffic brakes for a barrier across its lane', () => {
 
   assert.equal(civ.brake, 1, 'civilian triggers brake for barrier ahead');
   assert.ok(civ.speed < 25, 'civilian slows down before barrier');
+});
+
+test('a roadblock barrier whose agent has gone is not drawn by PursuitView', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const sim = new TrafficSim(net, { target: 0, rivals: 0, patrols: 0 });
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 100, q);
+  const b1 = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 100);
+  const b2 = sim.spawnBarrier({ x: q.x + 3, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 100);
+
+  let barriers = [b1, b2];
+  const view = new PursuitView({});
+  view.step(0.1, barriers);
+  assert.equal(view.barrierMeshes.length, 2);
+  assert.equal(view.barrierMeshes[0].visible, true);
+  assert.equal(view.barrierMeshes[1].visible, true);
+
+  b2.fade = 0;
+  sim.update(0.1, { x: q.x, z: q.z, speed: 0 });
+  assert.ok(!sim.agents.includes(b2), 'faded barrier removed from sim.agents');
+  assert.ok(sim.agents.includes(b1), 'live barrier remains in sim.agents');
+
+  barriers = barriers.filter((b) => sim.agents.includes(b));
+  view.step(0.1, barriers);
+
+  assert.equal(view.barrierMeshes[0].visible, true, 'live barrier mesh is drawn');
+  assert.equal(view.barrierMeshes[1].visible, false, 'faded barrier mesh is hidden');
 });
