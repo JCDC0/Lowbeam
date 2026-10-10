@@ -1,21 +1,23 @@
 /**
- * The pursuit HUD, after Need for Speed: Most Wanted (2005) and Jc's sketch: at the bottom center of
- * the screen, a row of the units on the scene by kind (a cruiser, an unmarked car, an interceptor, a
- * Rhino and the helicopters, each with its icon and count) over one panel. In the panel the heat as
- * five marks and the pursuit's time; the bounty, counting up; the units on the scene, the units
- * assigned to the pursuit (the pool reinforcements come from) and the units destroyed; and along the
- * bottom the evade and busted meter, split from the middle (green to the left as the police lose
- * sight, red to the right as they box the player in), a blue cooldown bar while they search. Before a
- * pursuit, while a patrol watches, only the detection bar shows. At the end the result card, then
+ * The pursuit HUD, after Need for Speed: Most Wanted (2005) and Jc's sketches: a column at the bottom
+ * center of the screen. At its top the evade and busted meter, split from the middle (green to the
+ * left as the police lose sight, red to the right as they box the player in), a blue cooldown bar
+ * while they search; under it, while the police resupply, a clock over REINFORCEMENTS ARRIVING; then
+ * a row of the units on the scene by kind (a cruiser, an unmarked car, an interceptor, a Rhino and
+ * the helicopters, each with its icon and count); and last one panel: the heat as five marks and the
+ * pursuit's time, the bounty counting up, and the units on the scene, the units assigned to the
+ * pursuit (the pool reinforcements come from) and the units destroyed. Before a pursuit, while a
+ * patrol watches, only the detection bar shows. At the end the result card, then
  * nothing: the panel leaves at once when the pursuit or the drive screen does. Every word and number
  * is in Michroma (`--font-display`), except the unit counts and the resupply clock, which are in the
  * Japanese face (`--font-jp`) and never zero-padded (0, not 00).
  *
- * The icons of the units by kind (v2, Jc's second sketch): each fades in the first time a unit of that
- * kind is in the player's sight (`seen`), and from then on shows its live count, 0 included. When a
- * unit of a kind is destroyed its icon plays a short fading glitch and its count drops, and the
- * DESTROYED tally on the board below rises. While the police resupply (B5) a clock over the row counts
- * down to the cars' arrival, with a bar draining behind it. The panel itself never fades or pulses.
+ * The icons of the units by kind (v2, Jc's second sketch) are a centered row that grows and shrinks:
+ * each fades in, and the row re-centers, the first time a unit of that kind is in the player's sight
+ * (`seen`); it shows its live count; when a unit of the kind is destroyed its icon plays a short fading
+ * glitch and its count drops, and the DESTROYED tally on the board below rises; and when the kind has
+ * no units left the icon rests at 0 for a moment, fades out and the row closes up over the space. While the police resupply (B5) a clock over the row counts
+ * down to the cars' arrival. The panel itself never fades or pulses.
  */
 
 /**
@@ -63,17 +65,27 @@ const yen = (n) => `¥${Math.round(n || 0).toLocaleString('en-US')}`;
 
 /** The unit kinds in the row over the panel, in the sketch's order. */
 export const KIND_ROW = ['police', 'police-fast', 'police-int', 'police-heavy'];
-/** The seconds a resupply takes (B5: `RESUPPLY_TIME`), the full length of the clock's bar. */
-export const RESUPPLY_SECONDS = 60;
-/** Whether an icon whose units are all gone keeps its slot showing 0 (true) or leaves the row. */
-export const ZERO_KEEPS_SLOT = true;
+/** Seconds an icon rests at 0 (the glitch plays out) before it fades out of the row. */
+export const LEAVE_DELAY = 0.9;
+
+/**
+ * One step of an icon's life in the row: it comes in when its kind has been seen and has units, stays
+ * while it has units, rests `LEAVE_DELAY` seconds at 0 and then leaves; a kind that comes back with
+ * units comes back in.
+ * @param {{ in: boolean, zero: number }} state @param {boolean} seen @param {number} n @param {number} dt
+ * @returns {{ in: boolean, zero: number }}
+ */
+export function iconStep(state, seen, n, dt) {
+  if (n > 0) return { in: state.in || seen, zero: 0 };
+  if (!state.in) return { in: false, zero: 0 };
+  const zero = state.zero + dt;
+  return zero >= LEAVE_DELAY ? { in: false, zero: 0 } : { in: true, zero };
+}
 
 /** The resupply clock as seconds and hundredths, 60:00 down to 00:00. @param {number} left */
 export function clockText(left) {
-  const t = Math.max(0, left);
-  const s = Math.min(99, Math.floor(t));
-  const c = Math.min(99, Math.floor((t - Math.floor(t)) * 100));
-  return `${String(s).padStart(2, '0')}:${String(c).padStart(2, '0')}`;
+  const cs = Math.min(9999, Math.floor(Math.max(0, left) * 100 + 1e-6));
+  return `${String(Math.floor(cs / 100)).padStart(2, '0')}:${String(cs % 100).padStart(2, '0')}`;
 }
 
 /**
@@ -132,7 +144,7 @@ export function layoutPursuit(view) {
       return { kind, n, seen: view.seen ? view.seen.includes(kind) : n > 0 };
     }),
     heliSeen: view.seen ? view.seen.includes('heli') : (view.helis ?? (view.heli ? 1 : 0)) > 0,
-    resupply: typeof view.resupply === 'number' ? { left: view.resupply, fill: Math.max(0, Math.min(1, view.resupply / RESUPPLY_SECONDS)), text: clockText(view.resupply) } : null,
+    resupply: typeof view.resupply === 'number' ? { left: view.resupply, text: clockText(view.resupply) } : null,
     assignedText: view.assigned == null ? '--' : String(Math.max(0, Math.round(view.assigned))),
     reinforcements: !!view.reinforcements,
     bountyText,
@@ -165,8 +177,14 @@ export function pursuitHud(parent) {
       <span class="ph-label">DETECTION</span>
       <div class="ph-track"><div class="ph-detect-fill"></div></div>
     </div>
+    <div class="ph-meter">
+      <span class="ph-side ph-evade-label">EVADE</span>
+      <div class="ph-track ph-split">
+        <div class="ph-evade"></div><div class="ph-busted"></div><div class="ph-cool"></div><div class="ph-mid"></div>
+      </div>
+      <span class="ph-side ph-busted-label">BUSTED</span>
+    </div>
     <div class="ph-resupply">
-      <div class="ph-rs-bar"><i></i></div>
       <div class="ph-rs-time"></div>
       <div class="ph-rs-label">REINFORCEMENTS ARRIVING</div>
     </div>
@@ -181,13 +199,6 @@ export function pursuitHud(parent) {
         <span class="ph-stat"><em class="ph-scene"></em><small>ON SCENE</small></span>
         <span class="ph-stat"><em class="ph-assigned"></em><small>ASSIGNED</small></span>
         <span class="ph-stat ph-kills"><em class="ph-out"></em><small>DESTROYED</small></span>
-      </div>
-      <div class="ph-meter">
-        <span class="ph-side ph-evade-label">EVADE</span>
-        <div class="ph-track ph-split">
-          <div class="ph-evade"></div><div class="ph-busted"></div><div class="ph-cool"></div><div class="ph-mid"></div>
-        </div>
-        <span class="ph-side ph-busted-label">BUSTED</span>
       </div>
       <div class="ph-result"><b></b><span></span></div>
     </div>
@@ -213,7 +224,6 @@ export function pursuitHud(parent) {
   const kindEls = KIND_ROW.map((k) => /** @type {HTMLElement} */ (el.querySelector(`.ph-kind[data-kind="${k}"]`)));
   const heliCountEl = q('.ph-heli-count');
   const resupplyEl = q('.ph-resupply');
-  const rsFill = q('.ph-rs-bar i');
   const rsTime = q('.ph-rs-time');
   const killsEl = q('.ph-kills');
   const cells = [...kindEls, heliCountEl];
@@ -223,8 +233,8 @@ export function pursuitHud(parent) {
   const resultLine = q('.ph-result span');
 
   let shownBounty = 0;
-  /** The icons that have faded in this pursuit stay in; a unit of a kind in sight brings its icon. */
-  const shown = cells.map(() => false);
+  /** Where each icon is in its life in the row (see `iconStep`). */
+  const icons = cells.map(() => ({ in: false, zero: 0 }));
   /** @type {ReturnType<typeof layoutPursuit>} */
   let prev = null;
 
@@ -245,9 +255,10 @@ export function pursuitHud(parent) {
     if (!layout) {
       shownBounty = 0;
       prev = null;
-      shown.fill(false);
+      icons.forEach((_, i) => { icons[i] = { in: false, zero: 0 }; });
       for (const cell of cells) cell.classList.remove('in', 'none', 'glitch');
       resupplyEl.style.display = 'none';
+      meterEl.style.display = 'none';
       const level = detect?.level || 0;
       el.style.display = level > 0.01 ? 'block' : 'none';
       panel.style.display = 'none';
@@ -286,10 +297,10 @@ export function pursuitHud(parent) {
     outEl.textContent = layout.destroyedText;
     const counts = [...layout.kinds.map((k) => ({ n: k.n, seen: k.seen })), { n: layout.helis, seen: layout.heliSeen }];
     counts.forEach(({ n, seen }, i) => {
-      if (seen) shown[i] = true;
+      icons[i] = iconStep(icons[i], seen, n, dt);
       const cell = cells[i];
       /** @type {HTMLElement} */ (cell.querySelector('em')).textContent = String(n);
-      cell.classList.toggle('in', shown[i] && (n > 0 || ZERO_KEEPS_SLOT));
+      cell.classList.toggle('in', icons[i].in);
       cell.classList.toggle('none', n === 0);
     });
     for (const kind of lostKinds(prev, layout)) play(kindEls[KIND_ROW.indexOf(kind)], 'glitch');
@@ -298,10 +309,7 @@ export function pursuitHud(parent) {
     const clock = layout.resupply;
     resupplyEl.style.display = (clock || layout.reinforcements) && !layout.isTerminal ? 'block' : 'none';
     resupplyEl.classList.toggle('timed', !!clock);
-    if (clock) {
-      rsFill.style.width = `${(clock.fill * 100).toFixed(1)}%`;
-      rsTime.textContent = clock.text;
-    }
+    if (clock) rsTime.textContent = clock.text;
 
     resultEl.style.display = layout.isTerminal ? 'flex' : 'none';
     if (layout.isTerminal) {

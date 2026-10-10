@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutPursuit, clockText, lostKinds } from '../src/ui/pursuit.js';
+import { layoutPursuit, clockText, lostKinds, iconStep, LEAVE_DELAY } from '../src/ui/pursuit.js';
 
 test('layoutPursuit returns null when view is null', () => {
   assert.equal(layoutPursuit(null), null);
@@ -149,17 +149,18 @@ test('an icon is seen once its kind has been in sight; an old view counts a kind
   assert.equal(layoutPursuit({ ...view, seen: ['heli'] }).heliSeen, true);
 });
 
-test('the resupply clock reads seconds and hundredths and drains its bar over a minute', () => {
+test('the resupply clock reads seconds and hundredths', () => {
   assert.equal(clockText(60), '60:00');
   assert.equal(clockText(12.345), '12:34');
+  assert.equal(clockText(36.9), '36:90', 'a float that is a hair under 36.9 still reads 90');
+  assert.equal(clockText(1.07), '01:07');
   assert.equal(clockText(0.009), '00:00');
   assert.equal(clockText(-3), '00:00');
   const base = { state: 'pursuit', heat: 2, evade: 0, cooldown: 0, bust: 0, units: 1, heli: false, bounty: 0, time: 0 };
   assert.equal(layoutPursuit(base).resupply, null, 'no clock until the backend sends one');
   const r = layoutPursuit({ ...base, resupply: 45 }).resupply;
   assert.equal(r.text, '45:00');
-  assert.equal(r.fill, 0.75);
-  assert.equal(layoutPursuit({ ...base, resupply: 0 }).resupply.fill, 0, 'an arrived clock is an empty bar');
+  assert.equal(layoutPursuit({ ...base, resupply: 0 }).resupply.text, '00:00', 'an arrived clock reads zero');
 });
 
 test('a destroyed unit glitches its own icon, and a unit that left does not', () => {
@@ -169,4 +170,20 @@ test('a destroyed unit glitches its own icon, and a unit that left does not', ()
   assert.deepEqual(lostKinds(at([3, 1, 0, 0], 1), at([2, 1, 0, 0], 1)), [], 'the tally did not rise: they went home');
   assert.deepEqual(lostKinds(at([2, 1, 0, 0], 1), at([3, 1, 0, 0], 1)), [], 'a unit arriving is not a loss');
   assert.deepEqual(lostKinds(null, at([2, 1, 0, 0], 1)), [], 'nothing to compare on the first frame');
+});
+
+test('an icon comes in when its kind is seen and has units, rests at 0, leaves, and comes back with units', () => {
+  const out = { in: false, zero: 0 };
+  assert.equal(iconStep(out, false, 3, 0.1).in, false, 'units not yet in sight bring no icon');
+  assert.equal(iconStep(out, true, 0, 0.1).in, false, 'a seen kind with no units has no icon to show');
+  let s = iconStep(out, true, 3, 0.1);
+  assert.equal(s.in, true);
+  assert.equal(iconStep(s, false, 3, 0.1).in, true, 'once in, it stays while the kind has units, seen or not');
+  s = iconStep(s, true, 0, LEAVE_DELAY / 2);
+  assert.equal(s.in, true, 'it rests at 0 while the glitch plays');
+  s = iconStep(s, true, 0, LEAVE_DELAY / 2);
+  assert.equal(s.in, false, 'then it leaves and the row closes up');
+  assert.equal(iconStep(s, true, 0, 5).in, false, 'it does not come back by itself');
+  assert.equal(iconStep(s, true, 2, 0.1).in, true, 'a seen kind that returns with units does');
+  assert.equal(iconStep({ in: true, zero: LEAVE_DELAY * 0.9 }, true, 1, 0.1).zero, 0, 'a unit arriving cancels the leaving');
 });

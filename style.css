@@ -1176,7 +1176,17 @@ html, body {
   letter-spacing: 0.06em;
   color: var(--amber);
 }
-#pursuit-hud .ph-meter { display: flex; align-items: center; gap: 8px; }
+#pursuit-hud .ph-meter {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 7px 12px;
+  background: var(--panel);
+  border-top: 2px solid #2b7fff;
+  box-shadow: 0 -2px 0 rgba(255, 43, 61, 0.65) inset;
+}
+#pursuit-hud .ph-meter.cooling { border-top-color: var(--cyan); box-shadow: none; }
 #pursuit-hud .ph-side { font-size: 9px; letter-spacing: 0.18em; }
 #pursuit-hud .ph-evade-label { color: #4ce07a; }
 #pursuit-hud .ph-busted-label { color: var(--red); }
@@ -1220,23 +1230,32 @@ html, body {
 #pursuit-hud .ph-kinds {
   display: flex;
   justify-content: center;
-  gap: 14px;
   margin-bottom: 6px;
   text-shadow: 0 1px 0 #000;
 }
+/* An icon is closed (no width, no margin, clear) until it is in the row; it opens, then fades in, and
+   on its way out it fades, then closes, so the row stays centered as icons come and go. */
 #pursuit-hud .ph-kind {
   --rest: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  min-width: 74px;
+  max-width: 0;
+  margin: 0;
+  overflow: hidden;
   opacity: 0;
   transform: translateY(5px);
-  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out, max-width 0.45s ease-in-out 0.4s, margin 0.45s ease-in-out 0.4s;
 }
 #pursuit-hud .ph-kind.none { --rest: 0.45; }
-#pursuit-hud .ph-kind.in { opacity: var(--rest); transform: none; }
+#pursuit-hud .ph-kind.in {
+  max-width: 80px;
+  margin: 0 7px;
+  opacity: var(--rest);
+  transform: none;
+  transition: max-width 0.45s ease-out, margin 0.45s ease-out, opacity 0.6s ease-out 0.3s, transform 0.6s ease-out 0.3s;
+}
 #pursuit-hud .ph-kind svg { width: 48px; height: 24px; fill: #dfe5ee; filter: drop-shadow(0 1px 0 #000); }
 #pursuit-hud .ph-kind svg .r { fill: #ff2b3d; }
 #pursuit-hud .ph-kind svg .b { fill: #2b7fff; }
@@ -1265,15 +1284,8 @@ html, body {
   0% { transform: scale(1.55); color: #fff; }
   100% { transform: none; }
 }
-/* The resupply clock over the icons: a bar draining behind seconds and hundredths, then the label. */
+/* The resupply clock over the icons: seconds and hundredths, then the label. */
 #pursuit-hud .ph-resupply { display: none; margin-bottom: 8px; text-align: center; }
-#pursuit-hud .ph-rs-bar {
-  display: none;
-  height: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(0, 0, 0, 0.45);
-}
-#pursuit-hud .ph-rs-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #8a5a14, var(--amber)); }
 #pursuit-hud .ph-rs-time {
   display: none;
   font-family: var(--font-jp);
@@ -1284,7 +1296,6 @@ html, body {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-#pursuit-hud .ph-resupply.timed .ph-rs-bar,
 #pursuit-hud .ph-resupply.timed .ph-rs-time { display: block; }
 #pursuit-hud .ph-rs-label { font-size: 10px; letter-spacing: 0.3em; color: var(--amber); }
 #pursuit-hud svg {

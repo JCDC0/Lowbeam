@@ -28,6 +28,19 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.23 (2026-10-10)
+
+The pursuit HUD, rearranged after Jc's notes on the sketch (`tasks/C7-pursuit-hud-v2.md`).
+
+- The evade and busted meter is the top of the column, on its own plate (it was along the bottom of the
+  board); the clock under it has no bar of its own and the board is the plain panel at the bottom.
+- The icons are a centered row that opens and closes: an icon opens and fades in when its kind is seen and
+  has units, and when the last unit of a kind is gone it rests at 0 for 0.9 s, fades out and the row
+  closes up and re-centers (`iconStep`). This replaces 0.10.22's resting slot (`ZERO_KEEPS_SLOT`).
+- The clock read 36:89 for 36.9 s (a float a hair under): it counts whole hundredths now.
+- Checked in the game's page at 1280 by 720: the meter over a 38:42 clock and five icons over the board; a
+  destroyed Rhino glitching, resting at 0, fading, the row closing to four icons. One test more; 482.
+
 ## 0.10.22 (2026-10-10)
 
 The pursuit HUD after Jc's second sketch (`tasks/C7-pursuit-hud-v2.md`).
