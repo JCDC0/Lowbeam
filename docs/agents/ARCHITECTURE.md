@@ -127,7 +127,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/world/highway.js`, `build-highway.js`, `toll.js` | Barriers, rails, toll plazas, the toll meter |
 | `src/world/gantries.js`, `build-gantries.js` | Route 1's sign gantries before every exit and their green guide signs |
 | `src/world/gas-station.js` | The Japanese gas stations |
-| `src/world/lots.js`, `build-lots.js` | Landmark lots and the Blender model loader |
+| `src/world/lots.js`, `build-lots.js` | Landmark lots and the Blender model loader; `lotBays(pad)`, the world position and yaw of each police car bay of a station (three) or the HQ (five) |
 | `src/world/stakeouts.js` | The undercover cars' eighteen waiting spots (`STAKEOUTS`, `placeStakeouts(ground)`, `world.stakeouts`), found by `tools/stakeoutsearch.mjs` |
 | `src/world/build-*.js` | Meshes: terrain, roads, bridges, trees |
 | `src/world/markings.js` | Zebra crossings and stop lines at the town's junctions |
@@ -165,7 +165,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-482 tests pass; the type check is clean. By area:
+483 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto

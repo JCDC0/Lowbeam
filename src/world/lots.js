@@ -54,3 +54,30 @@ export function lotContents(lots, models) {
   }
   return { boxes, lights };
 }
+
+/**
+ * Where a police car stands in each bay of a station's forecourt, in the model's own coordinates
+ * (x to the right, z toward the street; the cars face the street, backed against the wheel stops).
+ * Read from `tools/blender/police_station.py` (three bays, x -11.6, -8.8, -6.0, z 4.0 to 10.0) and
+ * `police_hq.py` (the five shutters of the motor pool at z -14, a car just outside each).
+ * @type {Record<string, number[][]>}
+ */
+const BAYS = {
+  police_station: [[-11.6, 7.2], [-8.8, 7.2], [-6.0, 7.2]],
+  police_hq: [26.4, 33.2, 40, 46.8, 53.6].map((x) => [x, -10.5]),
+};
+
+/**
+ * The bays of a police lot in world space, each a car's center, ground height and the yaw that
+ * points its nose at the street. Empty for a lot with no bays (a garage, a hideout). B5 dispatches
+ * the units from them.
+ * @param {LotPad} pad
+ * @returns {{ x: number, y: number, z: number, yaw: number }[]}
+ */
+export function lotBays(pad) {
+  const f = lotFrame(pad);
+  return (BAYS[pad.lot.model] || []).map(([bx, bz]) => {
+    const [x, z] = toWorld(f, bx, bz);
+    return { x, y: f.y, z, yaw: f.yaw };
+  });
+}

@@ -28,6 +28,18 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.24 (2026-10-10)
+
+The police bays, for B5's dispatch from the stations (`tasks/B5-police-dispatch.md`, part 1).
+
+- `lotBays(pad)` in `src/world/lots.js`: where a police car stands in each bay of a lot, in world space
+  (a center, the ground height and the yaw that points its nose at the street). Three for a district
+  station (x -11.6, -8.8, -6.0 on the forecourt, from `police_station.py`), five for the HQ (one outside
+  each shutter of the motor pool, from `police_hq.py`); none for a garage or a hideout. B5 had said
+  x -9, -5.5, -2 for the station; the Blender script's bays are the ones painted on the forecourt.
+- A test: every station has its bays, each on its lot, with the nose toward the street, and a car's body
+  in each clear of the model's colliders.
+
 ## 0.10.23 (2026-10-10)
 
 The pursuit HUD, rearranged after Jc's notes on the sketch (`tasks/C7-pursuit-hud-v2.md`).

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { DISTRICTS, LOTS } from '../../src/world/layout.js';
 import { padDistance } from '../../src/world/ground.js';
-import { lotContents, lotFrame, toWorld } from '../../src/world/lots.js';
+import { lotBays, lotContents, lotFrame, toWorld } from '../../src/world/lots.js';
 import { scatterWorld } from '../../src/world/scatter.js';
 import { island } from '../island.mjs';
 
@@ -115,4 +115,35 @@ test('the lots the search placed keep 14 m from every street and from every othe
       assert.ok(Math.min(...corner) > 14, `${lot.id} is too close to ${other.id}`);
     }
   }
+});
+
+test('a police lot has its bays, each on the lot, facing the street and clear of the model\'s colliders', () => {
+  const stations = g.lots.filter((p) => p.lot.kind === 'police');
+  let total = 0;
+  for (const pad of stations) {
+    const bays = lotBays(pad);
+    assert.equal(bays.length, pad.lot.model === 'police_hq' ? 5 : 3, pad.lot.id);
+    total += bays.length;
+    const f = lotFrame(pad);
+    const boxes = models[pad.lot.model].colliders.map((c) => ({ x: c.x, z: c.z, hx: c.hx, hz: c.hz }));
+    for (const b of bays) {
+      assert.ok(padDistance(pad, b.x, b.z) < -1, `${pad.lot.id} has a bay off its lot`);
+      const toRoad = pad.road.path.nearest(b.x, b.z);
+      const ahead = pad.road.path.nearest(b.x + Math.sin(b.yaw) * 6, b.z + Math.cos(b.yaw) * 6);
+      assert.ok(Math.abs(ahead.d) < Math.abs(toRoad.d), `${pad.lot.id} has a bay whose nose points away from the street`);
+      assert.ok(Math.abs(b.yaw - f.yaw) < 1e-9);
+      // the car's body in the model's frame: 1.8 by 4.6 m, its long side along local z
+      const c = Math.cos(f.yaw);
+      const s = Math.sin(f.yaw);
+      const lx = (b.x - f.x) * c - (b.z - f.z) * s;
+      const lz = (b.x - f.x) * s + (b.z - f.z) * c;
+      for (const box of boxes) {
+        const gapX = Math.abs(lx - box.x) - (box.hx + 0.9);
+        const gapZ = Math.abs(lz - box.z) - (box.hz + 2.3);
+        assert.ok(gapX > 0 || gapZ > 0, `a car in a bay of ${pad.lot.id} stands in a collider at (${box.x}, ${box.z})`);
+      }
+    }
+  }
+  assert.equal(total, 5 + 3 * (stations.length - 1));
+  assert.deepEqual(lotBays(g.lots.find((p) => p.lot.kind === 'garage')), [], 'a garage has no police bays');
 });

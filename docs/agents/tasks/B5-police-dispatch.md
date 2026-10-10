@@ -14,8 +14,9 @@ Read `src/police/director.js` (`PoliceDirector`, `backup`, `ASSIGNED_BY_HEAT`, t
 - Today a unit is put on a lane 150 to 420 m from the player (`spawnUnit(player, kind, 150, 420, 900)`),
   out of nowhere. Make it come from a station: the nearest police lot (`LOTS` with `kind: 'police'`; there
   are 3 now and C6 adds one per district) to the player at the moment of the call. The unit appears in one
-  of the station's three marked bays (`police_station`: local x -9, -5.5, -2 at z +8, the model's
-  forecourt; the HQ has its own bays) with its lights on, and drives out to the road and to the player by
+  of the station's marked bays (`lotBays(pad)` in `src/world/lots.js`, Claude's, 0.10.24: three at a
+  district station, five at the HQ, each `{ x, y, z, yaw }` with the nose to the street; the pads are
+  `world.ground.lots`, one per `LOTS` entry with `kind: 'police'`) with its lights on, and drives out to the road and to the player by
   the shortest route, as a unit does now. A bay that is occupied is skipped; with none free the call
   waits a second.
 - A station has a stock (HQ 12 cars, a district station 6) that falls as it dispatches and refills one
