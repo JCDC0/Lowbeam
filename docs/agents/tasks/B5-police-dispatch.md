@@ -87,6 +87,11 @@ Read `src/police/director.js` (`PoliceDirector`, `backup`, `ASSIGNED_BY_HEAT`, t
 
 ## 4. A heat for the racers
 
+- Jc (2026-10-10): each racer has a heat of its own, so the police come for it in different strengths.
+  Every racer carries a notoriety from 1 to 5 (the five on Route 1 spread over the levels, the fastest
+  kinds highest), which is the heat its pursuit starts at; from there it builds the way the player's does,
+  and at each level the swarm is the player's at that level (the roster, the pool, roadblocks, spikes, one
+  to three helicopters). A racer that escapes keeps its heat and cools as the player's does.
 - Racers (the NPC street racers on Route 1) get the player's pursuit as a whole: a `Pursuit` and a
   `Heat` per chased target, run by the director (or a sibling `RacerPursuit` using the same pieces, your
   call). The police tail of a racer (`TAIL`) becomes heat 1 of a racer pursuit. One racer pursuit at a

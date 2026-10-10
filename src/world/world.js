@@ -1,5 +1,5 @@
 /**
- * The Kirigaoka valley as a scene: ground data, scatter, every mesh, the baked light,
+ * The island of Kurogane as a scene: ground data, scatter, every mesh, the baked light,
  * moonlight, fog and sky. `World.create` builds it in stages so a loading screen can
  * repaint between them.
  */

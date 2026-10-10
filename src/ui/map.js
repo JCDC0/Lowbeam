@@ -1,11 +1,11 @@
 /**
- * Full-screen tactical map overlay for the Kirigaoka valley.
+ * Full-screen tactical map overlay for the island of Kurogane.
  * Pauses simulation, displays road network with hierarchy, gas stations, rally start,
  * zone names, player tracking arrow with heading and telemetry, scale bar, and north compass.
  * Supports pan (drag / WASD / arrows), zoom (wheel / +/-), and recenter (Home).
  */
 
-import { LAKE, RALLY, TOWN, WORLD_HALF } from '../world/layout.js';
+import { LAKE, RALLY, WORLD_HALF, ZONES } from '../world/layout.js';
 import { clamp } from '../core/mathx.js';
 import { FONT as FACES } from '../render/fonts.js';
 import { drawRoads } from './minimap.js';
@@ -76,11 +76,10 @@ export function mapDataOf(world) {
     }
   }
 
-  const zones = [
-    { name: 'KIRIGAOKA TOWN', x: (TOWN.x0 + TOWN.x1) / 2, z: (TOWN.z0 + TOWN.z1) / 2, r: 200 },
-    { name: 'LAKE KIRIGAOKA', x: LAKE.x, z: LAKE.z, r: LAKE.r },
-    { name: 'KIRIGAOKA RIDGE', x: -650, z: -200, r: 280 },
-  ];
+  // The island's own areas (the names the drive shows); the map once kept the old valley's three.
+  const zones = ZONES.map((zn) => zn.circle
+    ? { name: zn.name, x: zn.circle.x, z: zn.circle.z, r: zn.circle.r }
+    : { name: zn.name, x: (zn.rect.x0 + zn.rect.x1) / 2, z: (zn.rect.z0 + zn.rect.z1) / 2, r: Math.min(zn.rect.x1 - zn.rect.x0, zn.rect.z1 - zn.rect.z0) / 2 });
 
   const half = world?.ground?.roads?.half || WORLD_HALF;
   return {
@@ -702,7 +701,7 @@ export class MapScreen {
     g.fillStyle = AMBER;
     g.font = `bold 13px ${FONT}`;
     g.textAlign = 'left';
-    g.fillText('// KIRIGAOKA TACTICAL MAP // SATELLITE TELEMETRY', 24, 28);
+    g.fillText('// KUROGANE TACTICAL MAP // SATELLITE TELEMETRY', 24, 28);
 
     const legX = 24;
     const legY = 56;

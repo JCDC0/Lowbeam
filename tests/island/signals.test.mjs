@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { island, scattered, trafficNet } from '../island.mjs';
-import { lightState } from '../../src/traffic/net.js';
+import { buildTurn, lightState } from '../../src/traffic/net.js';
 import { placeSignals, litLamp, signalCircles, SIGNAL } from '../../src/world/signals.js';
 import { Colliders } from '../../src/world/collision.js';
 
@@ -31,12 +31,48 @@ test('a head hangs over its own lanes past the crossing, facing the cars it stop
   }
 });
 
-test('no pole stands in a carriageway', () => {
-  const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
-  for (const s of signals) {
-    if (!g.roads.query(s.px, s.pz, hit, 0)) continue;
-    assert.ok(Math.abs(hit.d) >= hit.road.hwAt(hit.s), `pole in ${hit.road.id}`);
+test('no pole stands where a car drives: clear of every lane and every curve through a crossing, at its height', () => {
+  // Sampled here on its own, finer than the placement does. The old check asked only the nearest
+  // road at any height and passed with 92 poles in a lane, some in a crossing road or under a deck.
+  const CELL = 6;
+  const grid = new Map();
+  const put = (x, z, y, half) => {
+    const k = `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(x, z, y, half);
+  };
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  const q2 = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  for (const lane of net.lanes) {
+    for (let s = 0; s <= lane.length + 0.74; s += 0.75) {
+      net.sample(lane, Math.min(s, lane.length), q);
+      put(q.x, q.z, q.y, lane.width / 2);
+    }
+    for (const m of lane.mids) {
+      net.sample(lane, m.at, q);
+      net.sample(m.lane, m.toS, q2);
+      const c = buildTurn(q, q2);
+      for (let d = 0; d <= c.length + 0.49; d += 0.5) {
+        const p = c.at(Math.min(1, d / Math.max(0.001, c.length)));
+        put(p.x, p.z, p.y, Math.max(lane.width, m.lane.width) / 2);
+      }
+    }
   }
+  const bad = [];
+  for (const s of signals) {
+    let worst = Infinity;
+    const cx = Math.floor(s.px / CELL);
+    const cz = Math.floor(s.pz / CELL);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const a = grid.get(`${cx + i},${cz + j}`) || [];
+      for (let k = 0; k < a.length; k += 4) {
+        if (Math.abs(a[k + 2] - s.py) > 4) continue;
+        worst = Math.min(worst, Math.hypot(a[k] - s.px, a[k + 1] - s.pz) - a[k + 3] - SIGNAL.pole);
+      }
+    }
+    if (worst < 0.3) bad.push(`${s.road} at (${s.px.toFixed(0)}, ${s.pz.toFixed(0)}): ${worst.toFixed(2)} m from a lane's edge`);
+  }
+  assert.deepEqual(bad, [], `${bad.length} poles where cars drive`);
 });
 
 test('the lamps show the phase the traffic obeys, and crossing ways are never green together', () => {

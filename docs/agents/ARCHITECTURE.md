@@ -256,8 +256,9 @@ indicator flares larger and the three nearest throw a small amber pool. The traf
 at each of the 962 lit crossings every way in has a Japanese signal (`world/signals.js`), a pole on
 the far left corner with an arm over its lanes and a horizontal head (blue-green, amber, red from the
 left), its lamps following `lightState` on the traffic's own clock with a glow on the lit lamp near
-the camera; about 3,000 heads, the poles solid (a pole under a deck ends under its slab, and none
-stands within 1.3 m of a lane of its crossing), made in `main.js` once the Drive has its traffic net
+the camera; about 2,300 heads at 961 of the 962 crossings, the poles solid (a pole under a deck ends under
+its slab, and every pole keeps 0.6 m from the edge of every lane and of every curve a car takes through a
+crossing, at its own height, `drivePaths`; a way in with no such corner has no pole of its own), made in `main.js` once the Drive has its traffic net
 (`Colliders.addCircles`). Every car the player hits
 answers by mass, the same contact rules as the player's car (`vehicles/contact.js`): a kei car is
 thrown, a bus stops the player. A hit under 18 m/s closing (0.9.20) knocks a car off its line: it slides on

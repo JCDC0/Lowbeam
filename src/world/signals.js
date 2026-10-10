@@ -6,15 +6,75 @@
  * placement only; build-signals.js draws them.
  */
 
-import { lightState } from '../traffic/net.js';
+import { buildTurn, lightState } from '../traffic/net.js';
 import { ELEVATED } from './roads.js';
 
 /**
  * The head's height over the road and its width, the pole's radius, how far past the crossing's
- * far edge the pole stands, the shortest arm, and how far a pole keeps from every lane's center line
- * (a wide car's half width, the pole and a margin).
+ * far edge the pole stands, the shortest arm, how far a pole keeps from the edge of every lane and of
+ * every path a car takes through a crossing, and how many 0.6 m steps back from the road it may take
+ * to find that room. The clearance was once 1.3 m from a lane's center line, which is inside a 3 m
+ * lane: 92 poles stood where cars drive.
  */
-export const SIGNAL = { height: 5.3, head: 1.25, pole: 0.13, past: 2.2, minArm: 1.2, clear: 1.3 };
+export const SIGNAL = { height: 5.3, head: 1.25, pole: 0.13, past: 2.2, minArm: 1.2, clear: 0.6, steps: 6 };
+
+const CELL = 6;
+
+/**
+ * Where the cars drive: every lane, and every curve a car takes off its lane through a junction or onto
+ * an exit (`buildTurn`, the curve the traffic follows), sampled, each sample with its height and the
+ * half width of its lane. The answer says whether a point keeps `margin` meters clear of the edge of
+ * all of them at its height (a deck's lanes do not count for the street under it).
+ * @param {import('../traffic/net.js').TrafficNet} net
+ * @returns {(x: number, z: number, y: number, margin: number) => boolean}
+ */
+export function drivePaths(net) {
+  /** @type {Map<string, number[]>} */
+  const grid = new Map();
+  const put = (/** @type {number} */ x, /** @type {number} */ z, /** @type {number} */ y, /** @type {number} */ half) => {
+    const k = `${Math.floor(x / CELL)},${Math.floor(z / CELL)}`;
+    let a = grid.get(k);
+    if (!a) grid.set(k, (a = []));
+    a.push(x, z, y, half);
+  };
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  const q2 = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  for (const lane of net.lanes) {
+    const half = lane.width / 2;
+    // The last sample sits on the lane's end, which is often at a corner where a pole would go.
+    const n = Math.max(1, Math.ceil(lane.length / 1.5));
+    for (let i = 0; i <= n; i++) {
+      net.sample(lane, (lane.length * i) / n, q);
+      put(q.x, q.z, q.y, half);
+    }
+    for (const m of lane.mids) {
+      net.sample(lane, m.at, q);
+      net.sample(m.lane, m.toS, q2);
+      const curve = buildTurn(q, q2);
+      const mh = Math.max(lane.width, m.lane.width) / 2;
+      const n = Math.max(1, Math.ceil(curve.length));
+      for (let i = 0; i <= n; i++) {
+        const p = curve.at(i / n);
+        put(p.x, p.z, p.y, mh);
+      }
+    }
+  }
+  return (x, z, y, margin) => {
+    const cx = Math.floor(x / CELL);
+    const cz = Math.floor(z / CELL);
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        const a = grid.get(`${cx + i},${cz + j}`);
+        if (!a) continue;
+        for (let k = 0; k < a.length; k += 4) {
+          if (Math.abs(a[k + 2] - y) > 4) continue;
+          if (Math.hypot(a[k] - x, a[k + 1] - z) < a[k + 3] + margin) return false;
+        }
+      }
+    }
+    return true;
+  };
+}
 
 /**
  * @typedef {{ x: number, y: number, z: number, yaw: number, px: number, py: number, pz: number,
@@ -34,40 +94,10 @@ export function placeSignals(net, ground) {
   const out = [];
   const seen = new Set();
   const o = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
-  // The lanes through each crossing, sampled every 1.5 m from before its stop to 48 m after, so a
-  // pole is never put where another road's lane passes the corner.
-  /** @type {Map<any, { lane: any, s: number }[]>} */
-  const through = new Map();
-  for (const lane of net.lanes) {
-    for (const stop of lane.stops) {
-      if (!stop.node || stop.axis === undefined) continue;
-      let list = through.get(stop.node);
-      if (!list) through.set(stop.node, (list = []));
-      list.push({ lane, s: stop.s });
-    }
-  }
-  /** @type {Map<any, Float32Array>} */
-  const lanePoints = new Map();
-  const around = (/** @type {any} */ node) => {
-    let a = lanePoints.get(node);
-    if (a) return a;
-    /** @type {number[]} */
-    const v = [];
-    const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
-    for (const { lane, s } of through.get(node) || []) {
-      for (let t = Math.max(0, s - 6); t <= Math.min(lane.length, s + 48); t += 1.5) {
-        net.sample(lane, t, q);
-        v.push(q.x, q.z);
-      }
-    }
-    lanePoints.set(node, (a = new Float32Array(v)));
-    return a;
-  };
-  const clear = (/** @type {any} */ node, /** @type {number} */ x, /** @type {number} */ z) => {
-    const a = around(node);
-    for (let i = 0; i < a.length; i += 2) if (Math.hypot(a[i] - x, a[i + 1] - z) < SIGNAL.clear) return false;
-    return true;
-  };
+  // Every lane and every curve through a crossing, of every road (not only the crossing's own), so a
+  // pole is never put where any car drives.
+  const free = drivePaths(net);
+  const clear = (/** @type {number} */ x, /** @type {number} */ z, /** @type {number} */ y) => free(x, z, y, SIGNAL.clear + SIGNAL.pole);
   const hit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
   for (const lane of net.lanes) {
     for (const stop of lane.stops) {
@@ -98,16 +128,19 @@ export function placeSignals(net, ground) {
       let side = hw + Math.max(1, road.walk) * 0.5;
       let px = cx + lx * side;
       let pz = cz + lz * side;
-      const inRoad = () => ground.roads.query(px, pz, hit, 0) && Math.abs(hit.d) < hit.road.hwAt(hit.s) + 0.3;
-      // A pole never stands in a carriageway: where the corner is another road's, no signal. Nor
-      // where a lane of the crossing road passes: it steps back from the road, or there is none.
+      // In a carriageway at the pole's own height, so the street under a deck counts and not the deck.
+      // This asks the nearest road only; `clear` asks every lane of every road.
+      const inRoad = () => !!(ground.roads.query(px, pz, hit, 0, -Infinity, y + 1.5) && Math.abs(hit.d) < hit.road.hwAt(hit.s) + 0.3);
+      // A pole never stands where a car drives: it steps back from the road, or there is none. The
+      // lanes are compared at the height of the pole's foot, not of the lane it serves.
+      const foot = () => ground.at(px, pz, y + 1.5).h;
       if (inRoad()) continue;
-      for (let k = 0; k < 4 && !clear(node, px, pz); k++) {
+      for (let k = 0; k < SIGNAL.steps && !clear(px, pz, foot()); k++) {
         side += 0.6;
         px = cx + lx * side;
         pz = cz + lz * side;
       }
-      if (inRoad() || !clear(node, px, pz)) continue;
+      if (inRoad() || !clear(px, pz, foot())) continue;
       const head = hw / 2;
       const x = cx + lx * head;
       const z = cz + lz * head;

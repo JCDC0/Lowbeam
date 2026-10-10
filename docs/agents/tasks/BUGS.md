@@ -17,7 +17,9 @@ Rules:
 |---|---|---|---|---|
 | R-01 | Roads clip through each other at some merges and junctions instead of joining cleanly (seams, overlaps, z-fighting) | `world/roads.js`, `junctions.js`, `merge.js`, `build-roads` | Claude | needs spots from Jc, and the seam audit (gate 3) to find the rest |
 | R-02 | Floor symbols missing: lane arrows, stop words, merge and exit markings, bus and speed marks | `world/markings.js`, road textures | Claude | to plan after R-01 (zebras and stop lines exist) |
-| P-01 | Poles said to stand in the middle of a road (utility, signal or guide sign) | `world/poles.js`, `signals.js`, `build-signals.js`, `guide-signs.js` | Claude | the placement data puts 0 of 2,709 signal poles, 0 of 7,741 lamps and 0 buildings on tarmac (audit, 2026-10-10), so the picture and the data may differ, or the spot is on a deck or a junction: needs Jc's spot |
+| P-02 | 424 ways into a crossing lost their own signal pole in 0.10.36 (no corner with room for it); the lights still work, but the driver coming up has no head over the lane | `world/signals.js` | Claude | a near-side pole, or an arm long enough from the far corner |
+| R-03 | Zebra crossings drawn at odd angles across turning lanes under the Kurogane Line (Jc's screenshot, 2026-10-10) | `world/markings.js` | Claude | open |
+| R-04 | Where the side streets meet the Sotokan ring the map shows small jogs: the streets bend to meet the ring instead of joining it cleanly (Jc's map screenshots) | `world/citygen.js`, `junctions.js` | Claude | with R-01 |
 | M-01 | Cars' mirrors broken (which cars, which view, which part: needs a screenshot) | `vehicles/bodies/*`, `models.js`, `cockpit.js` | Claude | needs a spot; check each car in `tools/bodies.html` |
 | M-02 | Hand-scripted models look poor: replace with outside low poly models that load clean (the plan below) | `tools/blender/`, `assets/models/`, `traffic/kinds.js` | Claude and Assets | plan below; a one-car trial first |
 | H-01 | Pursuit HUD half built: the reinforcement timer, the "seen" fade-in rule and the helicopter fuel pump have no data until B5 part 2 | `ui/pursuit.js` (done), `drive.js` `pursuitView()` | Hermes (data), Claude (HUD) | waiting on B5 part 2 |
@@ -36,6 +38,8 @@ Rules:
 | ID | Bug | Version |
 |---|---|---|
 | F-01 | The game froze, the picture stopped while the music and the engine went on: a helicopter with no target crashed the frame loop (`Heli.light`); the loop now survives a faulting frame | 0.10.31 |
+| P-01 | Signal poles in the road (Jc's screenshots: in junctions, one dead ahead, one under the Kurogane Line deck): 92 of 2,709 stood where cars drive, because a pole kept 1.3 m from a lane's center line (inside a 3 m lane) and the road check asked only the nearest road at any height. Now 0.6 m from the edge of every lane and every curve through a crossing, at the pole's height, with an independent test | 0.10.36 |
+| N-04 | The Tab map and the main menu still named the old valley (KIRIGAOKA TACTICAL MAP, KIRIGAOKA TOWN, LAKE KIRIGAOKA, KIRIGAOKA RIDGE, KIRIGAOKA TACTICAL RALLY); the map's labels are the island's own areas now | 0.10.36 |
 | N-01 | Minimap: police arrows did not point where the cars drive and their sight turned with the player's car; the sight was a 70 m cone where the director uses 150 m all round | 0.10.34 |
 | N-02 | Civilians drove through static shapes and off the carriageway (15 clips, 10 off the road); now 0 and 0, never wrecked by the world, the cost of the probes 3.6 % | 0.9.34 to 0.9.37 |
 | N-03 | `tests/devserver.test.mjs` failed in any folder not named exactly Lowbeam (a worktree) | 0.10.32 |

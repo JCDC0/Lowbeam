@@ -148,7 +148,7 @@ export function mainMenuScreen(ui) {
     'menu',
     `<div class="ac-frame">
       <div class="ac-header">
-        <div class="ac-tag">// KIRIGAOKA TACTICAL RALLY // SYSTEM: ONLINE</div>
+        <div class="ac-tag">// KUROGANE NIGHT RUN // SYSTEM: ONLINE</div>
         <div class="ac-title">MAIN MENU</div>
         <div class="ac-line"></div>
       </div>

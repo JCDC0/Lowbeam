@@ -28,6 +28,34 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.36 (2026-10-10)
+
+Signal poles out of the road (P-01), from Jc's screenshots: white poles in junctions, one dead ahead in
+a street, one in the middle of a crossing under the Kurogane Line.
+
+- The cause: a pole kept 1.3 m from a lane's center line, which is inside a 3 m lane, and the check that
+  it was not in a carriageway asked only the nearest road and at any height, so it missed the crossing
+  road and the street under a deck. My placement audit of the morning had the same blind spot and said 0;
+  measured against every lane and every curve through a crossing, 92 of the 2,709 poles stood where cars
+  drive (at 0.65 to 1.4 m from a lane's center line).
+- `drivePaths(net)` in `world/signals.js`: every lane and every curve a car takes through a junction or
+  onto an exit (`buildTurn`, the traffic's own curve), sampled with its height and its lane's half width,
+  ends included. A pole keeps `SIGNAL.clear` (0.6 m now, from the lane's edge) plus its radius from all
+  of them at the height of its own foot, stepping back from the road up to six times 0.6 m; the
+  carriageway check asks the road at the pole's height. 188 ms for the island.
+- The result: 2,285 heads at 961 of 962 crossings (2,709 before). 424 ways in had no corner with room and
+  lost their own pole: the lights still run, and a near-side pole for them is P-02 on the board.
+- The test asked the nearest road too and passed; it is replaced by one that samples every lane and curve
+  on its own, finer (0.75 m and 0.5 m, ends included), and wants every pole 0.3 m clear of a lane's edge. It
+  found one pole my first fix missed (a lane's last 1.5 m was not sampled, the corner where poles go).
+- The old valley's name: the Tab map said KIRIGAOKA TACTICAL MAP with three of the valley's labels, and the
+  main menu KIRIGAOKA TACTICAL RALLY. The map's labels are the island's own areas (`ZONES`) and both say
+  KUROGANE now (N-04). The synthesized track named KIRIGAOKA NIGHTS in `audio/songs.js` is the backend's.
+- Board: P-02, R-03 (zebras at odd angles under the deck) and R-04 (the jogs where streets meet the Sotokan
+  ring) from the same screenshots. Plans after the bug-bash: B5 part 4 gets Jc's racers with their own heat
+  (a notoriety from 1 to 5), and B6 is new: nitrous earned at speed, in the oncoming lane, drafting and by
+  hitting police. 508 tests.
+
 ## 0.10.35 (2026-10-10)
 
 Review of B4 parts 3 and 4 (0.9.36, 0.9.37): accepted, and B4 is closed. The bug board gains what it left:
