@@ -420,6 +420,9 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - Civilians driving on their lanes are not checked against the static world: they cut corners, 15 clips
   in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
   (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
+- The soundtrack is to be replaced: eight recorded tracks in four moods now, a police chase plays the
+  `intense` mood. The plan (a `pursuit` mood with heat tiers, stingers, a vocal toggle, 24 new tracks) is
+  `tasks/C8-soundtrack.md`, the generator prompts and lyrics `docs/music/flow-prompts.md`.
 - The map is thin outside the city: 10 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
   to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).

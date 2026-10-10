@@ -28,6 +28,19 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.26 (2026-10-10)
+
+The plan for a new soundtrack (`tasks/C8-soundtrack.md`) and the prompts to make it
+(`docs/music/flow-prompts.md`). Docs only.
+
+- Twenty-four tracks and two stingers in five moods (a new `pursuit` mood, tier A at heat 1 to 3 and tier
+  B at 4 and 5, so a police chase no longer plays the racing mood): ten with vocals, fourteen without.
+  Each has a style prompt for the generator, and the vocal ones original lyrics (nine in English and one
+  in Japanese).
+- The code it needs (the mood, the tiers, the stingers, a vocal toggle, the fallback for a list without
+  a pursuit track) is the backend's, in the brief; the files and the manifest follow Jc's tracks.
+- Also in the brief: the files' size, the license record (`source`) the shipping checklist needs.
+
 ## 0.10.25 (2026-10-10)
 
 The pursuit HUD, corrected: 0.10.23 misread the sketch.
