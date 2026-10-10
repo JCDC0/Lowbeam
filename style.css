@@ -1097,15 +1097,28 @@ html, body {
 /* Pursuit HUD (C2 part 5, after Most Wanted 2005): bottom center, Michroma, no fades or pulses. */
 #pursuit-hud {
   position: absolute;
-  left: 50%;
-  bottom: 3vh;
-  transform: translateX(-50%);
-  width: min(470px, 62vw);
+  inset: 0;
   pointer-events: none;
   z-index: 15;
   font-family: var(--font-display);
   color: var(--ink);
   text-shadow: 0 1px 0 #000;
+}
+/* Jc's third sketch: the reinforcements' bar, the clock and the icons hang from the top of the screen. */
+#pursuit-hud .ph-top {
+  position: absolute;
+  top: 2.2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(43vw, 820px);
+  min-width: 300px;
+}
+#pursuit-hud .ph-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 3vh;
+  transform: translateX(-50%);
+  width: min(470px, 62vw);
 }
 #pursuit-hud .ph-label {
   font-size: 9px;
@@ -1212,6 +1225,16 @@ html, body {
 #pursuit-hud .ph-stats { justify-content: space-around; margin: 6px 0 8px; }
 #pursuit-hud .ph-stats .ph-stat { flex-direction: column; align-items: center; gap: 1px; }
 #pursuit-hud .ph-stats .ph-stat em { font-size: 20px; }
+#pursuit-hud .ph-ico { display: block; height: 21px; }
+#pursuit-hud .ph-ico svg { display: block; width: 34px; height: 21px; fill: #dfe5ee; stroke: none; filter: drop-shadow(0 1px 0 #000); }
+#pursuit-hud .ph-ico .r { fill: #ff2b3d; }
+#pursuit-hud .ph-ico .b { fill: #2b7fff; }
+#pursuit-hud .ph-ico .a { fill: var(--amber); }
+#pursuit-hud .ph-ico .ray { fill: none; stroke-width: 1.4; stroke-linecap: round; }
+#pursuit-hud .ph-ico .ray.b { stroke: #2b7fff; }
+#pursuit-hud .ph-ico .ray.r { stroke: #ff2b3d; }
+#pursuit-hud .ph-ico .wreck { opacity: 0.55; }
+#pursuit-hud .ph-ico .x { fill: none; stroke: var(--amber); stroke-width: 2.6; stroke-linecap: round; }
 /*
  * The units on the scene by kind, over the panel (Jc's sketches): an icon over its count in the
  * Japanese face. An icon is hidden until a unit of its kind has been in sight, fades in, keeps its
@@ -1236,7 +1259,7 @@ html, body {
   overflow: hidden;
   opacity: 0;
   transform: translateY(5px);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out, max-width 0.45s ease-in-out 0.4s, margin 0.45s ease-in-out 0.4s;
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out, max-width 0.45s ease-in-out 0.4s, margin 0.45s ease-in-out 0.4s, padding 0.45s ease-in-out 0.4s;
 }
 #pursuit-hud .ph-kind.none { --rest: 0.45; }
 #pursuit-hud .ph-kind.in {
@@ -1244,7 +1267,7 @@ html, body {
   margin: 0 7px;
   opacity: var(--rest);
   transform: none;
-  transition: max-width 0.45s ease-out, margin 0.45s ease-out, opacity 0.6s ease-out 0.3s, transform 0.6s ease-out 0.3s;
+  transition: max-width 0.45s ease-out, margin 0.45s ease-out, padding 0.45s ease-out, opacity 0.6s ease-out 0.3s, transform 0.6s ease-out 0.3s;
 }
 #pursuit-hud .ph-kind svg { width: 48px; height: 24px; fill: #dfe5ee; filter: drop-shadow(0 1px 0 #000); }
 #pursuit-hud .ph-kind svg .r { fill: #ff2b3d; }
@@ -1258,6 +1281,33 @@ html, body {
   line-height: 1;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+#pursuit-hud .ph-heli-count { position: relative; }
+#pursuit-hud .ph-heli-count.in { padding: 0 18px; }
+#pursuit-hud .ph-fuel {
+  position: absolute;
+  right: 1px;
+  top: 3px;
+  width: 15px;
+  height: 17px;
+  opacity: 0;
+  color: #ffd23a;
+  transition: opacity 0.4s ease-out, color 0.35s ease-out;
+}
+#pursuit-hud .ph-fuel svg { display: block; width: 15px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.6; filter: none; }
+#pursuit-hud .ph-heli-count.fuel-low .ph-fuel,
+#pursuit-hud .ph-heli-count.fuel-out .ph-fuel { opacity: 1; }
+#pursuit-hud .ph-heli-count.fuel-out .ph-fuel { color: var(--red); }
+#pursuit-hud .ph-fuel.pop-in { animation: ph-fuel-pop 0.5s ease-out; }
+@keyframes ph-fuel-pop {
+  0% { transform: scale(0.3); }
+  60% { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+#pursuit-hud .ph-kind em.pop { animation: ph-pop 0.55s ease-out; }
+@keyframes ph-pop {
+  0% { transform: scale(1.7); color: var(--amber); }
+  100% { transform: none; }
 }
 #pursuit-hud .ph-kind.glitch { animation: ph-glitch 0.75s steps(1, end); }
 @keyframes ph-glitch {
@@ -1274,28 +1324,39 @@ html, body {
   0% { transform: scale(1.55); color: #fff; }
   100% { transform: none; }
 }
-/* The resupply header over the icons: a bar draining over a minute, the clock in seconds and hundredths, then the label. */
-#pursuit-hud .ph-resupply { display: none; margin-bottom: 8px; text-align: center; }
-#pursuit-hud .ph-rs-bar {
+/* The resupply header: a red bar that closes toward the middle as the clock runs down, the clock in seconds and hundredths, then the label. When the clock reaches 0 all three fade out. */
+#pursuit-hud .ph-resupply {
   display: none;
-  height: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  background: rgba(0, 0, 0, 0.45);
+  margin-bottom: 8px;
+  text-align: center;
+  transition: opacity 0.8s ease-out;
 }
-#pursuit-hud .ph-rs-bar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #8a5a14, var(--amber)); }
+#pursuit-hud .ph-resupply.timed { display: block; }
+#pursuit-hud .ph-resupply.closing { opacity: 0; }
+#pursuit-hud .ph-rs-bar {
+  height: 16px;
+  border: 3px solid var(--red);
+  background: rgba(0, 0, 0, 0.55);
+}
+#pursuit-hud .ph-rs-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  margin: 0 auto;
+  background: linear-gradient(90deg, #8a1c14, var(--red) 50%, #8a1c14);
+  transition: width 0.12s linear;
+}
+#pursuit-hud .ph-resupply.closing .ph-rs-bar i { transition: width 0.6s ease-in; }
 #pursuit-hud .ph-rs-time {
-  display: none;
   font-family: var(--font-jp);
   font-weight: 700;
-  font-size: 34px;
-  line-height: 1.1;
+  font-size: 40px;
+  line-height: 1.15;
   letter-spacing: 0.04em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
-#pursuit-hud .ph-resupply.timed .ph-rs-bar,
-#pursuit-hud .ph-resupply.timed .ph-rs-time { display: block; }
-#pursuit-hud .ph-rs-label { font-size: 10px; letter-spacing: 0.3em; color: var(--amber); }
+#pursuit-hud .ph-rs-label { font-size: 11px; letter-spacing: 0.3em; color: var(--amber); }
 #pursuit-hud svg {
   width: 20px;
   height: 11px;

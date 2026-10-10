@@ -1,66 +1,80 @@
-# C7: The pursuit HUD, second sketch (Claude, with the backend's fields)
+# C7: The pursuit HUD, Jc's sketches (Claude, with the backend's fields)
 
-Jc's second sketch (2026-10-10), from the first (`archive/A13-pursuit-hud.md`, the contract of the markers
-still holds), drawn to be like Need for Speed Unbound's pursuit HUD (Jc found no reference image; this is
-drawn from the sketch). A column at the bottom center, top to bottom:
+Jc drew the layout three times (2026-10-10) and annotated a screenshot of the second attempt; this is the
+third reading, from the annotated screenshot, which is the authority. It is drawn to be like Need for Speed
+Unbound's pursuit HUD (Jc found no reference image). Two groups:
 
-1. While the police resupply: a bar at the TOP of the column, the reinforcements' timer, draining over a
-   minute.
-2. Under it the clock (60:00) and REINFORCEMENTS ARRIVING.
-3. A row of icons, one per kind of police vehicle and the helicopter, each over its count.
-4. The board, the rounded panel at the bottom: heat, bounty, time, the ON SCENE, ASSIGNED and DESTROYED
-   tallies, and the evade and busted meter along its bottom (the bar drawn inside the panel).
+**At the top of the screen**, centered, about 43 % of the screen wide:
+1. The reinforcements' timer bar, a red bar at the very top of the screen. It closes toward the middle as
+   the clock runs down. When the timer reaches 0 the bar fades out, and with it the clock and the label;
+   the reinforcements are added under their car symbols, and only the active cop icons and their integers
+   stay.
+2. Under the bar: the clock (38:42) and REINFORCEMENTS ARRIVING.
+3. Under those, always while a pursuit runs: the row of icons, one per kind of police vehicle and the
+   helicopter, each over its integer count.
 
-The evade and busted meter stays in the board. (Twice in the first day this was misread: the bar at the
-top of the sketch is the timer's, not the meter. 0.10.23 moved the meter to the top by mistake; 0.10.25
-put it back.)
+**At the bottom center, the board** (the rounded panel): heat, bounty, time; the three tallies, each a
+number over an ICON instead of a word (the words ON SCENE, ASSIGNED and DESTROYED were struck out): a cop
+car with its light bar flashing, a car with a drop-in arrow over it, a crashed car crossed out; and the
+evade and busted meter along the board's bottom ("Put Back": it is not at the top).
 
-What Jc said about the icons, which this brief follows:
-
+What Jc said about the icons, which the code follows:
 - The row is a centered HTML row: icons fade in and out, and the row re-centers and closes up over the
   space a leaving icon frees.
 - An icon fades in when that kind of vehicle is in the player's sight, not when the director spawns it.
-- Their numbers are in the Japanese face (`--font-jp`, M PLUS 1p), and a count is a count: 0, never 00,
-  and the DESTROYED tally on the board reads 0 too (it read 00 and 01).
-- When one of their vehicles crashes (is destroyed) its icon plays a fading glitch and its count drops;
-  when the last of a kind is gone the icon rests at 0 for a moment, fades out and the row closes up; the
-  board's ON SCENE falls and DESTROYED rises.
+- Their numbers are in the Japanese face (`--font-jp`, M PLUS 1p), and a count is a count: 0, never 00, and
+  the DESTROYED tally reads 0 too.
+- When one of their vehicles crashes its icon plays a fading glitch and its count drops; when the last of a
+  kind is gone the icon rests at 0 for a moment, fades out and the row closes up.
+- If a helicopter needs to refuel, a yellow gas symbol pops up beside it, then turns red and the
+  helicopter retreats.
+- There is always one cop car on sight unless the player physically cannot be chased (B5's rule: the last
+  unit is never recalled; see "Always one" below).
 
-## Done in 0.10.22, 0.10.23 and 0.10.25 (Claude: `ui/pursuit.js`, `style.css`, `tests/pursuit-hud.test.mjs`)
+## Done (Claude: `ui/pursuit.js`, `style.css`, `tests/pursuit-hud.test.mjs`; 0.10.22 to 0.10.27)
 
-- `layoutPursuit` gives each kind `{ kind, n, seen }` and `heliSeen`, the destroyed tally unpadded, and
-  `resupply: { left, fill, text }` from `view.resupply` (seconds left; `fill` is left over
-  `RESUPPLY_SECONDS`, 60; `60:00` is seconds and hundredths). `lostKinds(prev, next)` says which icons
-  glitch: the tally rose and the kind's count fell, so a unit that went home does not glitch.
-  `iconStep` is an icon's life in the row: it comes in when its kind is seen and has units, stays while
-  it has units, rests `LEAVE_DELAY` (0.9 s) at 0, then leaves; a kind that comes back with units comes
-  back in.
-- The row is a flex row with `justify-content: center`; an icon is closed (no width, no margin, clear)
-  until it is in: it opens, then fades in (0.3 s later); on its way out it fades, then closes (0.4 s
-  later). A glitch is 0.75 s (a sliced clip, a red and cyan split, a flicker) and the DESTROYED number
-  bumps. Counts are in the Japanese face at 26 px; at 0 an icon is dimmed.
-- The header: the bar (10 px, amber, draining), the clock, REINFORCEMENTS ARRIVING. It shows while
-  `view.resupply` is a number (all three), or (no clock) while `view.reinforcements` is true (the label
-  only). The board shows the meter at its bottom, as it always did.
-- Checked in the browser at 1280 by 720 with scripted views: the bar over a 38:42 clock, five icons
-  (3, 2, 1, 1, 1) and the board with the meter at its bottom; a destroyed Rhino glitching, resting at 0,
-  fading out and the row closing up to four icons, centered.
+- `#pursuit-hud` is a full-screen overlay with a `.ph-top` group and a `.ph-bottom` board.
+- The timer bar is 16 px, red, in a 3 px red frame, its fill a centered block that shrinks from both ends
+  (`fill` is `view.resupply` over `RESUPPLY_SECONDS`, 60). When `view.resupply` goes from a number to
+  null the bar closes in 0.6 s and the header fades over `RESUPPLY_FADE` (0.9 s), then it is gone.
+- Counts that rise (reinforcements added) pop: scaled up in amber, then settled (`risenKinds`).
+- A helicopter low on fuel (`view.heliFuel` 'low') gets a yellow pump that pops in; 'leaving' turns it red.
+- `layoutPursuit` gives each kind `{ kind, n, seen }`, `heliSeen`, the unpadded destroyed tally, `fuel`,
+  and `resupply: { left, fill, text }` (`60:00` is seconds and hundredths). `lostKinds` says which icons
+  glitch (the tally rose and the kind's count fell: a unit that went home does not). `iconStep` is an icon's
+  life in the row (in when seen and it has units, stays, rests `LEAVE_DELAY` 0.9 s at 0, leaves).
+- Checked in the browser at 1280 by 720 with scripted views: the red bar at the top over a 38:42 clock,
+  five icons (3, 2, 1, 1, 1) and a yellow pump beside the helicopter, the board with the icon tallies and
+  the meter at its bottom; the timer running out (the bar closing, the header fading, the counts popping
+  to 5, 3, 1, 1, the pump red).
 
 ## What waits for the backend (B5, `pursuitView()` in `drive.js`)
 
-Both fields are optional: the HUD works without them (an icon counts as seen while its kind has units,
-and there is no clock), and shows them as soon as they arrive.
+All three fields are optional: the HUD works without them (an icon counts as seen while its kind has
+units, there is no clock, no pump) and shows them as soon as they arrive.
 
 - `seen: string[]`: the kind ids (`police`, `police-fast`, `police-int`, `police-heavy`) and `'heli'` that
   have been in the player's sight at any moment of this pursuit, reset when it ends. In sight is: a unit
   of that kind within 120 m with a clear line to the player (`clearLine`, as the police use it) and in
   front of the camera (within 70 degrees of the view direction; the rig has it); a helicopter within
   400 m, in the view and not under a roof (`rain.cover`). Once in, a kind stays seen.
-- `resupply: number | null`: the seconds left on B5's 60 s clock (part 2), null when no clock runs.
-  `reinforcements` stays true while cars the clock dispatched are still driving in.
+- `resupply: number | null`: the seconds left on B5's 60 s clock (part 2), null when no clock runs. It
+  goes to null the moment the cars are dispatched; the HUD closes the bar on that frame.
+- `heliFuel: 'low' | 'leaving' | null`: 'low' while any helicopter's fuel is under 15 s of its tank
+  (`heli.js`: "CHOPPER BREAKING OFF" is at 15 s left), 'leaving' once it has broken off to refuel, null
+  otherwise.
+
+### Always one
+
+Jc: "there is always one cop car on sight unless physically it can't be chased." B5 part 2 already keeps
+the last unit on the player (it is never recalled and never counted out). If that car is destroyed the
+road stays empty until the clock ends; the HUD then shows every count at 0 with the clock and the bar
+running, which is the sketch's situation. To confirm with Jc: whether a destroyed last car should be
+replaced at once instead of waiting for the clock.
 
 ## Still to confirm with Jc
 
 - `60:00` as seconds and hundredths (the sketch's colon was a drawing slip): `clockText`.
-- The three board tallies (ON SCENE, ASSIGNED, DESTROYED) stay in Michroma; only the icons' counts and the
-  clock are in the Japanese face. One CSS rule moves them too.
+- The tallies' numbers stay in Michroma; only the icons' counts and the clock are in the Japanese face.
+- The tally icons are drawn by Claude from Jc's doodles (a cop car with a siren, a car under a drop-in
+  arrow, a crashed car with an X): `TALLY_ICONS` in `ui/pursuit.js`.

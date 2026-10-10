@@ -35,7 +35,10 @@ Read `src/police/director.js` (`PoliceDirector`, `backup`, `ASSIGNED_BY_HEAT`, t
   The banner says REINFORCEMENTS IN 1:00 and the pursuit HUD shows the countdown (Claude draws it from
   `pursuitView().resupply` seconds left, null otherwise: add the field). Also add `pursuitView().seen`,
   the kinds and `'heli'` that have been in the player's sight in this pursuit (the exact rule is in
-  `C7-pursuit-hud-v2.md`, "What waits for the backend"); the HUD fades each icon in on it.
+  `C7-pursuit-hud-v2.md`, "What waits for the backend"); the HUD fades each icon in on it. And `pursuitView().heliFuel`: 'low' while any helicopter has under
+  15 s of fuel, 'leaving' once it has broken off to refuel, null otherwise (the HUD pops a yellow pump
+  beside the helicopter icon and turns it red). Jc: there is always one cop car on the player unless the
+  player physically cannot be chased; this is the last-unit rule above.
 - One car stays on the player while it runs. If the units are heavily exhausted (the pool at zero and the
   cars lost, wrecked or out of the chase), the last unit on the scene is not recalled, is not counted
   out of the chase by the pool, keeps trying to chase the player, and drives as hard as its hit points

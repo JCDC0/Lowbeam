@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutPursuit, clockText, lostKinds, iconStep, LEAVE_DELAY } from '../src/ui/pursuit.js';
+import { layoutPursuit, clockText, lostKinds, risenKinds, iconStep, LEAVE_DELAY } from '../src/ui/pursuit.js';
 
 test('layoutPursuit returns null when view is null', () => {
   assert.equal(layoutPursuit(null), null);
@@ -188,4 +188,20 @@ test('an icon comes in when its kind is seen and has units, rests at 0, leaves, 
   assert.equal(iconStep(s, true, 0, 5).in, false, 'it does not come back by itself');
   assert.equal(iconStep(s, true, 2, 0.1).in, true, 'a seen kind that returns with units does');
   assert.equal(iconStep({ in: true, zero: LEAVE_DELAY * 0.9 }, true, 1, 0.1).zero, 0, 'a unit arriving cancels the leaving');
+});
+
+test('reinforcements added under their symbols are the counts that rose', () => {
+  const at = (n, helis) => ({ helis, kinds: [{ kind: 'police', n: n[0] }, { kind: 'police-fast', n: n[1] }, { kind: 'police-int', n: n[2] }, { kind: 'police-heavy', n: n[3] }] });
+  assert.deepEqual(risenKinds(at([1, 0, 0, 0], 0), at([3, 1, 0, 0], 0)), ['police', 'police-fast']);
+  assert.deepEqual(risenKinds(at([3, 1, 0, 0], 1), at([3, 1, 0, 0], 2)), ['heli']);
+  assert.deepEqual(risenKinds(at([3, 1, 0, 0], 1), at([2, 1, 0, 0], 1)), [], 'a count that fell is not a rise');
+  assert.deepEqual(risenKinds(null, at([3, 1, 0, 0], 1)), [], 'the first frame has nothing to compare');
+});
+
+test('a helicopter that needs fuel is low, then leaving, and nothing otherwise', () => {
+  const base = { state: 'pursuit', heat: 3, evade: 0, cooldown: 0, bust: 0, units: 1, heli: true, helis: 1, bounty: 0, time: 0 };
+  assert.equal(layoutPursuit(base).fuel, null);
+  assert.equal(layoutPursuit({ ...base, heliFuel: 'low' }).fuel, 'low');
+  assert.equal(layoutPursuit({ ...base, heliFuel: 'leaving' }).fuel, 'leaving');
+  assert.equal(layoutPursuit({ ...base, heliFuel: 'full' }).fuel, null, 'an unknown state shows nothing');
 });

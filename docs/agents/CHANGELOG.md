@@ -28,6 +28,25 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.27 (2026-10-10)
+
+The pursuit HUD from Jc's annotated screenshot (`tasks/C7-pursuit-hud-v2.md`, rewritten: the screenshot is
+the authority now).
+
+- A top group and a bottom board. At the top of the screen a red timer bar (16 px, centered, 43 % of the
+  width) that closes toward the middle as the clock runs down, with the clock and REINFORCEMENTS ARRIVING
+  under it and the icon row under those; when the clock reaches 0 the bar closes and the bar, clock and
+  label fade out together, the added units' counts pop and only the icons and integers stay.
+- The board keeps the heat, bounty and time, with the evade and busted meter along its bottom ("Put
+  Back": 0.10.23's top meter was wrong); its three tallies lose their words and become icons under their
+  numbers: a cop car with its bar flashing, a car under a drop-in arrow, a crashed car crossed out.
+- A helicopter that needs fuel gets a yellow gas pump beside it (`view.heliFuel` 'low'), red when it
+  retreats ('leaving'); the pump pops in.
+- `view.heliFuel` joins `seen` and `resupply` as B5's fields. Two tests more (the counts that rose, the
+  fuel states).
+- Looked at in the game's page at 1280 by 720: the bar, 38:42, five icons and the pump over the board;
+  the clock running out.
+
 ## 0.10.26 (2026-10-10)
 
 The plan for a new soundtrack (`tasks/C8-soundtrack.md`) and the prompts to make it
