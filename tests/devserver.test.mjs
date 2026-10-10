@@ -103,5 +103,8 @@ test('a partial request for a missing file is still a 404', async () => {
 });
 
 test('ROOT is the repository directory', () => {
-  assert.match(ROOT, /Lowbeam[/\\]?$/i);
+  // A checkout can be a worktree (Lowbeam-play, Lowbeam-hermes, .claude/worktrees/...), so the folder's
+  // name is checked loosely and the game's own manifest pins it down.
+  assert.match(ROOT, /Lowbeam/i);
+  assert.equal(JSON.parse(PKG).name, 'lowbeam');
 });

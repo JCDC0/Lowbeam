@@ -28,6 +28,16 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.32 (2026-10-10)
+
+Housekeeping after Hermes's first run. His worktree stopped half way through a merge of his C8 code
+(stingers, heat tiers, a `source` field) onto the 0.10.28 folder soundtrack, so it was shelved on
+`hermes/c8-shelved` and `hermes/c8-merge-wip` and `hermes/b5` was reset to main for B5 (his work on C8 was
+overtaken: the pursuit mood, shuffle and the vocals setting were already in). The stingers wait for their
+two audio files (`tasks/C8-soundtrack.md`, "Hermes's attempt"); the heat tiers stay dropped. His find:
+`tests/devserver.test.mjs` required the checkout's folder to be named exactly Lowbeam, so it failed in
+any worktree; it checks the name loosely and `package.json`'s name now.
+
 ## 0.10.31 (2026-10-10)
 
 Fixes the freeze Jc saw: the picture stopped, the music went on and the engine note stayed on its last

@@ -31,6 +31,16 @@ more music; Jc's own tracks came first.
    terms of the tool and the plan it was made on. Record it in a `source` field (the tool and the date)
    per track in `tracks.json`; `npm run music` keeps it.
 
+## Hermes's attempt (shelved)
+
+Hermes built the stingers, heat tiers and a `source` field against the pre-0.10.28 audio code
+(branch `hermes/c8-shelved`, commit 514a531), and his reconciliation with 0.10.30 stopped half way
+(branch `hermes/c8-merge-wip`, not green: it keeps a second vocals setting, `audio.setVocals`). Neither is
+merged. When the two stinger files exist, take `stingDuck` and `MusicPlayer.sting(id)` (the music ducked
+by 6 dB for the cue's length and back over 1 s) from `hermes/c8-merge-wip` and leave the rest; the heat
+tiers stay dropped and the vocals setting is the player's (`OPTIONS.vocals`). His one other find is taken
+in 0.10.32: `tests/devserver.test.mjs` only passed in a folder named exactly `Lowbeam`.
+
 ## Sizes
 
 Each track is 2 to 4 MB (mp3 at 128 kbps, m4a at about the same); the 14 now are 43 MB. GitHub Pages' limit
