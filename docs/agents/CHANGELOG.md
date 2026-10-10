@@ -28,6 +28,32 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.28 (2026-10-10)
+
+The soundtrack by folders: Jc replaced the eight tracks with three folders of their own (Chase, Chill,
+LeisureRacing; 14 tracks, mp3 and m4a, some with Japanese names), and the game plays them.
+
+- A folder is a playlist with roles: `tracks.json` lists the folders (each with the moods it plays for) and
+  the tracks (`file` is the path under `assets/music/`). Chase plays for the new `pursuit` mood, Chill for
+  `cruise` and `menu`, LeisureRacing for `intense` and `mountain`; an unknown folder plays for every mood.
+  `npm run music` scans the folders, measures each file and keeps the roles already set.
+- The pursuit is its own mood (it played the racing mood), and it cuts in at once, in 1.5 s, instead of
+  waiting the 20 s a mood change waits. A mood no folder plays for falls back to the nearest one
+  (`MOOD_FALLBACK`); a list with only one folder plays; no list at all, the synthesized music.
+- Shuffle: every mood deals its tracks from a shuffle bag (`Shuffler`): the first track is a surprise
+  (the menu always opened on the first track of the list before), and none comes round before every track
+  of the mood has played, never the one that just played at a round's start. `OPTIONS.shuffle` off plays a
+  folder in order.
+- Hooks for the music settings, not yet in the screen: `OPTIONS.vocals` (off skips tracks marked vocal),
+  `OPTIONS.lock` (one folder plays on its own whatever the mood) and each folder's `enabled`.
+- A bug found on the way: the player picked a synthesized track before the track list loaded and never
+  left it. It waits for the list now, and a synthesized track gives way as soon as recorded ones exist.
+- Checked in the browser: all 14 files load (m4a, Japanese names, spaces), the menu opens on a different
+  track each load, driving plays Chill, a pursuit cuts into Chase, and after the chase the track plays out.
+  Soundtrack tests rewritten (14); 492 in all.
+- The generator prompts (`docs/music/flow-prompts.md`) and C8 stay for more music; the heat tiers are
+  dropped (Chase has no tiers yet).
+
 ## 0.10.27 (2026-10-10)
 
 The pursuit HUD from Jc's annotated screenshot (`tasks/C7-pursuit-hud-v2.md`, rewritten: the screenshot is

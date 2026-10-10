@@ -1,67 +1,143 @@
 {
+  "folders": [
+    {
+      "id": "chase",
+      "name": "Chase",
+      "moods": [
+        "pursuit"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "chill",
+      "name": "Chill",
+      "moods": [
+        "cruise",
+        "menu"
+      ],
+      "enabled": true
+    },
+    {
+      "id": "leisureracing",
+      "name": "LeisureRacing",
+      "moods": [
+        "intense",
+        "mountain"
+      ],
+      "enabled": true
+    }
+  ],
   "tracks": [
     {
-      "id": "dirt-to-crown",
-      "title": "Dirt to Crown",
-      "file": "dirt-to-crown.mp3",
-      "mood": "intense",
-      "lufs": -15,
+      "id": "chase-code-red-pursuit",
+      "title": "Code Red Pursuit",
+      "file": "Chase/Code Red Pursuit.m4a",
+      "folder": "chase",
+      "lufs": -14.7,
       "vocal": false
     },
     {
-      "id": "midnight-expressway",
+      "id": "chase-pursuit-protocol-2",
+      "title": "Pursuit Protocol 2",
+      "file": "Chase/Pursuit Protocol 2.m4a",
+      "folder": "chase",
+      "lufs": -17.1,
+      "vocal": false
+    },
+    {
+      "id": "chase-pursuit-protocol",
+      "title": "Pursuit Protocol",
+      "file": "Chase/Pursuit Protocol.m4a",
+      "folder": "chase",
+      "lufs": -15.6,
+      "vocal": false
+    },
+    {
+      "id": "chill-midnight-expressway",
       "title": "Midnight Expressway",
-      "file": "midnight-expressway.mp3",
-      "mood": "cruise",
+      "file": "Chill/midnight-expressway.mp3",
+      "folder": "chill",
       "lufs": -14.9,
       "vocal": false
     },
     {
-      "id": "night-highway-drift",
+      "id": "chill-night-highway-drift",
       "title": "Night Highway Drift",
-      "file": "night-highway-drift.mp3",
-      "mood": "cruise",
+      "file": "Chill/night-highway-drift.mp3",
+      "folder": "chill",
       "lufs": -16.7,
       "vocal": false
     },
     {
-      "id": "redline-pact",
-      "title": "Redline Pact",
-      "file": "redline-pact.mp3",
-      "mood": "intense",
-      "lufs": -15.9,
-      "vocal": false
-    },
-    {
-      "id": "shibuya-rain-vocal",
+      "id": "chill-shibuya-rain-vocal",
       "title": "Shibuya Rain (Vocal)",
-      "file": "shibuya-rain-vocal.mp3",
-      "mood": "menu",
+      "file": "Chill/shibuya-rain-vocal.mp3",
+      "folder": "chill",
       "lufs": -17.5,
       "vocal": true
     },
     {
-      "id": "shibuya-rain",
+      "id": "chill-shibuya-rain",
       "title": "Shibuya Rain",
-      "file": "shibuya-rain.mp3",
-      "mood": "menu",
+      "file": "Chill/shibuya-rain.mp3",
+      "folder": "chill",
       "lufs": -16.3,
       "vocal": false
     },
     {
-      "id": "touge-overdrive",
-      "title": "Touge Overdrive",
-      "file": "touge-overdrive.mp3",
-      "mood": "mountain",
-      "lufs": -13.1,
+      "id": "chill-slick-urban-electro-jazz-cover",
+      "title": "Slick Urban Electro-Jazz Cover",
+      "file": "Chill/Slick Urban Electro-Jazz Cover.m4a",
+      "folder": "chill",
+      "lufs": -16.2,
       "vocal": false
     },
     {
-      "id": "touge-rush",
+      "id": "chill-urban-action-rpg-remix",
+      "title": "Urban Action-RPG Remix",
+      "file": "Chill/Urban Action-RPG Remix.m4a",
+      "folder": "chill",
+      "lufs": -15.6,
+      "vocal": false
+    },
+    {
+      "id": "leisureracing-touge-rush",
       "title": "Touge Rush",
-      "file": "touge-rush.mp3",
-      "mood": "mountain",
+      "file": "LeisureRacing/touge-rush.mp3",
+      "folder": "leisureracing",
       "lufs": -13.4,
+      "vocal": false
+    },
+    {
+      "id": "leisureracing-オレンジライン",
+      "title": "オレンジライン",
+      "file": "LeisureRacing/オレンジライン.m4a",
+      "folder": "leisureracing",
+      "lufs": -14.1,
+      "vocal": false
+    },
+    {
+      "id": "leisureracing-直線エスケープ-high-energy-turbo-cover",
+      "title": "直線エスケープ (High-Energy Turbo Cover)",
+      "file": "LeisureRacing/直線エスケープ (High-Energy Turbo Cover).m4a",
+      "folder": "leisureracing",
+      "lufs": -13.6,
+      "vocal": false
+    },
+    {
+      "id": "leisureracing-直線エスケープ",
+      "title": "直線エスケープ",
+      "file": "LeisureRacing/直線エスケープ.m4a",
+      "folder": "leisureracing",
+      "lufs": -14.7,
+      "vocal": false
+    },
+    {
+      "id": "leisureracing-限界オーバーライド",
+      "title": "限界オーバーライド",
+      "file": "LeisureRacing/限界オーバーライド.m4a",
+      "folder": "leisureracing",
+      "lufs": -14.1,
       "vocal": false
     }
   ]

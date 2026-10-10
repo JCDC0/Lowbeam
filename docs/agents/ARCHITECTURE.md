@@ -29,7 +29,7 @@ Prologue (`docs/DESIGN.md`).
 | Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
-| Music track list | `npm run music` (`node tools/music-manifest.mjs`; `-- --all` to re-measure) |
+| Music track list | `npm run music` (`node tools/music-manifest.mjs`: scans the folders in `assets/music/`, measures each file with ffmpeg and keeps the roles already set; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
 Three.js r185 is vendored in `vendor/`. `tools/devserver.mjs` serves with no-store caching, answers
@@ -159,13 +159,13 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `police_barrier.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON) |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
-| `assets/music/` | The recorded soundtrack and `tracks.json`, the list the game plays from (mood, title, measured loudness, vocal) |
+| `assets/music/` | The recorded soundtrack in folders (Chase, Chill, LeisureRacing: a folder is a playlist) and `tracks.json`, the list the game plays from (the folders with the moods each plays for; each track's title, measured loudness, vocal flag) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `stakeoutsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
 ## Current state (0.10.51)
 
-488 tests in the suite (486 pass while C8 soundtrack files land); the type check is clean. By area:
+492 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -385,11 +385,16 @@ cars (`traffic-voices.js`: each kind in a voice class, kei buzz, sedan, six, van
 V8, flat-four and racer, its revs from its speed through a gearbox, its firing note Doppler shifted
 and panned, with its tires on the road; `TRAFFIC_LEVEL` at 0.32, tires at 0.2, horns at 0.25, 0.9.27),
 exhaust pops per engine layout (a V8 a deep thump, a flat-four a crackle, the V12 a sharp crack on lift at high revs
-and on upshifts past 85 % of redline; `engine-dsp.js`, `exhaust.js`), eight recorded tracks
-in four moods with crossfades and a swell that follows the speed: silent below 30 km/h, full at 75
-(60 on the pass). The tracks come from `assets/music/tracks.json`: drop a file in the folder, run
-`npm run music` (it measures the loudness with ffmpeg and keeps the moods already set), set the new
-file's mood in the JSON; the game keeps its built-in list if a mood would have no track. Police sirens (three voices, a
+and on upshifts past 85 % of redline; `engine-dsp.js`, `exhaust.js`), recorded tracks
+from the folders in `assets/music/` (a folder is a playlist and plays for the moods it is given: Chase for
+the police chase, Chill for the drive and the menus, LeisureRacing for a race and the pass) in five moods
+(`menu`, `cruise`, `intense`, `mountain`, `pursuit`) with crossfades and a swell that follows the speed:
+silent below 30 km/h, full at 75 (60 on the pass). The tracks come from `assets/music/tracks.json`: drop a
+file in a folder, run `npm run music`, and set the folder's moods in the JSON if it is a new one. Each
+mood deals its tracks from a shuffle bag (the first track is a surprise, none comes round before every
+track has played), a pursuit cuts in at once and a mood no folder plays for falls back to the nearest
+(`MOOD_FALLBACK`); with no list the synthesized tracks play. `OPTIONS` in `soundtrack.js` (vocals,
+shuffle, lock to one folder) are the hooks of the music settings (`tasks/C9-music-player.md`). Police sirens (three voices, a
 square and a saw through a band-pass, panned, muffled in the cockpit) and the helicopter's rotor
 (`siren.js`; `node tools/render-engines.mjs`, `node tools/render-sirens.mjs` write check WAVs). Rain audio
 (`rain.js`, 0.9.31): filtered pink noise bed following weather level, stationary car patter fading with speed,
@@ -422,9 +427,10 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - Civilians driving on their lanes are not checked against the static world: they cut corners, 15 clips
   in 34,420 samples (a vending machine, a toll island), and a few ramps put a body off the carriageway
   (`tools/clipbench.mjs`); the plan is `tasks/B4-civilian-world-collisions.md`.
-- The soundtrack is to be replaced: eight recorded tracks in four moods now, a police chase plays the
-  `intense` mood. The plan (a `pursuit` mood with heat tiers, stingers, a vocal toggle, 24 new tracks) is
-  `tasks/C8-soundtrack.md`, the generator prompts and lyrics `docs/music/flow-prompts.md`.
+- The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
+  prompts and lyrics in `docs/music/flow-prompts.md` are for more. Still to come: stingers for escaped and
+  busted, a vocal flag for the Japanese tracks (all read as instrumental), and the music player in Settings
+  that adds the player's own folders (`tasks/C8-soundtrack.md`, `tasks/C9-music-player.md`).
 - The map is thin outside the city: 10 police stations, 5 hideouts, 5 garages, 4 gas stations; the plan
   to fill it is `tasks/C6-fill-the-map.md`.
 - RWD cars spin on gravel at full throttle and full lock (intended; judge with hands on the keys).

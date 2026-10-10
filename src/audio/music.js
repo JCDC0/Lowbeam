@@ -14,7 +14,7 @@
  */
 
 import { composeTrack, midiToHz, LAYERS, TRACKS } from './songs.js';
-import { SOUNDTRACK, ENERGY, MANIFEST, MoodTracker, SpeedSwell, nextTrack, parseManifest, setSoundtrack, trackGain } from './soundtrack.js';
+import { SOUNDTRACK, OPTIONS, ENERGY, MANIFEST, MoodTracker, SpeedSwell, Shuffler, nextTrack, poolFor, parseManifest, setSoundtrack, trackGain } from './soundtrack.js';
 import { clamp } from '../core/mathx.js';
 
 /**
@@ -27,7 +27,7 @@ const CROSSFADE = 3;
 /** A track that came in on a mood change plays at least this long before another one may cut in. */
 const MIN_DWELL = 20;
 /** Synthesized track that stands in for each mood when no file of it can play. */
-const SYNTH_FOR = { menu: 'menu', cruise: 'kirigaoka', intense: 'lowbeam', mountain: 'ridge' };
+const SYNTH_FOR = { menu: 'menu', cruise: 'kirigaoka', intense: 'lowbeam', mountain: 'ridge', pursuit: 'lowbeam', locked: 'kirigaoka' };
 /** Low-pass cutoff (Hz) of the recorded tracks at swell 0; it opens an octave per sixth of the swell. */
 const SWELL_CUTOFF = 320;
 /** A track is announced (NOW PLAYING) once the swell makes it this loud. */
@@ -199,12 +199,13 @@ class Playback {
 class Stream {
   /**
    * @param {MusicPlayer} music @param {import('./soundtrack.js').Track} track
+   * @param {string} mood the mood it was picked for, or 'locked'
    * @param {number} at context time to start @param {number} fade seconds of fade-in
    */
-  constructor(music, track, at, fade) {
+  constructor(music, track, mood, at, fade) {
     const c = /** @type {AudioContext} */ (music.ctx);
     this.track = track;
-    this.mood = track.mood;
+    this.mood = mood;
     this.started = at;
     this.failed = false;
     this.blocked = false;
@@ -212,7 +213,7 @@ class Stream {
     this.stopAt = Infinity;
     this.el = new Audio();
     this.el.preload = 'auto';
-    this.el.src = `assets/music/${track.file}`;
+    this.el.src = track.url || `assets/music/${track.file.split('/').map(encodeURIComponent).join('/')}`;
     this.el.addEventListener('error', () => {
       this.failed = true;
     });
@@ -323,13 +324,15 @@ export class MusicPlayer {
     this.moods = new MoodTracker();
     this.scene = { kmh: 0, mountain: false, rival: Infinity, rally: false, pursuit: false };
     this.mode = /** @type {import('./audio.js').Mode} */ ('title');
-    this.turn = 0;
+    this.shuffler = new Shuffler();
     this.lastId = /** @type {string | null} */ (null);
     this.lastTick = c.currentTime;
     this.switchedAt = -Infinity;
 
+    /** False until the track list has loaded or failed: until then nothing is chosen, so no synthesized track starts for a moment. */
+    this.loaded = !this.recorded;
     if (this.live) this.timer = window.setInterval(() => this.tick(), TICK_MS);
-    if (this.recorded) this.loadManifest();
+    if (this.recorded) this.loadManifest().finally(() => { this.loaded = true; });
   }
 
   /** Reads the track list (assets/music/tracks.json) and plays from it from the next track on. */
@@ -337,11 +340,11 @@ export class MusicPlayer {
     try {
       const res = await fetch(MANIFEST, { cache: 'no-store' });
       if (!res.ok) return;
-      const { tracks, skipped } = parseManifest(await res.json());
+      const { tracks, folders, skipped } = parseManifest(await res.json());
       if (skipped.length) console.warn(`music: ${MANIFEST} skipped ${skipped.join(', ')}`);
-      if (!setSoundtrack(tracks)) console.warn(`music: ${MANIFEST} leaves a mood with no track; keeping the built-in list`);
+      if (!setSoundtrack(tracks, folders)) console.warn(`music: ${MANIFEST} has no track; the synthesized music plays`);
     } catch (err) {
-      // No manifest, or one that does not parse: the built-in list plays.
+      // No manifest, or one that does not parse: the synthesized music plays.
       console.warn('music: no track list', err);
     }
   }
@@ -427,18 +430,19 @@ export class MusicPlayer {
   /**
    * Starts the next recorded track of a mood, crossfading from the one playing. Falls back to
    * the synthesized track for that mood when every file of it has failed.
-   * @param {import('./soundtrack.js').Mood} mood @param {number} t @param {number} fade
+   * @param {string} mood a mood, or 'locked' while one folder plays on its own
+   * @param {number} t @param {number} fade
    */
   startMood(mood, t, fade) {
-    let track = nextTrack(mood, this.lastId, this.turn);
-    for (let i = 0; i < SOUNDTRACK.length && this.broken.has(track.id); i++) track = nextTrack(mood, track.id, ++this.turn);
+    let track = nextTrack(mood, this.lastId, this.shuffler);
+    for (let i = 0; track && i < SOUNDTRACK.length && this.broken.has(track.id); i++) track = nextTrack(mood, track.id, this.shuffler);
     if (this.stream) {
       this.stream.stop(t, fade);
       this.fading.push(this.stream);
       this.stream = null;
     }
-    if (this.broken.has(track.id)) {
-      const synth = SYNTH_FOR[mood];
+    if (!track || this.broken.has(track.id)) {
+      const synth = SYNTH_FOR[mood] || SYNTH_FOR.cruise;
       if (!this.current || this.current.id !== synth || this.current.finished) this.play(synth, t, { loops: Infinity, fade });
       return;
     }
@@ -446,9 +450,8 @@ export class MusicPlayer {
       this.current.stop(t, fade);
       this.current = null;
     }
-    this.turn++;
     this.lastId = track.id;
-    this.stream = new Stream(this, track, t, fade);
+    this.stream = new Stream(this, track, mood, t, fade);
     this.switchedAt = t;
   }
 
@@ -472,23 +475,25 @@ export class MusicPlayer {
 
   /** The recorded soundtrack's part of a tick. @param {number} now */
   tickRecorded(now) {
+    if (!this.loaded) return;
     const dt = Math.min(1, now - this.lastTick);
     this.lastTick = now;
     if (this.mode === 'drive' || this.mode === 'free') this.moods.update(dt, this.scene);
-    const want = this.wantedMood();
+    const want = OPTIONS.lock ? 'locked' : this.wantedMood();
     const s = this.stream;
     if (s && s.failed) {
       this.broken.add(s.track.id);
       this.startMood(want, now, 0.5);
     } else if (s && s.blocked) s.play();
     if (!this.stream) {
-      const playingSynth = this.current && !this.current.finished && this.current.id === SYNTH_FOR[want];
-      if (!playingSynth) this.startMood(want, now, 1.5);
+      const playingSynth = this.current && !this.current.finished && this.current.id === (SYNTH_FOR[want] || SYNTH_FOR.cruise);
+      if (!playingSynth || poolFor(want).some((tr) => !this.broken.has(tr.id))) this.startMood(want, now, 1.5);
     } else if (this.stream.mood !== want) {
       const menuChange = want === 'menu' || this.stream.mood === 'menu';
+      const chase = want === 'pursuit';
       const up = ENERGY[want] > ENERGY[this.stream.mood];
       const dwelt = now - this.switchedAt > MIN_DWELL;
-      if (menuChange || (up && dwelt) || this.override) this.startMood(want, now, menuChange ? 1.5 : CROSSFADE);
+      if (menuChange || chase || (up && dwelt) || this.override) this.startMood(want, now, menuChange || chase ? 1.5 : CROSSFADE);
     }
     if (this.stream && this.stream.remaining() < CROSSFADE) this.startMood(want, now, CROSSFADE);
     this.applySwell(dt, now);

@@ -83,12 +83,12 @@ test('the rotor is heard to 900 m and louder overhead', () => {
   assert.ok(rotorSound(100, 0).rate > 8);
 });
 
-test('a pursuit is the intense mood at once, even on the pass, and holds the music up', () => {
+test('a pursuit is the pursuit mood at once, even on the pass, and holds the music up', () => {
   const m = new MoodTracker();
   m.update(0.1, { kmh: 40, mountain: false, rival: Infinity, pursuit: true });
-  assert.equal(m.mood, 'intense');
+  assert.equal(m.mood, 'pursuit');
   for (let t = 0; t < 30; t += 0.25) m.update(0.25, { kmh: 40, mountain: true, rival: Infinity, pursuit: true });
-  assert.equal(m.mood, 'intense', 'a chase on the pass is still a chase');
+  assert.equal(m.mood, 'pursuit', 'a chase on the pass is still a chase');
   const swell = new SpeedSwell();
   for (let t = 0; t < 20; t += 0.1) swell.update(0.1, { kmh: 0, mountain: false, rival: Infinity, pursuit: true });
   assert.ok(swell.level >= SWELL.pursuitFloor - 1e-6, 'standing still in a pursuit, the music stays up');
