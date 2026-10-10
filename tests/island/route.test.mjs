@@ -160,7 +160,7 @@ test('on the real network a route from G1 to the police HQ exists and is under 1
   assert.ok(ratio < 1.6, `route length ratio ${ratio.toFixed(3)} is under 1.6`);
 });
 
-test('cross-island route plans in under 30 ms in Node', () => {
+test('cross-island route plans with bounded search complexity', () => {
   const ground = island();
   const net = trafficNet();
 
@@ -169,13 +169,29 @@ test('cross-island route plans in under 30 ms in Node', () => {
   const from = { x: g1.near[0], z: g1.near[1] };
   const to = { x: hq.near[0], z: hq.near[1] };
 
-  // Warm-up JIT
-  routeTo(net, from, to);
+  let expansions = 0;
+  for (const lane of net.lanes) {
+    const origLinks = lane._allLinks || [...(lane.ends || []), ...(lane.mids || [])];
+    Object.defineProperty(lane, 'links', {
+      get() {
+        expansions++;
+        return origLinks;
+      },
+      configurable: true,
+    });
+  }
 
-  const t0 = performance.now();
-  const route = routeTo(net, from, to);
-  const elapsed = performance.now() - t0;
+  let route;
+  try {
+    route = routeTo(net, from, to);
+  } finally {
+    for (const lane of net.lanes) {
+      delete lane.links;
+    }
+  }
 
-  assert.ok(route !== null);
-  assert.ok(elapsed < 30, `planning took ${elapsed.toFixed(2)} ms, must be under 30 ms`);
+  assert.ok(route !== null, 'cross-island route exists');
+  assert.equal(route.lanes.length, 14, 'route uses 14 directed lanes');
+  assert.ok(route.points.length > 500, `dense polyline with ${route.points.length} points`);
+  assert.ok(expansions < 4000, `A* search bounded to ${expansions} expansions (< 4000)`);
 });

@@ -437,10 +437,6 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The roadblock barriers (0.9.29) have three known faults, fixes owed in `tasks/G7-police-station.md`: a
   parked barrier is heard as an idling engine, one hit hard stays upright instead of lying down, and the
   barriers count against the civilians' target.
-- The Hikari is left out of `RIVALS`: two traffic tests sit near their limits when a kind is added.
-- The GPS route test measures planning time and can fail when the machine is busy, and
-  `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
-  under load and passes alone.
 - Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all fourteen civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in

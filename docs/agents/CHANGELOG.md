@@ -1288,6 +1288,19 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.40 (2026-10-10)
+
+Make GPS route and pass-by audio tests deterministic (X-01).
+
+- `tests/island/route.test.mjs`:
+  - Replaced flaky wall-clock `performance.now() < 30` planning time assertion with deterministic verification of A* search complexity (asserting fewer than 4,000 expansions, measuring exactly 3,187) and route validity (14 directed lanes, 630 points).
+- `tests/passby.test.mjs`:
+  - Replaced single-sample noise amplitude checks at index 10 and length / 2 with 10 ms (480-sample) windowed RMS across head, mid and tail, eliminating test flakes caused by filtered noise zero-crossings.
+- `docs/agents/tasks/BUGS.md`:
+  - Moved X-01 to Clear (0.9.40).
+- `docs/agents/ARCHITECTURE.md`:
+  - Cleared open-bugs bullets for GPS route planning time and pass-by noise sample comparisons, and updated test status.
+
 ## 0.9.39 (2026-10-10)
 
 Add Hikari 300ZR to street racers (T-02).

@@ -115,7 +115,12 @@ test('the render produces a loud swell that decays, and scales with speed', () =
   assert.ok(peak(loud) > 0.2, `loud pass peak ${peak(loud)}`);
   assert.ok(rms(loud) > rms(quiet) * 3, `${rms(loud)} vs ${rms(quiet)}`);
   // The swell peaks near the middle, and the head and tail are quiet: the envelope shape.
-  const head = Math.abs(loud[10]);
-  const mid = Math.abs(loud[Math.floor(loud.length / 2)]);
+  // Windowed RMS over 10 ms (480 samples) provides a deterministic envelope comparison
+  // immune to single-sample noise variance.
+  const win = 480;
+  const head = rms(loud.slice(0, win));
+  const mid = rms(loud.slice(Math.floor((loud.length - win) / 2), Math.floor((loud.length + win) / 2)));
+  const tail = rms(loud.slice(loud.length - win));
   assert.ok(mid > head * 2, 'the pass should swell, not start at full');
+  assert.ok(mid > tail * 2, 'the pass should decay after its peak');
 });
