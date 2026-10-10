@@ -14,6 +14,8 @@
 import { RALLY, COAST, LAKES } from '../world/layout.js';
 import { FONT } from '../render/fonts.js';
 import { drawPoiIcon } from './map.js';
+import { radarFrame, sightOf } from './radar.js';
+import { weatherLook, FOG_DRY } from '../render/weather.js';
 
 const SIZE = 220;
 const R = SIZE / 2;
@@ -21,9 +23,7 @@ const LOT_ICON = 0.8;
 const RED = [255, 43, 61];
 const BLUE = [43, 127, 255];
 const AMBER = '#ffa62b';
-/** A unit's sight drawn on the radar when the marker brings none: a chaser's cone and a patrol's ring. */
-const CHASE_CONE = { r: 70, half: 0.55 };
-const PATROL_RING = 60;
+const lowbeam = () => /** @type {any} */ (globalThis).window?.__lowbeam;
 
 /**
  * @typedef {{ kind: 'police' | 'heli', x: number, z: number, yaw: number, search?: { x: number, z: number, r: number },
@@ -91,17 +91,8 @@ export class Minimap {
     const want = 0.62 - Math.min(0.3, speed * 0.006);
     this.scale += (want - this.scale) * Math.min(1, dt * 2);
     const s = this.scale;
-    const c = Math.cos(yaw);
-    const n = Math.sin(yaw);
-    // Ahead of the car is up, its left is left. Map world (x, z) to canvas pixels.
-    const a = -s * c;
-    const b = -s * n;
-    const cc = s * n;
-    const d = -s * c;
-    const e = R - a * x - cc * z;
-    const f = R - b * x - d * z;
-    const toScreen = (wx, wz) => [a * wx + cc * wz + e, b * wx + d * wz + f];
-    const screenYaw = (wyaw) => Math.atan2(cc * Math.sin(wyaw) + d * Math.cos(wyaw), a * Math.sin(wyaw) + b * Math.cos(wyaw));
+    const { a, b, cc, d, e, f, toScreen, screenYaw } = radarFrame(x, z, yaw, s, R);
+    const fogScale = weatherLook(lowbeam()?.world?.weather ?? 0).fogFar / FOG_DRY.far;
     this.time += dt;
 
     g.setTransform(1, 0, 0, 1, 0, 0);
@@ -202,12 +193,9 @@ export class Minimap {
       }
       const [mx, my] = toScreen(m.x, m.z);
       const rgb = m.active === false ? (m.sees ? [255, 166, 43] : [150, 160, 176]) : i % 2 ? BLUE : RED;
-      if (m.active === false) {
-        drawSight(g, mx, my, PATROL_RING * s, 0, Math.PI, rgb, m.sees ? 0.34 : 0.22);
-      } else {
-        const cone = m.cone ?? CHASE_CONE;
-        drawSight(g, mx, my, cone.r * s, screenYaw(m.yaw), cone.half, rgb, 0.42);
-      }
+      const sight = sightOf(m, fogScale);
+      const alpha = m.active === false ? (m.sees ? 0.34 : 0.22) : sight.half >= Math.PI ? 0.24 : 0.42;
+      drawSight(g, mx, my, sight.r * s, screenYaw(m.yaw), sight.half, rgb, alpha);
     });
 
     const edgeMarkers = [];

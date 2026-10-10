@@ -47,7 +47,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
   soundtrack,library-rules,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
-  `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/route.js`, `layoutPursuit` in
+  `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/{route,radar}.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - A test that needs the island (the ground, the traffic net, the scatter) takes it from
   `tests/island.mjs` (`island()`, `trafficNet()`, `scattered()`, built on first use), never builds
@@ -163,7 +163,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/ui/music-panel.js` | The music player in Settings: now playing and the transport, shuffle, vocals, the folders (on, roles, lock, songs, delete) and adding songs or a folder |
 | `src/ui/hud.js`, `cluster.js`, `cluster-styles.js` | The drive HUD and the speedometer styles |
 | `src/ui/menus.js`, `garage.js` | Title, main menu, settings, controls, pause, loading, toasts; the garage |
-| `src/ui/minimap.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route |
+| `src/ui/minimap.js`, `radar.js`, `map.js`, `route.js`, `route-hud.js` | Minimap, Tab map, GPS route; `radar.js` is the minimap's frame (`radarFrame`: world point and heading to the canvas, ahead is up) and what sight to draw for a police marker (`sightOf`) |
 | `src/ui/pursuit.js`, `stats.js`, `screen-fx.js` | Pursuit HUD, F3 stats, the screen effects and their toggles |
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `police_barrier.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON) |
@@ -174,7 +174,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-504 tests pass; the type check is clean. By area:
+508 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto

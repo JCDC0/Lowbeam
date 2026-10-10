@@ -28,6 +28,31 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.34 (2026-10-10)
+
+The bug board (`tasks/BUGS.md`) and its first fix: the minimap's police markers.
+
+- The board: Jc wants every bug and patch cleared before the game's plans go on. One line per bug with
+  one owner, the six gates that say "clean" (benches at zero, a placement audit, a road seam audit, a
+  screenshot tour Jc passes, the HUD against Jc's drawing, every model clean in the prop viewer), and
+  two plans: outside low poly models through one import script, and roads and props by audits and
+  rules (no outside road generator is a drop-in; the ones worth reading are named).
+- Minimap bug (N-01): a police car's arrow and its sight did not point where the car drives, and
+  turned with the player's car. `screenYaw` paired the matrix terms the other way round, so it drew the
+  unit's heading plus the player's yaw instead of the difference; the two agree only when the player
+  faces +Z, which is why it passed the first look. The frame is now `radarFrame` in `ui/radar.js`, pure,
+  with a test that a heading drawn on the radar is the direction the unit's position really moves on it,
+  at 400 random player and unit headings, and that ahead is up, right is right, behind is down.
+- Their sight was a 70 m cone ahead where a chasing unit sees 150 m on a clear line all round (the
+  director's `SIGHT_RANGE`); the radar draws that disc, shortened by the fog as the director does
+  (`sightOf`), and keeps the searching cone, the patrol's 60 m ring and the grey and amber states.
+- The Tab map was right (it rotates by -yaw on a north-up map); only the radar was wrong.
+- Checked in the browser with the player turned to heading 1.0: a unit going the same way points up,
+  one going right points right, one going the other way points down, a patrol points up in grey.
+- A placement audit of the island's data on the way: 0 of 7,741 lamps, 0 of 2,709 signal poles and 0 of
+  21,627 solid boxes on a carriageway, 14 of 113,523 round objects (the toll booth pillars, on purpose).
+  It becomes `tools/propaudit.mjs` with the board. 508 tests.
+
 ## 0.10.33 (2026-10-10)
 
 Port 8041 is Jc's. It serves the worktree `C:\GitHub\Lowbeam-play` on the latest commit of `main`

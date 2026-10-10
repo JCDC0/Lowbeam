@@ -31,6 +31,7 @@ and leaves `package.json` alone.
 
 | Brief | Owner | Status | What |
 |---|---|---|---|
+| [BUGS.md](BUGS.md) | Everyone, one owner per line | open: first (Jc, 2026-10-10: clean first, then the plans) | The bug board and the gates that say the game is clean: benches, audits, a screenshot tour, the HUD against Jc's drawing, outside models |
 | [B1-police-repair.md](B1-police-repair.md) | Claude | done (0.9.3, part 3 with C1 part 2 in 0.9.8) | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
 | [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | spike strip done; the rest after G3 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
 | [G2-racer-car-trial.md](G2-racer-car-trial.md) | Assets | done, passed in 0.9.53; Claude wires it in (C1 part 7) | One complete car in Blender: the Mazuma RX-Coupe street racer, to the player cars' standard, to replace its lofted body |
