@@ -1126,6 +1126,18 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.35 (2026-10-10)
+
+Civilians solid against the world in drive mode (B4 part 2).
+
+- `src/traffic/sim.js`:
+  - `collideWorld` runs for civilian cars in `drive` mode as well as wrecks and free units.
+  - Overlapping static shapes pushes civilian cars out along the contact normal and cancels speed into the wall while keeping tangential motion and damping lateral displacement via `ex` and `ez`.
+  - Continuous wall contact lasting over 1.0 s triggers emergency braking and a 1.2 s wait (`a.cap = 0, a.capUntil = time + 1.2, a.brake = 1`) before moving on.
+  - Lateral collision offsets `ex` and `ez` are preserved during turning curves and lane transitions rather than snapped back to lane centerlines.
+- `tools/clipbench.mjs`: wires `sim.hitWorld = (x, z, r, y) => col.probe(x, z, r, y)` to mirror `Drive` in simulation; static collider clips drop from 40 to 1 across 34,000 samples.
+- `tests/island/traffic-walls.test.mjs`: replaced obsolete test ignoring lane followers with tests asserting civilian drive-mode pushout along contact normal, loss of speed into the wall, and braking after 1 s of contact.
+
 ## 0.9.34 (2026-10-10)
 
 Turns that follow a curve, and roadblock barrier cleanup (B4 part 1).

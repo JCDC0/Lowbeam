@@ -56,6 +56,7 @@ for (const [name, id, s] of spots) {
   const ss = Math.min(s, road.path.length - 10);
   const q = road.path.sample(ss);
   const sim = new TrafficSim(net, { seed: 5, target: 45, rivals: 0, patrols: 0 });
+  sim.hitWorld = (x, z, r, y) => col.probe(x, z, r, y);
   const player = { x: q.x, y: road.heightAt(ss), z: q.z, speed: 0, yaw: 0 };
   for (let t = 0; t < 70; t += 1 / 30) {
     sim.update(1 / 30, player);

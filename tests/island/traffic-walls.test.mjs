@@ -94,15 +94,43 @@ test('a unit driving free at the player through a block stops at the wall, wreck
   assert.equal(sim.takeEvents().lost, 1, 'and the pursuit loses it');
 });
 
-test('cars on their lanes are not touched by the wall test', () => {
+test('a civilian in drive mode overlapping a static shape is pushed out along contact normal and loses speed into it', () => {
+  const { sim, colliders } = withBuilding(1000, 1000);
+  const a = sim.spawn(anywhere, 0, 3000);
+  const reach = a.kind.length / 2 - a.kind.width / 2;
+  a.x = 1000;
+  a.z = 990 - reach - a.kind.width / 2 + 0.4;
+  a.y = 0;
+  a.yaw = 0;
+  a.speed = 10;
+  a.vx = 0;
+  a.vz = 10;
+  assert.ok(inside(colliders, a), 'car initially overlaps south face of building');
+  sim.collideWorld(a, DT);
+  assert.ok(!inside(colliders, a), 'car pushed out of the building');
+  assert.ok(a.speed < 1, 'lost speed into the wall');
+});
+
+test('a civilian in drive mode touching a static shape for more than a second brakes and waits', () => {
   const { sim } = withBuilding(1000, 1000);
-  let calls = 0;
-  const inner = sim.hitWorld;
-  sim.hitWorld = (x, z, r, y) => {
-    calls++;
-    return inner(x, z, r, y);
-  };
-  for (let i = 0; i < 5; i++) sim.spawn(anywhere, 0, 3000);
-  for (let t = 0; t < 1; t += DT) sim.update(DT, anywhere);
-  assert.equal(calls, 0, 'lane followers cost nothing');
+  const a = sim.spawn(anywhere, 0, 3000);
+  const reach = a.kind.length / 2 - a.kind.width / 2;
+  a.x = 1000;
+  a.y = 0;
+  a.yaw = 0;
+  a.speed = 8;
+  a.vx = 0;
+  a.vz = 8;
+  for (let t = 0; t < 0.9; t += DT) {
+    a.z = 990 - reach - a.kind.width / 2 + 0.1;
+    sim.collideWorld(a, DT);
+  }
+  assert.equal(a.brake, 0, 'has not braked before 1 second');
+  for (let t = 0; t < 0.2; t += DT) {
+    a.z = 990 - reach - a.kind.width / 2 + 0.1;
+    sim.collideWorld(a, DT);
+  }
+  assert.equal(a.brake, 1, 'brakes after 1 second of continuous touch');
+  assert.equal(a.speed, 0, 'speed dropped to 0');
+  assert.ok(a.capUntil > sim.time, 'waiting with speed capped at 0');
 });

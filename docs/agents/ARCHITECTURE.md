@@ -165,7 +165,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-485 tests in the suite (483 pass while C8 soundtrack files land); the type check is clean. By area:
+488 tests in the suite (486 pass while C8 soundtrack files land); the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -264,7 +264,7 @@ lane remains open, changes into it instead; a player ram over 6 m/s restores pla
 through (0.9.23). Knocked roadblock barriers flatten and lie flat on the road, damping their slide quickly with no yaw spin, faded barriers are hidden from PursuitView (0.9.34), and barriers and parked units do not count against the civilian spawn target (0.9.32). Knocked cars and moving wrecks hit the other traffic, so
 one hit can push a car into the next. A car off its lane
 (a wreck, a police unit driving free) hits walls, barriers and posts like the player's car: pushed
-out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
+out, its speed into the wall taken, spun by an end hit, a unit losing hit points by the hit. Civilians in drive mode are solid against the world too (`collideWorld` runs in `drive` mode: overlaps pushed out along contact normal and speed into wall zeroed, continuous contact > 1 s brakes and waits, 0.9.35), and turning civilians follow cubic Bezier curves inside junction patches (0.9.34). Civilians answer the player's driving (`traffic/manners.js`): passed on their left (the wrong side,
 traffic keeps left), cut up close ahead (they brake too), crossed at speed while they wait at rest,
 or knocked aside, they honk with their own horn (a kei car's high beep, a truck's air horn). In a
 pursuit, cars within 45 m of the player or of a chasing unit panic: they brake to a crawl, edge

@@ -26,7 +26,7 @@ import { DAMAGE, health, unitDamage, unitHealthScale } from '../police/units.js'
  *   ex: number, ez: number, cap: number, capUntil: number, plan: Link | null, end: Link | null,
  *   changeDuration: number, changeTimer: number, changeStartX: number, changeStartZ: number,
  *   changePrevEx: number, changePrevEz: number, changeFromLane?: Lane | null,
- *   curve?: ReturnType<typeof buildTurn> | null, curveProgress?: number,
+ *   curve?: ReturnType<typeof buildTurn> | null, curveProgress?: number, touchTime?: number,
  *   mode: 'drive' | 'knocked' | 'wreck' | 'parked', age: number, wreckAge: number, knockAge?: number, laneHold: number, duel: boolean,
  *   signal: number, signalTimer: number, signalTarget: Lane | null,
  *   nextChange: number, inertia: number,
@@ -669,7 +669,7 @@ export class TrafficSim {
       else if (a.pursuit) this.stepPursuit(a, dt, player, a.pursuit === 'search' ? this.searchGoals : this.goals);
       else if (a.quarry) this.stepTail(a, dt);
       else this.stepDrive(a, dt, player);
-      if (this.hitWorld && (a.mode === 'wreck' || a.mode === 'knocked' || a.free)) this.collideWorld(a);
+      if (this.hitWorld && (a.mode === 'wreck' || a.mode === 'knocked' || a.free || a.mode === 'drive')) this.collideWorld(a, dt);
     }
     this.collideAgents();
     const driver = /** @type {any} */ (player);
@@ -906,9 +906,12 @@ export class TrafficSim {
         this.clearSignal(a);
       } else {
         const pt = a.curve.at(u);
-        a.x = pt.x;
+        const k = Math.exp(-dt * (1.4 + a.speed * 0.05));
+        a.ex = (a.ex ?? 0) * k;
+        a.ez = (a.ez ?? 0) * k;
+        a.x = pt.x + a.ex;
         a.y = pt.y;
-        a.z = pt.z;
+        a.z = pt.z + a.ez;
         a.yaw = pt.yaw;
         a.vx = Math.sin(a.yaw) * a.speed;
         a.vz = Math.cos(a.yaw) * a.speed;
@@ -1863,18 +1866,24 @@ export class TrafficSim {
    * to the pursuit; a free unit keeps what is left of its speed along its heading.
    * @param {Agent} a
    */
-  collideWorld(a) {
+  collideWorld(a, dt = 1 / 30) {
     const hit = /** @type {NonNullable<TrafficSim['hitWorld']>} */ (this.hitWorld);
     const r = a.kind.width / 2;
     const reach = Math.max(0, a.kind.length / 2 - r);
     const fx = Math.sin(a.yaw);
     const fz = Math.cos(a.yaw);
     let hardest = 0;
+    let anyContact = false;
     for (const along of [reach, 0, -reach]) {
       const c = hit(a.x + fx * along, a.z + fz * along, r, a.y);
       if (!c) continue;
+      anyContact = true;
       a.x += c.nx * c.depth;
       a.z += c.nz * c.depth;
+      if (a.mode === 'drive') {
+        a.ex += c.nx * c.depth;
+        a.ez += c.nz * c.depth;
+      }
       const vn = a.vx * c.nx + a.vz * c.nz;
       if (vn >= 0) continue;
       hardest = Math.max(hardest, -vn);
@@ -1885,7 +1894,23 @@ export class TrafficSim {
       a.vx = tx * vt + c.nx * vOut;
       a.vz = tz * vt + c.nz * vOut;
       // A hit at the nose or the tail turns the car; one at its middle only stops it.
-      a.yawRate += WALL_SPIN * (along / a.kind.length) * (fz * c.nx - fx * c.nz) * -vn;
+      if (a.mode !== 'drive') {
+        a.yawRate += WALL_SPIN * (along / a.kind.length) * (fz * c.nx - fx * c.nz) * -vn;
+      }
+    }
+    if (a.mode === 'drive') {
+      if (anyContact) {
+        a.touchTime = (a.touchTime ?? 0) + dt;
+        if (a.touchTime > 1.0 && this.time >= a.capUntil) {
+          a.speed = 0;
+          a.cap = 0;
+          a.capUntil = this.time + 1.2;
+          a.brake = 1;
+          a.touchTime = 0;
+        }
+      } else {
+        a.touchTime = 0;
+      }
     }
     if (!hardest) return;
     if (a.mode === 'wreck') {
