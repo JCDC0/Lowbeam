@@ -167,7 +167,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-503 tests pass; the type check is clean. By area:
+504 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -433,7 +433,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The GPS route test measures planning time and can fail when the machine is busy, and
   `tests/passby.test.mjs` "a loud swell that decays" compares single samples of noise: it failed once
   under load and passes alone.
-- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4 parts 1-3, 0.9.34 to 0.9.36): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4); 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
+- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all fourteen civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in
   (0.10.30). Still to come: stingers for escaped and busted, and the vocal flags of the built-in tracks

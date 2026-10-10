@@ -1220,6 +1220,15 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.37 (2026-10-10)
+
+Civilian kind dimensions verified against body models (B4 part 4).
+
+- `tests/kind-models.test.mjs`:
+  - Extended model validation to assert that every civilian kind in `KINDS` matches the collision length, width, and height of its body model within tolerances (0.35 m length, 0.3 m width, 0.3 m height).
+  - Checks the full cargo bounds of trucks, tankers, and trailers (7.2 m box truck, 9.0 m tanker, 16.0 m semi trailer, 10.5 m bus) against `CIVILIAN_MODEL_BY_ID`, ensuring `bodyOf` accurately mirrors drawn vehicle extents.
+  - Verifies future Blender civilian models (`kind.blender`) against their assets model JSON with required materials when G6 lands.
+
 ## 0.9.36 (2026-10-10)
 
 Ramps and edges clear of static obstacles, strict junction turns, and toll island protections (B4 part 3).
