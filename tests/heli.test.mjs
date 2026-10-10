@@ -289,3 +289,19 @@ test('pad returns to basePad after a refuel', () => {
   assert.equal(h.pad, PAD, 'pad restored to basePad after refuel');
 });
 
+
+test('a helicopter with nothing to follow flies on without a searchlight fault, whatever the world can hide', () => {
+  const h = new Heli(PAD);
+  const target = car(20);
+  const w = world(target);
+  w.solid = () => false;
+  h.launch();
+  run(h, w, 30);
+  assert.ok(h.airborne, 'up and following');
+  w.target = null;
+  assert.doesNotThrow(() => run(h, w, 30), 'a free helicopter over a world with solid shapes');
+  assert.equal(h.spot.sees, false, 'the light sees nothing without a target');
+  h.recall();
+  assert.doesNotThrow(() => run(h, w, 120), 'flying home with the light on');
+  assert.equal(h.state, 'parked');
+});

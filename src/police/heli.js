@@ -413,7 +413,7 @@ export class Heli {
     sp.z += (tz - sp.z) * k;
     sp.y = t && this.state === 'chase' && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 2 ? t.y : w.groundAt(sp.x, sp.z);
     const range = Math.hypot(sp.x - this.x, sp.y - this.y, sp.z - this.z);
-    const clear = !w.solid || (clearLine(sp, t, w.solid) && clearLine({ x: this.x, y: this.y, z: this.z }, t, w.solid));
+    const clear = !!t && (!w.solid || (clearLine(sp, t, w.solid) && clearLine({ x: this.x, y: this.y, z: this.z }, t, w.solid)));
     const weather = clamp(w.weather ?? 0, 0, 1);
     const lightRange = HELI.lightRange * (1 - 0.3 * weather);
     sp.sees = !!t && this.state === 'chase' && range < lightRange && Math.hypot(sp.x - t.x, sp.z - t.z) < sp.r * 1.2 && !(w.covered && w.covered(t.x, t.z, t.y)) && clear;

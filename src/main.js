@@ -183,8 +183,8 @@ function placeFly() {
 }
 
 let last = performance.now();
-/** @param {number} now */
-function frame(now) {
+/** One frame of the game. @param {number} now */
+function step(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   input.poll();
@@ -289,7 +289,30 @@ function frame(now) {
   stage.setSpeedFx(driving && drive?.car ? speedFx(drive.car.state.speed * 3.6) : { vignette: 0, blur: 0 });
   pursuit.update(pursuitMock ?? (driving ? withKinds(/** @type {any} */ (drive)?.pursuitView?.() ?? null) : null), dt, driving ? drive?.detect ?? null : null);
   input.endFrame();
-  requestAnimationFrame(frame);
+}
+
+/** Faults already reported, so one that repeats every frame is told once. @type {Set<string>} */
+const told = new Set();
+
+/**
+ * Runs a frame and always asks for the next. An error in one system (it was a helicopter's searchlight)
+ * used to end the loop for good: the picture stopped while the music and the engine went on. Now the
+ * frame is lost, the error is logged once, and the menus and the pause key still answer.
+ * @param {number} now
+ */
+function frame(now) {
+  try {
+    step(now);
+  } catch (err) {
+    const key = String((err && /** @type {Error} */ (err).stack) || err).split('\n').slice(0, 3).join('|');
+    if (!told.has(key)) {
+      told.add(key);
+      console.error('frame failed; the loop goes on', err);
+    }
+    input.endFrame();
+  } finally {
+    requestAnimationFrame(frame);
+  }
 }
 requestAnimationFrame(frame);
 

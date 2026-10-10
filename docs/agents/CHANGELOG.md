@@ -28,6 +28,26 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.31 (2026-10-10)
+
+Fixes the freeze Jc saw: the picture stopped, the music went on and the engine note stayed on its last
+value (and F11 then showed a blank screen). The console said `Uncaught TypeError: Cannot read properties of
+null (reading 'x')` at `clearLine` (`sight.js`), from `Heli.light`, from `Heli.update`, from `Drive.update`.
+
+- The cause, in `heli.js` since 0.9.26: a helicopter that is airborne with no target (a pursuit over and the
+  helicopter flying home, one breaking off to refuel, or a backup helicopter not assigned) still tested
+  its searchlight's line to the target, and `clearLine` read `null.x`. `clear` is now false without a target.
+  The tests never had a world with `solid` shapes and a helicopter with no target together; one does now
+  (`tests/heli.test.mjs`), and it failed with that same error before the fix.
+- The loop: `frame` in `main.js` asked for the next frame as its last line, so any error in a frame
+  ended the game for good with the audio still running. `frame` now runs `step` in a try and always asks
+  for the next frame (a `finally`); an error is logged once per kind (`frame failed; the loop goes on`) and the
+  menus and the pause key still answer. A fault in one system can still stall the drive screen, but it
+  no longer leaves a dead page.
+- F11 was not the cause: it resizes the canvas, which clears it, and with the loop already dead nothing
+  drew again. `stage.resize` is sound.
+- Found by Jc's console (a 0.10.30 copy served from a separate worktree on port 8041). 503 tests.
+
 ## 0.10.30 (2026-10-10)
 
 The music player in Settings (C9), on the right half of the screen, with the game's faces: Michroma for

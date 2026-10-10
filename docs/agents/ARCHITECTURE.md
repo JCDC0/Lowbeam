@@ -104,7 +104,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 | File | Role |
 |---|---|
-| `src/main.js` | Boot, the state machine (title, menu, garage, settings, controls, loading, drive, pause, map, free), `window.__lowbeam` |
+| `src/main.js` | Boot, the state machine (title, menu, garage, settings, controls, loading, drive, pause, map, free), `window.__lowbeam`; `frame` runs `step` in a try and always asks for the next frame, so an error is logged once and the loop goes on |
 | `src/drive.js` | The drive: fixed-step loop, collisions, cameras, refuel, tow, reset, area names, tolls, duel, rally; feeds the police director and carries out its orders |
 | `src/core/input.js` | Keyboard and gamepad, menu actions, `drive(dt)` with keyboard ramps, key bindings (`KEYS`, `rebind`, `keyLabel`, `setBindings`, saved under `keys`) |
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
@@ -167,7 +167,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-502 tests pass; the type check is clean. By area:
+503 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
