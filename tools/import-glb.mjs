@@ -1,21 +1,27 @@
 /**
- * Turns an outside low poly model (a .glb, such as Kenney's CC0 Car Kit) into the game's model JSON,
- * the same format the Blender kit exports (`tools/blender/kit.py`), with no Blender needed.
+ * Turns an outside low poly model (a .glb, such as Kenney's CC0 Car Kit, or a binary .fbx, such as
+ * rgsdev's Free Low Poly Vehicles Pack, read by `tools/fbx.mjs`) into the game's model JSON, the same
+ * format the Blender kit exports (`tools/blender/kit.py`), with no Blender needed.
  *
- *   node tools/import-glb.mjs <model.glb> <name> [--size L,W,H] [--map "#rrggbb=paint,#rrggbb=glass,..."]
- *                             [--report] [--source "Kenney Car Kit 3.1, CC0"]
+ *   node tools/import-glb.mjs <model.glb|.fbx> <name> [--size L,W,H] [--auto] [--parts]
+ *                             [--map "#rrggbb=paint,#rrggbb=tail,..."] [--report] [--source "..."]
  *
  * Every triangle gets one flat color, sampled from the model's texture at the middle of its UVs (these
- * kits paint with a small palette texture), and a flat normal, for the game's PS1 look. Colors become
- * materials by `--map`: `paint` is tinted per car, `lamp` faces at the front are head lamps and `tail`
- * faces tail lamps (`traffic/bodies.js`), anything else keeps its color under its hex name. The model is
- * moved so it stands on y = 0, centered in x and z, front to +z, and `--size` scales it to a traffic kind's
- * length, width and height. `--report` prints the colors by area, where they sit and the bounds, to
- * write the map. The source goes into `assets/models/SOURCES.md` by hand.
+ * kits paint with a small palette texture) or its material's diffuse color (an FBX), and a flat normal,
+ * for the game's PS1 look. Triangles become parts: `paint` is tinted per car, `lamp` faces at the front
+ * are head lamps and `tail` faces tail lamps (`traffic/bodies.js`), anything else keeps its color under
+ * its hex name. `--auto` finds the parts by hue and place for a palette kit, or by the material's name
+ * for a kit that names them (`rear lights`, `headlights`, `windows`, `tires`; the body material with
+ * the most area is the paint); `--map` names a color's part by hand (a mapped `tail` takes only faces
+ * looking back, `lamp` only faces looking forward). The model is moved so it stands on y = 0, centered
+ * in x and z, front to +z, and `--size` scales it to a traffic kind's length, width and height, its
+ * wheels kept round. `--report` prints the colors (and material names) by area, where they sit and the
+ * bounds; `--parts` the parts it made. The source goes into `assets/models/SOURCES.md` by hand.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
+import { readFbx } from './fbx.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -152,7 +158,8 @@ const mul = (a, b) => {
 };
 const apply = (m, [x, y, z]) => [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]];
 
-const { json: gltf, bin } = readGlb(input);
+const fbx = /.fbx$/i.test(input);
+const { json: gltf, bin } = fbx ? { json: null, bin: null } : readGlb(input);
 const texCache = new Map();
 function textureOf(matIndex) {
   const mat = gltf.materials?.[matIndex];
@@ -172,8 +179,8 @@ function textureOf(matIndex) {
 }
 const hex = (r, g, b) => '#' + [r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('');
 
-/** Every triangle: three points, its color and the node it came from. */
-const tris = [];
+/** Every triangle: three points, its color, the node it came from and (from an FBX) its material's name. */
+const tris = fbx ? readFbx(fs.readFileSync(input)).tris : [];
 function walk(ni, parent) {
   const node = gltf.nodes[ni];
   const m = mul(parent, localMatrix(node));
@@ -203,7 +210,7 @@ function walk(ni, parent) {
   for (const c of node.children || []) walk(c, m);
 }
 const IDENT = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-for (const ni of gltf.scenes[gltf.scene || 0].nodes) walk(ni, IDENT);
+if (!fbx) for (const ni of gltf.scenes[gltf.scene || 0].nodes) walk(ni, IDENT);
 
 const lo = [Infinity, Infinity, Infinity];
 const hi = [-Infinity, -Infinity, -Infinity];
@@ -250,7 +257,8 @@ if (args.includes('--report')) {
   const by = new Map();
   for (const t of tris) {
     const { area: ar, normal, mid } = area(t);
-    const e = by.get(t.color) || { area: 0, tris: 0, z: 0, y: 0, front: 0, back: 0, nodes: new Set() };
+    const key = t.material ? `${t.color} ${t.material}` : t.color;
+    const e = by.get(key) || { area: 0, tris: 0, z: 0, y: 0, front: 0, back: 0, nodes: new Set() };
     e.area += ar;
     e.tris++;
     e.z += mid[2] * ar;
@@ -258,7 +266,7 @@ if (args.includes('--report')) {
     if (normal[2] > 0.5) e.front += ar;
     if (normal[2] < -0.5) e.back += ar;
     e.nodes.add(t.node);
-    by.set(t.color, e);
+    by.set(key, e);
   }
   console.log(`${tris.length} triangles; source bounds ${dims.map((d) => d.toFixed(3)).join(' x ')} (x, y, z); scaled to ${dims.map((d, k) => (d * scale[k]).toFixed(2)).join(' x ')}`);
   for (const [c, e] of [...by].sort((a, b) => b[1].area - a[1].area)) {
@@ -291,15 +299,42 @@ function partOf(t, paintHue, len) {
   const c = hsv(t.color);
   const { mid, normal } = area(t);
   if (/wheel/i.test(t.node)) return c.v < 0.36 ? 'tire' : 'rim';
+  if (t.material) return partByName(t, mid, normal);
   if (c.s > 0.55 && c.h >= 38 && c.h <= 62 && mid[2] > 0) return 'lamp';
-  if (c.s > 0.55 && (c.h < 6 || c.h > 345) && mid[2] < -0.4 * len && normal[2] < -0.3) return 'tail';
+  if (c.s > 0.68 && (c.h < 6 || c.h > 345) && mid[2] < -0.4 * len && normal[2] < -0.3) return 'tail';
   if (c.s > 0.4 && Math.abs(((c.h - paintHue + 540) % 360) - 180) < 14) return 'paint';
   if (c.v > 0.85 && c.b > c.r + 0.04) return 'glass';
   if (c.v > 0.72 && c.s < 0.14) return 'plate';
   if (c.v < 0.33) return 'trim';
   return 'under';
 }
+/**
+ * A kit with one flat color a material (rgsdev's, from an FBX) names its parts: the rear and head lights,
+ * the windows, the tires; the body material with the most area is the paint, and every other keeps its own
+ * color.
+ */
+function partByName(t, mid, normal) {
+  const n = t.material.toLowerCase();
+  if (/rear ?light|tail ?light|brake ?light/.test(n)) return mid[2] < 0 && normal[2] < -0.3 ? 'tail' : `c-${t.color.slice(1)}`;
+  if (/head ?light/.test(n)) return mid[2] > 0 && normal[2] > 0.3 ? 'lamp' : `c-${t.color.slice(1)}`;
+  if (/window|glass/.test(n)) return 'glass';
+  if (/tire|tyre/.test(n)) return 'tire';
+  if (t.material === paintMaterial) return 'paint';
+  return `c-${t.color.slice(1)}`;
+}
 const auto = args.includes('--auto');
+/** The body material with the most area, which the traffic tints per car. */
+let paintMaterial = '';
+if (auto && tris.some((t) => t.material)) {
+  const byMat = new Map();
+  for (const t of tris) {
+    if (!t.material || !/body|paint/i.test(t.material) || /wheel/i.test(t.node)) continue;
+    const c = hsv(t.color);
+    if (c.s < 0.25 && (c.v < 0.25 || c.v > 0.85)) continue;
+    byMat.set(t.material, (byMat.get(t.material) || 0) + area(t).area);
+  }
+  paintMaterial = [...byMat].sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+}
 let paintHue = 0;
 if (auto) {
   const hues = new Map();
@@ -312,9 +347,53 @@ if (auto) {
   }
   paintHue = ([...hues].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0) * 10;
 }
+// A color mapped to `tail` takes only the faces looking back, and `lamp` only those looking forward: a kit
+// that paints its tail lamps with its stripe's red (Kenney's ambulance) maps that red without lighting the
+// stripe down the sides.
+const mapped = (t) => {
+  const m = map.get(t.color);
+  if (!m) return undefined;
+  const nz = area(t).normal[2];
+  return (m === 'tail' && nz > -0.5) || (m === 'lamp' && nz < 0.5) ? undefined : m;
+};
+const part = tris.map((t) => mapped(t) || (auto ? partOf(t, paintHue, dims[2] * scale[2]) : `c-${t.color.slice(1)}`));
+// A lamp is a quad whose two triangles sample two shades of the palette's lamp cell, and only the
+// deeper one passes the tail test (Kenney's tail lamps are #e0463e and #ed573f, 3 and 8 degrees). So a
+// red or orange triangle sharing an edge with a tail lamp, facing the same way and no bigger than a lamp
+// (so a red truck's paint stays paint) is lamp too, and the same for the yellow head lamps: no half-lit
+// lamps, and the flares sit in the middle of each.
+if (auto) {
+  const key = (q) => q.map((x) => Math.round(x * 1e4)).join(',');
+  /** @type {Map<string, number[]>} */
+  const byEdge = new Map();
+  tris.forEach((t, i) => {
+    const k = t.p.map(key);
+    for (const [a, b] of [[0, 1], [1, 2], [2, 0]]) {
+      const e = k[a] < k[b] ? `${k[a]}|${k[b]}` : `${k[b]}|${k[a]}`;
+      if (!byEdge.has(e)) byEdge.set(e, []);
+      byEdge.get(e).push(i);
+    }
+  });
+  const kin = { tail: (c) => c.s > 0.6 && (c.h < 16 || c.h > 340), lamp: (c) => c.s > 0.45 && c.h >= 30 && c.h <= 66 };
+  for (const lampPart of ['tail', 'lamp']) {
+    const seeds = part.flatMap((p, i) => (p === lampPart && !mapped(tris[i]) ? [i] : []));
+    for (const i of seeds) {
+      const { normal: facing, area: size } = area(tris[i]);
+      const k = tris[i].p.map(key);
+      for (const [a, b] of [[0, 1], [1, 2], [2, 0]]) {
+        for (const j of byEdge.get(k[a] < k[b] ? `${k[a]}|${k[b]}` : `${k[b]}|${k[a]}`) || []) {
+          if (j === i || part[j] === lampPart || mapped(tris[j]) || tris[j].material || /wheel/i.test(tris[j].node)) continue;
+          const { normal: nj, area: aj } = area(tris[j]);
+          if (kin[lampPart](hsv(tris[j].color)) && aj < size * 2.5 && nj[0] * facing[0] + nj[1] * facing[1] + nj[2] * facing[2] > 0.8) part[j] = lampPart;
+        }
+      }
+    }
+  }
+}
 const groups = new Map();
-for (const t of tris) {
-  const mname = map.get(t.color) || (auto ? partOf(t, paintHue, dims[2] * scale[2]) : `c-${t.color.slice(1)}`);
+for (let ti = 0; ti < tris.length; ti++) {
+  const t = tris[ti];
+  const mname = part[ti];
   if (!groups.has(mname)) groups.set(mname, { color: t.color, pos: [], nrm: [], sum: [0, 0, 0], area: 0 });
   const g = groups.get(mname);
   const { normal, area: ar } = area(t);

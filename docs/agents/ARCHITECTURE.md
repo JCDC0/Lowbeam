@@ -29,7 +29,7 @@ Prologue (`docs/DESIGN.md`).
 | Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
-| Outside model import | `node tools/import-glb.mjs <model.glb> <name> --size L,W,H --auto` (`--report` lists its colors): a low poly .glb into `assets/models/<name>.json`, no Blender; record it in `assets/models/SOURCES.md` |
+| Outside model import | `node tools/import-glb.mjs <model.glb or .fbx> <name> --size L,W,H --auto` (`--report` lists its colors and materials, `--parts` the parts it made): a low poly .glb or binary .fbx into `assets/models/<name>.json`, no Blender; record it in `assets/models/SOURCES.md` |
 | Music track list | `npm run music` (`node tools/music-manifest.mjs`: scans the folders in `assets/music/`, measures each file with ffmpeg and keeps the roles already set; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
@@ -168,7 +168,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/ui/pursuit.js`, `stats.js`, `screen-fx.js` | Pursuit HUD, F3 stats, the screen effects and their toggles |
 | `tools/blender/` | Model scripts: `kit.py` (helpers and exporter), `police_hq.py`, `police_station.py`, `police_barrier.py`, `garage.py`, `hideout.py`, `heli.py` |
 | `assets/models/` | Exported models (JSON); `SOURCES.md` lists the outside ones (origin, author, license) |
-| `tools/import-glb.mjs` | Outside low poly models (.glb) into the game's model JSON: flat color per triangle from the model's palette texture, flat normals, parts by hue and place (`paint`, `glass`, `lamp`, `tail`, `tire`, `rim`, `plate`, `trim`, `under`), scaled to a traffic kind |
+| `tools/import-glb.mjs`, `fbx.mjs` | Outside low poly models (.glb, or binary .fbx through `fbx.mjs`) into the game's model JSON: flat color per triangle from the model's palette texture or its material, flat normals, parts by hue and place or by material name (`paint`, `glass`, `lamp`, `tail`, `tire`, `rim`, `plate`, `trim`, `under`; a lamp's two halves kept together), scaled to a traffic kind with round wheels |
 | `assets/fonts/`, `tools/vendor-fonts.mjs` | The bundled OFL faces and the script that vendors them |
 | `assets/music/` | The recorded soundtrack in folders (Chase, Chill, LeisureRacing: a folder is a playlist) and `tracks.json`, the list the game plays from (the folders with the moods each plays for; each track's title, measured loudness, vocal flag) |
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
@@ -251,7 +251,7 @@ arc up its left side and over its top (`arcSpot`), the twin's speedometer above 
 digital styles a tall display whose rev bar curves up the side. Warnings are symbols in fixed places
 inside the main dial (`dialLamps`).
 
-**Traffic.** About 38 civilians of fourteen kinds around the player with IDM following, lights,
+**Traffic.** About 38 civilians of eighteen kinds (the ambulance, fire engine, garbage truck and limousine since 0.10.39, all rare) around the player with IDM following, lights,
 turns following cubic curves inside junction patches (0.9.34), exits, blinkers and lane holds; wrecks; a blob shadow on the road under each car within 160 m (one
 draw call, black at 90 % by day and 45 % by night); lamp flares and headlight beams; a blinking
 indicator flares larger and the three nearest throw a small amber pool. The traffic lights are seen:
@@ -290,7 +290,7 @@ and maintain 140 m clearance on spawn (0.9.23). The Hikari is among the racers (
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
 Kagero Hot-GT, Kagero Lancer-X, Halden Drifter, Tsurugi Wedge, Kenro Hardtop, Hoshi Beat and Kagero
-RS-Wide, Vespera Zero, Kenro Sakura S and Kagero Aristo VIP racers (all eleven of G5) and all four police units, and seven civilian kinds with Kenney's CC0 Car Kit converted by `tools/import-glb.mjs` (sedan, hatchback, taxi, SUV, minivan, pickup, box truck; `assets/models/SOURCES.md`); the wagon, kei car, panel van, kei truck, tanker, bus and semi keep their lofted or boxy bodies.
+RS-Wide, Vespera Zero, Kenro Sakura S and Kagero Aristo VIP racers (all eleven of G5) and all four police units, and fourteen civilian kinds with outside CC0 models converted by `tools/import-glb.mjs` (`assets/models/SOURCES.md`): Kenney's Car Kit for the sedan, hatchback, taxi, SUV, minivan, pickup, box truck and garbage truck, rgsdev's Free Low Poly Vehicles Pack for the panel van, bus, semi, ambulance, fire engine and limousine; the wagon, kei car, kei truck and tanker keep their lofted or boxy bodies.
 
 **Time of day.** Night (the default), dusk, dawn, day or a cycle (`render/daylight.js`; Settings,
 saved as `time`; `__lowbeam.time('day' | 18.5 | 'cycle')`). A cycle runs from 17:36 and a day takes 24
@@ -439,7 +439,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 - The roadblock barriers (0.9.29) have three known faults, fixes owed in `tasks/G7-police-station.md`: a
   parked barrier is heard as an idling engine, one hit hard stays upright instead of lying down, and the
   barriers count against the civilians' target.
-- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all fourteen civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
+- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all eighteen civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in
   (0.10.30). Still to come: stingers for escaped and busted, and the vocal flags of the built-in tracks

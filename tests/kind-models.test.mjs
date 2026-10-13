@@ -23,7 +23,7 @@ test('every Blender body a traffic kind names exists, is lit and tinted, and has
 });
 
 test('every civilian kind has collision dimensions matching its body model', () => {
-  assert.equal(KINDS.length, 14, 'fourteen civilian traffic kinds');
+  assert.equal(KINDS.length, 18, 'eighteen civilian traffic kinds');
   for (const kind of KINDS) {
     if (kind.blender) {
       const model = JSON.parse(readFileSync(new URL(`../assets/models/${kind.blender}.json`, import.meta.url), 'utf8'));

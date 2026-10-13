@@ -195,7 +195,8 @@ export function buildKindGeometry(k, models = {}) {
   }
   const p = new Parts();
   const { length: L, width: W, height: H } = k;
-  const r = k.id === 'bus' || k.id === 'semi' || k.id === 'truck' || k.id === 'tanker' ? 0.5 : 0.31;
+  const heavy = ['truck', 'tanker', 'semi', 'ambulance', 'firetruck', 'garbage'];
+  const r = k.id === 'bus' || heavy.includes(k.id) ? 0.5 : 0.31;
   const wheelW = r * 0.7;
   const track = W / 2 - wheelW / 2 + 0.02;
 
@@ -212,7 +213,7 @@ export function buildKindGeometry(k, models = {}) {
     p.box(0, 0.3, -L / 2 + 0.04, W - 0.04, 0.22, 0.14, DARK);
     lights(p, W, belt - 0.1, L, 0.3);
     wheels(p, [L * 0.3, -L * 0.3], W / 2 - 0.12, 0.33, 0.27);
-  } else if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan'].includes(k.id)) {
+  } else if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan', 'limo'].includes(k.id)) {
     const belt = H * (k.id === 'suv' || k.id === 'minivan' ? 0.5 : 0.52);
     const low = 0.24;
     p.box(0, (low + belt) / 2, 0, W, belt - low, L, { top: PAINT, side: PAINT, front: PAINT, back: PAINT });
@@ -244,7 +245,7 @@ export function buildKindGeometry(k, models = {}) {
     p.box(0, 0.95, -0.6, W - 0.1, 0.5, L - 1.5, { top: PAINT, side: PAINT });
     lights(p, W, 0.5, L, 0.2);
     wheels(p, [L * 0.3, -L * 0.3], track, r, wheelW);
-  } else if (k.id === 'truck' || k.id === 'tanker' || k.id === 'semi') {
+  } else if (heavy.includes(k.id)) {
     const cab = k.id === 'semi' ? 2.4 : 2.3;
     const cargo = L - cab - 0.3;
     p.box(0, 1.3, L / 2 - cab / 2, W * 0.96, 2.0, cab, { top: PAINT, side: PAINT, front: GLASS, back: PAINT }, { front: undefined });

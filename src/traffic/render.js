@@ -90,7 +90,8 @@ function lampSpots(geo, kind) {
     if (r + g + b < 0.3) continue;
     const z = pos.getZ(i);
     const tail = r - g - b > 0.2;
-    if (tail ? z > 0 : z < 0) continue;
+    // Only the lamps in the front and back quarters: a taxi's lit roof sign is not a head lamp.
+    if (tail ? z > -kind.length * 0.25 : z < kind.length * 0.25) continue;
     const a = acc[tail ? 'tail' : 'head'][pos.getX(i) > 0 ? 0 : 1];
     a[0] += pos.getX(i);
     a[1] += pos.getY(i);

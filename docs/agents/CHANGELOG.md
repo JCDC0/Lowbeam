@@ -28,6 +28,43 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.39 (2026-10-13)
+
+The traffic's tail lamps fixed (Jc: the SUV's and the truck's red lights did not match their lamps, M-03),
+and the bus, the trucks and four new kinds from rgsdev's CC0 pack, with Jc's go while the backend is off.
+
+- `tools/import-glb.mjs`: Kenney paints each lamp as a quad of two shades of its palette cell (the tail
+  lamps #e0463e and #ed573f, 3 and 8 degrees of hue), and only the deeper shade passed the tail test, so each
+  tail lamp was half lit (one triangle red, the other the grey of the lower body) and its flare sat on that
+  triangle's corner. Now a triangle sharing an edge with a tail (or head) lamp, facing the same way, of the
+  same hue family and no bigger than a lamp joins it (the size cap keeps a red truck's paint out); the tail
+  seed asks for saturation over 0.68. A `--map`ped `tail` takes only faces looking back and `lamp` only
+  faces looking forward. The seven Kenney cars are converted again: whole lamps on all of them.
+- `src/traffic/render.js`: the lamp flares are found only from the lamp vertices in the front and back
+  quarters of a body; the taxi's lit roof sign had pulled its head lamp flares up onto the windshield.
+- `tools/fbx.mjs` (new): a reader for binary FBX 7.x (the node tree, zlib arrays, the model transforms
+  with pre-rotation and the geometric offset, the material per polygon, the file's up axis), the triangles
+  in world space with each material's diffuse color made sRGB and its name. `import-glb.mjs` reads
+  `.fbx` with it, and `--auto` sorts a named kit by its material names (`rear lights` at the back is the
+  tail, `headlights` at the front the lamp, `windows`, `tires`; the body material with the most area is
+  the paint) instead of by hue.
+- rgsdev's Free Low Poly Vehicles Pack (CC0, 1.4 MB, downloaded with Jc's go and unpacked outside the
+  repository): `rgsdev_bus`, `rgsdev_semi` (the trailer is its paint, so trailers come in four colors) and
+  `rgsdev_van` draw the `bus`, `semi` and `van`; and four new kinds (`traffic/kinds.js`, the backend's
+  file, changed with the backend off): `ambulance` (5.6 m, 3.2 t, rgsdev's), `firetruck` (a 9 m ladder
+  engine, 15 t, rgsdev's), `garbage` (6.5 m, 8 t, Kenney's `garbage-truck`, mostly on the streets) and
+  `limo` (6.2 m, rgsdev's), all rare. Their voices (`traffic-voices.js`): the ambulance a van, the fire
+  engine and the garbage truck diesels, the limousine a six. Their boxy bodies in `traffic/bodies.js` (if
+  a model fails to load) are the truck's and the car's. `tests/kind-models.test.mjs` counts eighteen.
+- The prop viewer finds nothing wrong with the rgsdev models but the triangle budget on the semi (3,300)
+  and the fire engine (3,552); Kenney's garbage truck is 3,124. Looked at on Route 1 at night from behind,
+  each with its flares on its own lamps.
+- Left on lofted or boxy bodies: the wagon, kei car, kei truck and tanker. The rgsdev pack's tractor unit
+  with no trailer, police cars and sports cars are not used.
+
+Guide changes: the import command reads .fbx; the traffic has eighteen kinds and which outside model draws
+which.
+
 ## 0.10.38 (2026-10-10)
 
 Seven civilian kinds drawn with Kenney's CC0 cars (M-02), with Jc's go while the backend is off, and a

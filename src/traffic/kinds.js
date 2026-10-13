@@ -41,7 +41,11 @@ export const KINDS = [
   { id: 'truck', name: 'Box truck', length: 7.2, width: 2.3, height: 3.2, mass: 6500, accel: 1.2, speed: [0.72, 0.92], paint: [0xe8e8e6, 0x2f6fd0, 0xd8d8d6], weights: { expressway: 3, arterial: 3, street: 1, ramp: 2, mountain: 0.5 } },
   { id: 'tanker', name: 'Tanker', length: 9.0, width: 2.4, height: 3.0, mass: 12000, accel: 1.0, speed: [0.7, 0.9], paint: [0xc9ccd0, 0xe8e8e6], weights: { expressway: 1.2, arterial: 1, street: 0, ramp: 1, mountain: 0 } },
   { id: 'bus', name: 'City bus', length: 10.5, width: 2.5, height: 3.1, mass: 11000, accel: 1.1, speed: [0.7, 0.9], paint: [0x2f6fd0, 0xc23a2a, 0xe8e8e6], weights: { expressway: 0.5, arterial: 2, street: 3, ramp: 0, mountain: 0 } },
-  { id: 'semi', name: 'Semi trailer', length: 16, width: 2.5, height: 3.6, mass: 24000, accel: 0.9, speed: [0.72, 0.9], paint: [0xe8e8e6, 0xc9ccd0, 0x24407a], weights: { expressway: 2, arterial: 0.5, street: 0, ramp: 1, mountain: 0 } },
+  { id: 'semi', name: 'Semi trailer', length: 16, width: 2.5, height: 3.6, mass: 24000, accel: 0.9, speed: [0.72, 0.9], paint: [0xe8e8e6, 0xc9ccd0, 0x24407a, 0xd8a038], weights: { expressway: 2, arterial: 0.5, street: 0, ramp: 1, mountain: 0 } },
+  { id: 'ambulance', name: 'Ambulance', length: 5.6, width: 1.9, height: 2.5, mass: 3200, accel: 1.8, speed: [0.85, 1.05], paint: [0xc6261c], weights: { expressway: 0.3, arterial: 0.6, street: 0.5, ramp: 0.2, mountain: 0.1 } },
+  { id: 'firetruck', name: 'Fire engine', length: 9.0, width: 2.5, height: 3.3, mass: 15000, accel: 1.0, speed: [0.7, 0.9], paint: [0xb8c0cc], weights: { expressway: 0.15, arterial: 0.4, street: 0.4, ramp: 0.1, mountain: 0 } },
+  { id: 'garbage', name: 'Garbage truck', length: 6.5, width: 2.2, height: 2.9, mass: 8000, accel: 1.1, speed: [0.7, 0.88], paint: [0x3b8a5a, 0x2f6fd0, 0xe8e8e6], weights: { expressway: 0.2, arterial: 1, street: 1.5, ramp: 0.2, mountain: 0 } },
+  { id: 'limo', name: 'Limousine', length: 6.2, width: 1.9, height: 1.45, mass: 2600, accel: 2.0, speed: [0.85, 1.05], paint: [0x111317, 0x1b1d22, 0xe8e8e6], weights: { expressway: 0.4, arterial: 0.6, street: 0.3, ramp: 0.3, mountain: 0 } },
 ];
 
 /** Roadblock barrier obstacle kind. @type {Kind} */
@@ -88,8 +92,8 @@ export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
 
 /**
  * Bodies made in Blender, by kind: Gemini's models (tasks G2, G3, G5, G6) as they pass review, and
- * outside CC0 models converted with `tools/import-glb.mjs` (the `kenney_` ones, listed in
- * `assets/models/SOURCES.md`). The `_full` export carries its own wheels, which is all traffic needs
+ * outside CC0 models converted with `tools/import-glb.mjs` (Kenney's Car Kit, the `kenney_` ones, and
+ * rgsdev's Free Low Poly Vehicles Pack, the `rgsdev_` ones; listed in `assets/models/SOURCES.md`). The `_full` export carries its own wheels, which is all traffic needs
  * (its wheels do not turn).
  * @type {Record<string, string>}
  */
@@ -101,6 +105,13 @@ export const KIND_MODELS = {
   minivan: 'kenney_minivan',
   pickup: 'kenney_pickup',
   truck: 'kenney_boxtruck',
+  van: 'rgsdev_van',
+  bus: 'rgsdev_bus',
+  semi: 'rgsdev_semi',
+  ambulance: 'rgsdev_ambulance',
+  firetruck: 'rgsdev_firetruck',
+  garbage: 'kenney_garbage',
+  limo: 'rgsdev_limo',
   'rv-rotary': 'rv_rotary_full',
   'rv-kei': 'rv_kei_full',
   'rv-hothatch': 'rv_hothatch_full',
