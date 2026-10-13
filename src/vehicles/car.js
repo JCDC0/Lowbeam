@@ -1,5 +1,6 @@
 /**
- * The player's car: physics state, model, headlights and cockpit. Physics steps at a
+ * The player's car: physics state, model, headlights, the light trails of its tail lamps at speed, and
+ * cockpit. Physics steps at a
  * fixed 120 Hz; `pose(alpha)` draws the model between the last two steps so motion is
  * smooth at any frame rate.
  */
@@ -9,6 +10,8 @@ import { CarModel } from './models.js';
 import { STEER_RATIO, buildCockpit } from './cockpit.js';
 import { createVehicleState, placeVehicle, stepVehicle, DT } from './physics.js';
 import { ExhaustFx } from './exhaust-fx.js';
+import { LightTrails } from '../render/light-trails.js';
+import { trailGlow } from '../render/tail-lamps.js';
 import { lerp, wrapAngle } from '../core/mathx.js';
 
 /** @typedef {import('./specs.js').CarSpec} CarSpec */
@@ -26,6 +29,10 @@ export class Car {
     this.prev = { x: 0, y: 0, z: 0, yaw: 0 };
     this.lerped = { x: 0, y: 0, z: 0, yaw: 0 };
     this.headlights = this.makeHeadlights();
+    this.trails = new LightTrails(2);
+    // In the world-space group the drive adds to the scene, with the exhaust.
+    this.fx.group.add(this.trails.mesh);
+    this.clock = 0;
   }
 
   get group() {
@@ -93,6 +100,13 @@ export class Car {
     this.model.pose(s, dt, o);
     this.cockpit.wheel.rotation.z = -s.steer * STEER_RATIO;
     this.fx.update(s, dt);
+    this.clock += dt;
+    const m = this.model;
+    const glow = trailGlow(s.speed, m.lampsOn, m.brake);
+    const c = Math.cos(o.yaw);
+    const sn = Math.sin(o.yaw);
+    m.tailSpots.forEach((q, i) => this.trails.feed(i, o.x + q[0] * c + q[2] * sn, o.y + q[1], o.z - q[0] * sn + q[2] * c, glow, this.clock));
+    this.trails.update(this.clock);
   }
 
   /** @param {boolean} on */
@@ -104,6 +118,7 @@ export class Car {
     this.model.dispose();
     this.cockpit.dispose();
     this.fx.dispose();
+    this.trails.dispose();
     for (const l of this.headlights) l.dispose();
   }
 }

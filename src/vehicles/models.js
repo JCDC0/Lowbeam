@@ -9,8 +9,9 @@
 
 import * as THREE from 'three';
 import { MeshBuilder, buildWheel, smoothNormals } from '../render/builder.js';
-import { psxBasic, psxLambert, psxPhong } from '../render/psx.js';
-import { glassTexture, plateTexture, rimTexture, shadowTexture } from '../render/textures.js';
+import { psxBasic, psxFlare, psxLambert, psxPhong, psxUniforms } from '../render/psx.js';
+import { flareTexture, glassTexture, plateTexture, rimTexture, shadowTexture } from '../render/textures.js';
+import { tailLampsOn } from '../render/tail-lamps.js';
 import { bakeGeometry } from '../render/bake.js';
 import { clamp, damp } from '../core/mathx.js';
 import { BAND, RING_POINTS, archStation, insetRing, loftZs, ringOf, roofHeight, stationCurve } from './loft.js';
@@ -44,8 +45,14 @@ const MAX_GAP = 0.26;
 /** How far the nose and tail are rounded in. */
 const BEVEL = 0.03;
 const ORDER = ['paint', 'accent', 'glass', 'trim', 'under', 'chrome', 'lamp', 'tail', 'plate'];
+/** The tail lamps' lens: unlit by day, lit from dusk to dawn and in rain (`tailLampsOn`), bright on the brake. */
 const TAIL_DIM = new THREE.Color(0.32, 0.015, 0.01);
+const TAIL_ON = new THREE.Color(0.78, 0.045, 0.03);
 const TAIL_LIT = new THREE.Color(1, 0.08, 0.05);
+/** Their glow, the traffic's tail flares (`traffic/render.js`) a little smaller: lit, and braking. */
+const FLARE_ON = new THREE.Color(0.85, 0.06, 0.04);
+const FLARE_BRAKE = new THREE.Color(1.6, 0.12, 0.06);
+const FLARE_SIZE = { on: 0.75, brake: 0.95 };
 /** Height of the point the body leans around. */
 const LEAN_Y = 0.45;
 
@@ -590,6 +597,18 @@ export class CarModel {
     this.leanRoll = 0;
     this.leanPitch = 0;
     this.brake = 0;
+    this.lampsOn = false;
+    /** The middle of each tail lamp in the car's frame, its left (+x) first. */
+    this.tailSpots = tailSpots(this.body, this.mats.tail, spec);
+    const quad = new THREE.PlaneGeometry(1, 1);
+    this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(6), 3);
+    quad.setAttribute('aDir', this.flareDir);
+    this.flares = new THREE.InstancedMesh(quad, psxFlare(flareTexture(), 420), 2);
+    this.flares.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(6), 3);
+    this.flares.frustumCulled = false;
+    this.flares.renderOrder = 2;
+    this.flares.visible = false;
+    this.group.add(this.flares);
   }
 
   /**
@@ -616,7 +635,31 @@ export class CarModel {
   setBrake(level) {
     if (level === this.brake) return;
     this.brake = level;
-    this.mats.tail.color.copy(TAIL_DIM).lerp(TAIL_LIT, level);
+    this.lamps();
+  }
+
+  /** @param {boolean} on the running lamps, from dusk to dawn and in rain */
+  setLamps(on) {
+    if (on === this.lampsOn) return;
+    this.lampsOn = on;
+    this.lamps();
+  }
+
+  /** The lens color and the two flares for the lamps' state. */
+  lamps() {
+    const lens = this.mats.tail.color.copy(this.lampsOn ? TAIL_ON : TAIL_DIM);
+    if (this.brake > 0) lens.lerp(TAIL_LIT, this.brake);
+    const braking = this.brake > 0.5;
+    this.flares.visible = this.lampsOn || braking;
+    const size = braking ? FLARE_SIZE.brake : FLARE_SIZE.on;
+    const m = new THREE.Matrix4();
+    this.tailSpots.forEach((p, i) => {
+      m.makeScale(size, size, size).setPosition(p[0], p[1], p[2] - 0.04);
+      this.flares.setMatrixAt(i, m);
+      this.flares.setColorAt(i, braking ? FLARE_BRAKE : FLARE_ON);
+    });
+    this.flares.instanceMatrix.needsUpdate = true;
+    if (this.flares.instanceColor) this.flares.instanceColor.needsUpdate = true;
   }
 
   /**
@@ -638,15 +681,47 @@ export class CarModel {
       if (w.front) w.pivot.rotation.y = s.steer;
     }
     this.setBrake(s.braking ? 1 : 0);
+    this.setLamps(tailLampsOn(psxUniforms.uLamp.value, psxUniforms.uWet.value));
+    if (this.flares.visible) {
+      const bx = -Math.sin(p.yaw);
+      const bz = -Math.cos(p.yaw);
+      for (let i = 0; i < 2; i++) this.flareDir.setXYZ(i, bx, 0, bz);
+      this.flareDir.needsUpdate = true;
+    }
   }
 
   dispose() {
     this.body.geometry.dispose();
     this.wheelGeo.dispose();
     this.shadow.geometry.dispose();
+    this.flares.geometry.dispose();
+    /** @type {THREE.Material} */ (this.flares.material).dispose();
     for (const m of Object.values(this.mats)) m.dispose();
     /** @type {THREE.Material} */ (this.shadow.material).dispose();
   }
+}
+
+/**
+ * The middle of each tail lamp of a lofted body in its own frame, from the vertices of its `tail` part,
+ * the car's left (+x) first; a body with none gets two spots on its back.
+ * @param {THREE.Mesh} body @param {THREE.Material} tail @param {CarSpec} spec
+ * @returns {[number, number, number][]}
+ */
+function tailSpots(body, tail, spec) {
+  const pos = body.geometry.attributes.position;
+  const mats = /** @type {THREE.Material[]} */ (body.material);
+  const acc = [[0, 0, 0, 0], [0, 0, 0, 0]];
+  for (const g of body.geometry.groups) {
+    if (mats[g.materialIndex ?? 0] !== tail) continue;
+    for (let i = g.start; i < g.start + g.count; i++) {
+      const a = acc[pos.getX(i) > 0 ? 0 : 1];
+      a[0] += pos.getX(i);
+      a[1] += pos.getY(i);
+      a[2] += pos.getZ(i);
+      a[3]++;
+    }
+  }
+  return acc.map((a, i) => (a[3] ? [a[0] / a[3], a[1] / a[3], a[2] / a[3]] : [(i ? -1 : 1) * (spec.width / 2 - 0.3), 0.75, -spec.length / 2]));
 }
 
 /** Fixed colors for the parts of a body baked into one geometry; paint is tinted per instance. */

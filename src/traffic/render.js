@@ -11,6 +11,9 @@
  * body's own `lamp` vertices so they sit on the modeled lamps. The world shader's moving lights
  * (`uBeamPos` in psx.js) go first to the police light bars nearest the player, then to the lit
  * indicators, then to the headlight beams of the nearest cars.
+ *
+ * The street racers' tail lamps leave light trails at speed, as the player's do (`render/light-trails.js`),
+ * for the RACER_TRAILS nearest within TRAIL_RANGE.
  */
 
 import * as THREE from 'three';
@@ -21,6 +24,8 @@ import { ALL_KINDS } from './kinds.js';
 import { buildKindGeometry } from './bodies.js';
 import { barFlash, barOn } from '../police/lights.js';
 import { DAMAGE, health, isUnit } from '../police/units.js';
+import { LightTrails } from '../render/light-trails.js';
+import { tailLampsOn, trailGlow } from '../render/tail-lamps.js';
 
 const _m = new THREE.Matrix4();
 const _q = new THREE.Quaternion();
@@ -71,6 +76,9 @@ const SIGNAL_LIGHT_COLOR = new THREE.Color(1.1, 0.48, 0.04);
 const HEAD_LIGHT = new THREE.Color(1.0, 0.94, 0.8);
 /** Seconds on and off for an indicator, so a queue does not blink in unison. */
 const BLINK = 0.33;
+/** Street racers whose tail lamps leave light trails: the nearest RACER_TRAILS within TRAIL_RANGE meters. */
+const RACER_TRAILS = 6;
+const TRAIL_RANGE = 260;
 /** A headlight beam: range (m), where its cone ends (cosine) and how far down it aims. */
 const BEAM = { range: 42, cos: 0.86, pitch: -0.09 };
 
@@ -157,6 +165,10 @@ export class TrafficRenderer {
     this.near = [];
     /** The player, whom the light bars face. @type {{ x: number, z: number } | undefined} */
     this.focus = undefined;
+    this.trails = new LightTrails(RACER_TRAILS * 2);
+    this.root.add(this.trails.mesh);
+    /** @type {{ a: import('./sim.js').Agent, d: number }[]} */
+    this.racers = [];
   }
 
   /**
@@ -169,6 +181,7 @@ export class TrafficRenderer {
     this.focus = focus;
     for (const m of this.meshes.values()) m.n = 0;
     this.near.length = 0;
+    this.racers.length = 0;
     let shadows = 0;
     for (const a of agents) {
       const m = this.meshes.get(a.kind.id);
@@ -196,9 +209,11 @@ export class TrafficRenderer {
         const d = Math.hypot(a.x - focus.x, a.z - focus.z);
         // A burnt-out unit throws no light.
         if (d < FLARE_RANGE && a.fade > 0.2 && !a.destroyed) this.near.push({ a, d });
+        if (d < TRAIL_RANGE && a.kind.id.startsWith('rv-') && a.fade >= 1) this.racers.push({ a, d });
       }
     }
     this.lamps();
+    this.racerTrails();
     this.shadows.count = shadows;
     this.shadows.visible = shadows > 0;
     this.shadows.instanceMatrix.needsUpdate = true;
@@ -324,8 +339,25 @@ export class TrafficRenderer {
     this.flareDir.needsUpdate = true;
   }
 
+  /** The light trails of the nearest street racers. */
+  racerTrails() {
+    this.racers.sort((p, q) => p.d - q.d);
+    const on = tailLampsOn(psxUniforms.uLamp.value, psxUniforms.uWet.value);
+    for (let r = 0; r < Math.min(RACER_TRAILS, this.racers.length); r++) {
+      const a = this.racers[r].a;
+      const m = this.meshes.get(a.kind.id);
+      if (!m) continue;
+      const glow = trailGlow(a.speed, on, a.brake > 0.5 ? 1 : 0);
+      const c = Math.cos(a.yaw);
+      const s = Math.sin(a.yaw);
+      m.lamps.tail.forEach((p, i) => this.trails.feed(`${a.id}:${i}`, a.x + p[0] * c + p[2] * s, a.y + p[1], a.z - p[0] * s + p[2] * c, glow, this.time));
+    }
+    this.trails.update(this.time);
+  }
+
   dispose() {
     for (const b of psxUniforms.uBeamPos.value) b.w = 0;
+    this.trails.dispose();
     this.root.parent?.remove(this.root);
     for (const m of this.meshes.values()) {
       m.mesh.geometry.dispose();

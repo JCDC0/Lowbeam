@@ -28,6 +28,37 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.40 (2026-10-13)
+
+Tail lamps that light the night and light trails at speed (Jc, 2026-10-13: the player's red lights always
+on at dusk, at night and in rain, and a contrail of red beams from the tail lamps when fast, the street
+racers too).
+
+- `src/render/tail-lamps.js` (new, pure): `tailLampsOn(lamp, wet)`, on when the sky's lamp level is past
+  0.15 (dusk from about 17:30 to dawn) or the weather is wet past 0.05 (any rain); `trailGlow(speed,
+  lampsOn, brake)`, 0 below 100 km/h, smooth to 1 at 180 km/h, 1.35 on the brake, 0 with the lamps off;
+  `TRAIL`: a point lives 0.4 s, one every 0.7 m, 0.07 m half width at the lamp tapering to a quarter.
+  `tests/tail-lamps.test.mjs` (2 tests): on at 18:00 to 05:30 and at noon in drizzle, rain and storm, off
+  on a clear day; the trail's floor, ceiling, rise and brake.
+- `src/render/light-trails.js` (new): `LightTrails`, ribbons through each lamp's recent positions with
+  the head riding on the lamp, turned to face the camera in the vertex shader (two-sided: the cross with
+  the view can point either way), brightest at the lamp and fading with the square of age, gone near the
+  camera (1 to 5 m, the chase camera sits in the trail) and into the fog, vertex snapped, additive. A
+  jump over 15 m (a reset, a tow) starts a trail again. One draw call an owner.
+- The player's car (`vehicles/models.js`, `car.js`): the tail lens has three states, unlit by day, lit
+  (`TAIL_ON`) from dusk to dawn and in rain, bright on the brake, and two flares on the lamps (the middle
+  of each side of the body's `tail` part) shown while lit or braking, smaller than the traffic's. The car
+  reads the sky and the weather from `psxUniforms` (`uLamp`, `uWet`), which the world sets each frame,
+  so the drive needed no change. Its two trails are in the exhaust's world-space group, which the drive
+  already adds to the scene.
+- The street racers (`traffic/render.js`): the six nearest within 260 m (any `rv-` kind) leave trails
+  from their own tail lamps (`lampSpots`), by the same rules; one more draw call.
+- Seen on Route 1 at night: the Rampart at 193 km/h from the chase camera (two streaks from the lamps to
+  the bottom corners) and from the side, and a Sakura racer at 243 km/h from behind.
+
+Guide changes: the tail lamps and trails under Cars and driving and Traffic; `tail-lamps.js` among the
+pure modules; a key files row.
+
 ## 0.10.39 (2026-10-13)
 
 The traffic's tail lamps fixed (Jc: the SUV's and the truck's red lights did not match their lamps, M-03),

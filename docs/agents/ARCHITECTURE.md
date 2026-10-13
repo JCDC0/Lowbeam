@@ -47,7 +47,7 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
-  soundtrack,library-rules,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
+  soundtrack,library-rules,passby,siren,traffic-voices}.js`, `src/render/{pool-grid,skid-rules,weather,daylight,tail-lamps}.js`, `src/police/{heli,units,heat,roadblock,director,sight,lights}.js`,
   `src/race/*`, `src/traffic/{net,sim,kinds,manners}.js`, `src/ui/{route,radar}.js`, `layoutPursuit` in
   `src/ui/pursuit.js`. Tests import only pure modules (and the canvas painters with a mock context).
 - A test that needs the island (the ground, the traffic net, the scatter) takes it from
@@ -118,6 +118,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/core/store.js` | localStorage wrapper (`lowbeam.v1`): car, paints, money, settings, bests |
 | `src/render/stage.js` | Renderer, low-line target (`RENDER_HEIGHTS` 240 to 1080, default 480), dither and 15-bit post pass, `shot()` |
 | `src/render/psx.js` | Material factory: vertex snapping, light pools, flares, one-pixel lines (`psxLine`, the wires), wet road surfaces (`wet`, `uWet`), lights that go out by day (`lit`, `uLamp`) |
+| `src/render/tail-lamps.js`, `light-trails.js` | When the player's car and the racers run their tail lamps (`tailLampsOn`: dusk to dawn, and rain) and how bright a light trail is by speed (`trailGlow`, `TRAIL`); the trails themselves, camera-facing ribbons through each lamp's recent positions (`LightTrails`, one draw call an owner) |
 | `src/render/weather.js`, `rain.js` | The weather as numbers (`weatherLook`: wet, fog, streaks) and the rain, streaks moved in the vertex shader |
 | `src/world/build-lamp-glow.js` | The glow round every street lamp's head within 190 m (one instanced flare mesh, off by day, a halo in rain) |
 | `src/world/rain-cover.js` | Where it does not rain: the roof over any point (a deck, a canopy) and the grid of it round the camera the rain shader reads |
@@ -176,7 +177,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-508 tests pass; the type check is clean. By area:
+510 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -236,7 +237,11 @@ so held through a gear it drives the revs 600 to 1,400 rpm past the redline, ove
 wearing the engine three to five times faster. A blue flame, a hiss, a bar beside every HUD
 speedometer and a strip on the cockpit binnacle; refilled at a pump (¥6,000 a bottle) once the tank
 is full. Cameras chase, car, hood, bumper, cockpit; the cockpit camera is solved per
-car so the road shows from 5 m.
+car so the road shows from 5 m. The tail lamps run lit from dusk to dawn and in any rain (`tailLampsOn`),
+with a red glow on each (the traffic's flares), off on a clear day and bright on the brake at any hour.
+With them lit, from 100 km/h the tail lamps leave light trails, full at 180 km/h (Jc's long exposure
+streaks, `render/light-trails.js`): a red ribbon from each lamp that lives 0.4 s, about 20 m at full
+speed, brighter while braking, thinned where it passes the chase camera.
 
 **Instruments.** Each car has its own cockpit instruments (`DASHES`): Hayate classic black dials with
 an aftermarket racing tach and boost gauge (`tuner` face), Rampart cream dials, Vespera yellow dials,
@@ -285,7 +290,7 @@ toward the curb, screech if they were moving and maybe honk. The traffic refills
 Five street racers on
 Route 1 cruise at 200 to 260 km/h, look ahead up to 280 m (or 4 s of travel), apply emergency braking
 up to 9 m/s² down to a leader's speed when unable to overtake, weave cleanly using safe lookaheads,
-and maintain 140 m clearance on spawn (0.9.23). The Hikari is among the racers (rv-hikari, 0.9.39). Kinds named in `KIND_MODELS`
+and maintain 140 m clearance on spawn (0.9.23). The Hikari is among the racers (rv-hikari, 0.9.39). The six nearest racers within 260 m leave light trails from their tail lamps as the player's car does (0.10.40). Kinds named in `KIND_MODELS`
 (`traffic/kinds.js`) are drawn with Gemini's Blender models once they load (`modelGeometry` in
 `traffic/bodies.js`: the paint tinted per car, lit head and tail lamps, the light bar flares on the
 model's own lenses, the unmarked car's in its grille): the Mazuma RX-Coupe, Hoshi Kei-S,
