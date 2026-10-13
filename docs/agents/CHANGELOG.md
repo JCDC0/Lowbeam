@@ -28,6 +28,13 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.41 (2026-10-13)
+
+The bug board after the new kinds: `node tools/clipbench.mjs` at 0.10.40 gives 0 clips, 97 stalls (123
+before; none of the four new kinds among them), 8 samples off the carriageway (a semi on `c3-ramp-ex`) and
+2 world-caused wrecks. T-05 (the wrecks) and T-06 (the semi on the ramp) are the backend's; D-01 is split:
+the backend proves the four barrier items of G7's review with tests, Claude fixes the guide's line.
+
 ## 0.10.40 (2026-10-13)
 
 Tail lamps that light the night and light trails at speed (Jc, 2026-10-13: the player's red lights always
