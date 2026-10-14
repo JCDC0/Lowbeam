@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.10.90 (2026-10-14)
+
+The overseer (Jc, 2026-10-14): Claude in the desktop app becomes Jc's design partner and the team's
+reviewer, and CCC (Claude Code CLI) builds Claude's files.
+
+- `docs/agents/OVERSEER.md` (new): who is who (the overseer, CCC, agy, the Gemini app, Hermes waiting on
+  the Argon trials), how the overseer decides an open design choice (Jc's word, then the governing game,
+  the night, low fidelity never sloppy, Japan, honest numbers, clean before new, one cause one fix,
+  outside assets earning their place), how it reviews a commit, and how its prompts are written.
+- `tasks/README.md`: the team table with the four roles and their ranges (the overseer 0.10.90 to
+  0.10.99; CCC 0.10.47 to 0.10.49, then 0.11.0 to 0.11.49; agy 0.9.45 to 0.9.49, then 0.11.50 to
+  0.11.99; the Gemini app commits nothing).
+- `tasks/C10-hero-cars.md`: the review of Argon's first Hikari (a clear step up on the lofted one; five
+  faults sent back) and a `signal` material the converter keeps unlit. `ROADMAP.md`: the split, and
+  the B6 code trial that decides whether Hermes comes back on Argon.
+
 ## 0.10.51 (2026-10-09)
 
 The roadblock barrier model (police_barrier).

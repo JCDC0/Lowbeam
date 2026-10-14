@@ -3,7 +3,9 @@
 The canonical guide for every agent working in this repo. `CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
 only point here. Who owns what and the open tasks are in `docs/agents/tasks/README.md`; read it
 before you touch a file. The design plan, with the reasoning behind every system, is `docs/DESIGN.md`.
-The history, version by version, is `docs/agents/CHANGELOG.md`. This file says what is true now.
+Since 2026-10-14 an overseer (Claude in the desktop app) briefs and reviews the workers
+(`docs/agents/OVERSEER.md`). The history, version by version, is `docs/agents/CHANGELOG.md`. This
+file says what is true now.
 
 ## What this is
 
@@ -177,9 +179,9 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `stakeoutsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.51)
+## Current state (0.10.90)
 
-519 tests pass; the type check is clean. By area:
+521 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto

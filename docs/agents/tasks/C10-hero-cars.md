@@ -2,8 +2,9 @@
 
 Owner: Claude. Asked by Jc on 2026-10-14: the five player cars (and the racers' copies of them) with
 better bodies than the lofted ones in `vehicles/models.js`, from outside models or made by Gemini 4
-Argon in the Gemini app. Status: a trial, waiting on Argon's Hikari. Nothing replaces a lofted body
-until Jc has seen the two side by side and chosen.
+Argon in the Gemini app. Status: a trial. Argon's first Hikari came back on 2026-10-14 (the review
+below); a revision round is out to it, and CCC builds the pipeline on the first one. Nothing replaces a
+lofted body until Jc has seen the two side by side and chosen.
 
 ## What a player car needs
 
@@ -50,8 +51,9 @@ bevel); the roof is the roof's edge, the crown sits a little higher.
 
 1. The converter (`tools/import-glb.mjs`): a .glb's material names come through to the parts (today
    only an FBX's do); a material named exactly `paint`, `glass`, `lamp`, `tail`, `trim`, `under`,
-   `plate`, `tire` or `rim` is that part with no hue rules; an option drops the model's wheels
-   (`wheel_*` nodes) for a player car, whose wheels CarModel makes.
+   `plate`, `tire` or `rim` is that part with no hue rules, and any other name keeps its own color,
+   unlit (`signal`, the amber corner lamps); an option drops the model's wheels (`wheel_*` nodes) for a
+   player car, whose wheels CarModel makes.
 2. Check the model against the frame before wiring anything: the arches over the axles, the length,
    width and roof against the table, the body within 2,000 triangles, every part present; in
    `tools/props.html?day=1` and at night.
@@ -64,6 +66,24 @@ bevel); the roof is the roof's edge, the crown sits a little higher.
 5. If Argon's is better, the Tsurugi by the same brief with its own numbers, then Cosmo's three.
 6. Each model recorded in `SOURCES.md` (Argon's: made for Jc in the Gemini app, Jc's to use), the
    changelog and the guide.
+
+## Argon's first Hikari (2026-10-14, the overseer's review)
+
+`hikari_300zr.glb` with its build script (Python, numpy and pillow, its own flat-shaded renderer) and
+four renders. It reads at once as a 1984 wedge coupe: pop-up lamps, a greenhouse with real pillars, a
+2+2 quarter window, hood vents, door handles, a louvered full-width tail bar, a ducktail; 1,700
+triangles, every material named as asked, the wheels separate. Against the lofted Hikari (a smooth
+shape with a single dark canopy and no panel detail) it is a clear step up, so the trial goes on.
+Its faults, sent back to Argon as a revision round:
+- It was built to the first brief's wrong rear (z -2.39, the exhaust tips): 4.70 m long against the
+  lofted 4.59. The rear overhang comes in 0.10 m.
+- The raised pop-up pods are thin tilted plates with fins, which read as horns from the side; they
+  should be solid boxes about 0.38 wide, 0.13 tall and 0.26 deep, the lens on the front face.
+- Its own exhaust tips double the ones the game draws (`def.exhaust`): removed.
+- The amber corner lamps are `lamp`, so they would light as head lamps and take head lamp glows:
+  their own material, `signal`.
+- Some door and fender quads are not planar and show crumpled shading; the game smooths a car's
+  normals under a 38 degree crease (`smoothNormals`), which hides most of it, but planar panels are asked for.
 
 ## The brief for Argon (Gemini app, a new Task, model Argon)
 

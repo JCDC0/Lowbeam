@@ -19,7 +19,11 @@ they differ. `ARCHITECTURE.md` says what is true now, `BUGS.md` is the live bug 
   on from 0.9.41.
 - The Gemini app (Gemini 4 Argon, Task mode) works through Jc, a new Task for each job; what it makes
   comes into `G:\My Drive\Lowbeam\from-gemini\` (its model sourcing sheet, a 止まれ texture). Its first
-  3D job is C10's Hikari.
+  3D job is C10's Hikari (the first came back on 2026-10-14, a clear step up; a revision round is out).
+  Its code trial is B6's pure module, the same brief given to agy, graded by CCC: Hermes comes back on
+  Argon only if Argon is clearly the better coder.
+- Since 2026-10-14 the work is split (`OVERSEER.md`): Claude in the desktop app oversees (Jc's design
+  partner, briefs, prompts, reviews), CCC (Claude Code CLI) builds Claude's files, agy the backend.
 - Hermes is off. His B5 work and his C8 code sit on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes`
   (shelved after a broken merge, 0.10.32); B5 restarts from `main`, reading that branch for ideas.
 - Port 8040 is the agents' shared tree, 8041 Jc's (only on Jc's word). Nothing is pushed: `origin/main`
