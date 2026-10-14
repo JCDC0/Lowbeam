@@ -12,6 +12,7 @@ import { psxBasic, psxLambert } from '../render/psx.js';
 import { bakeGeometry } from '../render/bake.js';
 import { canvasTexture, concreteTexture, makeCanvas } from '../render/textures.js';
 import { BARRIER, PLAZA_PARTS, RAIL } from './highway.js';
+import { PLAZA_ISLAND } from './layout.js';
 import { FONT } from '../render/fonts.js';
 import { buildGantries } from './build-gantries.js';
 
@@ -375,7 +376,7 @@ function buildPlaza(pl, grid, shared) {
 
   for (const u of pl.dividers) {
     const a = u > 0 ? -1 : 1;
-    b.box('c', u, 0.13, 0, 1.3, 0.26, P.island * 2);
+    b.box('c', u, 0.13, 0, PLAZA_ISLAND, 0.26, P.island * 2);
     tileBox(b, 'tex', u, 0.6, a * (P.island + P.cushion / 2), 1.15, 1.1, P.cushion, 'rw');
     b.box('booth', u, 1.41, 0, 1.25, 2.3, 3.0);
     b.box('steel', u, 2.66, 0, 1.6, 0.2, 3.5);
@@ -429,12 +430,13 @@ function buildPlaza(pl, grid, shared) {
 
   const paint = new MeshBuilder();
   for (const strip of pl.paint) {
-    const w = strip.hw;
     for (let i = 1; i < strip.pts.length; i++) {
       const p0 = strip.pts[i - 1];
       const p1 = strip.pts[i];
-      paint.quad('paint', [p0.x - p0.lx * w, p0.y, p0.z - p0.lz * w], [p1.x - p1.lx * w, p1.y, p1.z - p1.lz * w],
-        [p1.x + p1.lx * w, p1.y, p1.z + p1.lz * w], [p0.x + p0.lx * w, p0.y, p0.z + p0.lz * w], [0, p0.s / 4, 1, p1.s / 4]);
+      const w0 = p0.w;
+      const w1 = p1.w;
+      paint.quad('paint', [p0.x - p0.lx * w0, p0.y, p0.z - p0.lz * w0], [p1.x - p1.lx * w1, p1.y, p1.z - p1.lz * w1],
+        [p1.x + p1.lx * w1, p1.y, p1.z + p1.lz * w1], [p0.x + p0.lx * w0, p0.y, p0.z + p0.lz * w0], [0, p0.s / 4, 1, p1.s / 4]);
     }
   }
   if (!paint.isEmpty()) {

@@ -32,7 +32,9 @@ test('Route 1 is a closed loop of two one-way carriageways at the same heights',
   for (let s = 0; s < f.path.length; s += 150) {
     const p = f.path.sample(s);
     const hit = r.path.nearest(p.x, p.z);
-    assert.ok(Math.abs(hit.d) > 7 && Math.abs(hit.d) < 15, `carriageways ${Math.abs(hit.d).toFixed(1)} m apart at s=${s}`);
+    // Toll plazas widen each carriageway outward (`shiftAt`); the median between them stays.
+    const apart = Math.abs(hit.d) - f.shiftAt(s) - r.shiftAt(hit.s);
+    assert.ok(apart > 7 && apart < 15, `carriageways ${apart.toFixed(1)} m apart at s=${s}`);
     assert.ok(Math.abs(r.heightAt(hit.s) - f.heightAt(s)) < 0.5, `carriageways differ by ${(r.heightAt(hit.s) - f.heightAt(s)).toFixed(2)} m at s=${s}`);
   }
 });
@@ -176,7 +178,7 @@ test('the toll plazas sit on both carriageways of their expressways', () => {
     const road = t.road || 'c1';
     for (const id of [`${road}-f`, `${road}-r`]) {
       const hit = byId(id).path.nearest(t.x, t.z);
-      assert.ok(Math.abs(hit.d) < 9, `${t.id} is ${Math.abs(hit.d).toFixed(1)} m from ${id}`);
+      assert.ok(Math.abs(hit.d) - byId(id).shiftAt(hit.s) < 9, `${t.id} is ${Math.abs(hit.d).toFixed(1)} m from ${id}`);
     }
   }
 });

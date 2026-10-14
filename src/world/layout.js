@@ -37,8 +37,10 @@ export const CITY = { x0: -1280, x1: 1280, z0: 520, z1: 2020 };
  *   oneway?: boolean, median?: number, twin?: string,
  *   link?: { from: { id: string, s: number }, to: { id: string, s: number } },
  *   taper?: { from: number, to: number, s0: number, s1: number },
- *   slip?: import('./merge.js').SlipMeta, walk?: number
+ *   slip?: import('./merge.js').SlipMeta, walk?: number, widen?: Widen[]
  * }} RoadDef
+ * @typedef {{ x: number, z: number, by: number }} Widen a stretch around (x, z) where the road is
+ *   `by` meters wider on its left (`Road.shiftAt`): a carriageway opening out to a toll plaza
  */
 
 /** Route 1: the centre line of the expressway, clockwise as seen on the map. */
@@ -590,6 +592,18 @@ export const TOLLS = [
   { id: 'toll-s', name: 'MINATO TOLL', ...onLoop('x', -160, (p) => p.z > 1000), fee: 700, road: 'c1' },
   { id: 'toll-bayshore', name: 'BAYSHORE TOLL', x: crossC2Toll.x, z: crossC2Toll.z, s: crossC2Toll.s, yaw: Math.atan2(crossC2Toll.tx, crossC2Toll.tz), fee: 600, road: 'c2' },
 ];
+
+/** How wide a toll plaza's divider island is (m); the booth stands on it. */
+export const PLAZA_ISLAND = 1.3;
+// Each plaza widens its carriageways outward, the median edge staying put, so every booth lane is a
+// full lane plus room for a curve between its islands: before, the islands stood on the lane lines and left
+// a semi 2.43 m of a lane's 3.73 (T-01).
+for (const t of TOLLS) {
+  for (const def of t.road === 'c2' ? C2 : C1) {
+    const lanes = def.lanes || 2;
+    (def.widen ||= []).push({ x: t.x, z: t.z, by: (lanes * (PLAZA_ISLAND + 0.35)) / 2 });
+  }
+}
 
 /**
  * The Japanese name of every place the HUD can name (zones, named roads, tolls, the fallbacks in

@@ -186,11 +186,11 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.90)
 
-521 tests pass; the type check is clean. By area:
+523 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
-Expressway's and two 12 m viaducts (north-east, north-west). Before every exit a steel sign gantry
+Expressway's (each carriageway widening outward round the booth islands) and two 12 m viaducts (north-east, north-west). Before every exit a steel sign gantry
 (`gantries.js`, Shuto style): one about 500 m out with the distance, one where the exit lane opens
 with an arrow down to it, each with a green guide sign (出口 EXIT, or JCT onto the Bayshore and
 Kurogane Lines; the place in kanji and romaji and the road it joins) beside the loop's own sign
@@ -451,7 +451,7 @@ Gothic One for banners, M PLUS 1p for Japanese.
 ## Open work and known issues
 
 - The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51 and placed at roadblocks in 0.9.29).
-- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all twenty-two civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
+- Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all twenty-two civilian kinds match drawn models. Since T-01 (0.10.48) the bench also has 0 stalls and 0 world wrecks, and the placement audit 0 findings: the toll plazas widen their carriageways round the booth islands (`RoadDef.widen`), the Kurogane Line's portals keep their legs out of the Ginza cross streets, and a car leaves for an exit ramp 30 m before it lands on it.
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in
   (0.10.30). Still to come: stingers for escaped and busted, and the vocal flags of the built-in tracks

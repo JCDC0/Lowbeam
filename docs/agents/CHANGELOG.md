@@ -68,6 +68,30 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.48 (2026-10-14)
+
+T-01: the civilian stalls and the placement audit both at 0. Clipbench before: 71 stalls (ginza-b5,
+ginza-b1, the semis at c1-f s 7148); after: 0 clips, 0 off the carriageway, 0 stalls, 0 world wrecks.
+Propaudit 47 to 0. Seam audit unchanged at 658.
+
+- The Kurogane Line's portal legs (`portalNear` in `scatter.js`): a portal keeps its legs 2.5 m clear
+  of every other road's carriageway and of the ends of a junction on the road it stands by, and slides
+  up to 8 m along the deck to find room, or is left out (the deck's next portal carries it). The 18
+  legs in the Ginza cross streets are gone.
+- The toll plazas widen their carriageways outward (`RoadDef.widen`, `Road.shiftAt`, `WIDEN` in
+  `roads.js`): through 18 m each way of the canopy, easing in over 60 m, the road's center moves out and
+  its half width grows by the same amount, so the median edge stays put. Each booth lane is a full lane
+  plus 1.65 m (5.3 m on Route 1), the islands (`PLAZA_ISLAND`, 1.3 m) stand between the lanes instead
+  of on their lines, and a semi no longer stops at them. The traffic's lanes spread with the road
+  (`TrafficNet.sample`), and the median barrier, the rails, the median lamps, the ETC paint (narrowing
+  with its lane) and the plaza itself follow `hwAt`.
+- Exit ramps: a car leaves the carriageway 30 m before the station where it lands on the ramp
+  (`EXIT_LEAD` in `net.js`). It used to leave beside that station, a sideways jog of up to 7.4 m in
+  9 m of curve, which swung a tanker's tail into the `c3-ramp-ex` rail.
+- The three toll stakeout spots moved off the widened carriageways (`tools/stakeoutsearch.mjs` reads
+  `hwAt`). The Route 1 layout tests measure the carriageways from the median edge; the placement test
+  wants 0 findings.
+
 ## 0.10.47 (2026-10-14)
 
 C10's pipeline for a player car on a model made to order (steps 1 and 3), built while Argon's Hikari is

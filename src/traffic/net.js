@@ -31,6 +31,8 @@ import { clamp } from '../core/mathx.js';
 const LANE_WIDTH = 3.5;
 /** How near an end of a road must be to another road to join it, meters. */
 const JOIN = 12;
+/** Meters before its landing on an exit ramp that a car leaves the carriageway, so the move is a lane change, not a jog. */
+const EXIT_LEAD = 30;
 const CYCLE = { green: 13, yellow: 2.2 };
 
 /** Light phase for an axis at time t: 'green', 'yellow' or 'red'. @param {LightNode} [node] @param {0 | 1} [axis] @param {number} [t] */
@@ -108,11 +110,15 @@ export class TrafficNet {
     p.sample(lane.closed ? p.wrapS(ps) : clamp(ps, 0, p.length), q);
     const tx = lane.dir * q.tx;
     const tz = lane.dir * q.tz;
-    out.x = q.x + tz * lane.offset;
-    out.z = q.z - tx * lane.offset;
+    const road = lane.road;
+    const at = lane.closed ? p.wrapS(ps) : clamp(ps, 0, p.length);
+    // Where the road widens (a toll plaza) its lanes spread with it.
+    const offset = road.widen.length ? (lane.offset * road.hwAt(at)) / road.hw : lane.offset;
+    out.x = q.x + tz * offset;
+    out.z = q.z - tx * offset;
     out.tx = tx;
     out.tz = tz;
-    out.y = lane.road.heightAt(lane.closed ? p.wrapS(ps) : clamp(ps, 0, p.length));
+    out.y = road.heightAt(at);
     return out;
   }
 
@@ -304,7 +310,11 @@ export class TrafficNet {
       if (cl && !atEnd) {
         const hasSlip = ramp.def.slip && ramp.def.slip.carriageId === from.id;
         const toS = hasSlip && ramp.def.taper && ramp.def.taper.from < ramp.def.taper.to ? ramp.def.taper.s1 : 0;
-        const fromS = hasSlip ? ramp.def.slip.attach[0] + (toS - ramp.def.slip.rampAttach[0]) : link.from.s;
+        // The car leaves its lane EXIT_LEAD meters before the station it lands on: leaving beside
+        // it made the curve a sideways jog (7.4 m across in 9 m onto a two-lane ramp), which swung
+        // a tanker's tail into the ramp's rail (T-01).
+        const lead = hasSlip ? Math.min(EXIT_LEAD, toS) : 0;
+        const fromS = hasSlip ? ramp.def.slip.attach[0] + (toS - lead - ramp.def.slip.rampAttach[0]) : link.from.s;
         cl.mids.push({ lane: rl, at: this.laneS(cl, fromS), toS, kind: 'exit', weight: 0.22 });
       }
     } else {

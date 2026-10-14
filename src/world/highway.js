@@ -7,7 +7,7 @@
 
 import { SKIRT } from './roads.js';
 import { padDistance } from './ground.js';
-import { CITY, TOLLS } from './layout.js';
+import { CITY, PLAZA_ISLAND, TOLLS } from './layout.js';
 import { inStretch } from './merge.js';
 import { placeGantries } from './gantries.js';
 
@@ -38,7 +38,8 @@ const RAMP_RAIL_END = 26;
  *   carriageway: number, laneWidth: number, lanes: { u: number, cash: boolean, sign: 'etc' | 'mixed' | 'cash' }[],
  *   dividers: number[], paint: PaintStrip[]
  * }} Plaza
- * @typedef {{ hw: number, pts: { x: number, y: number, z: number, lx: number, lz: number, s: number }[] }} PaintStrip
+ * @typedef {{ hw: number, pts: { x: number, y: number, z: number, lx: number, lz: number, s: number, w: number }[] }} PaintStrip
+ *   `w` is the painted half width at that point, narrowing with the lane as the plaza's widening eases off
  */
 
 /**
@@ -68,11 +69,11 @@ export function placeHighway(ground, boxes, circles, lights) {
   const plazas = TOLLS.map((toll) => {
     const roadId = toll.road ? `${toll.road}-f` : 'c1-f';
     const targetFwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(roadId));
-    const tHw = targetFwd.hw;
+    const h = targetFwd.path.nearest(toll.x, toll.z);
+    const tHw = targetFwd.hwAt(h.s);
     const tHalf = /** @type {number} */ (targetFwd.def.median ?? 3.2) / 2 + tHw;
     const nLanes = targetFwd.def.lanes || LANES;
     const tLaneWidth = (tHw * 2) / nLanes;
-    const h = targetFwd.path.nearest(toll.x, toll.z);
     targetFwd.path.sample(h.s, q);
     const x = q.x - q.tz * tHalf;
     const z = q.z + q.tx * tHalf;
@@ -112,8 +113,7 @@ export function placeHighway(ground, boxes, circles, lights) {
     const fwd = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-f`));
     const rev = /** @type {import('./roads.js').Road} */ (ground.roads.byId.get(`${exp}-r`));
     if (!fwd || !rev) continue;
-    const hw = fwd.hw;
-    const half = /** @type {number} */ (fwd.def.median ?? 3.2) / 2 + hw;
+    const median = /** @type {number} */ (fwd.def.median ?? 3.2) / 2;
     const p = fwd.path;
     const chunkBase = { c1: 0, c2: 5000, c3: 7000 }[exp];
 
@@ -123,7 +123,8 @@ export function placeHighway(ground, boxes, circles, lights) {
       const yaw = Math.atan2(q.tx, q.tz);
       const y = fwd.heightAt(mid);
       const chunk = chunkBase + chunkOf(mid);
-
+      // hwAt, not hw: through a toll plaza the carriageway widens outward from the median.
+      const half = median + fwd.hwAt(mid);
       const mx = q.x - q.tz * half;
       const mz = q.z + q.tx * half;
       if (!inPlaza(mx, mz, PLAZA.reach)) {
@@ -131,7 +132,7 @@ export function placeHighway(ground, boxes, circles, lights) {
         boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: SEGMENT / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
       }
 
-      const edge = hw + RAIL.offset;
+      const edge = fwd.hwAt(mid) + RAIL.offset;
       const lx = q.tz;
       const lz = -q.tx;
       const rx = q.x + lx * edge;
@@ -139,9 +140,9 @@ export function placeHighway(ground, boxes, circles, lights) {
       // On a viaduct the deck's parapet takes the rail's place.
       const onDeck = fwd.lifted && fwd.liftAt(mid) > 1.2;
       railSegment(rails, boxes, ground, hit, rx, rz, y, yaw, chunk, onDeck || inPlaza(rx, rz, PLAZA.openRail) || rampOpen(`${exp}-f`, mid));
-      const rp = rev.path.nearest(mx - q.tz * half, mz + q.tx * half);
+      const rp = rev.path.nearest(mx - q.tz * (median + rev.hw), mz + q.tx * (median + rev.hw));
       rev.path.sample(rp.s, q);
-      const rEdge = hw + RAIL.offset;
+      const rEdge = rev.hwAt(rp.s) + RAIL.offset;
       const ox = q.x + q.tz * rEdge;
       const oz = q.z - q.tx * rEdge;
       railSegment(rails, boxes, ground, hit, ox, oz, rev.heightAt(rp.s), Math.atan2(q.tx, q.tz), chunk + 10000, (rev.lifted && rev.liftAt(rp.s) > 1.2) || inPlaza(ox, oz, PLAZA.openRail) || rampOpen(`${exp}-r`, rp.s));
@@ -157,8 +158,8 @@ export function placeHighway(ground, boxes, circles, lights) {
         const y = fwd.heightAt(s);
         const len = SEGMENT * 1.5;
         const along = dir * (len / 2 - SEGMENT / 2);
-        const mx = q.x - q.tz * half + q.tx * along;
-        const mz = q.z + q.tx * half + q.tz * along;
+        const mx = q.x - q.tz * (median + fwd.hwAt(s)) + q.tx * along;
+        const mz = q.z + q.tx * (median + fwd.hwAt(s)) + q.tz * along;
         barrier.push({ x: mx, z: mz, y, yaw, len, chunk: chunkBase + chunkOf(s) });
         boxes.push({ x: mx, z: mz, hx: BARRIER.halfBase, hz: len / 2, yaw, y0: y - 0.4, y1: y + BARRIER.height });
       }
@@ -232,7 +233,7 @@ export function placeHighway(ground, boxes, circles, lights) {
     }
     for (const u of pl.dividers) {
       const isl = at(u, 0);
-      boxes.push({ x: isl.x, z: isl.z, hx: 0.65, hz: P.island + P.cushion, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
+      boxes.push({ x: isl.x, z: isl.z, hx: PLAZA_ISLAND / 2, hz: P.island + P.cushion, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
     }
     const med = at(0, 0);
     boxes.push({ x: med.x, z: med.z, hx: 1.5, hz: P.median + P.cushion, yaw: pl.yaw, y0: pl.y - 0.4, y1: pl.y + 3 });
@@ -265,7 +266,8 @@ function paintStrip(road, cx, cz, hw) {
   const h = p.nearest(cx, cz);
   const q = { x: 0, z: 0, tx: 0, tz: 1 };
   p.sample(h.s, q);
-  const d = (cx - q.x) * q.tz - (cz - q.z) * q.tx;
+  // The lane's offset at the canopy, scaled back as the plaza's widening narrows behind it.
+  const d0 = ((cx - q.x) * q.tz - (cz - q.z) * q.tx) / road.hwAt(h.s);
   const [a, b] = PLAZA_PARTS.paint;
   const pts = [];
   for (let back = b; back >= a - 0.01; back -= 3) {
@@ -273,7 +275,9 @@ function paintStrip(road, cx, cz, hw) {
     p.sample(s, q);
     const lx = q.tz;
     const lz = -q.tx;
-    pts.push({ x: q.x + lx * d, y: road.heightAt(s) + 0.012 * road.priority + 0.006, z: q.z + lz * d, lx, lz, s: b - back });
+    const k = road.hwAt(s) / road.hwAt(h.s);
+    const d = d0 * road.hwAt(s);
+    pts.push({ x: q.x + lx * d, y: road.heightAt(s) + 0.012 * road.priority + 0.006, z: q.z + lz * d, lx, lz, s: b - back, w: (hw + 0.35) * k - 0.35 });
   }
   return { hw, pts };
 }

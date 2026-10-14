@@ -24,7 +24,6 @@ Rules:
 | M-02 | Hand-scripted models look poor: replace with outside low poly models that load clean (the plan below) | `tools/import-glb.mjs`, `assets/models/`, `traffic/kinds.js` | CCC | twenty civilian kinds are outside CC0 models now (0.10.38, 0.10.39, 0.10.43: Kenney's Car Kit, rgsdev's pack, KayKit's City Builder Bits and Cosmo's Low Poly Cars, eight of them new kinds); the kei truck and tanker have no CC0 source (Gemini's search, 2026-10-14) |
 | H-01 | Pursuit HUD half built: the reinforcement timer, the "seen" fade-in rule and the helicopter fuel pump have no data until B5 part 2 | `ui/pursuit.js` (done), `drive.js` `pursuitView()` | CCC | waiting on B5 part 2 |
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
-| T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
 | T-04 | Junction turns the strict turn test names as exceptions: 14 that clip a static shape at 7 junctions (Ginza and Dori, Kitae, Hama, Nishi) and 18 that leave the carriageway at 10 junctions (side streets meeting `r18`, `west` and `east`) | `traffic/net.js` (`buildTurn`), `world/junctions.js` (the patch) | Claude | 6 signal clipping turns cleared and removed (0.9.38); 8 pier clips (nodes 66, 67, 75) and 18 patch faults (nodes 1, 4, 6, 12, 13, 15, 16, 17, 20, 22; 0.13 to 0.53 m) listed for patch widening |
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | CCC | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
@@ -34,6 +33,7 @@ Rules:
 
 | ID | Bug | Version |
 |---|---|---|
+| T-01 | Civilian stalls on static geometry (71 at 0.10.92, 123 before 0.9.45): the toll plaza islands left a semi 2.43 m of a lane (each plaza now widens its carriageways outward, the islands between the lanes), the Kurogane Line's portal legs stood in the Ginza cross streets (now 2.5 m clear of every other carriageway and of the crossings), and an exit was a 7.4 m sideways jog that swung a tanker into the `c3-ramp-ex` rail (now a 30 m move). The node 82 signal pole no longer stalls anything. `node tools/clipbench.mjs`: 0 clips, 0 off the road, 0 stalls, 0 wrecks; `node tools/propaudit.mjs`: 0 | 0.10.48 |
 | D-01 | Roadblock barrier faults from G7 review tested and cleared: trafficVoices skips barrier engine audio; hard hits knock and flatten without yaw spin; civilian target excludes barriers and parked units in update and populate; traffic brakes to full stop before barrier and slow car below 6 m/s closing stops at upright barrier | 0.9.44 |
 | T-06 | Vehicles over 12 m (semi) kept off Kurogane Line ramps (c3-ramp-*); tested that 7.4 m ramp width supports up to 10.5 m bus and 9 m tanker/trucks with zero carriageway departures, while 16 m rigid semi swept 0.237 m outside the lane | 0.9.43 |
 | T-05 | node tools/clipbench.mjs world-caused wrecks at 0: clipbench prints kind, lane, s and cause on world wreck; changeSafe expands toll plaza buffer to 110 m and probes trajectory points against hitWorld to eliminate toll booth island collisions | 0.9.42 |
@@ -52,7 +52,7 @@ Rules:
 1. `npm test` and `npm run check` green, and `node tools/clipbench.mjs` at 0 clips, 0 off the road and 0
    stalls (or a short list Jc agrees).
 2. Placement audit at 0: no pole, lamp, sign, vending machine, tree or building on a carriageway, deck or
-   junction (`node tools/propaudit.mjs`, 0.10.45; 47 left, all T-01: 18 portal legs, 29 toll plaza parts).
+   junction (`node tools/propaudit.mjs`, 0.10.45; at 0 since 0.10.48, and the test holds it there).
 3. Road seam audit at 0: no two road surfaces overlap or leave a gap at a merge, junction or ramp mouth
    (`node tools/seamaudit.mjs`, 0.10.46; 658 left: 147 sidewalks across a carriageway, 61 carriageway
    overlaps, 57 holes, 393 steps at patch edges).

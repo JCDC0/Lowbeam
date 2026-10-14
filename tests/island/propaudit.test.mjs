@@ -1,22 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { island, scattered, trafficNet } from '../island.mjs';
-import { auditProps, byKind, driveBands } from '../../tools/propaudit.mjs';
+import { auditProps, driveBands } from '../../tools/propaudit.mjs';
 
 const found = auditProps(island(), trafficNet(), scattered());
 
 /**
- * Gate 2 of the bug board. What is still allowed, and only until T-01 clears it: the Kurogane
- * Line's portal legs standing in the Ginza cross streets, and the toll plazas' islands and
- * booths reaching into Route 1's lanes.
+ * Gate 2 of the bug board, at 0 since T-01 (0.10.48): the Kurogane Line's portal legs keep off the
+ * Ginza cross streets and the toll plazas widen their carriageways round the islands and booths.
  */
-const KNOWN = { 'portal leg': 18, 'toll plaza': 29 };
-
-test('nothing solid stands where a car drives, but the known T-01 shapes', () => {
-  const other = found.filter((f) => !(f.kind in KNOWN));
-  assert.deepEqual(other.map((f) => `${f.kind} at (${f.x.toFixed(1)}, ${f.z.toFixed(1)}): ${f.depth.toFixed(2)} m into ${f.where}`), []);
-  const n = byKind(found);
-  for (const [kind, most] of Object.entries(KNOWN)) assert.ok((n[kind] || 0) <= most, `${n[kind]} ${kind} findings, ${most} known`);
+test('nothing solid stands where a car drives', () => {
+  assert.deepEqual(found.map((f) => `${f.kind} at (${f.x.toFixed(1)}, ${f.z.toFixed(1)}): ${f.depth.toFixed(2)} m into ${f.where}`), []);
 });
 
 test('the audit sees a shape in a lane, at the lane\'s height only', () => {

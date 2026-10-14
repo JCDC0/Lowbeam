@@ -98,7 +98,7 @@ export class Ground {
     const near = new Uint8Array(n * n);
     for (const road of this.roads.roads) {
       const p = road.path;
-      const r = road.hw + road.walk + FLAT + BLEND + hf.cell * 1.5;
+      const r = road.hw + road.walk + FLAT + BLEND + hf.cell * 1.5 + road.widen.reduce((a, w) => a + w.by, 0);
       const rc = Math.ceil(r / hf.cell);
       for (let k = 0; k < p.n; k += 4) {
         const ci = Math.round((p.x[k] + hf.half) / hf.cell);

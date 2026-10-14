@@ -21,6 +21,8 @@ const CELL = 16;
 const OFF = WORLD_HALF + 100;
 const W = Math.ceil((OFF * 2) / CELL);
 const JUNCTION_BLEND = 50;
+/** A widening (`RoadDef.widen`) holds its full width this far each way and eases in over `taper` m. */
+export const WIDEN = { flat: 18, taper: 60 };
 
 /** @typedef {import('./layout.js').RoadDef} RoadDef */
 /** @typedef {{ road: Road, s: number, d: number, h: number, edge: number, lift?: number }} RoadHit */
@@ -42,6 +44,45 @@ export class Road {
     /** Meters this road is lifted above its natural profile: overpasses and viaducts. */
     this.lift = new Float32Array(this.path.n);
     this.lifted = false;
+    /** @type {{ s: number, by: number }[]} */
+    this.widen = (def.widen || []).map((w) => ({ s: this.path.nearest(w.x, w.z).s, by: w.by }));
+    if (this.widen.length) this.displace();
+  }
+
+  /**
+   * How far the road is widened on its left at arc length s: its center moves left by this and its
+   * half width grows by it, so the right edge (a carriageway's median side) stays where it was.
+   * @param {number} s
+   */
+  shiftAt(s) {
+    let out = 0;
+    const p = this.path;
+    for (const w of this.widen) {
+      let ds = Math.abs(p.wrapS(s) - w.s);
+      if (p.closed) ds = Math.min(ds, p.length - ds);
+      out += w.by * (1 - smoothstep(WIDEN.flat, WIDEN.flat + WIDEN.taper, ds));
+    }
+    return out;
+  }
+
+  /** Moves the path's samples left by half of each widening and remakes the tangents there. */
+  displace() {
+    const p = this.path;
+    const sh = new Float64Array(p.n);
+    for (let i = 0; i < p.n; i++) sh[i] = this.shiftAt(i * p.step);
+    for (let i = 0; i < p.n; i++) {
+      p.x[i] += p.tz[i] * sh[i];
+      p.z[i] -= p.tx[i] * sh[i];
+    }
+    for (let i = 0; i < p.n; i++) {
+      const a = p.wrapIndex(i - 1);
+      const b = p.wrapIndex(i + 1);
+      const dx = p.x[b] - p.x[a];
+      const dz = p.z[b] - p.z[a];
+      const l = Math.hypot(dx, dz) || 1;
+      p.tx[i] = dx / l;
+      p.tz[i] = dz / l;
+    }
   }
 
   /** Lift at arc length s. @param {number} s */
@@ -65,6 +106,7 @@ export class Road {
   }
 
   hwAt(s) {
+    if (this.widen.length) return this.hw + this.shiftAt(s);
     if (!this.def.taper) return this.hw;
     const { from, to, s0, s1 } = this.def.taper;
     if (s <= s0) return from;

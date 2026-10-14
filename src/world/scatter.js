@@ -209,7 +209,7 @@ function placeBridges(ground, circles, boxes) {
       if (ground.roads.query(q.x, q.z, hit, -SKIRT)) {
         // One portal per deck: a dual carriageway's forward half stands it for both.
         if (road.def.twin) continue;
-        const portal = portalOver(ground, road, s, q, hit);
+        const portal = portalNear(ground, road, s, b, hit);
         if (portal) {
           b.piers.push(portal);
           for (const leg of portal.legs) circles.push({ x: leg.x, z: leg.z, r: PORTAL_LEG, y1: portal.top - 0.8 });
@@ -229,6 +229,33 @@ function placeBridges(ground, circles, boxes) {
 
 /** Radius of a portal frame's legs. */
 const PORTAL_LEG = 0.6;
+/**
+ * How far a leg keeps from any other road's carriageway, and from the ends of a junction on the
+ * road it stands by: a car turning in cuts the corner, so a leg at the mouth of a cross street
+ * stood in its lane (T-01, the Ginza cross streets).
+ */
+const PORTAL_CLEAR = 2.5;
+const PORTAL_SHIFTS = [0, 4, -4, 8, -8];
+
+/**
+ * The first portal that stands at `s` or a few meters along the deck from it, inside the bridge.
+ * @param {Ground} ground @param {import('./roads.js').Road} road @param {number} s @param {Bridge} b
+ * @param {import('./roads.js').RoadHit} hit
+ * @returns {Pier | null}
+ */
+function portalNear(ground, road, s, b, hit) {
+  const p = road.path;
+  const q = { x: 0, z: 0, tx: 0, tz: 1 };
+  for (const shift of PORTAL_SHIFTS) {
+    const at = s + shift;
+    if (at < b.i0 * p.step || at > b.i1 * p.step || road.liftAt(at) < ELEVATED + 1.5) continue;
+    p.sample(at, q);
+    if (!ground.roads.query(q.x, q.z, hit, -SKIRT)) continue;
+    const portal = portalOver(ground, road, at, q, hit);
+    if (portal) return portal;
+  }
+  return null;
+}
 
 /**
  * A portal frame under a deck at arc length `s` that stands over the road `hit` found: only where
@@ -244,13 +271,18 @@ function portalOver(ground, road, s, q, hit) {
   const t = below.path.sample(hit.s);
   if (Math.abs(t.tx * q.tx + t.tz * q.tz) < 0.9) return null;
   const reach = below.hwAt(hit.s) + below.walk / 2;
+  const sw = below.path.wrapS(hit.s);
+  const spans = ground.junctionSpans.get(below) || [];
+  if (spans.some(([a, b]) => sw > a - PORTAL_CLEAR - below.walk && sw < b + PORTAL_CLEAR + below.walk)) return null;
   const legHit = { road: null, s: 0, d: 0, h: 0, edge: 0 };
   const legs = [];
   for (const side of [1, -1]) {
     const x = t.x + t.tz * reach * side;
     const z = t.z - t.tx * reach * side;
     if (ground.roads.query(x, z, legHit, -SKIRT) && (legHit.road !== below || Math.abs(legHit.d) < below.hwAt(hit.s))) return null;
-    legs.push({ x, z, bottom: ground.at(x, z).h });
+    const bottom = ground.at(x, z).h;
+    if (ground.roads.carriageway(x, z, PORTAL_LEG + PORTAL_CLEAR, bottom, below)) return null;
+    legs.push({ x, z, bottom });
   }
   return {
     x: t.x, z: t.z, top: road.heightAt(s), bottom: Math.min(legs[0].bottom, legs[1].bottom),
@@ -297,7 +329,7 @@ function placeLamps(ground, lights, circles) {
         const lx = q.tz * side;
         const lz = -q.tx * side;
         // On a road with a sidewalk the pole stands at the sidewalk's outer edge.
-        const off = run.offset ?? (road.walk ? road.hw + road.walk - 0.5 : road.hw + SKIRT + 0.8);
+        const off = run.offset !== undefined ? run.offset + road.shiftAt(s) : road.walk ? road.hwAt(sw) + road.walk - 0.5 : road.hwAt(sw) + SKIRT + 0.8;
         const x = q.x + lx * off;
         const z = q.z + lz * off;
         // A pole placed exactly (in a median, on a sidewalk) is allowed closer to the roads than a roadside one.

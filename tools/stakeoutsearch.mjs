@@ -31,7 +31,7 @@ for (const road of g.roads.roads) {
     const key = `${Math.floor(p.x[i] / CELL)},${Math.floor(p.z[i] / CELL)}`;
     let cell = grid.get(key);
     if (!cell) grid.set(key, (cell = []));
-    cell.push(p.x[i], p.z[i], road.hw);
+    cell.push(p.x[i], p.z[i], road.hwAt(i * p.step));
   }
 }
 
