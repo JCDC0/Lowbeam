@@ -44,3 +44,16 @@ test('every civilian kind has collision dimensions matching its body model', () 
     }
   }
 });
+
+test('every civilian kind has valid mass, speed, accel and weights for all road classes', () => {
+  const roadClasses = ['expressway', 'arterial', 'street', 'ramp', 'mountain'];
+  for (const kind of KINDS) {
+    assert.ok(kind.mass >= 500 && kind.mass <= 35000, `${kind.id} mass ${kind.mass} in range`);
+    assert.ok(kind.accel >= 0.5 && kind.accel <= 5.0, `${kind.id} accel ${kind.accel} in range`);
+    assert.ok(kind.speed[0] >= 0.5 && kind.speed[1] <= 1.5 && kind.speed[0] <= kind.speed[1], `${kind.id} speed in range`);
+    for (const rc of roadClasses) {
+      assert.ok(typeof kind.weights[rc] === 'number' && kind.weights[rc] >= 0, `${kind.id} weight for ${rc} is non-negative number`);
+    }
+  }
+});
+

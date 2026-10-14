@@ -1464,6 +1464,14 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.41 (2026-10-14)
+
+Review and audit of civilian traffic kinds and models.
+
+- `src/traffic/kinds.js`: reviewed Claude's eight new civilian kinds (ambulance, firetruck, garbage, limo, exec, keivan, offroad, coupe). All masses (840 to 24000 kg), speed profiles ([0.7, 0.88] to [0.9, 1.15]), acceleration and road class weight distributions accepted as consistent with vehicle specs and traffic simulation.
+- `src/audio/traffic-voices.js`: verified voice class mappings for all kinds (ambulance as van, firetruck and garbage as diesel, limo, exec and offroad as six, keivan as kei, coupe as v8).
+- `tests/kind-models.test.mjs`: added audit test asserting valid mass, acceleration, speed range, and road class weights for all twenty-two civilian kinds.
+
 ## 0.9.40 (2026-10-10)
 
 Make GPS route and pass-by audio tests deterministic (X-01).
