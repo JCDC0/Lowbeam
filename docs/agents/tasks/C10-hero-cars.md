@@ -2,9 +2,10 @@
 
 Owner: Claude. Asked by Jc on 2026-10-14: the five player cars (and the racers' copies of them) with
 better bodies than the lofted ones in `vehicles/models.js`, from outside models or made by Gemini 4
-Argon in the Gemini app. Status: a trial. Argon's first Hikari came back on 2026-10-14 (the review
-below); a revision round is out to it, and CCC builds the pipeline on the first one. Nothing replaces a
-lofted body until Jc has seen the two side by side and chosen.
+Argon in the Gemini app. Status: Argon's second Hikari is in behind `?hero=hikari:hikari_300zr`
+(0.10.49), with the side by side in `tools/shots/c10-*.png`. Jc chose on 2026-10-14 that Argon makes
+all five, outside and inside (part 2 below); Cosmo's cars stay for the traffic, its `kamaro` kept in
+reserve for the Rampart. Nothing replaces a lofted body until Jc has seen the two side by side and chosen.
 
 ## What a player car needs
 
@@ -108,3 +109,59 @@ Work in rounds: build it in code, render it, look at your render against this br
 
 If the computer has no 3D software, install what you need (for example trimesh or pygltflib), or write the .glb and a simple flat-shaded renderer yourself with numpy and pillow. Do not skip the renders.
 ```
+
+## Part 2: Argon makes all five, outside and inside (Jc, 2026-10-14)
+
+Jc's choice, after looking at Cosmo's candidates: only the `kamaro` fits its car (the Rampart); the
+`rally` is a modern hatchback where the Hayate is a boxy 1990s four-door, and `lamb` and `ghini` are
+modern supercars where the Vespera is a 1970s to 80s wedge. Cosmo's soft rounded style beside Argon's
+crisp facets would also show. So Argon makes every player car's body and its interior, made to the
+car's own numbers, and they match because one hand makes them all.
+
+**What Argon makes, per car:** the body (part 1's brief), and the interior as its own .glb in the same
+frame, built inside its own body (the glass, pillars and belt line from the body's script, so nothing
+gaps): the dash in the style of the car and its era, the instrument housings, the center console and
+shifter, the seats (the rear ones on a 2+2), the door cards, the headliner, the inside of the pillars,
+the mirror, and the steering wheel as its own node.
+
+**What the game keeps doing (CCC hooks it up):** the steering wheel turning (`steer` node, spun about
+its own axis); the instruments live, painted by the existing painters (`dash.js`, `instruments.js`,
+`screens.js`) onto Argon's faces and their needles turned; the map on the dash screen (the minimap's
+picture, `radarFrame`, drawn to the `screen_tablet` or the built-in screen's face); the head lamps and
+their beams from the `lamp` faces (`headSpots`, 0.10.49); the tail lamps, their glow and the light
+trails from the `tail` faces (`tailSpots`).
+
+**Instruments are real, never a flat picture.** Each car keeps the instrument style it has now
+(`DASHES` in `dash.js`: the Hayate's classic black dials and aftermarket racing tach and boost pod, the
+Rampart's cream speedometer and tach, the Vespera's yellow dials, the Tsurugi's LCD cluster and three-
+gauge center stack, the Hikari's green and amber fluorescent display), modeled as a real car's: a hood
+over the cluster, each dial a recessed face in a bezel with depth, the needle in front of the face. A
+2D picture of the HUD speedometer laid on the dash is the mistake not to repeat. Argon models the
+housings to `DASHES`' layout (each pod's width and height, each gauge's place `u, v` and radius `r`,
+scaled as one), and marks each dial with an empty node `gauge_<type>` at the face's center, its +z
+facing the eye; a screen pod (the Hikari's VFD, the Tsurugi's LCD) is one flat face named
+`screen_cluster` with UVs 0 to 1. The game puts its painted face and its needle at each `gauge_*`.
+
+**The dash screens follow the car's real era (Jc).** A car whose real counterparts came with a screen
+gets it built in, in that era's style: the Tsurugi, a modern GT, a color screen in the center stack
+(`screen_center`). The cars too old for one (the Hikari, the Rampart, the Vespera, the Hayate) get the
+same generic tablet on a bracket in the middle of the dash, as if the owner had modded it in: one
+model, `tablet.glb` (its face `screen_tablet`, its origin at the bracket's foot), placed in each of
+these interiors at an empty node `tablet_mount`. While the cockpit view shows the dash map, the HUD's
+minimap circle hides (a setting keeps it).
+
+**The steering wheel sits where a real one does**, not 20 cm from the eye as the loft's does today
+(`cockpit.js`): its hub about 0.45 to 0.5 m ahead of the eye and 0.3 m below it, its plane raked
+about 25 degrees (top toward the driver), 0.36 to 0.38 m across, the cluster seen over its rim.
+
+**Order.** The Hikari's interior first (the trial for interiors; it has no dials, so the Tsurugi's
+center stack is the first test of `gauge_*`), with the tablet. Then one car at a time, outside and
+inside together: the Tsurugi, then the Hayate, the Rampart and the Vespera. CCC's part per car: convert
+both models, the cockpit loader in place of `buildCockpit` for a car with an interior model (the
+camera solve kept), the hooks above, the side by side for Jc. The dash map's drawing waits for the
+bug-bash to clear; the screen faces go in now so no interior is remade for it.
+
+**The Hikari's cockpit numbers (from the game, 0.10.49):** the driver on the right (x negative, since
++x is the car's left); the cockpit camera at x -0.351, y 1.141, z -0.150, looking toward +z pitched
+down 0.17 rad, vertical field of view 68 degrees, 16:9; the windshield from its base at z 0.95 to the
+roof's edge at z 0.08.

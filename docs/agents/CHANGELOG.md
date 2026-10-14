@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.93 (2026-10-14)
+
+Jc's choice for the player's cars (2026-10-14): Gemini 4 Argon makes all five, outside and inside.
+
+- `tasks/C10-hero-cars.md` part 2: why Cosmo's cars are out for the player's five (only the `kamaro` fits,
+  kept in reserve), what Argon makes per car (the body and an interior in the same frame, the steering
+  wheel its own node) and what the game hooks up (the wheel turning, the live instruments in Argon's
+  housings, the dash map, the lamps and the light trails); instruments modeled as a real car's, never a
+  flat picture; the dash screens by the car's era (the Tsurugi's built in, one modded tablet for the
+  four older cars); where a real steering wheel sits; the order (the Hikari's interior first) and its
+  cockpit numbers from the game.
+
 ## 0.10.92 (2026-10-14)
 
 The shared index, after 0.10.47 took in half of agy's 0.9.45: CCC checked its staged files, and agy
