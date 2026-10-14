@@ -28,6 +28,15 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.42 (2026-10-14)
+
+`docs/agents/tasks/ROADMAP.md` (new), for a new session and for Jc: everything planned and not built, in
+Jc's order (the bug-bash with its open lines and the gate tools still to write; the planned features by
+area, B5, G1, B6, B3 part 4, C4, C6, G4, breakable props, C5, G6, C8, C9; the main objectives Jc named,
+races, a career and car upgrades, with what the game has to build on and the questions a design pass must
+settle; shipping), where things stand, and the decisions waiting on Jc. Linked first in `README.md`'s open
+tasks.
+
 ## 0.10.41 (2026-10-13)
 
 The bug board after the new kinds: `node tools/clipbench.mjs` at 0.10.40 gives 0 clips, 97 stalls (123

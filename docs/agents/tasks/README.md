@@ -31,6 +31,7 @@ and leaves `package.json` alone.
 
 | Brief | Owner | Status | What |
 |---|---|---|---|
+| [ROADMAP.md](ROADMAP.md) | Claude (keeps it) | the whole plan in one place, 2026-10-14 | Everything planned and not built: the bug-bash, the planned features, the main objectives still to design (races, a career, car upgrades), shipping; and the decisions waiting on Jc |
 | [BUGS.md](BUGS.md) | Everyone, one owner per line | open: first (Jc, 2026-10-10: clean first, then the plans) | The bug board and the gates that say the game is clean: benches, audits, a screenshot tour, the HUD against Jc's drawing, outside models |
 | [B1-police-repair.md](B1-police-repair.md) | Claude | done (0.9.3, part 3 with C1 part 2 in 0.9.8) | Fix the police logic, move it out of drive.js into a pure director, test whole chases, then busts, escapes, spike damage, line of sight, sirens |
 | [G1-pursuit-props.md](G1-pursuit-props.md) | Assets | spike strip done; the rest after G3 | The trial: spike strip, police barrier, roof light bar, a scaffold pursuit breaker standing and fallen |
