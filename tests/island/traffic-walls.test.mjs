@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { TrafficSim } from '../../src/traffic/sim.js';
 import { Colliders } from '../../src/world/collision.js';
 import { island, trafficNet } from '../island.mjs';
+import { TOLLS } from '../../src/world/layout.js';
 
 const ground = island();
 const net = trafficNet();
@@ -142,20 +143,19 @@ test('changeSafe forbids lane changes within 55 m of toll plazas and through sta
   const a = sim.spawn(anywhere, 0, 3000);
   a.lane = lane1;
   a.s = 100;
-  // Near a toll plaza: Minato toll-s is around x=-160, z=2165
-  a.x = -160;
-  a.z = 2165 - 40; // 40 m away (< 55 m)
-  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 55 m of toll plaza');
-  a.x = -160;
-  a.z = 2165 - 150; // 150 m away (> 55 m)
-  // Outside toll radius and far from obstacles, with target lane clear, changeSafe returns true
-  assert.equal(sim.changeSafe(a, lane2), true, 'outside toll radius with clear target lane returns true');
+  const plaza = TOLLS[0];
+  a.x = plaza.x;
+  a.z = plaza.z + 54;
+  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 55 m of toll plaza (at 54 m)');
+  a.z = plaza.z + 56;
+  assert.equal(sim.changeSafe(a, lane2), true, 'permitted outside 55 m of toll plaza (at 56 m)');
 });
 
 test('changeSafe detects static obstacle along lateral transition curve to target lane', () => {
   const { sim } = withBuilding(1000, 1000);
   const lane1 = net.lanes[0];
-  const lane2 = net.lanes.find((l) => l.road === lane1.road && l !== lane1 && l.dir === lane1.dir) || net.lanes[1];
+  const lanesOnRoad = net.lanes.filter((l) => l.road === lane1.road && l.dir === lane1.dir);
+  const lane2 = lanesOnRoad[lanesOnRoad.length - 1];
   const a = sim.spawn(anywhere, 0, 3000);
   a.lane = lane1;
   a.s = 100;
@@ -169,12 +169,13 @@ test('changeSafe detects static obstacle along lateral transition curve to targe
   // Baseline without obstacle along trajectory returns true
   assert.equal(sim.changeSafe(a, lane2), true, 'clear trajectory returns true');
 
-  // Place a world obstacle at the 0.67 transition point along the lane change
+  // Place a world obstacle where only the longer, correct duration reaches it
   const qT0 = net.sample(lane2, a.s, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
   const sideways = Math.hypot(a.x - qT0.x, a.z - qT0.z);
+  assert.ok(sideways > 4, `sideways distance is more than 4 m (${sideways.toFixed(2)} m)`);
   const duration = Math.max(sideways * 1.5 / 2.7, 1.86 + a.speed * 0.0386);
   const advance = a.speed * duration;
-  const frac = 0.67;
+  const frac = 1.0;
   const testS = Math.min(lane2.length, a.s + advance * frac);
   const curS = Math.min(lane1.length, a.s + advance * frac);
   const qT = net.sample(lane2, testS, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });

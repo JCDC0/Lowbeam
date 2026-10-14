@@ -1607,6 +1607,14 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.46 (2026-10-14)
+
+Toll plaza radius and lane change duration tests guard their fixes.
+
+- `tests/island/traffic-walls.test.mjs`:
+  - `changeSafe` toll plaza test asserts false at 54 m and true at 56 m from a plaza using TOLLS coordinates, failing on any radius other than 55 m.
+  - `changeSafe` obstacle test uses a three-lane carriageway with sideways distance > 4 m and an obstacle placed at the end of the transition curve reached only by the longer lateral duration, failing on the old `changeStartX/Z` formula.
+
 ## 0.9.45 (2026-10-14)
 
 Toll plaza clearance radius bench and lane change duration fixes.
