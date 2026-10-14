@@ -3,8 +3,9 @@
 The canonical guide for every agent working in this repo. `CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
 only point here. Who owns what and the open tasks are in `docs/agents/tasks/README.md`; read it
 before you touch a file. The design plan, with the reasoning behind every system, is `docs/DESIGN.md`.
-Since 2026-10-14 an overseer (Claude in the desktop app) briefs and reviews the workers
-(`docs/agents/OVERSEER.md`). The history, version by version, is `docs/agents/CHANGELOG.md`. This
+Since 2026-10-14 an overseer (Claude in the desktop app) briefs the workers and tests their commits
+(`docs/agents/OVERSEER.md`); CCC is the main developer on the whole repo, and agy fixes small bugs by
+ticket, only in the files the ticket names. The history, version by version, is `docs/agents/CHANGELOG.md`. This
 file says what is true now.
 
 ## What this is

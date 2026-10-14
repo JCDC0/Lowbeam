@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.91 (2026-10-14)
+
+Jc's seats for the team (2026-10-14), which 0.10.90 had wrong: agy had the whole backend.
+
+- `tasks/README.md`: the overseer is the orchestrator and the first tester; CCC the main developer on the
+  whole repo and the second tester; agy patchwork by ticket (the bug, the files it may touch, the test
+  that proves it), owning no part of the repo, its range now 0.9.46 to 0.9.49, then 0.11.50 to 0.11.99;
+  the Gemini app the outsourced work; Hermes and the Blender Assets seat off. The ownership table:
+  CCC everything, agy only its ticket's files, the overseer `docs/`.
+- `OVERSEER.md`: the same seats, and the review tests every commit itself (the touched tests, the gate
+  or bench it claims to move, a new test broken to see it fail; the full suite once per accepted commit).
+- `ARCHITECTURE.md`, `ROADMAP.md`, `BUGS.md`, B5 and B6: the team line and the owners ("Backend" lines
+  are CCC's now); the B6 trial graded by the overseer against a holdout test.
+
 ## 0.10.90 (2026-10-14)
 
 The overseer (Jc, 2026-10-14): Claude in the desktop app becomes Jc's design partner and the team's

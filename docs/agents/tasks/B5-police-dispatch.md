@@ -1,4 +1,4 @@
-# B5: Police dispatch, stakeouts and racer chases (Backend, with Claude's world and HUD parts)
+# B5: Police dispatch, stakeouts and racer chases (CCC; Backend in the old seats)
 
 Jc's list (2026-10-09): the police stations dispatch the police; when the pursuit runs low there is a
 minute's wait, with one car still on the player, before the nearest station sends more; undercover cars

@@ -1,4 +1,4 @@
-# B6: Nitrous earned on the road (Backend, with Claude's HUD)
+# B6: Nitrous earned on the road (CCC; Backend in the old seats)
 
 Jc (2026-10-10): the nitrous should fill up while you drive like a street racer, not only at a pump: at
 high speed, by damaging police cars, by driving in the oncoming lane and by drafting. After the bug-bash

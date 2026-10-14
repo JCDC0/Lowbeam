@@ -9,12 +9,15 @@ ranges `tasks/README.md`.
 ## Who is who
 
 - **Overseer**: Claude in the desktop app's Code tab (it has the browser pane, so it can look at the
-  game). Jc's design partner. Writes briefs and the prompts Jc pastes, reviews every worker's commit,
-  keeps the roadmap, the briefs and this file. It does not build features; it edits docs, and only
-  small fixes when a worker cannot.
-- **CCC**: Claude Code CLI in `C:\GitHub\Lowbeam` (Opus, auto mode). The worker on Claude's files:
-  rendering, the world, the UI, fitting assets in, the audits and the tools.
-- **agy**: the Antigravity CLI (Gemini 3.8 Flash). The worker on the backend: game logic and its tests.
+  game). The orchestrator and the first tester (Jc's seats, 2026-10-14). Jc's design partner. Writes
+  briefs and the prompts Jc pastes, tests every worker's commit itself before the next prompt, keeps
+  the roadmap, the briefs and this file. It does not build features; it edits docs, writes acceptance
+  and holdout tests, and makes small fixes only when a worker cannot.
+- **CCC**: Claude Code CLI in `C:\GitHub\Lowbeam` (Opus, auto mode). The main developer, on the whole
+  repo: the game logic, the world, rendering, the UI, fitting assets in, the audits and the tools. The
+  second tester: it tests and looks at its own work before it reports.
+- **agy**: the Antigravity CLI (Gemini 3.8 Flash). Patchwork: small bug fixes and patches by ticket,
+  each naming the bug, the files it may touch and the test that proves it. It owns no part of the repo.
 - **The Gemini app** (Gemini 4 Argon, Task mode): outsourced work that needs no repo: 3D models built
   in code, textures, sourcing with license checks, and self-contained code trials. Jc runs it, a new
   Task for each job, and brings back its files through `G:\My Drive\Lowbeam\from-gemini\`; what it
@@ -57,7 +60,12 @@ Before the next prompt goes out:
   staged; version, changelog and the guide's lines in the same commit.
 - Every claim has its evidence: a test that can fail, a bench number, a screenshot. A number changed
   without a measurement behind it goes back (a radius doubled, a threshold moved).
-- The test count went up with the change, and `npm test` and `npm run check` were run.
+- Test it yourself, never on the worker's word: run the test files the change touches and the gate or
+  bench it claims to move (`clipbench`, `propaudit`, `seamaudit`, `sim`), and check the numbers match
+  the report. For a new test, break the code it guards and see it fail. The full suite and the type
+  check once per accepted commit, not while a worker is running its own (the suite pegs the CPU).
+- The test count went up with the change, and the worker ran `npm test` and `npm run check`.
+- An agy ticket touched only the files the ticket named.
 - Visible changes are looked at in the browser pane at 1280 by 720.
 - Say what is accepted, what goes back to which worker, and why, in the reply to Jc.
 

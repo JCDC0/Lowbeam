@@ -1,28 +1,32 @@
 # Tasks and ownership
 
-Read this and `docs/agents/ARCHITECTURE.md` before touching a file. Every file has one owner. If your
-task needs a change in someone else's file, do not make it: say so in your report and the owner
-makes it. Claude reviews every commit before the next task starts.
+Read this and `docs/agents/ARCHITECTURE.md` before touching a file. CCC owns the repo; agy works
+only in the files its ticket names. If your task needs a change outside your files, do not make it:
+say so in your report. The overseer tests every commit before the next task starts.
 
 ## The team
 
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
-| Overseer | Claude in the desktop app (since 2026-10-14; `../OVERSEER.md`) | 0.10.90 to 0.10.99 | Jc's design partner: turns Jc's choices into briefs with an opinion, writes the prompts Jc pastes, reviews every worker's commit, keeps the roadmap and the briefs |
-| Claude's files | CCC, Claude Code CLI (Opus, auto mode); before 2026-10-14 one Claude did both roles | 0.9.0 to 0.9.19, 0.9.70 to 0.9.99 and 0.10.0 to 0.10.46 (used); now 0.10.47 to 0.10.49, then 0.11.0 to 0.11.49 | Builds what the overseer briefs: rendering, the world, the UI, fitting assets into the game, the audits and the tools |
-| Backend | agy, Gemini 3.8 Flash (Antigravity CLI) from B2 part 3; Hermes (Claude Haiku 5.5) did parts 1 and 2 | 0.9.20 to 0.9.44 (used); now 0.9.45 to 0.9.49, then 0.11.50 to 0.11.99 | Game logic and its tests: police, traffic, races, physics, audio logic, the drive rules |
+| Overseer | Claude in the desktop app (since 2026-10-14; `../OVERSEER.md`) | 0.10.90 to 0.10.99 | The orchestrator and the first tester: Jc's design partner, turns Jc's choices into briefs with an opinion, writes the prompts Jc pastes, and tests every worker's commit itself (the tests it touches, the gate or bench it should move, the game in the browser pane) before the next prompt; keeps the roadmap and the briefs; builds no features |
+| Main developer | CCC, Claude Code CLI (Opus, auto mode); before 2026-10-14 one Claude did both roles | 0.9.0 to 0.9.19, 0.9.70 to 0.9.99 and 0.10.0 to 0.10.46 (used); now 0.10.47 to 0.10.49, then 0.11.0 to 0.11.49 | Builds what the overseer briefs, anywhere in the repo: the game logic, the world, rendering, the UI, fitting assets in, the audits and the tools; the second tester (tests and looks at its own work before it reports) |
+| Patchwork | agy, Gemini 3.8 Flash (Antigravity CLI) | 0.9.20 to 0.9.45 (used); now 0.9.46 to 0.9.49, then 0.11.50 to 0.11.99 | Small bug fixes and patches by ticket: each ticket names the bug, the files it may touch and the test that proves it, one commit; no standing ownership of any part of the repo |
 | Outsourced | The Gemini app, Gemini 4 Argon in Task mode (Jc runs it) | none: CCC commits what it makes | 3D models built in code, textures, sourcing with license checks, self-contained code trials; files through `G:\My Drive\Lowbeam\` (`to-gemini`, `from-gemini`) |
-| Assets | Gemini 3.8 Flash (Antigravity) with the Blender MCP | 0.9.50 to 0.9.69, then 0.10.50 to 0.10.69 | Models built as Blender scripts and exported as JSON, checked in the prop viewer |
+| Off | Hermes (an agent CLI); the Assets seat (Flash with the Blender MCP, 0.9.50 to 0.9.69 and 0.10.50 to 0.10.69, used to 0.10.51) | none | Hermes comes back, running Argon, only if the Argon trials (C10's Hikari, the B6 code trial) show Argon clearly better than Flash; his B5 and C8 work is on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes` |
 
-Ask Claude for a new range when yours runs out.
+Ask the overseer for a new range when yours runs out.
 
 ## Who owns which files
 
 | Owner | Files |
 |---|---|
-| Backend | `src/drive.js`, `src/core/*`, `src/police/*` except `heli-view.js`, `src/race/*`, `src/traffic/net.js`, `sim.js`, `kinds.js`, `src/vehicles/physics.js`, `surfaces.js`, `thermal.js`, `gauges.js`, `specs.js`, `exhaust.js`, `src/audio/*`, `tests/*`, `tools/sim.mjs`, `tools/render-*.mjs`, `tools/audio-lab.html` |
-| Assets | `tools/blender/*` except `kit.py`, `assets/models/*` |
-| Claude | Everything else: `src/render/*`, `src/world/*`, `src/ui/*`, `style.css`, `index.html`, `src/main.js`, `src/vehicles/models.js`, `loft.js`, `bodies/*`, `car.js`, `cockpit.js`, `dash.js`, `instruments.js`, `screens.js`, `exhaust-fx.js`, `src/traffic/bodies.js`, `render.js`, `src/police/heli-view.js`, `tools/blender/kit.py`, `tools/*.html` viewers, `assets/fonts/*`, `docs/*`, `package.json` dependencies |
+| CCC | Everything: `src/`, `tests/`, `tools/`, `assets/`, `style.css`, `index.html`, `package.json` dependencies |
+| agy | Only the files its current ticket names, for that ticket's commit |
+| Overseer | `docs/` (the guide, the briefs, the boards, the roadmap); CCC also writes the guide's lines and the changelog for its own commits |
+
+Jc set these seats on 2026-10-14: before then the backend (`drive.js`, `core`, `police`, `race`, the
+traffic sim and net, physics, specs, audio and `tests/`) was agy's, and the old briefs still say
+"Backend" for that work; read it as CCC's unless the overseer has cut a ticket for agy.
 
 The version bump in `package.json`, `package-lock.json` and the changelog is everyone's: make it in
 the same commit as your work, with your own range. `package.json` always holds the highest version

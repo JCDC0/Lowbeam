@@ -14,16 +14,18 @@ they differ. `ARCHITECTURE.md` says what is true now, `BUGS.md` is the live bug 
   kinds, the player's and the racers' tail lamps lit from dusk to dawn and in rain with light trails at
   speed, two bench findings on the board (T-05, T-06), and the hero-car trial brief (C10). 510 tests,
   type check clean.
-- The backend (agy, Gemini 3.8 Flash in Antigravity) starts a new chat on 2026-10-14 with Claude's
-  prompt (review Claude's edits to its files, T-05, T-06, D-01); no commits from it yet. Its versions go
-  on from 0.9.41.
+- agy (Gemini 3.8 Flash in Antigravity) cleared T-05, T-06 and D-01 (0.9.42 to 0.9.44) and the fixes
+  from their review (0.9.45); from now on it works by ticket (below).
 - The Gemini app (Gemini 4 Argon, Task mode) works through Jc, a new Task for each job; what it makes
   comes into `G:\My Drive\Lowbeam\from-gemini\` (its model sourcing sheet, a 止まれ texture). Its first
   3D job is C10's Hikari (the first came back on 2026-10-14, a clear step up; a revision round is out).
-  Its code trial is B6's pure module, the same brief given to agy, graded by CCC: Hermes comes back on
-  Argon only if Argon is clearly the better coder.
-- Since 2026-10-14 the work is split (`OVERSEER.md`): Claude in the desktop app oversees (Jc's design
-  partner, briefs, prompts, reviews), CCC (Claude Code CLI) builds Claude's files, agy the backend.
+  Its code trial is B6's pure module, the same brief given to agy, graded by the overseer against a
+  holdout test neither saw: Hermes comes back on Argon only if Argon is clearly the better coder.
+- Since 2026-10-14 the work is split into Jc's seats (`OVERSEER.md`, `README.md`): Claude in the desktop
+  app orchestrates and is the first tester (Jc's design partner, briefs, prompts, tests every commit);
+  CCC (Claude Code CLI) is the main developer on the whole repo and the second tester; agy does
+  small bug fixes and patches by ticket; the Gemini app takes the outsourced work. Where an older line
+  says "Backend", the work is CCC's unless the overseer cuts a ticket for agy.
 - Hermes is off. His B5 work and his C8 code sit on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes`
   (shelved after a broken merge, 0.10.32); B5 restarts from `main`, reading that branch for ideas.
 - Port 8040 is the agents' shared tree, 8041 Jc's (only on Jc's word). Nothing is pushed: `origin/main`
@@ -45,11 +47,11 @@ Open lines and their owners (detail in `BUGS.md`):
 | P-02 | 424 ways into a crossing without their own signal pole (a near-side pole or a longer arm) | Claude |
 | T-01 | 97 civilian stalls, all geometry: toll dividers on `c1-r`, Ginza portal pier legs, a pole at node 82, the `c3-ramp` rails | Claude |
 | T-04 | Junction turns: 8 that clip the Kurogane Line's legs (nodes 66, 67, 75), 18 that leave the patch (ten junctions) | Claude |
-| T-05 | 2 world-caused wrecks in the clipping bench | Backend |
-| T-06 | A 16 m semi off the carriageway on `c3-ramp-ex` | Backend first |
-| D-01 | The barrier faults: a test per item, then the guide's line | Backend, then Claude |
-| T-03 | Stakeout cars would glow (waits on B5 part 3) | Backend and Claude |
-| H-01 | The pursuit HUD's timer, seen fade and fuel pump have no data until B5 part 2 | Hermes or Backend, then Claude |
+| T-05 | 2 world-caused wrecks in the clipping bench | agy (cleared 0.9.42) |
+| T-06 | A 16 m semi off the carriageway on `c3-ramp-ex` | agy (cleared 0.9.43) |
+| D-01 | The barrier faults: a test per item, then the guide's line | agy (cleared 0.9.44) |
+| T-03 | Stakeout cars would glow (waits on B5 part 3) | CCC |
+| H-01 | The pursuit HUD's timer, seen fade and fuel pump have no data until B5 part 2 | CCC |
 | H-02 | HUD changes checked against Jc's drawing on a mock page before each commit | Claude (process) |
 | M-01 | Cars' mirrors broken: needs Jc's screenshot of which car and view | Claude |
 | M-02 | Two traffic kinds still on hand-made bodies (kei truck, tanker; no CC0 source found) | Claude |
