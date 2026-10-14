@@ -1534,6 +1534,19 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.44 (2026-10-14)
+
+Roadblock barrier faults verified and cleared with dedicated tests (D-01).
+
+- Item 1 (engine sound from parked barrier): verified `trafficVoices` in `src/audio/traffic-voices.js` skips `a.barrier` (fixed in 0.9.31); added test in `tests/island/roadblock.test.mjs` verifying a barrier generates no engine voice slot.
+- Item 2 (hard hit leaving barrier standing upright): verified `sim.knock()` in `src/traffic/sim.js` diverts any hit on a barrier to `mode = 'knocked'` and sets `flattened = true`, dampening slide speed and yaw spin exponentially and fading after `WRECK_TIME` without ever becoming a `wreck` (fixed in 0.9.32); added assertions in `tests/island/roadblock.test.mjs` verifying extreme 50 m/s hits flatten rather than wreck.
+- Item 3 (barriers counting toward civilian target): updated `TrafficSim.populate(player)` in `src/traffic/sim.js` to check `this.countCivilians() < this.target` instead of `this.agents.length < this.target`, matching the fix made to `update()` in 0.9.32 so roadblock obstacles never reduce civilian spawns; tested in `tests/island/roadblock.test.mjs`.
+- Item 4 (missing test that traffic and a slow car stop at a barrier): added test in `tests/island/roadblock.test.mjs` verifying that a slow vehicle below 6 m/s closing speed stops at an upright parked barrier without knocking it, and civilian traffic on a blocked lane triggers full braking and comes to a complete halt before reaching the barrier.
+- `docs/agents/tasks/BUGS.md`: moved D-01 to Clear.
+
+Guide changes:
+- In `docs/agents/ARCHITECTURE.md` lines 446-448, remove the known issues entry for roadblock barrier faults, as all four faults from G7 review are now verified with tests and cleared.
+
 ## 0.9.43 (2026-10-14)
 
 Keep vehicles over 12 m off Kurogane Line ramps (T-06).

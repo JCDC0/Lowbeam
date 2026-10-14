@@ -29,12 +29,12 @@ Rules:
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | Backend (flag), Claude (lamps) | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
 | X-02 | Nothing has been checked at real frame rates on a gaming desktop | all | Jc, then Claude | needs Jc: F3 numbers on 8041 |
-| D-01 | ARCHITECTURE.md still lists the roadblock barrier faults as open; G7 says they were fixed in 0.9.32 | `ARCHITECTURE.md`, `traffic/sim.js`, `traffic-voices.js` | Backend (a test per fault), Claude (the line) | open: the four items of G7's 0.10.17 review, each proved by a test or fixed |
 
 ## Clear
 
 | ID | Bug | Version |
 |---|---|---|
+| D-01 | Roadblock barrier faults from G7 review tested and cleared: trafficVoices skips barrier engine audio; hard hits knock and flatten without yaw spin; civilian target excludes barriers and parked units in update and populate; traffic brakes to full stop before barrier and slow car below 6 m/s closing stops at upright barrier | 0.9.44 |
 | T-06 | Vehicles over 12 m (semi) kept off Kurogane Line ramps (c3-ramp-*); tested that 7.4 m ramp width supports up to 10.5 m bus and 9 m tanker/trucks with zero carriageway departures, while 16 m rigid semi swept 0.237 m outside the lane | 0.9.43 |
 | T-05 | node tools/clipbench.mjs world-caused wrecks at 0: clipbench prints kind, lane, s and cause on world wreck; changeSafe expands toll plaza buffer to 110 m and probes trajectory points against hitWorld to eliminate toll booth island collisions | 0.9.42 |
 | M-03 | Traffic tail lamps half lit and their flares off the lamps (Jc, the SUV and the truck in the 0.10.38 shots): the converter took one triangle of each lamp's quad (its two shades, 3 and 8 degrees of hue, straddled the tail test), and the taxi's roof sign pulled the head lamp flares onto the windshield. Now a lamp's neighbors of the same hue join it, and the flares use only the lamps in the front and back quarters | 0.10.39 |

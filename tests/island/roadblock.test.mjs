@@ -5,6 +5,7 @@ import { PursuitView } from '../../src/police/pursuit-view.js';
 import { TrafficSim } from '../../src/traffic/sim.js';
 import { carById } from '../../src/vehicles/specs.js';
 import { createVehicleState } from '../../src/vehicles/physics.js';
+import { trafficVoices } from '../../src/audio/traffic-voices.js';
 import { island, trafficNet } from '../island.mjs';
 
 const ground = island();
@@ -178,9 +179,33 @@ test('barrier hit: soft hit stops the car, hard hit knocks and flattens without 
     sim.stepKnocked(hardBarrier, 1);
   }
   assert.equal(hardBarrier.fade, 0, 'barrier fades out after usual time');
+
+  // Hardest hit (e.g. 50 m/s closing) still knocks rather than wrecks
+  const extremeBarrier = sim.spawnBarrier({ x: q.x + 50, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 300);
+  sim.knock(extremeBarrier, 50, 2000);
+  assert.equal(extremeBarrier.mode, 'knocked', 'extreme hit knocks barrier, never a wreck');
+  assert.equal(extremeBarrier.flattened, true, 'extreme hit flattens barrier');
 });
 
-test('TrafficSim civilian target counts civilians only, excluding roadblocks and barriers', () => {
+test('trafficVoices ignores roadblock barriers (item 1)', () => {
+  const lane = net.lane('c1-f', 1, 1);
+  const sim = new TrafficSim(net, { target: 0, rivals: 0, patrols: 0 });
+  const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
+  net.sample(lane, 100, q);
+  const barrier = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: 0, w: 2.4 }, lane, 100);
+  const civ = sim.spawn({ x: q.x + 10, z: q.z + 10, speed: 10 }, 0, 1e9);
+  assert.ok(civ);
+  civ.x = q.x + 10;
+  civ.y = q.y;
+  civ.z = q.z + 10;
+  const player = { x: q.x, y: q.y, z: q.z, vx: 0, vz: 0, yaw: 0 };
+  const voices = trafficVoices(sim.agents, player, 0);
+  assert.equal(voices.length, 1, 'only civilian car produces engine audio');
+  assert.equal(voices[0].key, civ.id, 'civilian voice key matches');
+  assert.ok(!voices.some((v) => v.key === barrier.id), 'barrier produces no engine voice');
+});
+
+test('TrafficSim civilian target counts civilians only, excluding roadblocks and barriers (item 3)', () => {
   const lane = net.lane('c1-f', 1, 1);
   const sim = new TrafficSim(net, { target: 5, rivals: 0, patrols: 0 });
   const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
@@ -195,33 +220,51 @@ test('TrafficSim civilian target counts civilians only, excluding roadblocks and
   assert.equal(sim.countCivilians(), 0, '0 civilians counted among roadblock obstacles');
 
   const player = { x: q.x, z: q.z, speed: 0 };
+  sim.populate(player);
+  assert.equal(sim.countCivilians(), 5, 'populate fills up to target civilians ignoring roadblocks');
+
+  // Also test update: if target is increased, update fills civilian quota
+  sim.target = 7;
   sim.spawnTimer = 0;
   sim.update(1 / 30, player);
-
-  assert.ok(sim.countCivilians() > 0, 'civilian spawned because obstacles do not take civilian slots');
+  assert.equal(sim.countCivilians(), 6, 'update spawns civilian toward new target');
 });
 
-test('traffic brakes for a barrier across its lane', () => {
-  const lane = net.lane('c1-f', 1, 1);
+test('traffic brakes and stops for a barrier across its lane (item 4)', () => {
+  const lane0 = net.lane('c1-f', 1, 0);
+  const lane1 = net.lane('c1-f', 1, 1);
+  const lane2 = net.lane('c1-f', 1, 2);
   const sim = new TrafficSim(net, { target: 0, rivals: 0, patrols: 0 });
   const q = { x: 0, z: 0, tx: 0, tz: 1, y: 0 };
-  net.sample(lane, 100, q);
+  net.sample(lane1, 30, q);
   const civ = sim.spawn({ x: q.x, z: q.z, speed: 0 }, 0, 1e9);
   assert.ok(civ);
-  civ.lane = lane;
-  civ.s = 100;
+  civ.lane = lane1;
+  civ.s = 30;
   civ.speed = 25;
 
-  net.sample(lane, 130, q);
-  const barrier = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), w: 2.4 }, lane, 130);
-  barrier.s = 130;
+  net.sample(lane0, 130, q);
+  sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), w: 2.4 }, lane0, 130);
+  net.sample(lane1, 130, q);
+  const barrier1 = sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), w: 2.4 }, lane1, 130);
+  net.sample(lane2, 130, q);
+  sim.spawnBarrier({ x: q.x, y: q.y, z: q.z, yaw: Math.atan2(q.tx, q.tz), w: 2.4 }, lane2, 130);
 
+  const player = { x: q.x, z: q.z, speed: 0 };
+
+  // Step 1: initial brake response
   sim.sortLanes();
-  const player = { x: 1000, z: 1000, speed: 0 };
   sim.stepDrive(civ, 1 / 30, player);
-
   assert.equal(civ.brake, 1, 'civilian triggers brake for barrier ahead');
   assert.ok(civ.speed < 25, 'civilian slows down before barrier');
+
+  // Step across subsequent frames: civilian comes to a full stop before barrier
+  for (let t = 0; t < 300; t++) {
+    sim.update(1 / 30, player);
+  }
+  assert.equal(civ.speed, 0, 'civilian comes to a complete stop');
+  assert.ok(civ.s < barrier1.s, `civilian stops before barrier (at s=${civ.s.toFixed(1)}, barrier at s=${barrier1.s})`);
+  assert.ok(barrier1.s - civ.s >= 5, `civilian maintains safe stopping buffer of at least 5 m (got ${(barrier1.s - civ.s).toFixed(1)} m)`);
 });
 
 test('a roadblock barrier whose agent has gone is not drawn by PursuitView', () => {
