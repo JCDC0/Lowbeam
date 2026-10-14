@@ -1529,9 +1529,6 @@ export class TrafficSim {
    */
   changeSafe(a, target, player) {
     const rival = this.isRival(a);
-    for (const t of TOLLS) {
-      if (Math.hypot(a.x - t.x, a.z - t.z) < 55) return false;
-    }
     for (const stop of a.lane.stops) {
       const d = stop.s - a.s;
       if (d >= -2 && d < 40) return false;

@@ -54,11 +54,20 @@ const stalls = new Map();
 const wrecks = [];
 let seen = 0;
 let worldWrecks = 0;
+let seed = 5;
+for (let i = 2; i < process.argv.length; i++) {
+  if (process.argv[i] === '--seed' && process.argv[i + 1] !== undefined) {
+    seed = Number(process.argv[++i]);
+  } else if (process.argv[i].startsWith('--seed=')) {
+    seed = Number(process.argv[i].slice(7));
+  }
+}
+
 for (const [name, id, s] of spots) {
   const road = g.roads.byId.get(id);
   const ss = Math.min(s, road.path.length - 10);
   const q = road.path.sample(ss);
-  const sim = new TrafficSim(net, { seed: 5, target: 45, rivals: 0, patrols: 0 });
+  const sim = new TrafficSim(net, { seed, target: 45, rivals: 0, patrols: 0 });
   sim.hitWorld = (x, z, r, y) => col.probe(x, z, r, y);
   sim.onStall = (a) => {
     const road2 = a.lane?.road ? a.lane.road.id : '?';

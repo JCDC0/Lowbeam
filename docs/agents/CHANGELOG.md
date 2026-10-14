@@ -1663,6 +1663,20 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.47 (2026-10-14)
+
+Toll plaza radius sweep and removal of toll exclusion buffer in changeSafe.
+
+- `tools/clipbench.mjs`: added optional `--seed` CLI argument defaulting to seed 5.
+- Toll plaza clearance benchmark across 0 m, 25 m, 40 m, and 55 m on seeds 5 and 7:
+  - 0 m: seed 5 (34,516 samples, 0 clips, 0 off, 0 stalls, 0 wrecks), seed 7 (34,108 samples, 0 clips, 0 off, 0 stalls, 0 wrecks).
+  - 25 m: seed 5 (34,384 samples, 0 clips, 0 off, 0 stalls, 0 wrecks), seed 7 (34,148 samples, 0 clips, 0 off, 0 stalls, 0 wrecks).
+  - 40 m: seed 5 (34,354 samples, 0 clips, 0 off, 0 stalls, 0 wrecks), seed 7 (34,099 samples, 0 clips, 1 off [bus on kogyo-b267], 0 stalls, 0 wrecks).
+  - 55 m: seed 5 (34,365 samples, 0 clips, 0 off, 0 stalls, 0 wrecks), seed 7 (34,178 samples, 0 clips, 0 off, 0 stalls, 0 wrecks).
+  Smallest clean radius with 0 clips, 0 off, 0 wrecks and fewest stalls (0) is 0 m, enabled by widened booth lanes (T-01).
+- `src/traffic/sim.js`: removed obsolete toll plaza exclusion loop from `changeSafe`.
+- `tests/island/traffic-walls.test.mjs`: updated `changeSafe` toll test to assert lane change permitted 30 m from toll plaza.
+
 ## 0.9.46 (2026-10-14)
 
 Toll plaza radius and lane change duration tests guard their fixes.

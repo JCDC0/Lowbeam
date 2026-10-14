@@ -136,7 +136,7 @@ test('a civilian in drive mode touching a static shape for more than a second br
   assert.ok(a.capUntil > sim.time, 'waiting with speed capped at 0');
 });
 
-test('changeSafe forbids lane changes within 55 m of toll plazas and through static obstacles', () => {
+test('changeSafe allows clear lane changes 30 m from toll plazas after booth lane widening', () => {
   const { sim } = withBuilding(1000, 1000);
   const lane1 = net.lanes[0];
   const lane2 = net.lanes.find((l) => l.road === lane1.road && l !== lane1 && l.dir === lane1.dir) || net.lanes[1];
@@ -145,10 +145,8 @@ test('changeSafe forbids lane changes within 55 m of toll plazas and through sta
   a.s = 100;
   const plaza = TOLLS[0];
   a.x = plaza.x;
-  a.z = plaza.z + 54;
-  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 55 m of toll plaza (at 54 m)');
-  a.z = plaza.z + 56;
-  assert.equal(sim.changeSafe(a, lane2), true, 'permitted outside 55 m of toll plaza (at 56 m)');
+  a.z = plaza.z + 30;
+  assert.equal(sim.changeSafe(a, lane2), true, 'permitted 30 m from toll plaza');
 });
 
 test('changeSafe detects static obstacle along lateral transition curve to target lane', () => {
