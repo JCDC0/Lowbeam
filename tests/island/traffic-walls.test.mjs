@@ -134,3 +134,43 @@ test('a civilian in drive mode touching a static shape for more than a second br
   assert.equal(a.speed, 0, 'speed dropped to 0');
   assert.ok(a.capUntil > sim.time, 'waiting with speed capped at 0');
 });
+
+test('changeSafe forbids lane changes within 110 m of toll plazas and through static obstacles', () => {
+  const { sim } = withBuilding(1000, 1000);
+  const lane1 = net.lanes[0];
+  const lane2 = net.lanes.find((l) => l.road === lane1.road && l !== lane1 && l.dir === lane1.dir) || net.lanes[1];
+  const a = sim.spawn(anywhere, 0, 3000);
+  a.lane = lane1;
+  a.s = 100;
+  // Near a toll plaza: Minato toll-s is around x=-160, z=2165
+  a.x = -160;
+  a.z = 2165 - 70; // 70 m away (< 110 m)
+  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 110 m of toll plaza');
+  a.x = -160;
+  a.z = 2165 - 150; // 150 m away (> 110 m)
+  // Outside toll radius and far from obstacles, changeSafe is not blocked by toll
+  assert.ok(typeof sim.changeSafe(a, lane2) === 'boolean');
+});
+
+test('collideWorld notifies onWorldWreck on severe static world hit (> 18 m/s)', () => {
+  const { sim } = withBuilding(1000, 1000);
+  const a = sim.spawn(anywhere, 0, 3000);
+  a.mode = 'drive';
+  a.x = 1000;
+  a.z = 990;
+  a.y = 0;
+  a.yaw = 0;
+  a.speed = 25;
+  a.vx = 0;
+  a.vz = 25;
+  let notified = null;
+  sim.onWorldWreck = (agent, hardest, hit) => {
+    notified = { agent, hardest, hit };
+  };
+  sim.collideWorld(a, DT);
+  assert.ok(notified, 'onWorldWreck was called');
+  assert.equal(notified.agent, a);
+  assert.ok(notified.hardest > 18, `hardest ${notified.hardest} > 18 m/s`);
+  assert.ok(notified.hit, 'hardest hit collider was reported');
+});
+

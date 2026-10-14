@@ -51,6 +51,7 @@ const shapes = new Map();
 const example = new Map();
 const off = new Map();
 const stalls = new Map();
+const wrecks = [];
 let seen = 0;
 let worldWrecks = 0;
 for (const [name, id, s] of spots) {
@@ -63,6 +64,11 @@ for (const [name, id, s] of spots) {
     const road2 = a.lane?.road ? a.lane.road.id : '?';
     const k = `${a.kind.id} on ${road2} at s=${Math.round(a.s)}`;
     stalls.set(k, (stalls.get(k) || 0) + 1);
+  };
+  sim.onWorldWreck = (a, hardest, hit) => {
+    const road2 = a.lane?.road ? a.lane.road.id : '?';
+    const cause = hit ? classify(hit.px, hit.pz) : 'unknown';
+    wrecks.push({ kind: a.kind.id, lane: road2, s: Math.round(a.s), hardest: +hardest.toFixed(1), cause });
   };
   const player = { x: q.x, y: road.heightAt(ss), z: q.z, speed: 0, yaw: 0 };
   for (let t = 0; t < 70; t += 1 / 30) {
@@ -106,3 +112,5 @@ for (const [k, n] of [...off.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)
 console.log('stalls', [...stalls.values()].reduce((a, b) => a + b, 0));
 for (const [k, n] of [...stalls.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(String(n).padStart(4), k);
 console.log('world-caused wrecks', worldWrecks);
+for (const w of wrecks) console.log(`  ${w.kind} on ${w.lane} at s=${w.s}: ${w.cause} (hit ${w.hardest} m/s)`);
+

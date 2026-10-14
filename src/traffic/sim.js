@@ -180,6 +180,11 @@ export class TrafficSim {
     this.onStall = null;
     /** Number of times a static world collision hit a civilian hard enough to wreck. @type {number} */
     this.worldWrecks = 0;
+    /**
+     * Called when a civilian vehicle suffers a severe static world collision (> CIVIL_WRECK_HIT).
+     * @type {((a: Agent, hardest: number, hit: any) => void) | null}
+     */
+    this.onWorldWreck = null;
     /** Where the searching units drive to while the police look for the player. @type {{ x: number, z: number, r: number } | null} */
     this.search = null;
     /**
@@ -1522,7 +1527,7 @@ export class TrafficSim {
   changeSafe(a, target, player) {
     const rival = this.isRival(a);
     for (const t of TOLLS) {
-      if (Math.hypot(a.x - t.x, a.z - t.z) < 55) return false;
+      if (Math.hypot(a.x - t.x, a.z - t.z) < 110) return false;
     }
     for (const stop of a.lane.stops) {
       const d = stop.s - a.s;
@@ -1533,10 +1538,18 @@ export class TrafficSim {
       if (d >= 0 && d < 40) return false;
     }
     if (this.hitWorld) {
-      const qT = this.net.sample(target, a.s, this._q);
-      const midX = (a.x + qT.x) / 2;
-      const midZ = (a.z + qT.z) / 2;
-      if (this.hitWorld(midX, midZ, a.kind.width / 2, a.y)) return false;
+      const isRiv = this.isRival(a);
+      const duration = isRiv ? 1.5 : Math.max(Math.hypot(a.changeStartX, a.changeStartZ) * 1.5 / 2.7, clamp(1.86 + a.speed * 0.0386, 2.2, 4.2));
+      const advance = a.speed * duration;
+      for (const frac of [0.33, 0.67, 1.0]) {
+        const testS = Math.min(target.length, a.s + advance * frac);
+        const curS = Math.min(a.lane.length, a.s + advance * frac);
+        const qT = this.net.sample(target, testS, this._q);
+        const qC = this.net.sample(a.lane, curS, this._r);
+        const x = qC.x * (1 - frac) + qT.x * frac;
+        const z = qC.z * (1 - frac) + qT.z * frac;
+        if (this.hitWorld(x, z, a.kind.width / 2, a.y)) return false;
+      }
     }
 
     if (player) {
@@ -1891,6 +1904,7 @@ export class TrafficSim {
     const fx = Math.sin(a.yaw);
     const fz = Math.cos(a.yaw);
     let hardest = 0;
+    let hardestHit = null;
     let anyContact = false;
     for (const along of [reach, 0, -reach]) {
       const c = hit(a.x + fx * along, a.z + fz * along, r, a.y);
@@ -1904,7 +1918,10 @@ export class TrafficSim {
       }
       const vn = a.vx * c.nx + a.vz * c.nz;
       if (vn >= 0) continue;
-      hardest = Math.max(hardest, -vn);
+      if (-vn > hardest) {
+        hardest = -vn;
+        hardestHit = c;
+      }
       const tx = -c.nz;
       const tz = c.nx;
       const vt = (a.vx * tx + a.vz * tz) * (1 - WALL_SCRAPE);
@@ -1941,6 +1958,7 @@ export class TrafficSim {
       if (this.hurt(a, unitDamage(hardest, Infinity, a.kind.mass))) this.destroy(a);
     } else if (!a.barrier && hardest > CIVIL_WRECK_HIT) {
       this.worldWrecks++;
+      if (this.onWorldWreck) this.onWorldWreck(a, hardest, hardestHit);
       if (a.mode !== 'drive') {
         a.mode = 'wreck';
         a.wreckAge = 0;
