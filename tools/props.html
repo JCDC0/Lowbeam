@@ -23,7 +23,8 @@
 //   tools/props.html?models=spike_strip,police_barrier
 // Options: &budget=3000 sets the triangle budget per model (2000 by default); &smooth=38 smooths the
 // normals under a 38 degree crease the way the game's lofted cars are shaded (the exporter writes
-// flat normals); &car=0 hides the reference car.
+// flat normals); &car=0 hides the reference car; &day=1 lights it as by day, to judge an outside model's
+// colors and shapes before it goes in.
 // Drag to orbit, wheel to zoom, 1 to 9 solo a model, 0 all, C collider boxes, L light markers,
 // R the reference car. window.__props: check() returns the report as data, shot(name) saves
 // tools/shots/<name>.png, show(i), view(yaw, pitch, dist). Reload the page after re-exporting.
@@ -49,9 +50,11 @@ await loadFonts();
 const stage = createStage(document.getElementById('c'));
 stage.configure({ lines: 540 });
 const { scene, camera } = stage;
-scene.background = new THREE.Color(0x0a0f22);
-scene.add(new THREE.HemisphereLight(0x6a7aa2, 0x202226, 1.8));
-const moon = new THREE.DirectionalLight(0xa4b6e0, 1.4);
+// `?day=1` lights the models as by day, to judge their colors and shapes (an outside model before it goes in).
+const DAY = params.get('day') === '1';
+scene.background = new THREE.Color(DAY ? 0x8aa4c8 : 0x0a0f22);
+scene.add(DAY ? new THREE.HemisphereLight(0xdfe8ff, 0x6a6a60, 3.2) : new THREE.HemisphereLight(0x6a7aa2, 0x202226, 1.8));
+const moon = DAY ? new THREE.DirectionalLight(0xfff4e0, 3.0) : new THREE.DirectionalLight(0xa4b6e0, 1.4);
 moon.position.set(-30, 60, -40);
 scene.add(moon);
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 200), psxLambert({ color: 0x2c3026, baked: true }));

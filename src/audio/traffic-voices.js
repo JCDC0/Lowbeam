@@ -45,7 +45,7 @@ export const VOICES = {
 export const VOICE_OF = {
   kei: 'kei', keitruck: 'kei', sedan: 'sedan', hatch: 'sedan', wagon: 'sedan', taxi: 'sedan', minivan: 'van',
   suv: 'six', pickup: 'six', van: 'van', truck: 'diesel', tanker: 'diesel', semi: 'diesel', bus: 'bus',
-  ambulance: 'van', firetruck: 'diesel', garbage: 'diesel', limo: 'six',
+  ambulance: 'van', firetruck: 'diesel', garbage: 'diesel', limo: 'six', exec: 'six', keivan: 'kei', offroad: 'six', coupe: 'v8',
   'rv-kei': 'kei', 'rv-v8drift': 'v8', 'rv-rampart': 'v8', 'rv-boxer': 'flat', 'rv-hayate': 'flat',
   police: 'v8', 'police-heavy': 'v8', 'police-fast': 'six', 'police-int': 'racer',
 };

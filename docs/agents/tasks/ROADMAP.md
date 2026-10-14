@@ -43,7 +43,7 @@ Open lines and their owners (detail in `BUGS.md`):
 | H-01 | The pursuit HUD's timer, seen fade and fuel pump have no data until B5 part 2 | Hermes or Backend, then Claude |
 | H-02 | HUD changes checked against Jc's drawing on a mock page before each commit | Claude (process) |
 | M-01 | Cars' mirrors broken: needs Jc's screenshot of which car and view | Claude |
-| M-02 | Four traffic kinds still on hand-made bodies (wagon, kei car, kei truck, tanker) | Claude |
+| M-02 | Two traffic kinds still on hand-made bodies (kei truck, tanker; no CC0 source found) | Claude |
 | W-01 | The steepest streets climb 12.6 % (Minatomachi, Shinmachi) | Claude |
 | X-02 | Frame rate on a real gaming desktop: needs Jc's F3 numbers on 8041 | Jc, then Claude |
 
@@ -87,8 +87,16 @@ the 2,000 triangle budget).
   road ahead; wet bridge decks, plazas and lots; a cooler tint on wet sidewalks.
 
 **Traffic and models**
-- G6's rest: the wagon, kei car, kei truck and tanker, and the five new kinds (kei van, executive
-  sedan, coupe, crossover, delivery van), from outside CC0 packs first.
+- G6's rest: the kei truck and the tanker (no CC0 source: Gemini's search, 2026-10-14), the crossover.
+- City greenery from outside CC0 models, downloaded and looked at on 2026-10-14 (not in the repository
+  yet, `tools/props.html?day=1`): Innerscene's street tree (108 triangles), round bush (140), bench (156)
+  and steel planter (1,128); KayKit's bench and potted bush. Innerscene's scaffold tower is 13,572
+  triangles, too heavy for a pursuit breaker.
+- The player's five cars from outside models or from Gemini 4 Argon (Jc, 2026-10-14): Cosmo's free cars
+  fit three (its rally car the Hayate, its "kamaro" the Rampart, its "lamb" or "ghini" the Vespera);
+  nothing fits the Tsurugi or the Hikari, the trial for Argon. A player car needs more than a traffic
+  body: its cockpit, the camera solved per car, the wheels that turn, the lamp and exhaust spots
+  (`vehicles/models.js`, `car.js`, `cockpit.js`), so the first car is a trial.
 - An idea from 2026-10-13, not a brief yet: the ambulance and the fire engine on calls, lights and
   siren on, the traffic pulling over for them.
 - The five hero cars stay lofted until an outside model can match their shapes (M-02 plan item 5).

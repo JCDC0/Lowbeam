@@ -1,10 +1,11 @@
 /**
- * Turns an outside low poly model (a .glb, such as Kenney's CC0 Car Kit, or a binary .fbx, such as
- * rgsdev's Free Low Poly Vehicles Pack, read by `tools/fbx.mjs`) into the game's model JSON, the same
- * format the Blender kit exports (`tools/blender/kit.py`), with no Blender needed.
+ * Turns an outside low poly model (a .glb or a text .gltf, such as Kenney's, KayKit's or Cosmo's CC0 cars,
+ * or a binary .fbx, such as rgsdev's Free Low Poly Vehicles Pack, read by `tools/fbx.mjs`) into the game's
+ * model JSON, the same format the Blender kit exports (`tools/blender/kit.py`), with no Blender needed.
  *
- *   node tools/import-glb.mjs <model.glb|.fbx> <name> [--size L,W,H] [--auto] [--parts]
- *                             [--map "#rrggbb=paint,#rrggbb=tail,..."] [--report] [--source "..."]
+ *   node tools/import-glb.mjs <model.glb|.gltf|.fbx> <name> [--size L,W,H] [--auto] [--parts]
+ *                             [--map "#rrggbb=paint,#rrggbb=tail,..."] [--head x,y,w,h] [--tail x,y,w,h]
+ *                             [--report] [--source "..."]
  *
  * Every triangle gets one flat color, sampled from the model's texture at the middle of its UVs (these
  * kits paint with a small palette texture) or its material's diffuse color (an FBX), and a flat normal,
@@ -13,7 +14,8 @@
  * its hex name. `--auto` finds the parts by hue and place for a palette kit, or by the material's name
  * for a kit that names them (`rear lights`, `headlights`, `windows`, `tires`; the body material with
  * the most area is the paint); `--map` names a color's part by hand (a mapped `tail` takes only faces
- * looking back, `lamp` only faces looking forward). The model is moved so it stands on y = 0, centered
+ * looking back, `lamp` only faces looking forward; a wheel is never mapped). `--head` and `--tail` lay a lit
+ * lamp on each side onto the body's face for kits whose lamps the rules cannot find. The model is moved so it stands on y = 0, centered
  * in x and z, front to +z, and `--size` scales it to a traffic kind's length, width and height, its
  * wheels kept round. `--report` prints the colors (and material names) by area, where they sit and the
  * bounds; `--parts` the parts it made. The source goes into `assets/models/SOURCES.md` by hand.
@@ -158,8 +160,19 @@ const mul = (a, b) => {
 };
 const apply = (m, [x, y, z]) => [m[0] * x + m[4] * y + m[8] * z + m[12], m[1] * x + m[5] * y + m[9] * z + m[13], m[2] * x + m[6] * y + m[10] * z + m[14]];
 
-const fbx = /.fbx$/i.test(input);
-const { json: gltf, bin } = fbx ? { json: null, bin: null } : readGlb(input);
+/** A text .gltf and its one buffer, from a file beside it or a data URI (KayKit's and RG Poly's packs). */
+function readGltf(file) {
+  const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if ((json.buffers || []).length > 1) throw new Error('gltf with more than one buffer');
+  const uri = json.buffers?.[0]?.uri || '';
+  const bin = uri.startsWith('data:')
+    ? Buffer.from(uri.slice(uri.indexOf(',') + 1), 'base64')
+    : fs.readFileSync(path.join(path.dirname(file), decodeURIComponent(uri)));
+  return { json, bin };
+}
+
+const fbx = /\.fbx$/i.test(input);
+const { json: gltf, bin } = fbx ? { json: null, bin: null } : /\.gltf$/i.test(input) ? readGltf(input) : readGlb(input);
 const texCache = new Map();
 function textureOf(matIndex) {
   const mat = gltf.materials?.[matIndex];
@@ -173,7 +186,12 @@ function textureOf(matIndex) {
     const v = gltf.bufferViews[img.bufferView];
     png = bin.subarray(v.byteOffset || 0, (v.byteOffset || 0) + v.byteLength);
   }
-  const tex = decodePng(png);
+  let tex = null;
+  try {
+    tex = decodePng(png);
+  } catch (e) {
+    console.warn(`texture ${img.uri || img.name || 'embedded'} skipped (${e.message}): the material's base color is used`);
+  }
   texCache.set(img, tex);
   return tex;
 }
@@ -352,7 +370,7 @@ if (auto) {
 // stripe down the sides.
 const mapped = (t) => {
   const m = map.get(t.color);
-  if (!m) return undefined;
+  if (!m || /wheel/i.test(t.node)) return undefined;
   const nz = area(t).normal[2];
   return (m === 'tail' && nz > -0.5) || (m === 'lamp' && nz < 0.5) ? undefined : m;
 };
@@ -407,6 +425,46 @@ for (let ti = 0; ti < tris.length; ti++) {
 }
 // One flat color a part: the area-weighted mean of its shades.
 if (auto) for (const g of groups.values()) if (g.area > 0) g.color = hex(...g.sum.map((v) => Math.round((v / g.area) * 255)));
+// `--head x,y,w,h` and `--tail x,y,w,h` (meters, after scaling) add a lit lamp on each side, x from the
+// middle and y from the ground, w by h: a quad laid on the body's own face, found by casting a ray along z
+// onto the frontmost (or rearmost) face there. For kits that paint their lamps like the trim (Cosmo's free
+// cars) or in shades the hue rules miss (KayKit's), so the lamps and their flares sit where they should.
+for (const [opt, part, dir] of [['--head', 'lamp', 1], ['--tail', 'tail', -1]]) {
+  if (!flag(opt)) continue;
+  const [lx, ly, lw, lh] = flag(opt).split(',').map(Number);
+  /** The face's z at (x, y): the hit furthest along `dir` among faces turned that way. */
+  const surface = (x, y) => {
+    let best = null;
+    for (const g of groups.values()) {
+      for (let i = 0; i < g.pos.length; i += 9) {
+        if (g.nrm[i + 2] * dir < 0.3) continue;
+        const a = [g.pos[i], g.pos[i + 1], g.pos[i + 2]], b = [g.pos[i + 3], g.pos[i + 4], g.pos[i + 5]], c = [g.pos[i + 6], g.pos[i + 7], g.pos[i + 8]];
+        const d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+        if (Math.abs(d) < 1e-9) continue;
+        const u = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / d;
+        const v = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / d;
+        if (u < 0 || v < 0 || u + v > 1) continue;
+        const z = u * a[2] + v * b[2] + (1 - u - v) * c[2];
+        if (best === null || z * dir > best * dir) best = z;
+      }
+    }
+    return best;
+  };
+  if (!groups.has(part)) groups.set(part, { color: part === 'lamp' ? '#fff2d0' : '#c41a10', pos: [], nrm: [], sum: [0, 0, 0], area: 0 });
+  const g = groups.get(part);
+  for (const side of [1, -1]) {
+    const x = side * lx;
+    const z = surface(x, ly);
+    if (z === null) {
+      console.warn(`${opt}: no face at x ${x}, y ${ly}; that lamp is left out`);
+      continue;
+    }
+    const zz = z + dir * 0.012;
+    const [x0, x1, y0, y1] = [x - lw / 2, x + lw / 2, ly - lh / 2, ly + lh / 2];
+    const quad = dir > 0 ? [[x0, y0], [x1, y0], [x1, y1], [x0, y0], [x1, y1], [x0, y1]] : [[x1, y0], [x0, y0], [x0, y1], [x1, y0], [x0, y1], [x1, y1]];
+    for (const [qx, qy] of quad) g.pos.push(qx, qy, zz), g.nrm.push(0, 0, dir);
+  }
+}
 if (args.includes('--parts')) for (const [k, g] of groups) console.log(`${k.padEnd(6)} ${g.color}  ${g.area.toFixed(2)} m2  ${g.pos.length / 9} tris`);
 const out = { name, size: dims.map((d, k) => Math.round(d * scale[k] * 100) / 100), materials: [], groups: [], position: [], normal: [], uv: [], colliders: [], lights: [] };
 const EMISSIVE = new Set(['lamp', 'tail']);
@@ -416,9 +474,9 @@ for (const [mname, g] of groups) {
   const count = g.pos.length / 3;
   out.groups.push({ material: out.materials.length - 1, start, count });
   start += count;
-  out.position.push(...g.pos);
-  out.normal.push(...g.nrm);
-  out.uv.push(...new Array(count * 2).fill(0));
+  for (const v of g.pos) out.position.push(v);
+  for (const v of g.nrm) out.normal.push(v);
+  for (let i = 0; i < count * 2; i++) out.uv.push(0);
 }
 const file = path.join('assets', 'models', `${name}.json`);
 fs.writeFileSync(file, JSON.stringify(out));

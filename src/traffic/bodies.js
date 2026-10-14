@@ -213,7 +213,7 @@ export function buildKindGeometry(k, models = {}) {
     p.box(0, 0.3, -L / 2 + 0.04, W - 0.04, 0.22, 0.14, DARK);
     lights(p, W, belt - 0.1, L, 0.3);
     wheels(p, [L * 0.3, -L * 0.3], W / 2 - 0.12, 0.33, 0.27);
-  } else if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan', 'limo'].includes(k.id)) {
+  } else if (['sedan', 'hatch', 'kei', 'wagon', 'taxi', 'suv', 'minivan', 'limo', 'exec', 'keivan', 'offroad', 'coupe'].includes(k.id)) {
     const belt = H * (k.id === 'suv' || k.id === 'minivan' ? 0.5 : 0.52);
     const low = 0.24;
     p.box(0, (low + belt) / 2, 0, W, belt - low, L, { top: PAINT, side: PAINT, front: PAINT, back: PAINT });

@@ -45,6 +45,10 @@ export const KINDS = [
   { id: 'ambulance', name: 'Ambulance', length: 5.6, width: 1.9, height: 2.5, mass: 3200, accel: 1.8, speed: [0.85, 1.05], paint: [0xc6261c], weights: { expressway: 0.3, arterial: 0.6, street: 0.5, ramp: 0.2, mountain: 0.1 } },
   { id: 'firetruck', name: 'Fire engine', length: 9.0, width: 2.5, height: 3.3, mass: 15000, accel: 1.0, speed: [0.7, 0.9], paint: [0xb8c0cc], weights: { expressway: 0.15, arterial: 0.4, street: 0.4, ramp: 0.1, mountain: 0 } },
   { id: 'garbage', name: 'Garbage truck', length: 6.5, width: 2.2, height: 2.9, mass: 8000, accel: 1.1, speed: [0.7, 0.88], paint: [0x3b8a5a, 0x2f6fd0, 0xe8e8e6], weights: { expressway: 0.2, arterial: 1, street: 1.5, ramp: 0.2, mountain: 0 } },
+  { id: 'exec', name: 'Executive sedan', length: 4.95, width: 1.83, height: 1.45, mass: 1750, accel: 2.3, speed: [0.85, 1.1], paint: [0x111317, 0x1b1d22, 0x2a2d33, 0xc9ccd0, 0xe8e8e6], weights: { expressway: 2, arterial: 3, street: 1.5, ramp: 2, mountain: 1 } },
+  { id: 'keivan', name: 'Kei van', length: 3.4, width: 1.48, height: 1.9, mass: 950, accel: 1.9, speed: [0.75, 0.98], paint: [0xe8e8e6, 0xd8d8d6, 0xc9ccd0, 0x2f6fd0], weights: { expressway: 0.5, arterial: 2, street: 5, ramp: 0.5, mountain: 2 } },
+  { id: 'offroad', name: 'Four-wheel drive', length: 4.4, width: 1.84, height: 1.8, mass: 1900, accel: 2.1, speed: [0.82, 1.05], paint: [0xf29a2e, 0x3b5a46, 0xe8e8e6, 0x2a2d33, 0x8a1c22], weights: { expressway: 1, arterial: 1.5, street: 1, ramp: 1, mountain: 4 } },
+  { id: 'coupe', name: 'Coupe', length: 4.5, width: 1.8, height: 1.32, mass: 1450, accel: 2.8, speed: [0.9, 1.15], paint: BRIGHT.concat(MUTED), weights: { expressway: 2.5, arterial: 2, street: 1.5, ramp: 2, mountain: 2.5 } },
   { id: 'limo', name: 'Limousine', length: 6.2, width: 1.9, height: 1.45, mass: 2600, accel: 2.0, speed: [0.85, 1.05], paint: [0x111317, 0x1b1d22, 0xe8e8e6], weights: { expressway: 0.4, arterial: 0.6, street: 0.3, ramp: 0.3, mountain: 0 } },
 ];
 
@@ -92,8 +96,9 @@ export const ALL_KINDS = [...KINDS, ...RIVALS, ...UNIT_KINDS];
 
 /**
  * Bodies made in Blender, by kind: Gemini's models (tasks G2, G3, G5, G6) as they pass review, and
- * outside CC0 models converted with `tools/import-glb.mjs` (Kenney's Car Kit, the `kenney_` ones, and
- * rgsdev's Free Low Poly Vehicles Pack, the `rgsdev_` ones; listed in `assets/models/SOURCES.md`). The `_full` export carries its own wheels, which is all traffic needs
+ * outside CC0 models converted with `tools/import-glb.mjs` (Kenney's Car Kit, `kenney_`; rgsdev's Free Low
+ * Poly Vehicles Pack, `rgsdev_`; KayKit's City Builder Bits, `kaykit_`; Cosmo's Low Poly Cars, `cosmo_`;
+ * listed in `assets/models/SOURCES.md`). The `_full` export carries its own wheels, which is all traffic needs
  * (its wheels do not turn).
  * @type {Record<string, string>}
  */
@@ -112,6 +117,12 @@ export const KIND_MODELS = {
   firetruck: 'rgsdev_firetruck',
   garbage: 'kenney_garbage',
   limo: 'rgsdev_limo',
+  wagon: 'kaykit_wagon',
+  kei: 'kaykit_hatch',
+  exec: 'kaykit_sedan',
+  keivan: 'cosmo_van',
+  offroad: 'cosmo_jeep',
+  coupe: 'cosmo_coupe',
   'rv-rotary': 'rv_rotary_full',
   'rv-kei': 'rv_kei_full',
   'rv-hothatch': 'rv_hothatch_full',

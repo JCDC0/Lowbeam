@@ -28,6 +28,36 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.43 (2026-10-14)
+
+The wagon and the kei car on outside models, and four new kinds, from the packs Gemini found (its sourcing
+sheet in Drive, every license checked on its page and by Claude), downloaded with Jc's go.
+
+- Downloaded (CC0, into the scratchpad, unpacked outside the repository): KayKit's City Builder Bits free
+  (4.9 MB), Cosmo's Low Poly Cars free (2.6 MB), RG Poly's Cars Free (3.9 MB; mostly police cars and trucks,
+  none used yet: its cars face +x and need a turn option) and ten single Innerscene `.glb` files (the
+  SUV, van and pickup are 16,000 to 19,000 triangles each, too heavy; its street tree, bush, bench and
+  planter are kept for the city's greenery).
+- `tools/import-glb.mjs`: reads a text `.gltf` with its `.bin` beside it or in a data URI (KayKit and RG
+  Poly ship those); a texture that is not a PNG falls back to the material's color with a warning;
+  `--head x,y,w,h` and `--tail x,y,w,h` lay a lit lamp quad on each side onto the frontmost (rearmost)
+  face found by a ray along z, for kits that paint their lamps like the trim (Cosmo's free cars) or in
+  shades the hue rules miss (KayKit's); a `--map`ped color never takes a wheel; very large models no
+  longer overflow the stack when written.
+- `tools/props.html?day=1`: the models lit as by day, to judge an outside model's colors.
+- `traffic/kinds.js` (the backend's file, with Jc's go while the backend is off): `wagon` draws
+  `kaykit_wagon`, `kei` `kaykit_hatch` (KayKit's boxy hatchback at kei size); new kinds `exec` (executive
+  sedan, KayKit's sedan), `keivan` (Cosmo's van at kei size, mostly on the streets), `offroad` (Cosmo's
+  jeep, mostly on the pass) and `coupe` (Cosmo's coupe); their voices in `traffic-voices.js` (six, kei,
+  six, V8); their boxy fallbacks in `traffic/bodies.js`; `tests/kind-models.test.mjs` counts twenty-two.
+- Seen in the game at night from behind and in front (every tail and head glow on its own lamp) and the
+  coupe by day.
+- Left: the kei truck and tanker (no CC0 source), the crossover. For the player's cars, Cosmo's rally car,
+  "kamaro" and "lamb" fit the Hayate, the Rampart and the Vespera (`ROADMAP.md`).
+
+Guide changes: the import command reads .gltf and lays lamps; the props viewer's day light; twenty-two
+kinds and the models that draw them.
+
 ## 0.10.42 (2026-10-14)
 
 `docs/agents/tasks/ROADMAP.md` (new), for a new session and for Jc: everything planned and not built, in
