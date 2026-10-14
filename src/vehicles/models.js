@@ -626,6 +626,11 @@ export class CarModel {
     this.lampsOn = false;
     /** The middle of each tail lamp in the car's frame, its left (+x) first. */
     this.tailSpots = tailSpots(this.body, this.mats.tail, spec);
+    /**
+     * The middle of each head lamp lens of a hero body, its left (+x) first, where the headlights
+     * shine from (the Hikari's pop-ups stand above the loft's lamp line); null on a lofted body.
+     */
+    this.headSpots = hero ? partSpots(this.body, this.mats.lamp) : null;
     const quad = new THREE.PlaneGeometry(1, 1);
     this.flareDir = new THREE.InstancedBufferAttribute(new Float32Array(6), 3);
     quad.setAttribute('aDir', this.flareDir);
@@ -764,7 +769,7 @@ function meshBody(model, kit, mats) {
       const side = q[2] > 0 ? 1 : -1;
       const [x0, x1, y0, y1] = box[side];
       const u = (q[0] - x0) / (x1 - x0 || 1);
-      return [side > 0 ? 1 - u : u, (q[1] - y0) / (y1 - y0 || 1)];
+      return [side > 0 ? u : 1 - u, (q[1] - y0) / (y1 - y0 || 1)];
     };
     for (let k = g.start; k + 2 < g.start + g.count; k += 3) {
       const a = v(k), c = v(k + 1), d = v(k + 2);
@@ -784,11 +789,22 @@ function meshBody(model, kit, mats) {
  * @returns {[number, number, number][]}
  */
 function tailSpots(body, tail, spec) {
+  const spots = partSpots(body, tail);
+  return spots || [0, 1].map((i) => [(i ? -1 : 1) * (spec.width / 2 - 0.3), 0.75, -spec.length / 2]);
+}
+
+/**
+ * The middle of a part's vertices on each side of the body, its left (+x) first; null unless the
+ * part has vertices on both sides.
+ * @param {THREE.Mesh} body @param {THREE.Material} part
+ * @returns {[number, number, number][] | null}
+ */
+function partSpots(body, part) {
   const pos = body.geometry.attributes.position;
   const mats = /** @type {THREE.Material[]} */ (body.material);
   const acc = [[0, 0, 0, 0], [0, 0, 0, 0]];
   for (const g of body.geometry.groups) {
-    if (mats[g.materialIndex ?? 0] !== tail) continue;
+    if (mats[g.materialIndex ?? 0] !== part) continue;
     for (let i = g.start; i < g.start + g.count; i++) {
       const a = acc[pos.getX(i) > 0 ? 0 : 1];
       a[0] += pos.getX(i);
@@ -797,7 +813,8 @@ function tailSpots(body, tail, spec) {
       a[3]++;
     }
   }
-  return acc.map((a, i) => (a[3] ? [a[0] / a[3], a[1] / a[3], a[2] / a[3]] : [(i ? -1 : 1) * (spec.width / 2 - 0.3), 0.75, -spec.length / 2]));
+  if (!acc[0][3] || !acc[1][3]) return null;
+  return acc.map((a) => /** @type {[number, number, number]} */ ([a[0] / a[3], a[1] / a[3], a[2] / a[3]]));
 }
 
 /** Fixed colors for the parts of a body baked into one geometry; paint is tinted per instance. */

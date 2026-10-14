@@ -44,11 +44,13 @@ export class Car {
     const zf = k.zMax - 0.15;
     const y = Math.min(0.68, k.topY(zf) - 0.12);
     const x = this.spec.width / 2 - 0.3;
+    // A hero body shines from its own lenses.
+    const spots = this.model.headSpots || [[x, y, zf], [-x, y, zf]];
     const lights = [];
-    for (const s of [1, -1]) {
+    for (const [sx, sy, sz] of spots) {
       const l = new THREE.SpotLight(0xfff0d8, 320, 95, 0.42, 0.45, 1.35);
-      l.position.set(s * x, y, zf);
-      l.target.position.set(s * x * 0.4, 0, zf + 26);
+      l.position.set(sx, sy, sz);
+      l.target.position.set(sx * 0.4, 0, sz + 26);
       this.model.group.add(l, l.target);
       lights.push(l);
     }

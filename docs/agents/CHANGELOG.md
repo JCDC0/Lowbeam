@@ -68,6 +68,26 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.49 (2026-10-14)
+
+C10 steps 2 to 4: Argon's second Hikari in the game behind the hero switch, for Jc to compare.
+
+- `assets/models/hikari_300zr.json` from `hikari_300zr_v2.glb` (`--names --drop-wheels --frame`): 1,646
+  triangles with its wheels left out (576), eight parts (`paint`, `glass`, `lamp`, `signal`, `tail`,
+  `trim`, `under`, `plate`). Against C10's table: the body runs z -2.29 to +2.31 (the front bumper
+  0.01 m past the table's +2.30, accepted), 1.74 m at the doors (1.92 with the mirrors), the roof at 1.32 (the loft's
+  1.28); both wheel arches are centered on their axles (z +1.20 and -1.32), the opening's top 0.69 m
+  over the axle against the wheel's 0.62, its lips 0.20 m up at 0.5 m either side.
+- A hero body's headlights shine from its own lamp faces (`CarModel.headSpots`), not the loft's lamp
+  line: the Hikari's from its pop-up lenses at y 0.67, z 2.16. `signal` keeps its own color, unlit.
+- A hero body's plates were mapped mirror-wise, front and back: they read the right way now.
+- `tests/hero-models.test.mjs`: a hero body has its parts and no wheels, its car's length and width,
+  its head lamps in the front quarter and its tail lamps in the back on both sides, and its arches
+  over the spec's axles.
+- `SOURCES.md`: made for Jc by Gemini 4 Argon in the Gemini app, Jc's to use.
+- The side by side in `tools/shots/c10-loft-*.png` and `c10-argon-*.png`: garage, chase and cockpit,
+  night and day, 1280 by 720. `?hero=hikari:hikari_300zr` draws it; the loft stays the default.
+
 ## 0.10.48 (2026-10-14)
 
 T-01: the civilian stalls and the placement audit both at 0. Clipbench before: 71 stalls (ginza-b5,

@@ -64,3 +64,14 @@ are laid by `--head` and `--tail`; the van's and the coupe's paint is named with
 | `cosmo_van.json` | `GLTF/van.glb` | `keivan` | 3.4, 1.48, 1.9 | `--map "#8aa16d=paint" --head 0.45,0.94,0.26,0.07 --tail 0.64,1.12,0.07,0.38` |
 | `cosmo_jeep.json` | `GLTF/jeep.glb` | `offroad` | 4.4, 1.84, 1.8 | `--head 0.5,0.95,0.16,0.16 --tail 0.66,1.07,0.12,0.16` |
 | `cosmo_coupe.json` | `GLTF/coupe.glb` | `coupe` | 4.5, 1.8, 1.32 | `--map "#424242=paint,#2e2e2e=paint" --head 0.55,0.68,0.3,0.06 --tail 0.5,0.85,0.42,0.06` |
+
+## Made to order: Gemini 4 Argon
+
+Player car bodies made for Jc by Gemini 4 Argon in the Gemini app (Task mode) from the brief in
+`docs/agents/tasks/C10-hero-cars.md`, built in its own Python script in the car's frame; Jc's to use.
+Converted with `node tools/import-glb.mjs <file> <name> --names --drop-wheels --frame` (the model's
+own part names and frame, its wheels left to CarModel).
+
+| Model | File | Player car | Size (W, H, L) |
+|---|---|---|---|
+| `hikari_300zr.json` | `hikari_300zr_v2.glb` (2026-10-14, the second round) | Hikari 300ZR | 1.92 (1.74 at the doors), 1.13, 4.6 |

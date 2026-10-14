@@ -186,7 +186,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.90)
 
-523 tests pass; the type check is clean. By area:
+526 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto
@@ -246,7 +246,7 @@ bottle and wears it a little (4 % a bottle on a clean run). Its torque is not cu
 so held through a gear it drives the revs 600 to 1,400 rpm past the redline, over-revving and
 wearing the engine three to five times faster. A blue flame, a hiss, a bar beside every HUD
 speedometer and a strip on the cockpit binnacle; refilled at a pump (¥6,000 a bottle) once the tank
-is full. Cameras chase, car, hood, bumper, cockpit; the cockpit camera is solved per
+is full. Argon's Hikari body (`hikari_300zr`, C10, 0.10.49) is in behind `?hero=hikari:hikari_300zr` for Jc's side by side, its headlights shining from its own pop-up lenses (`headSpots`); the loft stays the default until Jc chooses. Cameras chase, car, hood, bumper, cockpit; the cockpit camera is solved per
 car so the road shows from 5 m. The tail lamps run lit from dusk to dawn and in any rain (`tailLampsOn`),
 with a red glow on each (the traffic's flares), off on a clear day and bright on the brake at any hour.
 With them lit, from 100 km/h the tail lamps leave light trails, full at 180 km/h (Jc's long exposure
