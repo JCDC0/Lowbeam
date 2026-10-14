@@ -1534,6 +1534,17 @@ Pursuit props, first part: spike strip.
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
+## 0.9.43 (2026-10-14)
+
+Keep vehicles over 12 m off Kurogane Line ramps (T-06).
+
+- Evaluated ramp clearances on `c3-ramp-ex`: full road width (7.4 m) accommodates 10.5 m city buses, 9 m tankers and fire trucks with zero carriageway departures (all corners remain within 0.1 m edge tolerance). Only the 16 m rigid semi sweeps beyond the road edge (max edge departure 0.237 m around s = 50 to 61).
+- `src/traffic/sim.js`:
+  - `choose`: excludes Kurogane Line ramps (`c3-ramp-*`) from exit plans (`mids`) and end connections (`ends`) for vehicles with length > 12 m.
+  - `spawn`: rejects candidate spawns onto `c3-ramp-*` roads when vehicle length > 12 m.
+- `tests/island/kurogane-line.test.mjs`: added test verifying that vehicles over 12 m never plan turns onto or spawn on Kurogane Line ramps.
+- `docs/agents/tasks/BUGS.md`: moved T-06 to Clear.
+
 ## 0.9.42 (2026-10-14)
 
 Fix world-caused wrecks and report them on clipbench (T-05).

@@ -70,3 +70,40 @@ test('a median barrier runs the whole deck with no gap, past both ends into the 
   };
   assert.ok(nose(0, -1) && nose(line.path.length, 1), 'a nose past each end');
 });
+
+test('vehicles over 12 m (semi) never choose or spawn onto Kurogane Line ramps', async () => {
+  const { TrafficSim } = await import('../../src/traffic/sim.js');
+  const { KINDS } = await import('../../src/traffic/kinds.js');
+  const sim = new TrafficSim(net, { seed: 42, target: 40, rivals: 0, patrols: 0 });
+  const semi = KINDS.find((k) => k.id === 'semi');
+  assert.ok(semi && semi.length > 12);
+  const c1Lane = net.lane('c1-r', 1, 0);
+  assert.ok(c1Lane);
+  const agent = {
+    id: 1, kind: semi, lane: c1Lane, s: 3500, mode: 'drive',
+    plan: null, end: null, changeDuration: 0,
+  };
+  const { makeRng } = await import('../../src/core/rng.js');
+  for (let seed = 0; seed < 50; seed++) {
+    sim.rng = makeRng(seed);
+    sim.choose(agent);
+    if (agent.plan) {
+      assert.ok(!agent.plan.lane.road.id.startsWith('c3-ramp'), `semi must not take c3-ramp exit (planned ${agent.plan.lane.road.id})`);
+    }
+  }
+
+  // Spawning check: spawning on a c3-ramp never produces a vehicle > 12 m
+  const c3RampLanes = net.lanes.filter((l) => l.road.id.startsWith('c3-ramp'));
+  assert.ok(c3RampLanes.length > 0);
+  for (const rampLane of c3RampLanes) {
+    const q = net.sample(rampLane, rampLane.length / 2, {});
+    const player = { x: q.x + 80, z: q.z + 80, speed: 0 };
+    for (let i = 0; i < 20; i++) {
+      const a = sim.spawn(player, 60, 200);
+      if (a && a.lane.road.id.startsWith('c3-ramp')) {
+        assert.ok(a.kind.length <= 12, `vehicle on ${a.lane.road.id} has length ${a.kind.length} <= 12 m`);
+      }
+    }
+  }
+});
+

@@ -402,6 +402,7 @@ export class TrafficSim {
       if (d < min || d > max) continue;
       if (this.crowded(lane, s, 30)) continue;
       const kind = this.pickKind(lane.cls);
+      if (lane.road.id.startsWith('c3-ramp') && kind.length > 12) continue;
       const [lo, hi] = kind.speed;
       const factor = this.rng.range(lo, hi);
       const a = /** @type {Agent} */ ({
@@ -615,16 +616,18 @@ export class TrafficSim {
   /** Picks this agent's turn off the lane and what happens at its end. @param {Agent} a */
   choose(a) {
     a.plan = null;
+    const isLong = a.kind.length > 12;
     // Street racers stay on the loop.
     for (const m of this.isRival(a) ? [] : a.lane.mids) {
       if (m.at <= a.s) continue;
+      if (isLong && m.lane.road.id.startsWith('c3-ramp')) continue;
       if (this.rng.chance(m.weight)) {
         a.plan = m;
         break;
       }
     }
     a.end = null;
-    const ends = a.lane.ends;
+    const ends = isLong ? a.lane.ends.filter((e) => !e.lane.road.id.startsWith('c3-ramp')) : a.lane.ends;
     if (ends.length) {
       let t = this.rng.next() * ends.reduce((x, e) => x + e.weight, 0);
       a.end = ends[ends.length - 1];
