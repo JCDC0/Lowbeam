@@ -19,6 +19,7 @@ import { asphaltTexture, concreteTexture, gravelTexture, laneAsphaltTexture, sho
 import { SKIRT, SINK } from './roads.js';
 import { inStretch } from './merge.js';
 import { MARKING, placeMarkings } from './markings.js';
+import { junctionOutline } from './junctions.js';
 
 export const TILE = 12;
 const CHUNK_ROWS = 90;
@@ -184,27 +185,12 @@ function ribbon(road, r0, r1, shared, inJunction) {
 function buildJunctions(junctions) {
   const b = new MeshBuilder();
   for (const j of junctions) {
-    /** @type {{ a: number, p: number[] }[]} */
-    const pts = [];
-    let y = -Infinity;
-    for (const arm of j.arms) {
-      const road = arm.road;
-      const s = road.path.wrapS(arm.s + arm.dir * (j.r + 2.5));
-      const q = road.path.sample(s);
-      const w = road.hwAt(s) + road.walk;
-      y = Math.max(y, road.heightAt(road.path.wrapS(arm.s)) + 0.012 * road.priority);
-      for (const k of [-1, 1]) {
-        const x = q.x + q.tz * w * k;
-        const z = q.z - q.tx * w * k;
-        pts.push({ a: Math.atan2(x - j.x, z - j.z), p: [x, z] });
-      }
-    }
-    if (pts.length < 3) continue;
-    pts.sort((p, q) => p.a - q.a);
-    y += 0.006;
+    const outline = junctionOutline(j);
+    if (!outline) continue;
+    const { pts, y } = outline;
     for (let k = 0; k < pts.length; k++) {
-      const p0 = pts[k].p;
-      const p1 = pts[(k + 1) % pts.length].p;
+      const p0 = pts[k];
+      const p1 = pts[(k + 1) % pts.length];
       b.tri('asphalt', [j.x, y, j.z], [p1[0], y, p1[1]], [p0[0], y, p0[1]], [j.x / TILE, j.z / TILE], [p1[0] / TILE, p1[1] / TILE], [p0[0] / TILE, p0[1] / TILE]);
     }
   }

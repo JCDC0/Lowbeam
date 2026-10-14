@@ -28,6 +28,44 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.46 (2026-10-14)
+
+The road seam audit, gate 3 of the bug board: it finds R-01's faults instead of waiting for Jc's spots.
+
+- `tools/seamaudit.mjs`: models what `build-roads.js` draws from the same data (each road a carriageway
+  of `hwAt(s)` with a curb and sidewalk each side; inside a junction's stretch the sidewalks dropped and
+  the patch laid over both carriageways) and reports four kinds of fault, each joined into stretches
+  per pair of roads: `walk`, a sidewalk drawn across another road's carriageway at the same level (147);
+  `overlap`, two carriageways over each other outside every patch (61; a slip road and its carriageway,
+  two slips of one carriageway and twin carriageways are left out); `hole`, a spot inside a junction's
+  stretch, its sidewalk dropped, more than 0.25 m outside every patch and on no other road (57);
+  `step`, a patch edge more than 0.15 m above or below the road it meets (393, up to 1.03 m). About
+  0.4 s after the island.
+- Every kind checked in the game (headless shots from above): at the kogyo crossing near (2423, -1293) a
+  street at a slant keeps its sidewalks across the other road and the two carriageways overlap past the
+  patch; north of the city kita ends in a square edge lying on r18 with both sets of lane paint; two
+  crossings of ginza-b14 and naikan so close their zebras and lane lines overlap; shin-a53's sidewalk lies
+  in r18's carriageway at a T with no patch; bare ground between two side streets meeting at a sharp
+  angle at kitae-b183. The steps are the patch laid flat at its highest road's height: minato-b74 climbs
+  12 % straight through its crossing with a level street, so 8.6 m out the patch is 1 m above the road
+  downhill and 1 m under it uphill (W-01's streets). The fix for that one is a patch that follows each
+  arm's height; all of it is R-01.
+- `junctionOutline(j)` in `junctions.js` (pure): the patch's corners and height, now used by both the
+  road builder and the audit, so they cannot disagree.
+- `tests/island/seamaudit.test.mjs`: no kind may rise above today's count, the kogyo crossing is found
+  as both a sidewalk and an overlap fault, and no slip road is ever an overlap with its carriageway.
+- Review of agy's 0.9.42 (T-05, the toll divider islands that lane changes cut into): accepted on
+  the bench. `node tools/clipbench.mjs` after it: 0 clips in 34,455 samples, 0 off the carriageway
+  (T-06's eight are gone too), 0 world-caused wrecks, 68 stalls (123 at B4), nearly all at the Ginza
+  portal legs (T-01). Owed by the backend: the commit message has no body and no trailer; the toll radius
+  in `changeSafe` doubled to 110 m with no numbers behind it; `changeSafe` estimates the change's
+  length from `changeStartX`, the offset of a change already under way (0 before a new one), not the
+  distance to the target lane; and its test's second assertion (`typeof ... === 'boolean'`) cannot fail.
+- My slip: 0.10.45 staged `CHANGELOG.md` and `BUGS.md` whole while the backend was writing to them, so
+  its 0.9.42 entry and its T-05 line went in with my commit, ahead of its code. The text is the
+  backend's, unchanged; from here I stage only my own hunks of a shared file.
+- 519 tests; the type check is clean.
+
 ## 0.10.45 (2026-10-14)
 
 The placement audit, gate 2 of the bug board, and the seven faults it found outside T-01.

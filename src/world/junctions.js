@@ -179,3 +179,32 @@ export function junctionSpans(junctions) {
   }
   return out;
 }
+
+/**
+ * The paved patch of a junction: a polygon through the edges (sidewalks included) of every road
+ * leaving it, 2.5 m past its radius, sorted round the center, and the height it is laid at (a
+ * little above the highest road there, so lane paint and curbs stop at it). Null with fewer than
+ * three corners. The road builder paves it and the seam audit (`tools/seamaudit.mjs`) checks it.
+ * @param {Junction} j
+ * @returns {{ pts: [number, number][], y: number } | null}
+ */
+export function junctionOutline(j) {
+  /** @type {{ a: number, p: [number, number] }[]} */
+  const pts = [];
+  let y = -Infinity;
+  for (const arm of j.arms) {
+    const road = arm.road;
+    const s = road.path.wrapS(arm.s + arm.dir * (j.r + 2.5));
+    const q = road.path.sample(s);
+    const w = road.hwAt(s) + road.walk;
+    y = Math.max(y, road.heightAt(road.path.wrapS(arm.s)) + 0.012 * road.priority);
+    for (const k of [-1, 1]) {
+      const x = q.x + q.tz * w * k;
+      const z = q.z - q.tx * w * k;
+      pts.push({ a: Math.atan2(x - j.x, z - j.z), p: [x, z] });
+    }
+  }
+  if (pts.length < 3) return null;
+  pts.sort((p, q) => p.a - q.a);
+  return { pts: pts.map((p) => p.p), y: y + 0.006 };
+}

@@ -26,7 +26,7 @@ Rules:
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
 | T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
 | T-04 | Junction turns the strict turn test names as exceptions: 14 that clip a static shape at 7 junctions (Ginza and Dori, Kitae, Hama, Nishi) and 18 that leave the carriageway at 10 junctions (side streets meeting `r18`, `west` and `east`) | `traffic/net.js` (`buildTurn`), `world/junctions.js` (the patch) | Claude | 6 signal clipping turns cleared and removed (0.9.38); 8 pier clips (nodes 66, 67, 75) and 18 patch faults (nodes 1, 4, 6, 12, 13, 15, 16, 17, 20, 22; 0.13 to 0.53 m) listed for patch widening |
-| T-06 | The same run: 8 samples off the carriageway, all a 16 m semi on `c3-ramp-ex` (a rigid box sweeping the inside of the Kurogane Line ramp's quarter circle) | `traffic/sim.js`, `kinds.js` (or the ramp, Claude's) | Backend first | open: decide by the numbers: a rule that keeps the semi off the Kurogane Line ramps (it has no business there) or report the ramp's width to Claude |
+| T-06 | The same run: 8 samples off the carriageway, all a 16 m semi on `c3-ramp-ex` (a rigid box sweeping the inside of the Kurogane Line ramp's quarter circle) | `traffic/sim.js`, `kinds.js` (or the ramp, Claude's) | Backend first | 0.9.42's bench run shows 0 samples off the carriageway; the backend to confirm why (its lane change check) and clear it |
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | Backend (flag), Claude (lamps) | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
 | X-02 | Nothing has been checked at real frame rates on a gaming desktop | all | Jc, then Claude | needs Jc: F3 numbers on 8041 |
@@ -54,7 +54,8 @@ Rules:
 2. Placement audit at 0: no pole, lamp, sign, vending machine, tree or building on a carriageway, deck or
    junction (`node tools/propaudit.mjs`, 0.10.45; 47 left, all T-01: 18 portal legs, 29 toll plaza parts).
 3. Road seam audit at 0: no two road surfaces overlap or leave a gap at a merge, junction or ramp mouth
-   (a tool, to be written: samples the road meshes along every junction and merge).
+   (`node tools/seamaudit.mjs`, 0.10.46; 658 left: 147 sidewalks across a carriageway, 61 carriageway
+   overlaps, 57 holes, 393 steps at patch edges).
 4. A screenshot tour: a fixed set of camera spots (every district, each junction type, each merge, the
    toll plazas, both viaducts, the Kurogane Line, the pass) that Jc has looked at and passed.
 5. The HUD against Jc's drawing: a mock page with the drawing beside it, passed before the commit.

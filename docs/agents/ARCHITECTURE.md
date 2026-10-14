@@ -28,6 +28,7 @@ Prologue (`docs/DESIGN.md`).
 | Car tuning bench | `npm run sim` (`node tools/sim.mjs`) |
 | Civilian clipping bench | `node tools/clipbench.mjs` (2 minutes: civilians inside static shapes, and off the carriageway) |
 | Placement audit | `node tools/propaudit.mjs [n]` (gate 2: every solid shape against every lane and turn curve at the car's height; 6 s with the island) |
+| Road seam audit | `node tools/seamaudit.mjs [n]` (gate 3: sidewalks across carriageways, carriageways over each other, holes and steps at junction patches; 3 s with the island) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
 | Outside model import | `node tools/import-glb.mjs <model.glb, .gltf or .fbx> <name> --size L,W,H --auto` (`--report` lists its colors and materials, `--parts` the parts it made, `--head x,y,w,h` and `--tail x,y,w,h` lay lit lamps on the body where the rules find none): a low poly .glb, .gltf or binary .fbx into `assets/models/<name>.json`, no Blender; look at it with `tools/props.html?day=1&models=<name>`; record it in `assets/models/SOURCES.md` |
@@ -178,7 +179,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 
 ## Current state (0.10.51)
 
-514 tests pass; the type check is clean. By area:
+519 tests pass; the type check is clean. By area:
 
 **World.** The island (`COAST`, `inland`), terrain falling into the sea, one water sheet. Route 1:
 two 3-lane carriageways (11 km each) with a median, barrier, rails, three toll plazas after the Shuto

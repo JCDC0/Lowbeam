@@ -6,3 +6,4 @@ import './island/layout.test.mjs';
 import './island/route.test.mjs';
 import './island/kurogane-line.test.mjs';
 import './island/signals.test.mjs';
+import './island/seamaudit.test.mjs';
