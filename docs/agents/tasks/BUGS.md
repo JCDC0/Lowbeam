@@ -16,7 +16,7 @@ Rules:
 | ID | Bug | Where | Owner | State |
 |---|---|---|---|---|
 | R-01 | Roads clip through each other at some merges and junctions instead of joining cleanly (seams, overlaps, z-fighting) | `world/roads.js`, `junctions.js`, `merge.js`, `build-roads` | Claude | needs spots from Jc, and the seam audit (gate 3) to find the rest |
-| R-02 | Floor symbols missing: lane arrows, stop words, merge and exit markings, bus and speed marks | `world/markings.js`, road textures | Claude | to plan after R-01 (zebras and stop lines exist) |
+| R-02 | Floor symbols missing: lane arrows, stop words, merge and exit markings, bus and speed marks | `world/markings.js`, road textures | Claude | to plan after R-01 (zebras and stop lines exist); a first 止まれ texture from the Gemini app is in `G:\My Drive\Lowbeam\from-gemini\tomare_256.png` (wants a transparent background) |
 | P-02 | 424 ways into a crossing lost their own signal pole in 0.10.36 (no corner with room for it); the lights still work, but the driver coming up has no head over the lane | `world/signals.js` | Claude | a near-side pole, or an arm long enough from the far corner |
 | R-03 | Zebra crossings drawn at odd angles across turning lanes under the Kurogane Line (Jc's screenshot, 2026-10-10) | `world/markings.js` | Claude | open |
 | R-04 | Where the side streets meet the Sotokan ring the map shows small jogs: the streets bend to meet the ring instead of joining it cleanly (Jc's map screenshots) | `world/citygen.js`, `junctions.js` | Claude | with R-01 |
@@ -80,7 +80,8 @@ Free low poly models that load clean, instead of hand scripted ones, in this ord
 5. The five hero cars (Hayate, Rampart, Vespera, Tsurugi, Hikari) stay as they are until the trial says
    an outside model can match their shapes; free packs give clean generic cars, not those particular ones.
    Other sources (Sketchfab, Poly Pizza, `generate_3d` in the Blender MCP) have mixed licenses and quality
-   and are judged one model at a time.
+   and are judged one model at a time. The trial for them is `C10-hero-cars.md` (2026-10-14): Cosmo's free
+   cars for the Hayate, the Rampart and the Vespera, Gemini 4 Argon for the Tsurugi and the Hikari.
 
 ## Plan: roads and props (R-01, R-02, P-01)
 

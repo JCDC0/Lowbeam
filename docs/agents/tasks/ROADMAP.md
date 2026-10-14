@@ -8,13 +8,18 @@ they differ. `ARCHITECTURE.md` says what is true now, `BUGS.md` is the live bug 
 
 ## Where things stand (2026-10-14)
 
-- Last commits: 0.10.38 to 0.10.41 (Claude): outside CC0 models for fourteen traffic kinds (Kenney's
-  Car Kit and rgsdev's pack, `tools/import-glb.mjs` and `tools/fbx.mjs`, no Blender), whole tail lamps
-  on the traffic, four new kinds (ambulance, fire engine, garbage truck, limousine), the player's and
-  the racers' tail lamps lit from dusk to dawn and in rain with light trails at speed, and two bench
-  findings on the board (T-05, T-06). 510 tests, type check clean.
-- The backend (agy, Gemini 3.8 Flash in Antigravity) is back with a prompt Claude wrote on 2026-10-13
-  (review Claude's edits to its files, T-05, T-06, D-01); Jc sends it. Its versions go on from 0.9.41.
+- Last commits: 0.10.38 to 0.10.44 (Claude): outside CC0 models for twenty of the twenty-two traffic
+  kinds (Kenney's Car Kit, rgsdev's pack, KayKit's City Builder Bits, Cosmo's Low Poly Cars;
+  `tools/import-glb.mjs` and `tools/fbx.mjs`, no Blender), whole tail lamps on the traffic, eight new
+  kinds, the player's and the racers' tail lamps lit from dusk to dawn and in rain with light trails at
+  speed, two bench findings on the board (T-05, T-06), and the hero-car trial brief (C10). 510 tests,
+  type check clean.
+- The backend (agy, Gemini 3.8 Flash in Antigravity) starts a new chat on 2026-10-14 with Claude's
+  prompt (review Claude's edits to its files, T-05, T-06, D-01); no commits from it yet. Its versions go
+  on from 0.9.41.
+- The Gemini app (Gemini 4 Argon, Task mode) works through Jc, a new Task for each job; what it makes
+  comes into `G:\My Drive\Lowbeam\from-gemini\` (its model sourcing sheet, a 止まれ texture). Its first
+  3D job is C10's Hikari.
 - Hermes is off. His B5 work and his C8 code sit on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes`
   (shelved after a broken merge, 0.10.32); B5 restarts from `main`, reading that branch for ideas.
 - Port 8040 is the agents' shared tree, 8041 Jc's (only on Jc's word). Nothing is pushed: `origin/main`
@@ -96,10 +101,10 @@ the 2,000 triangle budget).
   fit three (its rally car the Hayate, its "kamaro" the Rampart, its "lamb" or "ghini" the Vespera);
   nothing fits the Tsurugi or the Hikari, the trial for Argon. A player car needs more than a traffic
   body: its cockpit, the camera solved per car, the wheels that turn, the lamp and exhaust spots
-  (`vehicles/models.js`, `car.js`, `cockpit.js`), so the first car is a trial.
+  (`vehicles/models.js`, `car.js`, `cockpit.js`), so the first car is a trial: `C10-hero-cars.md`,
+  with the frame, every car's numbers and the brief for Argon.
 - An idea from 2026-10-13, not a brief yet: the ambulance and the fire engine on calls, lights and
   siren on, the traffic pulling over for them.
-- The five hero cars stay lofted until an outside model can match their shapes (M-02 plan item 5).
 
 **Audio**
 - C8: the escaped and busted stingers once Jc makes the two files (the code waits on Hermes's branch);
@@ -149,7 +154,9 @@ rate on a mid-range machine (X-02). Nobody starts it before Jc says the game is 
 
 - The team for the next phase: how the Gemini app joins (design, sourcing, review by images) beside
   agy (code and tests) and Claude (plan, review, integration), and how work passes between them without
-  copy and paste. Claude's proposal is in the session of 2026-10-14; once Jc decides, it goes into
-  `README.md`'s team table.
+  copy and paste. The Drive mailbox is in use; an `.agents/` mailbox for agy and a Lowbeam skill in the
+  Gemini app wait on Jc's yes; once Jc decides, it goes into `README.md`'s team table.
+- C10: whether Argon's Hikari replaces the lofted one, and then which of Cosmo's cars for the Hayate,
+  the Rampart and the Vespera.
 - The main objectives' design pass (section 3): when it starts, and the answers to its questions.
 - M-01: which car's mirror is broken, from which view.

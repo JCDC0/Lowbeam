@@ -28,6 +28,17 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.44 (2026-10-14)
+
+`docs/agents/tasks/C10-hero-cars.md` (new): Jc's request for better bodies on the five player cars, as a
+trial. What a player car needs beyond a traffic body (the cockpit, the wheels CarModel makes, the camera
+solve, the head lamps, the exhaust, the tail spots, the plate), so the work is a mesh-body path in
+CarModel; the car frame with each car's axles, track, wheel radius and body size; the sources (Cosmo's
+free cars for the Hayate, the Rampart and the Vespera; Gemini 4 Argon for the Tsurugi and the Hikari);
+the steps, the converter first; and the brief Jc gives Argon in the Gemini app. `ROADMAP.md` brought up
+to 0.10.44 (agy's new chat, the Gemini app's mailbox, C10 among Jc's decisions), `README.md` lists C10,
+`BUGS.md` points R-02 to the 止まれ texture and M-02's hero item to C10.
+
 ## 0.10.43 (2026-10-14)
 
 The wagon and the kei car on outside models, and four new kinds, from the packs Gemini found (its sourcing
