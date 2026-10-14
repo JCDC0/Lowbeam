@@ -98,7 +98,9 @@ Nobody sets this up before Jc says the game is done. It is not a task for any ag
 
 - Before starting: `git status` and `git log --oneline -8`. Another agent may be working; never
   touch or commit files you did not change.
-- Stage your files by name, never `git add -A`. Commit each part as soon as it is green.
+- Stage your files by name, never `git add -A`, and commit with your paths named
+  (`git commit -m "..." -- <your files>`; the guide's Conventions say why). Commit each part as soon as
+  it is green.
 - `npm test` and `npm run check` before every commit; look at the result in the browser (Verification
   in the guide).
 - Report at the end of each part: what changed, the commit hash, test counts, screenshots, anything

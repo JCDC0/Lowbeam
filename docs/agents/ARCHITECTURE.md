@@ -49,6 +49,10 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
   together, using only your own version range (tasks/README.md). The changelog stays sorted by
   version; `## Current state` below names the highest version.
 - Stage your own files by name. Never `git add -A`. Never commit another agent's uncommitted work.
+  The index is shared, and another agent can stage between your check and your commit, so commit
+  with your paths named: `git add <new files>`, then `git commit -m "..." -- <your files>`, which takes
+  only the files named whatever else is staged. In a file two agents write (the changelog,
+  `package.json`), check `git diff -- <file>` holds only your hunks first.
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,

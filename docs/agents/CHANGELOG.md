@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.92 (2026-10-14)
+
+The shared index, after 0.10.47 took in half of agy's 0.9.45: CCC checked its staged files, and agy
+staged its own in the seconds before CCC committed.
+
+- The guide's Conventions and `tasks/README.md`: commit with your paths named (`git commit -m "..." --
+  <your files>`), which takes only those files whatever else is staged, and check that a file two agents
+  write holds only your hunks.
+- The 0.9.50 entry gets back its `spike_strip.json` line, which the 0.9.45 entry's edit deleted.
+
 ## 0.10.91 (2026-10-14)
 
 Jc's seats for the team (2026-10-14), which 0.10.90 had wrong: agy had the whole backend.
@@ -1595,6 +1605,7 @@ Racer car trial: Mazuma RX-Coupe (`rv_rotary`).
 Pursuit props, first part: spike strip.
 
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
+- `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
 
 ## 0.9.45 (2026-10-14)
 
