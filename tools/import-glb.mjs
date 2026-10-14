@@ -5,7 +5,7 @@
  *
  *   node tools/import-glb.mjs <model.glb|.gltf|.fbx> <name> [--size L,W,H] [--auto] [--parts]
  *                             [--map "#rrggbb=paint,#rrggbb=tail,..."] [--head x,y,w,h] [--tail x,y,w,h]
- *                             [--report] [--source "..."]
+ *                             [--report] [--source "..."] [--names] [--drop-wheels] [--frame] [--out file.json]
  *
  * Every triangle gets one flat color, sampled from the model's texture at the middle of its UVs (these
  * kits paint with a small palette texture) or its material's diffuse color (an FBX), and a flat normal,
@@ -19,6 +19,13 @@
  * in x and z, front to +z, and `--size` scales it to a traffic kind's length, width and height, its
  * wheels kept round. `--report` prints the colors (and material names) by area, where they sit and the
  * bounds; `--parts` the parts it made. The source goes into `assets/models/SOURCES.md` by hand.
+ *
+ * For a model made to order with its parts named (a player car, `docs/agents/tasks/C10-hero-cars.md`):
+ * `--names` takes a .glb's material names as they are, a material named exactly one of `PARTS` is that
+ * part with no hue rules, and any other name is a part of its own color, never lit (Argon's `signal`, the
+ * amber corner lamps); `--drop-wheels` leaves out the `wheel_*` nodes, for a car whose wheels the game
+ * makes; `--frame` keeps the model's own origin and scale (the game's car frame: the ground at y = 0,
+ * the origin between the axles); `--out` writes somewhere other than `assets/models/<name>.json`.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -30,7 +37,17 @@ const flag = (name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
-const [input, name] = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--') && args[i - 1] !== '--report'));
+/** Flags that take no value, so the word after them is not theirs. */
+const BOOL = new Set(['--report', '--auto', '--parts', '--names', '--drop-wheels', '--frame']);
+const [input, name] = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--') && !BOOL.has(args[i - 1])));
+/** The parts a named material can be (`--names`). */
+const PARTS = new Set(['paint', 'glass', 'lamp', 'tail', 'trim', 'under', 'plate', 'tire', 'rim']);
+const named = args.includes('--names');
+const keepFrame = args.includes('--frame');
+if (keepFrame && flag('--size')) {
+  console.error('--frame keeps the scale the model was made at; leave out --size');
+  process.exit(1);
+}
 if (!input || !name) {
   console.error('usage: node tools/import-glb.mjs <model.glb> <name> [--size L,W,H] [--map "#rrggbb=paint,..."] [--report]');
   process.exit(1);
@@ -221,7 +238,7 @@ function walk(ni, parent) {
           const o = (y * tex.w + x) * 4;
           col = [tex.rgba[o], tex.rgba[o + 1], tex.rgba[o + 2]].map((c2, k) => Math.round((c2 * base[k])));
         }
-        tris.push({ p: [pos[a], pos[b], pos[c]], color: hex(...col), node: node.name || `node${ni}` });
+        tris.push({ p: [pos[a], pos[b], pos[c]], color: hex(...col), node: node.name || `node${ni}`, material: named ? gltf.materials?.[prim.material]?.name : undefined });
       }
     }
   }
@@ -229,6 +246,11 @@ function walk(ni, parent) {
 }
 const IDENT = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 if (!fbx) for (const ni of gltf.scenes[gltf.scene || 0].nodes) walk(ni, IDENT);
+if (args.includes('--drop-wheels')) {
+  const before = tris.length;
+  tris.splice(0, tris.length, ...tris.filter((t) => !/^wheel_/i.test(t.node)));
+  console.log(`--drop-wheels: ${before - tris.length} wheel triangles left out`);
+}
 
 const lo = [Infinity, Infinity, Infinity];
 const hi = [-Infinity, -Infinity, -Infinity];
@@ -239,7 +261,7 @@ for (const t of tris) for (const q of t.p) for (let k = 0; k < 3; k++) {
 const dims = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]];
 const size = flag('--size') ? flag('--size').split(',').map(Number) : null;
 const scale = size ? [size[1] / dims[0], size[2] / dims[1], size[0] / dims[2]] : [1, 1, 1];
-const place = (q) => [(q[0] - (lo[0] + hi[0]) / 2) * scale[0], (q[1] - lo[1]) * scale[1], (q[2] - (lo[2] + hi[2]) / 2) * scale[2]];
+const place = keepFrame ? (q) => q.slice() : (q) => [(q[0] - (lo[0] + hi[0]) / 2) * scale[0], (q[1] - lo[1]) * scale[1], (q[2] - (lo[2] + hi[2]) / 2) * scale[2]];
 
 // A wheel keeps its shape: its center follows the body's scale, but it is scaled by the vertical
 // factor in y and z, so a toy car stretched to a real one's length keeps round wheels on the ground.
@@ -374,7 +396,9 @@ const mapped = (t) => {
   const nz = area(t).normal[2];
   return (m === 'tail' && nz > -0.5) || (m === 'lamp' && nz < 0.5) ? undefined : m;
 };
-const part = tris.map((t) => mapped(t) || (auto ? partOf(t, paintHue, dims[2] * scale[2]) : `c-${t.color.slice(1)}`));
+/** With `--names`: a part's own name, or the material's name for one that is not a part. */
+const byName = (t) => (t.material && PARTS.has(t.material) ? t.material : t.material || `c-${t.color.slice(1)}`);
+const part = tris.map((t) => (named ? byName(t) : mapped(t) || (auto ? partOf(t, paintHue, dims[2] * scale[2]) : `c-${t.color.slice(1)}`)));
 // A lamp is a quad whose two triangles sample two shades of the palette's lamp cell, and only the
 // deeper one passes the tail test (Kenney's tail lamps are #e0463e and #ed573f, 3 and 8 degrees). So a
 // red or orange triangle sharing an edge with a tail lamp, facing the same way and no bigger than a lamp
@@ -424,7 +448,7 @@ for (let ti = 0; ti < tris.length; ti++) {
   for (let i = 0; i < 3; i++) g.nrm.push(...normal.map((x) => Math.round(x * 10000) / 10000));
 }
 // One flat color a part: the area-weighted mean of its shades.
-if (auto) for (const g of groups.values()) if (g.area > 0) g.color = hex(...g.sum.map((v) => Math.round((v / g.area) * 255)));
+if (auto || named) for (const g of groups.values()) if (g.area > 0) g.color = hex(...g.sum.map((v) => Math.round((v / g.area) * 255)));
 // `--head x,y,w,h` and `--tail x,y,w,h` (meters, after scaling) add a lit lamp on each side, x from the
 // middle and y from the ground, w by h: a quad laid on the body's own face, found by casting a ray along z
 // onto the frontmost (or rearmost) face there. For kits that paint their lamps like the trim (Cosmo's free
@@ -466,7 +490,7 @@ for (const [opt, part, dir] of [['--head', 'lamp', 1], ['--tail', 'tail', -1]]) 
   }
 }
 if (args.includes('--parts')) for (const [k, g] of groups) console.log(`${k.padEnd(6)} ${g.color}  ${g.area.toFixed(2)} m2  ${g.pos.length / 9} tris`);
-const out = { name, size: dims.map((d, k) => Math.round(d * scale[k] * 100) / 100), materials: [], groups: [], position: [], normal: [], uv: [], colliders: [], lights: [] };
+const out = { name, size: keepFrame ? [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]].map((d) => Math.round(d * 100) / 100) : dims.map((d, k) => Math.round(d * scale[k] * 100) / 100), materials: [], groups: [], position: [], normal: [], uv: [], colliders: [], lights: [] };
 const EMISSIVE = new Set(['lamp', 'tail']);
 let start = 0;
 for (const [mname, g] of groups) {
@@ -478,7 +502,7 @@ for (const [mname, g] of groups) {
   for (const v of g.nrm) out.normal.push(v);
   for (let i = 0; i < count * 2; i++) out.uv.push(0);
 }
-const file = path.join('assets', 'models', `${name}.json`);
+const file = flag('--out') || path.join('assets', 'models', `${name}.json`);
 fs.writeFileSync(file, JSON.stringify(out));
 console.log(`${file}: ${tris.length} triangles, ${out.materials.length} materials (${out.materials.map((m) => m.name).join(', ')}), size ${out.size.join(' x ')} (w, h, d)`);
 if (flag('--source')) console.log(`source: ${flag('--source')} (add it to assets/models/SOURCES.md)`);

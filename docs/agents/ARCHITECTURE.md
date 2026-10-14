@@ -33,7 +33,7 @@ Prologue (`docs/DESIGN.md`).
 | Road seam audit | `node tools/seamaudit.mjs [n]` (gate 3: sidewalks across carriageways, carriageways over each other, holes and steps at junction patches; 3 s with the island) |
 | World-build bench | `npm run bench` (`node tools/buildbench.mjs`) |
 | Lot placement | `node tools/lotsearch.mjs check` (the rules on the lots in `layout.js`) or `police` (a station for every district that has none); it prints `LOTS` lines |
-| Outside model import | `node tools/import-glb.mjs <model.glb, .gltf or .fbx> <name> --size L,W,H --auto` (`--report` lists its colors and materials, `--parts` the parts it made, `--head x,y,w,h` and `--tail x,y,w,h` lay lit lamps on the body where the rules find none): a low poly .glb, .gltf or binary .fbx into `assets/models/<name>.json`, no Blender; look at it with `tools/props.html?day=1&models=<name>`; record it in `assets/models/SOURCES.md` |
+| Outside model import | `node tools/import-glb.mjs <model.glb, .gltf or .fbx> <name> --size L,W,H --auto` (`--report` lists its colors and materials, `--parts` the parts it made, `--head x,y,w,h` and `--tail x,y,w,h` lay lit lamps on the body where the rules find none; for a player car made to order, `--names` takes exact part names, `--drop-wheels` leaves out the `wheel_*` nodes, `--frame` keeps the car's own frame, `--out` writes elsewhere): a low poly .glb, .gltf or binary .fbx into `assets/models/<name>.json`, no Blender; look at it with `tools/props.html?day=1&models=<name>`; record it in `assets/models/SOURCES.md` |
 | Music track list | `npm run music` (`node tools/music-manifest.mjs`: scans the folders in `assets/music/`, measures each file with ffmpeg and keeps the roles already set; `-- --all` to re-measure) |
 
 No build step and no bundler: the browser loads `src/` through the import map in `index.html`.
@@ -152,7 +152,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `src/vehicles/specs.js` | The five cars: bars, mass, engine, gears, tires, fuel, paints, `dash.hud` |
 | `src/vehicles/physics.js`, `surfaces.js`, `thermal.js`, `nitrous.js` | 120 Hz bicycle model, gearbox N R 1..n, surface grip and wet scaling, wheel slip, engine heat, over-rev, damage, limp mode, the nitrous bottle |
 | `src/vehicles/gauges.js` | The readings every gauge shows, from the physics |
-| `src/vehicles/models.js`, `loft.js`, `bodies/*` | The lofted car bodies (player cars, racers, traffic) |
+| `src/vehicles/models.js`, `loft.js`, `bodies/*` | The lofted car bodies (player cars, racers, traffic); a player car's body def with `model` draws a converted model in its place (`HERO_MODELS`, `loadHeroModel`, `meshBody`; the dev switch `?hero=hikari:hikari_300zr`), the loft's stations still shaping the cockpit, cameras and lamps |
 | `src/vehicles/cockpit.js`, `dash.js`, `instruments.js`, `screens.js` | The cockpit interior and each car's instruments; the canvas painters shared with the HUD |
 | `src/vehicles/exhaust.js`, `exhaust-fx.js` | Flames, sparks, smoke |
 | `src/traffic/net.js` | Every road as directed lanes, links, traffic lights; `lanesAt`, `locate` and `route` (Dijkstra over the lanes, U-turns included) |
@@ -200,7 +200,8 @@ circle and climb to 6 m where they meet the deck, which eases from 6 m at its en
 avenue the deck stands on portal frames on the sidewalks (`portalOver` in `scatter.js`), elsewhere
 on round piers. A concrete barrier runs down its median the whole way and on past each end into
 the fork of the ramps. Traffic, racers and police use it, and a reset on any deck puts the car back on the
-deck. Minato Toll moved to x -160 to make room for its south-west junction. Kuro Pass
+deck; vehicles over 12 m (the semi) never plan a turn onto its ramps or spawn on them, since a 16 m rigid
+box sweeps past the edge of their quarter circle (0.9.43). Minato Toll moved to x -160 to make room for its south-west junction. Kuro Pass
 (6.4 km, to 254 m). Kurogane City: frame roads plus about 400 generated streets in nine districts,
 about 900 junctions paved as one patch each (a zebra crossing on every arm with a sidewalk and a stop
 line across its incoming lanes, about a meter ahead of where the traffic waits; `markings.js`), about 10,700 buildings in eleven kinds (towers to
@@ -445,9 +446,6 @@ Gothic One for banners, M PLUS 1p for Japanese.
 ## Open work and known issues
 
 - The pursuit breakers have no models yet (the roadblock barrier is done in 0.10.51 and placed at roadblocks in 0.9.29).
-- The roadblock barriers (0.9.29) have three known faults, fixes owed in `tasks/G7-police-station.md`: a
-  parked barrier is heard as an idling engine, one hit hard stays upright instead of lying down, and the
-  barriers count against the civilians' target.
 - Civilians driving on their lanes are checked against the static world and follow real turning curves (B4, 0.9.34 to 0.9.37): 0 clips and 0 off-carriageway samples across 34,111 samples in `tools/clipbench.mjs` (down from 15 clips and 10 off-carriageway before B4), and collision dimensions of all twenty-two civilian kinds match drawn models; 123 stalls cataloged for static geometry clearance review (C1 toll booth island widths, C3 portal pier legs in Ginza, and tight avenue turns for the 10.5 m bus).
 - The soundtrack is Jc's own folders now (14 tracks: Chase 3, Chill 6, LeisureRacing 5); the generator
   prompts and lyrics in `docs/music/flow-prompts.md` are for more. The music player in Settings is in

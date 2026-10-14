@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { createStage, DEFAULT_LINES } from './render/stage.js';
 import { Input } from './core/input.js';
 import { Garage } from './ui/garage.js';
+import { BODIES, loadHeroModel } from './vehicles/models.js';
 import { Hud } from './ui/hud.js';
 import { bannerer, controlsScreen, flasher, loadingScreen, mainMenuScreen, pauseScreen, settingsScreen, titleScreen, toaster } from './ui/menus.js';
 import { mapScreen } from './ui/map.js';
@@ -50,6 +51,12 @@ const settings = settingsScreen(ui, stage);
 applyNet();
 const controls = controlsScreen(ui, input);
 const loading = loadingScreen(ui);
+// The hero-car trial (C10): `?hero=hikari:hikari_300zr` draws a car with a model in place of its loft,
+// so the two can be seen side by side; the loft stays the default until Jc chooses.
+for (const pair of new URLSearchParams(location.search).getAll('hero')) {
+  const [id, model] = pair.split(':');
+  if (BODIES[id] && model && (await loadHeroModel(model).catch(() => null))) BODIES[id].model = model;
+}
 const garage = new Garage(ui);
 const hud = new Hud(ui);
 const pause = pauseScreen(ui);

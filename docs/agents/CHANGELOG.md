@@ -44,6 +44,39 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.47 (2026-10-14)
+
+C10's pipeline for a player car on a model made to order (steps 1 and 3), built while Argon's Hikari is
+on its way: the file named in the brief (`G:\My Drive\Lowbeam\from-gemini\hikari_300zr.glb`) is not in
+the folder yet.
+
+- `tools/import-glb.mjs`: `--names` takes a .glb's material names as they are; a material named exactly
+  `paint`, `glass`, `lamp`, `tail`, `trim`, `under`, `plate`, `tire` or `rim` is that part with no hue
+  rules, any other name a part of its own color that is never lit (Argon's `signal`). `--drop-wheels`
+  leaves out the `wheel_*` nodes (the game makes a player car's wheels), `--frame` keeps the model's own
+  origin and scale (the car frame: ground at y = 0, origin between the axles; the old path recenters on
+  the bounding box), `--out` writes anywhere. Without them nothing changes: Cosmo's coupe and van
+  convert byte for byte as committed. `tests/import-glb.test.mjs` builds a small .glb in memory (named
+  materials, a `wheel_fl` node) and checks all four.
+- `vehicles/models.js`: a body def with `model` draws that model (`HERO_MODELS`, loaded by
+  `loadHeroModel`) in place of the loft (`meshBody`): its parts into the car's materials, any other name
+  its own unlit color, the exhaust tips at the def's `exhaust` (the flames come out there), the plates
+  mapped for the plate texture read from outside, and the kit's nose and tail moved to the model's, so
+  the bumper camera, the head lamps and the garage follow it. The loft's stations still shape the
+  cockpit, the hood camera and the lamp heights; the wheels, the tail spots (from the `tail` part) and
+  the light trails come as before. Shaded like the lofted cars (`smoothNormals`, 38 degrees).
+- `main.js`: `?hero=<car>:<model>` on the URL switches a car to a model for the side by side; the loft
+  stays the default and nothing ships switched.
+- Proved with a stand-in, never committed: Cosmo's `kamaro` through `--names --frame` as the Rampart,
+  in the garage (headless, 1280 by 720): the body drawn and smoothed, the game's wheels at the Rampart's
+  axles, the kit's ends taken from the model (-2.55 to 2.32).
+- Owed when the Hikari arrives (C10 steps 2 and 4, and step 3's test): the frame check against C10's
+  table, the model in `assets/models/` and `SOURCES.md`, a test of its parts, size and lamp faces, and the
+  side by side in the garage, the chase view and the cockpit, by night and by day.
+- From the backend's 0.9.43 and 0.9.44, the guide: the roadblock barrier faults are gone from the open
+  work (all four proved by tests), and the Kurogane Line paragraph says vehicles over 12 m keep off its
+  ramps.
+
 ## 0.10.46 (2026-10-14)
 
 The road seam audit, gate 3 of the bug board: it finds R-01's faults instead of waiting for Jc's spots.
@@ -1548,7 +1581,20 @@ Racer car trial: Mazuma RX-Coupe (`rv_rotary`).
 Pursuit props, first part: spike strip.
 
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
-- `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
+
+## 0.9.45 (2026-10-14)
+
+Toll plaza clearance radius bench and lane change duration fixes.
+
+- `src/traffic/sim.js`:
+  - `changeSafe`: computed lane change duration using sideways Euclidean distance from the car (`a.x, a.z`) to the target lane sampled at `a.s` (`Math.hypot(a.x - qT0.x, a.z - qT0.z)`), replacing `Math.hypot(a.changeStartX, a.changeStartZ)` which evaluated to 0 before a lane change started.
+  - Toll plaza clearance radius benchmarked across four distances on `node tools/clipbench.mjs`:
+    - 55 m: 34,365 samples, 0 clips, 0 off carriageway, 71 stalls, 0 world wrecks.
+    - 70 m: 34,370 samples, 0 clips, 0 off carriageway, 60 stalls, 0 world wrecks.
+    - 85 m: 34,357 samples, 0 clips, 0 off carriageway, 60 stalls, 0 world wrecks.
+    - 110 m: 34,405 samples, 0 clips, 0 off carriageway, 64 stalls, 0 world wrecks.
+    Smallest distance keeping 0 world-caused wrecks and 0 off carriageway is 55 m (with trajectory sampling preventing divider island collisions).
+- `tests/island/traffic-walls.test.mjs`: updated `changeSafe` toll plaza test to assert `true` outside the 55 m toll buffer when the target lane is clear, replacing non-failing boolean type check.
 
 ## 0.9.44 (2026-10-14)
 

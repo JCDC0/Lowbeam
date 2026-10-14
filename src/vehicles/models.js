@@ -32,11 +32,32 @@ import { BAND, RING_POINTS, archStation, insetRing, loftZs, ringOf, roofHeight, 
  *   flare: number, tireWidth: number,
  *   rim: 'rally' | 'muscle' | 'exotic', rimColor: number | 'accent',
  *   plate: string, widePlate?: boolean, driver: number,
- *   parts: (k: Kit) => void, axles?: number[], accent?: number[], exhaust?: number[][]
+ *   parts: (k: Kit) => void, axles?: number[], accent?: number[], exhaust?: number[][], model?: string
  * }} BodyDef
  * `axles` adds wheels at more z positions (trucks, buses); `accent` fixes the accent color of
- * a baked body (a cargo box) instead of near black.
+ * a baked body (a cargo box) instead of near black. `model` draws the player's car with a model made in
+ * its frame (`HERO_MODELS`, C10) in place of the lofted body; the stations still shape the cockpit,
+ * the cameras and the lamps.
  */
+
+/**
+ * @typedef {{ name: string, size: number[], materials: { name: string, color: number, emissive?: boolean }[],
+ *   groups: { material: number, start: number, count: number }[], position: number[] }} HeroModel
+ * A body converted by `tools/import-glb.mjs --names --drop-wheels --frame`: in the car's frame, its parts
+ * named (`paint`, `glass`, `lamp`, `tail`, `trim`, `under`, `plate`; any other name its own color).
+ */
+
+/** Hero bodies loaded so far, by model name (`loadHeroModel`). @type {Record<string, HeroModel>} */
+export const HERO_MODELS = {};
+
+/**
+ * Loads a hero body from `assets/models/<name>.json` into `HERO_MODELS`.
+ * @param {string} name @returns {Promise<HeroModel>}
+ */
+export async function loadHeroModel(name) {
+  if (!HERO_MODELS[name]) HERO_MODELS[name] = await fetch(`assets/models/${name}.json`).then((r) => r.json());
+  return HERO_MODELS[name];
+}
 
 /** Offsets from each axle where extra stations are inserted to cut the wheel arch. */
 const ARCH = [-0.46, -0.415, -0.38, -0.3, -0.2, -0.1, 0, 0.1, 0.2, 0.3, 0.38, 0.415, 0.46];
@@ -558,9 +579,14 @@ export class CarModel {
     this.bodyRoot = bodyRoot;
 
     this.kit = new Kit(spec, this.def);
-    this.kit.loft();
-    this.def.parts(this.kit);
-    this.body = this.kit.b.mesh(this.mats, ORDER);
+    const hero = this.def.model ? HERO_MODELS[this.def.model] : undefined;
+    if (hero) {
+      this.body = meshBody(hero, this.kit, this.mats);
+    } else {
+      this.kit.loft();
+      this.def.parts(this.kit);
+      this.body = this.kit.b.mesh(this.mats, ORDER);
+    }
     smoothNormals(this.body.geometry, 38);
     bodyRoot.add(this.body);
 
@@ -699,6 +725,56 @@ export class CarModel {
     for (const m of Object.values(this.mats)) m.dispose();
     /** @type {THREE.Material} */ (this.shadow.material).dispose();
   }
+}
+
+/**
+ * The body of a hero model, in place of the loft: its triangles by part into the kit's builder, the
+ * exhaust tips at the body def's `exhaust` (the game's flames come out there, so the model has none),
+ * the plates mapped for the plate texture, and the kit's nose and tail moved to the model's own. A part
+ * the game has no material for keeps the model's color, unlit by the lamps.
+ * @param {HeroModel} model @param {Kit} kit @param {Record<string, THREE.Material>} mats
+ */
+function meshBody(model, kit, mats) {
+  const b = kit.b;
+  const p = model.position;
+  let zMin = Infinity;
+  let zMax = -Infinity;
+  for (let i = 2; i < p.length; i += 3) {
+    zMin = Math.min(zMin, p[i]);
+    zMax = Math.max(zMax, p[i]);
+  }
+  for (const g of model.groups) {
+    const m = model.materials[g.material];
+    const key = m.name in BAKED ? m.name : `own-${m.name}`;
+    if (!mats[key]) mats[key] = psxLambert({ color: m.color, side: THREE.DoubleSide, local: true });
+    const v = (k) => [p[k * 3], p[k * 3 + 1], p[k * 3 + 2]];
+    // A plate is mapped across its own face, front and back apart, read the right way round from outside.
+    const box = { 1: [Infinity, -Infinity, Infinity, -Infinity], [-1]: [Infinity, -Infinity, Infinity, -Infinity] };
+    if (key === 'plate') {
+      for (let k = g.start; k < g.start + g.count; k++) {
+        const e = box[p[k * 3 + 2] > 0 ? 1 : -1];
+        e[0] = Math.min(e[0], p[k * 3]);
+        e[1] = Math.max(e[1], p[k * 3]);
+        e[2] = Math.min(e[2], p[k * 3 + 1]);
+        e[3] = Math.max(e[3], p[k * 3 + 1]);
+      }
+    }
+    const uv = (q) => {
+      if (key !== 'plate') return [0.5, 0.5];
+      const side = q[2] > 0 ? 1 : -1;
+      const [x0, x1, y0, y1] = box[side];
+      const u = (q[0] - x0) / (x1 - x0 || 1);
+      return [side > 0 ? 1 - u : u, (q[1] - y0) / (y1 - y0 || 1)];
+    };
+    for (let k = g.start; k + 2 < g.start + g.count; k += 3) {
+      const a = v(k), c = v(k + 1), d = v(k + 2);
+      b.tri(key, a, c, d, uv(a), uv(c), uv(d));
+    }
+  }
+  for (const e of kit.def.exhaust || []) b.cylinder('chrome', e[0], e[1], e[2] + 0.03, 0.045, 0.18, 6, 'z', { capKey: 'under' });
+  kit.zMin = zMin;
+  kit.zMax = zMax;
+  return b.mesh(mats, ORDER);
 }
 
 /**

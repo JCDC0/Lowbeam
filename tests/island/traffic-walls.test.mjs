@@ -135,7 +135,7 @@ test('a civilian in drive mode touching a static shape for more than a second br
   assert.ok(a.capUntil > sim.time, 'waiting with speed capped at 0');
 });
 
-test('changeSafe forbids lane changes within 110 m of toll plazas and through static obstacles', () => {
+test('changeSafe forbids lane changes within 55 m of toll plazas and through static obstacles', () => {
   const { sim } = withBuilding(1000, 1000);
   const lane1 = net.lanes[0];
   const lane2 = net.lanes.find((l) => l.road === lane1.road && l !== lane1 && l.dir === lane1.dir) || net.lanes[1];
@@ -144,12 +144,12 @@ test('changeSafe forbids lane changes within 110 m of toll plazas and through st
   a.s = 100;
   // Near a toll plaza: Minato toll-s is around x=-160, z=2165
   a.x = -160;
-  a.z = 2165 - 70; // 70 m away (< 110 m)
-  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 110 m of toll plaza');
+  a.z = 2165 - 40; // 40 m away (< 55 m)
+  assert.equal(sim.changeSafe(a, lane2), false, 'rejected within 55 m of toll plaza');
   a.x = -160;
-  a.z = 2165 - 150; // 150 m away (> 110 m)
-  // Outside toll radius and far from obstacles, changeSafe is not blocked by toll
-  assert.ok(typeof sim.changeSafe(a, lane2) === 'boolean');
+  a.z = 2165 - 150; // 150 m away (> 55 m)
+  // Outside toll radius and far from obstacles, with target lane clear, changeSafe returns true
+  assert.equal(sim.changeSafe(a, lane2), true, 'outside toll radius with clear target lane returns true');
 });
 
 test('collideWorld notifies onWorldWreck on severe static world hit (> 18 m/s)', () => {

@@ -1530,7 +1530,7 @@ export class TrafficSim {
   changeSafe(a, target, player) {
     const rival = this.isRival(a);
     for (const t of TOLLS) {
-      if (Math.hypot(a.x - t.x, a.z - t.z) < 110) return false;
+      if (Math.hypot(a.x - t.x, a.z - t.z) < 55) return false;
     }
     for (const stop of a.lane.stops) {
       const d = stop.s - a.s;
@@ -1542,7 +1542,9 @@ export class TrafficSim {
     }
     if (this.hitWorld) {
       const isRiv = this.isRival(a);
-      const duration = isRiv ? 1.5 : Math.max(Math.hypot(a.changeStartX, a.changeStartZ) * 1.5 / 2.7, clamp(1.86 + a.speed * 0.0386, 2.2, 4.2));
+      const qT0 = this.net.sample(target, a.s, this._q);
+      const sideways = Math.hypot(a.x - qT0.x, a.z - qT0.z);
+      const duration = isRiv ? 1.5 : Math.max(sideways * 1.5 / 2.7, clamp(1.86 + a.speed * 0.0386, 2.2, 4.2));
       const advance = a.speed * duration;
       for (const frac of [0.33, 0.67, 1.0]) {
         const testS = Math.min(target.length, a.s + advance * frac);
