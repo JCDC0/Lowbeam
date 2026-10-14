@@ -152,6 +152,44 @@ test('changeSafe forbids lane changes within 55 m of toll plazas and through sta
   assert.equal(sim.changeSafe(a, lane2), true, 'outside toll radius with clear target lane returns true');
 });
 
+test('changeSafe detects static obstacle along lateral transition curve to target lane', () => {
+  const { sim } = withBuilding(1000, 1000);
+  const lane1 = net.lanes[0];
+  const lane2 = net.lanes.find((l) => l.road === lane1.road && l !== lane1 && l.dir === lane1.dir) || net.lanes[1];
+  const a = sim.spawn(anywhere, 0, 3000);
+  a.lane = lane1;
+  a.s = 100;
+  const qC = net.sample(lane1, a.s, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  a.x = qC.x;
+  a.z = qC.z;
+  a.speed = 25;
+  a.changeStartX = 0;
+  a.changeStartZ = 0;
+
+  // Baseline without obstacle along trajectory returns true
+  assert.equal(sim.changeSafe(a, lane2), true, 'clear trajectory returns true');
+
+  // Place a world obstacle at the 0.67 transition point along the lane change
+  const qT0 = net.sample(lane2, a.s, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  const sideways = Math.hypot(a.x - qT0.x, a.z - qT0.z);
+  const duration = Math.max(sideways * 1.5 / 2.7, 1.86 + a.speed * 0.0386);
+  const advance = a.speed * duration;
+  const frac = 0.67;
+  const testS = Math.min(lane2.length, a.s + advance * frac);
+  const curS = Math.min(lane1.length, a.s + advance * frac);
+  const qT = net.sample(lane2, testS, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  const qCFrac = net.sample(lane1, curS, { x: 0, z: 0, tx: 0, tz: 1, y: 0 });
+  const obsX = qCFrac.x * (1 - frac) + qT.x * frac;
+  const obsZ = qCFrac.z * (1 - frac) + qT.z * frac;
+
+  const origHitWorld = sim.hitWorld;
+  sim.hitWorld = (x, z, r, y) => {
+    if (Math.hypot(x - obsX, z - obsZ) < r + 0.5) return true;
+    return origHitWorld ? origHitWorld(x, z, r, y) : false;
+  };
+  assert.equal(sim.changeSafe(a, lane2), false, 'lane change rejected because transition curve intersects obstacle');
+});
+
 test('collideWorld notifies onWorldWreck on severe static world hit (> 18 m/s)', () => {
   const { sim } = withBuilding(1000, 1000);
   const a = sim.spawn(anywhere, 0, 3000);

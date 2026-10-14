@@ -1594,7 +1594,7 @@ Toll plaza clearance radius bench and lane change duration fixes.
     - 85 m: 34,357 samples, 0 clips, 0 off carriageway, 60 stalls, 0 world wrecks.
     - 110 m: 34,405 samples, 0 clips, 0 off carriageway, 64 stalls, 0 world wrecks.
     Smallest distance keeping 0 world-caused wrecks and 0 off carriageway is 55 m (with trajectory sampling preventing divider island collisions).
-- `tests/island/traffic-walls.test.mjs`: updated `changeSafe` toll plaza test to assert `true` outside the 55 m toll buffer when the target lane is clear, replacing non-failing boolean type check.
+- `tests/island/traffic-walls.test.mjs`: updated `changeSafe` toll plaza test to assert `true` outside the 55 m toll buffer when the target lane is clear, replacing non-failing boolean type check; added test verifying obstacle rejection along lateral transition curve.
 
 ## 0.9.44 (2026-10-14)
 
