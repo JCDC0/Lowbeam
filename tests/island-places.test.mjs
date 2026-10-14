@@ -15,3 +15,4 @@ import './island/toll.test.mjs';
 import './island/world.test.mjs';
 import './island/rain-cover.test.mjs';
 import './island/stakeouts.test.mjs';
+import './island/propaudit.test.mjs';

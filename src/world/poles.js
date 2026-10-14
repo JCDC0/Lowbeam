@@ -77,6 +77,7 @@ export function placePoles(ground, circles) {
         if (taken(x, z, 1.8)) continue;
         if (ground.roads.query(x, z, hit, 0) && hit.road !== road) continue;
         const y = road.heightAt(ps) + 0.16;
+        if (ground.roads.carriageway(x, z, POLE.r + 0.3, y)) continue;
         if (last >= 0 && ps - lastS < POLE.maxSpan) spans.push([last, poles.length]);
         last = poles.length;
         lastS = ps;

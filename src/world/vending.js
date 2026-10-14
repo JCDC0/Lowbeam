@@ -88,7 +88,8 @@ export function placeVending(ground, circles, boxes, lights = []) {
         if (nearPost(x, z) || nearJunction(x, z) || nearPad(x, z)) return false;
         // On its own sidewalk and on no other road.
         if (ground.roads.query(x, z, hit, 0.2) && hit.road !== road) return false;
-        return true;
+        // Nor in the carriageway of a road that crosses its sidewalk at a slant.
+        return !ground.roads.carriageway(x, z, Math.hypot(VENDING.w / 2, VENDING.d / 2) + 0.1, road.heightAt(s));
       });
       if (clear) {
         const y = road.heightAt(s) + 0.16;

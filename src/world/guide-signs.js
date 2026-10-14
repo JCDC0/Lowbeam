@@ -91,7 +91,8 @@ export function placeGuideSigns(ground, circles) {
         const y = road.heightAt(sw) + GUIDE.low + GUIDE.h / 2;
         out.push({ x: q.x + lx * head, y, z: q.z + lz * head, yaw: Math.atan2(fx, fz), px, pz,
           py: road.heightAt(sw) + 0.16, arm: side - head + GUIDE.w / 2, ways, road: road.id });
-        circles.push({ x: px, z: pz, r: GUIDE.pole + 0.04 });
+        // As tall as the sign, so a car on a deck above the avenue does not meet the pole.
+        circles.push({ x: px, z: pz, r: GUIDE.pole + 0.04, y0: road.heightAt(sw), y1: road.heightAt(sw) + GUIDE.low + GUIDE.h });
         break;
       }
     }

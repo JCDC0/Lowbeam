@@ -15,7 +15,7 @@ Rules:
 
 | ID | Bug | Where | Owner | State |
 |---|---|---|---|---|
-| R-01 | Roads clip through each other at some merges and junctions instead of joining cleanly (seams, overlaps, z-fighting) | `world/roads.js`, `junctions.js`, `merge.js`, `build-roads` | Claude | needs spots from Jc, and the seam audit (gate 3) to find the rest |
+| R-01 | Roads clip through each other at some merges and junctions instead of joining cleanly (seams, overlaps, z-fighting) | `world/roads.js`, `junctions.js`, `merge.js`, `build-roads` | Claude | needs spots from Jc, and the seam audit (gate 3) to find the rest; one found (0.10.45): at the kogyo crossing near (2423, -1293) a street crossing another at a slant has its sidewalks drawn across the other road |
 | R-02 | Floor symbols missing: lane arrows, stop words, merge and exit markings, bus and speed marks | `world/markings.js`, road textures | Claude | to plan after R-01 (zebras and stop lines exist); a first 止まれ texture from the Gemini app is in `G:\My Drive\Lowbeam\from-gemini\tomare_256.png` (wants a transparent background) |
 | P-02 | 424 ways into a crossing lost their own signal pole in 0.10.36 (no corner with room for it); the lights still work, but the driver coming up has no head over the lane | `world/signals.js` | Claude | a near-side pole, or an arm long enough from the far corner |
 | R-03 | Zebra crossings drawn at odd angles across turning lanes under the Kurogane Line (Jc's screenshot, 2026-10-10) | `world/markings.js` | Claude | open |
@@ -26,7 +26,6 @@ Rules:
 | H-02 | HUD changes take too long to land: the sketches were misread more than once | `ui/pursuit.js`, `ui/hud.js` | Claude | process: a mock page of the HUD is checked against Jc's drawing before every commit (gate 5) |
 | T-01 | 123 civilian stalls, all geometry (B4 part 3 sorted them): the toll plaza divider islands on `c1-r` near s 5,730 (1.3 m boxes leave 2.43 m for a 2.5 m semi; 40), the Kurogane Line portal pier legs on the Ginza cross streets `ginza-b4`, `b5`, `b8` (50), a signal pole at (-995.7, 1171.0) swept by the bus turning at node 82, `dori` to `shin-b31` (15), the `c3-ramp-wx` and `c3-ramp-ex` rails within 0.38 m of the lane over their first 30 m (18) | `world/highway.js`, `toll.js`, `scatter.js`, `signals.js` | Claude | next; `node tools/clipbench.mjs` lists them |
 | T-04 | Junction turns the strict turn test names as exceptions: 14 that clip a static shape at 7 junctions (Ginza and Dori, Kitae, Hama, Nishi) and 18 that leave the carriageway at 10 junctions (side streets meeting `r18`, `west` and `east`) | `traffic/net.js` (`buildTurn`), `world/junctions.js` (the patch) | Claude | 6 signal clipping turns cleared and removed (0.9.38); 8 pier clips (nodes 66, 67, 75) and 18 patch faults (nodes 1, 4, 6, 12, 13, 15, 16, 17, 20, 22; 0.13 to 0.53 m) listed for patch widening |
-| T-05 | `node tools/clipbench.mjs` at 0.10.40 counts 2 world-caused wrecks; B4 left it at 0 (a civilian is never wrecked by the world). The four new kinds change the spawn sequence, so the run differs from B4's | `traffic/sim.js`, `tools/clipbench.mjs` | Backend | open: find which kinds and where (print them), fix the cause, keep the bench at 0 |
 | T-06 | The same run: 8 samples off the carriageway, all a 16 m semi on `c3-ramp-ex` (a rigid box sweeping the inside of the Kurogane Line ramp's quarter circle) | `traffic/sim.js`, `kinds.js` (or the ramp, Claude's) | Backend first | open: decide by the numbers: a rule that keeps the semi off the Kurogane Line ramps (it has no business there) or report the ramp's width to Claude |
 | T-03 | Stakeout cars would glow: `stepParked` lights the tail lamps and the headlamp flares show | `traffic/sim.js`, `traffic/render.js` | Backend (flag), Claude (lamps) | waits on B5 part 3 |
 | W-01 | The steepest streets climb 12.6 % over 10 m (Minatomachi, Shinmachi, off the Sotokan ring) | `world/layout.js`, `roads.js` | Claude | open |
@@ -37,6 +36,7 @@ Rules:
 
 | ID | Bug | Version |
 |---|---|---|
+| T-05 | node tools/clipbench.mjs world-caused wrecks at 0: clipbench prints kind, lane, s and cause on world wreck; changeSafe expands toll plaza buffer to 110 m and probes trajectory points against hitWorld to eliminate toll booth island collisions | 0.9.42 |
 | M-03 | Traffic tail lamps half lit and their flares off the lamps (Jc, the SUV and the truck in the 0.10.38 shots): the converter took one triangle of each lamp's quad (its two shades, 3 and 8 degrees of hue, straddled the tail test), and the taxi's roof sign pulled the head lamp flares onto the windshield. Now a lamp's neighbors of the same hue join it, and the flares use only the lamps in the front and back quarters | 0.10.39 |
 | X-01 | GPS route test uses bounded A* expansion count instead of wall-clock milliseconds; passby audio test uses windowed RMS over 10 ms instead of single-sample noise | 0.9.40 |
 | T-02 | Hikari 300ZR added to RIVALS (rv-hikari); 6-seed racer average 205.9 km/h (> 180 km/h) and civilian lane reversal rate 2.3 % (< 10 %) | 0.9.39 |
@@ -52,7 +52,7 @@ Rules:
 1. `npm test` and `npm run check` green, and `node tools/clipbench.mjs` at 0 clips, 0 off the road and 0
    stalls (or a short list Jc agrees).
 2. Placement audit at 0: no pole, lamp, sign, vending machine, tree or building on a carriageway, deck or
-   junction (a tool, `tools/propaudit.mjs`, from the audit run on 2026-10-10; to be added and tested).
+   junction (`node tools/propaudit.mjs`, 0.10.45; 47 left, all T-01: 18 portal legs, 29 toll plaza parts).
 3. Road seam audit at 0: no two road surfaces overlap or leave a gap at a merge, junction or ramp mouth
    (a tool, to be written: samples the road meshes along every junction and merge).
 4. A screenshot tour: a fixed set of camera spots (every district, each junction type, each merge, the

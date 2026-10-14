@@ -183,7 +183,9 @@ function placeBridges(ground, circles, boxes) {
     const p = road.path;
     const q = { x: 0, z: 0, tx: 0, tz: 1 };
     for (let s = b.i0 * p.step; s < b.i1 * p.step; s += WALL_SEGMENT) {
-      const mid = Math.min(b.i1 * p.step, s + WALL_SEGMENT / 2);
+      // The last segment stops at the deck's end instead of reaching past it into the next road.
+      const half = Math.min(WALL_SEGMENT, b.i1 * p.step - s) / 2;
+      const mid = s + half;
       p.sample(mid, q);
       const top = road.heightAt(mid);
       const yaw = Math.atan2(q.tx, q.tz);
@@ -191,7 +193,7 @@ function placeBridges(ground, circles, boxes) {
         // A carriageway's median side is decked over to the other carriageway, with the barrier.
         if (side < 0 && road.def.median) continue;
         const off = road.hw + 0.35;
-        boxes.push({ x: q.x + q.tz * off * side, z: q.z - q.tx * off * side, hx: 0.3, hz: WALL_SEGMENT / 2, yaw, y0: top - 0.3, y1: top + 1.0 });
+        boxes.push({ x: q.x + q.tz * off * side, z: q.z - q.tx * off * side, hx: 0.3, hz: half, yaw, y0: top - 0.3, y1: top + 1.0 });
       }
     }
     const spots = [];
@@ -216,6 +218,8 @@ function placeBridges(ground, circles, boxes) {
       }
       const top = road.heightAt(s);
       const bottom = ground.at(q.x, q.z).h;
+      // The center off every road is not enough: a pier by a carriageway's edge reaches into it.
+      if (ground.roads.carriageway(q.x, q.z, 1.2, bottom, road)) continue;
       b.piers.push({ x: q.x, z: q.z, top, bottom, yaw: Math.atan2(q.tx, q.tz) });
       circles.push({ x: q.x, z: q.z, r: 0.9, y1: top - 0.8 });
     }

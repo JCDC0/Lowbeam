@@ -429,6 +429,56 @@ export class RoadNetwork {
   }
 
   /**
+   * Whether (x, z) is within `margin` of the carriageway of any road at the asker's level, not
+   * only of the road `query` picks: a prop on one road's sidewalk can stand in another road that
+   * crosses it at a slant (the placement audit, `tools/propaudit.mjs`). A road on a deck counts
+   * only within 4 m of height `y`; a road on the ground always counts.
+   * @param {number} x @param {number} z @param {number} margin @param {number} [y]
+   * @param {Road} [skip] a road not to count (a deck asking about the ground under it)
+   */
+  carriageway(x, z, margin, y = -Infinity, skip) {
+    const best = this._best;
+    const bestI = this._bestI;
+    const touched = this._touched;
+    let nt = 0;
+    const cx = Math.floor((x + OFF) / CELL);
+    const cz = Math.floor((z + OFF) / CELL);
+    for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const ix = cx + dx;
+        const iz = cz + dz;
+        if (ix < 0 || iz < 0 || ix >= W || iz >= W) continue;
+        const list = this.cells[iz * W + ix];
+        for (let k = 0; k < list.length; k += 2) {
+          const r = this.roads[list[k]];
+          const i = list[k + 1];
+          const ex = r.path.x[i] - x;
+          const ez = r.path.z[i] - z;
+          const d2 = ex * ex + ez * ez;
+          if (d2 < best[r.index]) {
+            if (best[r.index] === Infinity) touched[nt++] = r.index;
+            best[r.index] = d2;
+            bestI[r.index] = i;
+          }
+        }
+      }
+    }
+    let on = false;
+    for (let t = 0; t < nt; t++) {
+      const r = this.roads[touched[t]];
+      const bi = bestI[r.index];
+      best[r.index] = Infinity;
+      if (on || r === skip || (skip && r.def.twin === skip.id)) continue;
+      const h = r.path.refine(bi, x, z, this._hit);
+      const ad = Math.max(Math.abs(h.d), Math.hypot(x - h.x, z - h.z));
+      if (ad > r.hwAt(h.s) + margin) continue;
+      if (r.lifted && r.liftAt(h.s) > ELEVATED && Math.abs(r.heightAt(h.s) - y) > 4) continue;
+      on = true;
+    }
+    return on;
+  }
+
+  /**
    * Nearest road edge within `reach` meters, for carving terrain and placing props.
    * A road on a deck is ignored unless it is cut into the ground: pass the natural ground
    * height `groundH` here and a lifted road only counts when it is within 2 m of it.

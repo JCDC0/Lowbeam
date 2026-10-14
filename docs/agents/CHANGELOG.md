@@ -28,6 +28,38 @@ The district police station model (police_station).
   and boundary walls with colliders.
 - 798 triangles (budget 4,000), 16 materials, 12 colliders, 10 lights; checked in props.html with 0 problems.
 
+## 0.10.45 (2026-10-14)
+
+The placement audit, gate 2 of the bug board, and the seven faults it found outside T-01.
+
+- `tools/propaudit.mjs`: every solid shape the island places (the scatter's 121,000 circles and 21,600
+  boxes, and the signal poles) measured against where cars drive, at the car's height (the give of
+  `sameLevel` in `collision.js`): every lane of the traffic net and every curve through a crossing or
+  onto an exit, each a band its lane's width, with the distance to the segment so nothing slips between
+  samples. A lane is banded from where the first link lands on it to where the last one leaves, because a
+  slip road's lane keeps its full width through the taper that traffic never drives (86 rail segments
+  were false findings before). The junction patch is not a test of its own: it includes the sidewalks,
+  where the signal poles stand. `node tools/propaudit.mjs` prints the count by kind and the worst cases
+  in about 1 s after the island; `auditProps` is pure.
+- `RoadNetwork.carriageway(x, z, margin, y, skip)`: whether a point is in the carriageway of any road at
+  that level, not only the road `query` picks. The 0.10.36 blind spot was still in three placers.
+- Fixed: a utility pole (2422.7, -1292.6) and two vending machines (428.9, 1660.4; -765.0, 1126.6) stood
+  in the carriageway of a street crossing their own at a slant, 0.7 to 2.0 m into its lane; the poles and
+  the machines now ask `carriageway` too. Three guide sign poles under the Kurogane Line had no height,
+  so a car on the deck 12 m above met them; a guide sign pole now ends at its sign's top. Three bridge
+  piers stood with their 0.9 m edge in Route 1's outer lane (only their center was checked); a pier that
+  would reach a carriageway is left out (five in all). The last 6 m wall segment of every deck reached up
+  to 3 m past the deck's end, into the Kurogane Line's ramp at its east end; it now stops at the end.
+- Left, the whole of what the audit finds now, all T-01 and next: 18 Kurogane Line portal legs in the
+  Ginza cross streets (up to 2.9 m into a lane) and 29 toll plaza islands and booths (0.6 to 0.8 m into
+  Route 1's lanes). `tests/island/propaudit.test.mjs` allows exactly those and nothing else, and checks
+  the audit's own rules: a shape on a deck lane is found, one above it is not, a ramp's taper is not banded.
+- Seen in the headless browser: the deck over Route 1 on its remaining piers; at the kogyo crossing a new
+  fault for R-01, the slanted street's sidewalks drawn across the other road's carriageway.
+- Review of agy's 0.9.41 (the kinds and voices audit, a range test over the twenty-two kinds): accepted;
+  its commit has no body and no Co-Authored-By trailer.
+- 514 tests; the type check is clean but for the backend's uncommitted work in `traffic/sim.js`.
+
 ## 0.10.44 (2026-10-14)
 
 `docs/agents/tasks/C10-hero-cars.md` (new): Jc's request for better bodies on the five player cars, as a
@@ -1463,6 +1495,17 @@ Pursuit props, first part: spike strip.
 
 - `tools/blender/spike_strip.py`: accordion scissor lattice with 7 diamond bays, hollow metal spikes, yellow and black end caps, and a pull cord.
 - `assets/models/spike_strip.json`: 270 triangles, 4.0 x 0.06 x 0.30 m, verified clean in props viewer.
+
+## 0.9.42 (2026-10-14)
+
+Fix world-caused wrecks and report them on clipbench (T-05).
+
+- `tools/clipbench.mjs`: added `sim.onWorldWreck` hook and output logging each world-caused wreck's vehicle kind, road, s position, collision speed and contact shape.
+- `src/traffic/sim.js`:
+  - `collideWorld`: records `hardestHit` contact and passes it to `this.onWorldWreck(a, hardest, hardestHit)` when static world contact exceeds `CIVIL_WRECK_HIT`.
+  - `changeSafe`: increased toll plaza clearance radius from 55 m to 110 m and added trajectory sampling at fractional steps (0.33, 0.67, 1.0) along the lateral transition curve against `hitWorld`, preventing high-speed lane changes from cutting into concrete toll divider islands.
+- `tests/island/traffic-walls.test.mjs`: added tests verifying toll plaza safety radius and obstacle avoidance in `changeSafe`, and `onWorldWreck` event dispatch on severe wall impact.
+- `docs/agents/tasks/BUGS.md`: moved T-05 to Clear.
 
 ## 0.9.41 (2026-10-14)
 
