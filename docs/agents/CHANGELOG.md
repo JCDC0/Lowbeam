@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.95 (2026-10-17)
+
+Hermes's prompt syncs his branch before he reads: his folder's guide is 33 commits old until the
+rebase of its step 0, so the reading list now comes after it. The three fresh worktrees (CCC, agy,
+OpenCode) are fast-forwarded to `main` so their agents read the new rules.
+
 ## 0.10.94 (2026-10-17)
 
 The team moves platforms (CCC's Opus ran out of usage mid-task; Jc, 2026-10-17): Hermes comes back on

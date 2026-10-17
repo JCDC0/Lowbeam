@@ -14,17 +14,11 @@ edit or run anything in another folder, above all `C:\GitHub\Lowbeam` (that is `
 This is your first job back, and it is a trial: one bounded part, one commit. Do exactly what is below.
 If a step fails twice, stop and report what you saw; do not improvise around it.
 
-## Read first (in this order)
+## Step 0: bring your branch up to date (exact commands), before you read anything
 
-1. `docs/agents/ARCHITECTURE.md` (the Conventions and Verification sections).
-2. `docs/agents/tasks/README.md`, the section "Working in your worktree": it is your rulebook.
-3. `docs/agents/tasks/B5-police-dispatch.md` (your brief; part 2 is "Running low: one minute, one car
-   left") and `docs/agents/tasks/C7-pursuit-hud-v2.md`, the section "What waits for the backend".
-
-## Step 0: bring your branch up to date (exact commands)
-
-Your branch is 33 commits behind `main`. The last time Hermes merged, it went wrong, so do this one
-command at a time and read each answer.
+Your branch is 33 commits behind `main`, so the guide and the rules in your folder are old until this
+is done (the rules you need are the ones on `main`). The last time Hermes merged, it went wrong, so do
+this one command at a time and read each answer.
 
 ```
 cd C:\GitHub\Lowbeam-hermes
@@ -57,6 +51,13 @@ git status --short
 ```
 Your part 2 work is back (the same two paths). `git log --oneline -3` should show your 0.10.70 commit on
 top of `main`'s newest commits.
+
+## Now read (in this order)
+
+1. `docs/agents/ARCHITECTURE.md` (the Conventions and Verification sections).
+2. `docs/agents/tasks/README.md`, the section "Working in your worktree": it is your rulebook.
+3. `docs/agents/tasks/B5-police-dispatch.md` (your brief; part 2 is "Running low: one minute, one car
+   left") and `docs/agents/tasks/C7-pursuit-hud-v2.md`, the section "What waits for the backend".
 
 ## Step 1: finish B5 part 2 (one commit, version 0.12.0)
 

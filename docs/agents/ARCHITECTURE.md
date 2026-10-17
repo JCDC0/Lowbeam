@@ -190,7 +190,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `stakeoutsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.94)
+## Current state (0.10.95)
 
 526 tests pass; the type check is clean. By area:
 
