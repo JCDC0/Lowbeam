@@ -3,10 +3,12 @@
 The canonical guide for every agent working in this repo. `CLAUDE.md`, `AGENTS.md` and `GEMINI.md`
 only point here. Who owns what and the open tasks are in `docs/agents/tasks/README.md`; read it
 before you touch a file. The design plan, with the reasoning behind every system, is `docs/DESIGN.md`.
-Since 2026-10-14 an overseer (Claude in the desktop app) briefs the workers and tests their commits
-(`docs/agents/OVERSEER.md`); CCC is the main developer on the whole repo, and agy fixes small bugs by
-ticket, only in the files the ticket names. The history, version by version, is `docs/agents/CHANGELOG.md`. This
-file says what is true now.
+Since 2026-10-14 an overseer (Claude in the desktop app) briefs the workers, tests their branches and
+is the only one who merges to `main` (`docs/agents/OVERSEER.md`); since 2026-10-17 every agent works in
+its own git worktree on its own branch (`tasks/README.md`, "Working in your worktree"). CCC is the
+main developer on the whole repo; agy, Hermes and OpenCode work from tickets and briefs, only in the
+files each names. The history, version by version, is `docs/agents/CHANGELOG.md`. This file says what
+is true now.
 
 ## What this is
 
@@ -45,14 +47,15 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 ## Conventions
 
 - Commit message: version prefix, a sentence, a body. `0.9.3: Add the spike strip model`. End with a
-  Co-Authored-By trailer naming the agent. Bump `package.json`, `package-lock.json` and the changelog
-  together, using only your own version range (tasks/README.md). The changelog stays sorted by
-  version; `## Current state` below names the highest version.
-- Stage your own files by name. Never `git add -A`. Never commit another agent's uncommitted work.
-  The index is shared, and another agent can stage between your check and your commit, so commit
-  with your paths named: `git add <new files>`, then `git commit -m "..." -- <your files>`, which takes
-  only the files named whatever else is staged. In a file two agents write (the changelog,
-  `package.json`), check `git diff -- <file>` holds only your hunks first.
+  Co-Authored-By trailer naming the agent. Use only your own version range (tasks/README.md) and add
+  your changelog entry in version order (the changelog stays sorted by version, newest first). Do not
+  edit `package.json`, `package-lock.json` or the version and the test count in `## Current state`:
+  the overseer sets them when it merges your branch (`package.json` holds the highest version merged).
+- Work only in your own worktree and branch (`tasks/README.md`, "Working in your worktree"). `main`,
+  the folder `C:\GitHub\Lowbeam`, is the overseer's: never edit, commit, test or run a server there.
+  Stage your files by name, never `git add -A`, and commit with your paths named: `git add <new
+  files>`, then `git commit -m "..." -- <your files>`. Before you report, `git rebase main` so your
+  branch is `main` plus your commits; the overseer tests it and fast-forwards `main`.
 - Pure modules never import `three` or touch the DOM: `src/core/{mathx,rng}.js`, everything in
   `src/world/` except `build-*`, `props`, `gas-station`, `world`; `src/vehicles/{specs,surfaces,
   physics,gauges,thermal,exhaust,nitrous,dash}.js`, `src/vehicles/bodies/*`, `src/audio/{engine-dsp,env,songs,
@@ -80,15 +83,18 @@ range requests, and accepts `POST /__shot` (a canvas capture to `tools/shots/`, 
 
 Tests prove the rules; the game is verified by looking at it.
 
-- `npm start` (port 8040; reuse it if it is already running), open the page, and drive it through
+- `npm start` (port 8040, `main` only; in a worktree `node tools/devserver.mjs <your port>`, below),
+  open the page, and drive it through
   `window.__lowbeam`: `await enterWorld()`, `setState('drive' | 'free' | 'settings' | 'controls' |
   'garage')`, `drive` (the Drive: `start(spec, paint)`, `rig.mode` 0 chase to 4 cockpit, `gauges`,
   `traffic`, `pursuitView()`), `simulate(seconds, { throttle, brake, steer })` (runs the fixed-step
   loop with no frames), `shot(name)` (writes `tools/shots/<name>.png`), `world`, `input`.
-- Ports. 8040 is the shared working tree, for the agents; it shows uncommitted work. 8041 is Jc's, kept
+- Ports. 8040 is `main`, the merged and tested game, the overseer's. Each agent runs the dev server of
+  its own worktree on its own port (CCC 8042, agy 8043, Hermes 8044, OpenCode 8045: `node
+  tools/devserver.mjs <port>` from the worktree); `tools/shots/` is per worktree. 8041 is Jc's, kept
   for when Jc asks to play without being interrupted: the worktree `C:\GitHub\Lowbeam-play`, detached on
-  the latest commit of `main` (a `post-commit` hook in `.git/hooks` moves it; the hook is not versioned,
-  so if it is missing, `git -C C:/GitHub/Lowbeam-play checkout --detach main`). Claude starts it on
+  the latest commit of `main` (`post-commit` and `post-merge` hooks in `.git/hooks` move it; the hooks
+  are not versioned, so if they are missing, `git -C C:/GitHub/Lowbeam-play checkout --detach main`). Claude starts it on
   request with the `play` configuration of `.claude/launch.json` (or `node
   C:/GitHub/Lowbeam-play/tools/devserver.mjs 8041`). No agent tests on 8041, starts or stops it, or edits
   that folder.
@@ -184,7 +190,7 @@ reads the evaluated mesh, so modifiers count as they appear.
 | `tools/props.html`, `landmarks.html`, `models.html`, `bodies.html`, `trees.html`, `mapview.html`, `audio-lab.html` | Dev viewers |
 | `tools/sim.mjs`, `mapcheck.mjs`, `buildbench.mjs`, `lotsearch.mjs`, `stakeoutsearch.mjs`, `render-engines.mjs`, `render-passby.mjs`, `render-sirens.mjs`, `music-manifest.mjs` | Node benches, renders, the music track list |
 
-## Current state (0.10.90)
+## Current state (0.10.94)
 
 526 tests pass; the type check is clean. By area:
 

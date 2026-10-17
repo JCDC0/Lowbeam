@@ -1,18 +1,21 @@
 # Tasks and ownership
 
-Read this and `docs/agents/ARCHITECTURE.md` before touching a file. CCC owns the repo; agy works
-only in the files its ticket names. If your task needs a change outside your files, do not make it:
-say so in your report. The overseer tests every commit before the next task starts.
+Read this and `docs/agents/ARCHITECTURE.md` before touching a file. CCC owns the repo; every other
+agent works only in the files its ticket or brief names. If your task needs a change outside your
+files, do not make it: say so in your report. Everyone works in a worktree of their own and the
+overseer tests every branch before it reaches `main` (see "Working in your worktree" below).
 
 ## The team
 
 | Role | Agent | Version range | What it does |
 |---|---|---|---|
-| Overseer | Claude in the desktop app (since 2026-10-14; `../OVERSEER.md`) | 0.10.90 to 0.10.99 | The orchestrator and the first tester: Jc's design partner, turns Jc's choices into briefs with an opinion, writes the prompts Jc pastes, and tests every worker's commit itself (the tests it touches, the gate or bench it should move, the game in the browser pane) before the next prompt; keeps the roadmap and the briefs; builds no features |
-| Main developer | CCC, Claude Code CLI (Opus, auto mode); before 2026-10-14 one Claude did both roles | 0.9.0 to 0.9.19, 0.9.70 to 0.9.99 and 0.10.0 to 0.10.46 (used); now 0.10.47 to 0.10.49, then 0.11.0 to 0.11.49 | Builds what the overseer briefs, anywhere in the repo: the game logic, the world, rendering, the UI, fitting assets in, the audits and the tools; the second tester (tests and looks at its own work before it reports) |
-| Patchwork | agy, Gemini 3.8 Flash (Antigravity CLI) | 0.9.20 to 0.9.45 (used); now 0.9.46 to 0.9.49, then 0.11.50 to 0.11.99 | Small bug fixes and patches by ticket: each ticket names the bug, the files it may touch and the test that proves it, one commit; no standing ownership of any part of the repo |
+| Overseer | Claude in the desktop app (since 2026-10-14; `../OVERSEER.md`) | 0.10.90 to 0.10.99 | The orchestrator and the first tester: Jc's design partner, turns Jc's choices into briefs with an opinion, writes the prompts Jc pastes, and tests every worker's branch itself (the tests it touches, the gate or bench it should move, the game in the browser pane) before the next prompt; merges the branches that pass into `main` (the only agent that does) and bumps `package.json`; keeps the roadmap and the briefs; builds no features |
+| Main developer | CCC, Claude Code CLI (Opus 5.5, auto mode); before 2026-10-14 one Claude did both roles | 0.9.0 to 0.9.19, 0.9.70 to 0.9.99, 0.10.0 to 0.10.49 (used); now 0.11.0 to 0.11.49 | Builds what the overseer briefs, anywhere in the repo: the game logic, the world, rendering, the UI, fitting assets in, the audits and the tools; the second tester (tests and looks at its own work before it reports) |
+| Patchwork | agy, Antigravity CLI: Gemini 4 Argon as the lead with Gemini 3.8 Flash subagents (Jc, 2026-10-17) | 0.9.20 to 0.9.47 (used); now 0.9.48 to 0.9.49, then 0.11.50 to 0.11.99 | Small bug fixes and patches by ticket: each ticket names the bug, the files it may touch and the test that proves it, one commit; no standing ownership of any part of the repo. Its first job under Argon is a trial, B6's pure module, graded against a holdout test; the scope widens only if it clears it |
+| Backend, police | Hermes Agent, DeepSeek V4.1 Flash (Jc, 2026-10-17) | 0.12.0 to 0.12.49 (his 0.10.70 stays where it is) | B5 on branch `hermes/b5`, one part a commit, the overseer's review after each part. Owns B5's files only (below); one trial part before any more |
+| Tickets | OpenCode, on OpenCode Go (Jc picks the model and it is written here: not chosen yet) | 0.12.50 to 0.12.99 | Bounded tickets, each with its files and the test that proves it, one commit; the first is the GPS turn cost (X-03); no standing ownership of any part of the repo |
 | Outsourced | The Gemini app, Gemini 4 Argon in Task mode (Jc runs it) | none: CCC commits what it makes | 3D models built in code, textures, sourcing with license checks, self-contained code trials; files through `G:\My Drive\Lowbeam\` (`to-gemini`, `from-gemini`) |
-| Off | Hermes (an agent CLI); the Assets seat (Flash with the Blender MCP, 0.9.50 to 0.9.69 and 0.10.50 to 0.10.69, used to 0.10.51) | none | Hermes comes back, running Argon, only if the Argon trials (C10's Hikari, the B6 code trial) show Argon clearly better than Flash; his B5 and C8 work is on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes` |
+| Off | The Assets seat (Flash with the Blender MCP, 0.9.50 to 0.9.69 and 0.10.50 to 0.10.69, used to 0.10.51) | none | Blender models scripted by Flash; ended with 0.10.51 |
 
 Ask the overseer for a new range when yours runs out.
 
@@ -21,17 +24,18 @@ Ask the overseer for a new range when yours runs out.
 | Owner | Files |
 |---|---|
 | CCC | Everything: `src/`, `tests/`, `tools/`, `assets/`, `style.css`, `index.html`, `package.json` dependencies |
-| agy | Only the files its current ticket names, for that ticket's commit |
-| Overseer | `docs/` (the guide, the briefs, the boards, the roadmap); CCC also writes the guide's lines and the changelog for its own commits |
+| agy, OpenCode | Only the files the current ticket names, for that ticket's commit (agy's B6 trial: `src/vehicles/nitrous-earn.js` and `tests/nitrous-earn.test.mjs`) |
+| Hermes | B5's files: `src/police/` (`director.js`, `units.js`, `stations.js`, `heli.js`), the dispatch and parked-unit parts of `src/traffic/sim.js`, the police orders and `pursuitView()` in `src/drive.js`, and their tests (`tests/police-*.test.mjs`, `tests/stations.test.mjs`, `tests/island/police-*.test.mjs`). Never `src/ui/` (Claude's HUD) or the world |
+| Overseer | `docs/` (the guide, the briefs, the boards, the roadmap, the prompts); every other agent also writes the guide's lines and the changelog entry for its own commits |
 
 Jc set these seats on 2026-10-14: before then the backend (`drive.js`, `core`, `police`, `race`, the
 traffic sim and net, physics, specs, audio and `tests/`) was agy's, and the old briefs still say
 "Backend" for that work; read it as CCC's unless the overseer has cut a ticket for agy.
 
-The version bump in `package.json`, `package-lock.json` and the changelog is everyone's: make it in
-the same commit as your work, with your own range. `package.json` always holds the highest version
-committed so far: a commit numbered below it (0.9.2 after 0.9.51) adds its changelog entry in order
-and leaves `package.json` alone.
+The changelog entry is everyone's: add it in the same commit as your work, in version order, with
+your own range. `package.json`, `package-lock.json` and the version and test count in the guide's
+`## Current state` are the overseer's: it sets them when it merges your branch, so `package.json`
+always holds the highest version merged (a branch numbered below it leaves it alone).
 
 ## Open tasks
 
@@ -55,8 +59,8 @@ and leaves `package.json` alone.
 | [C9-music-player.md](C9-music-player.md) | Claude | done (0.10.30): the player, the player's own folders and songs; gamepad focus and a loudness measure at import later | A music player in Settings: folders and their moods, lock, shuffle, vocals, previous, next, pause, and songs and folders the player adds |
 | [C10-hero-cars.md](C10-hero-cars.md) | Claude (Jc runs Argon in the Gemini app) | a trial: Argon's first Hikari is in (2026-10-14), a revision round out; CCC builds the pipeline | The player's five cars on better bodies: Cosmo's free cars for the Hayate, Rampart and Vespera, Gemini 4 Argon for the Tsurugi and Hikari, through a mesh-body path in CarModel that keeps the cockpit, wheels, camera, lamps and exhaust |
 | [C6-fill-the-map.md](C6-fill-the-map.md) | Claude (and Gemini for the model variants) | step 1 done (0.10.18: the lot search and ten police stations; 0.10.20: eighteen stakeout spots); gas stations, garages and hideouts next | More buildings outside the city, a police station in every district, many more hideouts, garages and gas stations |
-| [B5-police-dispatch.md](B5-police-dispatch.md) | Backend (Gemini), with Claude's stakeout spots and HUD | after B4 | Stations dispatch the police, a one-minute resupply with one car left on the player, hidden undercover cars, and a heat system for the street racers up to heat 5 and three helicopters |
-| [B6-nitrous-earned.md](B6-nitrous-earned.md) | Backend, with Claude's HUD | after the bug-bash | Nitrous that fills while you drive: high speed, the oncoming lane and near misses, drafting, hitting and taking out police |
+| [B5-police-dispatch.md](B5-police-dispatch.md) | Hermes (DeepSeek), with Claude's stakeout spots and HUD | part 1 committed on `hermes/b5` (0.10.70), part 2 under way; the overseer reviews after part 2 | Stations dispatch the police, a one-minute resupply with one car left on the player, hidden undercover cars, and a heat system for the street racers up to heat 5 and three helicopters |
+| [B6-nitrous-earned.md](B6-nitrous-earned.md) | agy (Argon 4), with Claude's HUD | the pure module first, as agy's trial (2026-10-17); the Drive's wiring after the bug-bash | Nitrous that fills while you drive: high speed, the oncoming lane and near misses, drafting, hitting and taking out police |
 | [B4-civilian-world-collisions.md](B4-civilian-world-collisions.md) | Backend (Gemini) | done (0.9.34 to 0.9.37) | Civilians that turn along real curves, collide with the world and stay on the road, measured by `tools/clipbench.mjs` |
 | [C4-kurogane-ramps.md](C4-kurogane-ramps.md) | Claude (and the backend for the links) | planned | The Kurogane Line's ramps down to downtown: slips off a deck, parapets, portals, streets, links |
 | [C2-pursuit-overhaul.md](C2-pursuit-overhaul.md) | Claude | done (0.9.18 to 0.9.79) | Most Wanted's pursuit: one car physics for all, destructible police with a kill count, the detection bar and provoking, police chasing racers, up to three helicopters, a bottom-center pursuit HUD, banners with flair, a bigger minimap with the heat, and the audio expansion (pass-bys, horns, panic) |
@@ -94,14 +98,44 @@ Before it ships:
 
 Nobody sets this up before Jc says the game is done. It is not a task for any agent until then.
 
-## Working in the shared tree
+## Working in your worktree
 
-- Before starting: `git status` and `git log --oneline -8`. Another agent may be working; never
-  touch or commit files you did not change.
-- Stage your files by name, never `git add -A`, and commit with your paths named
-  (`git commit -m "..." -- <your files>`; the guide's Conventions say why). Commit each part as soon as
-  it is green.
-- `npm test` and `npm run check` before every commit; look at the result in the browser (Verification
-  in the guide).
-- Report at the end of each part: what changed, the commit hash, test counts, screenshots, anything
-  you could not do and anything you need from another owner.
+Since 2026-10-17 nobody shares a working tree: every agent has a folder, a branch and a port of its
+own, and `main` is the overseer's. (One tree and one index for several agents had already put one
+agent's files into another's commit, and an uncommitted edit had broken the suite for everyone else.)
+
+| Who | Folder | Branch now | Port |
+|---|---|---|---|
+| Overseer | `C:\GitHub\Lowbeam` | `main`: merges and docs only | 8040 |
+| Jc, to play | `C:\GitHub\Lowbeam-play` | detached on `main` (the hooks move it) | 8041 |
+| CCC | `C:\GitHub\Lowbeam-ccc` | `ccc/junctions` | 8042 |
+| agy | `C:\GitHub\Lowbeam-agy` | `agy/b6-earn` | 8043 |
+| Hermes | `C:\GitHub\Lowbeam-hermes` | `hermes/b5` | 8044 |
+| OpenCode | `C:\GitHub\Lowbeam-opencode` | `opencode/gps-turns` | 8045 |
+
+A new task after a merge gets a new branch from `main` in the same folder: `git switch -c
+<agent>/<topic> main`.
+
+- Work, test, commit and run your server only in your own folder. Never open, edit or run anything in
+  another agent's folder or in `C:\GitHub\Lowbeam`. The reference images (`concepts/`, git-ignored)
+  exist only in `C:\GitHub\Lowbeam\concepts\`: read them from there if you must.
+- `node_modules` in the new folders is a link to `main`'s: do not run `npm install`, ask the overseer
+  if a dependency is missing.
+- Before starting: `git status`, `git log --oneline -5` and `git log --oneline HEAD..main` (what `main`
+  has that you lack). If `main` moved, commit your work (or `git stash`) and `git rebase main`. Never
+  merge `main` into your branch: the history stays a straight line.
+- If `git rebase main` conflicts anywhere but `docs/agents/CHANGELOG.md`, run `git rebase --abort`
+  and report. In the changelog keep both sides' entries, newest version first, delete the markers,
+  `git add docs/agents/CHANGELOG.md` and `git rebase --continue`.
+- Stage your files by name, never `git add -A`, and commit with your paths named (`git commit -m "..."
+  -- <your files>`). Commit each part as soon as it is green.
+- `npm test` and `npm run check` before every commit; look at the result in the browser on your port
+  (Verification in the guide).
+- Report at the end of each part, or of the commit when the prompt gives you a list: `git rebase
+  main`, `npm test` and `npm run check` once more, then say the branch, the head hash, what changed,
+  test counts, the numbers you measured, the screenshots (the file names in your `tools/shots/`),
+  anything you could not do and anything you need from another owner. Then stop and wait: the
+  overseer tests that hash in a scratch tree and fast-forwards `main`. Work done after the reported
+  hash goes in the next report; never rewrite a commit you have reported.
+- Never `git push`, `git reset --hard`, `git branch -D`, `git stash drop` or `git worktree remove`,
+  and never delete a file you did not create. If something looks broken, stop and report.

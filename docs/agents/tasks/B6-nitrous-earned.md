@@ -1,4 +1,7 @@
-# B6: Nitrous earned on the road (CCC; Backend in the old seats)
+# B6: Nitrous earned on the road (agy, Argon 4; the pure module is its trial, 2026-10-17)
+
+The trial is the pure module and its test only, to the contract in `docs/agents/prompts/agy.md`; the
+Drive's wiring and Claude's HUD wait for the bug-bash. The overseer grades it against a holdout test.
 
 Jc (2026-10-10): the nitrous should fill up while you drive like a street racer, not only at a pump: at
 high speed, by damaging police cars, by driving in the oncoming lane and by drafting. After the bug-bash

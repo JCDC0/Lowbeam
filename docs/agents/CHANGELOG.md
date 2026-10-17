@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.94 (2026-10-17)
+
+The team moves platforms (CCC's Opus ran out of usage mid-task; Jc, 2026-10-17): Hermes comes back on
+DeepSeek V4.1 Flash, OpenCode joins on its Go plan, agy runs Argon 4 with Flash subagents, and nobody
+shares a working tree any more.
+
+- `tasks/README.md`: the team table with the two new seats and their ranges (Hermes 0.12.0 to 0.12.49,
+  OpenCode 0.12.50 to 0.12.99; agy 0.9.48 to 0.9.49 then 0.11.50 to 0.11.99; CCC 0.11.0 to 0.11.49);
+  who owns which files (Hermes: B5's); "Working in the shared tree" becomes "Working in your
+  worktree": a folder, a branch and a port for each agent (`C:\GitHub\Lowbeam-ccc`, `-agy`, `-hermes`,
+  `-opencode`, ports 8042 to 8045), rebase never merge, the report format, and what never to run.
+  `package.json` and the guide's counts are the overseer's now, set at each merge.
+- `OVERSEER.md`: the new seats, "How to merge a branch" (a scratch tree at the reported hash, the
+  review, `git merge --ff-only`, the bump commit, the boards), trials graded by a holdout test, prompts
+  kept in `docs/agents/prompts/`. A `post-merge` hook beside `post-commit` keeps Jc's play tree (8041)
+  on `main` after a fast-forward (the hooks are not versioned).
+- `ARCHITECTURE.md`: Conventions and Verification follow (the commit rules, the ports, `main` the
+  overseer's). `BUGS.md`: X-03, the GPS route with no turn cost (found reviewing 0.11.0's route test:
+  the Ginza to Dori test route went from 14 lanes to 24 for 6 m of 6,099), H-01 to Hermes. B5 and B6
+  headers, `ROADMAP.md`'s three stale lines.
+- `docs/agents/prompts/` (new): the paste prompts for CCC (finish 0.11.0, then P-02, R-03, R-04), Hermes
+  (resync `hermes/b5`, B5 part 2), agy (B6's pure module, the Argon trial, to a contract) and OpenCode
+  (X-03).
+
 ## 0.10.93 (2026-10-14)
 
 Jc's choice for the player's cars (2026-10-14): Gemini 4 Argon makes all five, outside and inside.

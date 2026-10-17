@@ -10,20 +10,30 @@ ranges `tasks/README.md`.
 
 - **Overseer**: Claude in the desktop app's Code tab (it has the browser pane, so it can look at the
   game). The orchestrator and the first tester (Jc's seats, 2026-10-14). Jc's design partner. Writes
-  briefs and the prompts Jc pastes, tests every worker's commit itself before the next prompt, keeps
-  the roadmap, the briefs and this file. It does not build features; it edits docs, writes acceptance
-  and holdout tests, and makes small fixes only when a worker cannot.
-- **CCC**: Claude Code CLI in `C:\GitHub\Lowbeam` (Opus, auto mode). The main developer, on the whole
+  briefs and the prompts Jc pastes, tests every worker's branch itself before it reaches `main`, and
+  is the only one who merges there (below); keeps the roadmap, the briefs and this file. It does not
+  build features; it edits docs, writes acceptance and holdout tests, and makes small fixes only when
+  a worker cannot. Its own folder is `C:\GitHub\Lowbeam`, on `main`, port 8040.
+- **CCC**: Claude Code CLI (Opus 5.5) in `C:\GitHub\Lowbeam-ccc`. The main developer, on the whole
   repo: the game logic, the world, rendering, the UI, fitting assets in, the audits and the tools. The
-  second tester: it tests and looks at its own work before it reports.
-- **agy**: the Antigravity CLI (Gemini 3.8 Flash). Patchwork: small bug fixes and patches by ticket,
-  each naming the bug, the files it may touch and the test that proves it. It owns no part of the repo.
+  second tester: it tests and looks at its own work before it reports. Its usage limit stops it
+  mid-task now and then, so its prompts are a queue of commits it can stop between.
+- **agy**: the Antigravity CLI, Gemini 4 Argon as the lead with Gemini 3.8 Flash subagents (Jc,
+  2026-10-17), in `C:\GitHub\Lowbeam-agy`. Patchwork: small bug fixes and patches by ticket, each
+  naming the bug, the files it may touch and the test that proves it. It owns no part of the repo.
+  Under Argon its first job is the B6 trial, graded against a holdout test; the scope widens only if
+  it clears it.
+- **Hermes**: Hermes Agent, DeepSeek V4.1 Flash (Jc, 2026-10-17), in `C:\GitHub\Lowbeam-hermes` on
+  `hermes/b5`. The backend of B5 (the police dispatch), in B5's files only. Its earlier merge went
+  wrong (0.10.32), so the first part is a trial: one commit, reviewed, before any more.
+- **OpenCode**: OpenCode on its Go plan (Jc, 2026-10-17; the model is Jc's pick and goes in
+  `tasks/README.md`), in `C:\GitHub\Lowbeam-opencode`. Bounded tickets with a test, as agy's; its
+  first is the GPS turn cost (X-03). Its plan bills in dollars per five hours, week and month, so a
+  cheap model gets more requests than a strong one.
 - **The Gemini app** (Gemini 4 Argon, Task mode): outsourced work that needs no repo: 3D models built
   in code, textures, sourcing with license checks, and self-contained code trials. Jc runs it, a new
   Task for each job, and brings back its files through `G:\My Drive\Lowbeam\from-gemini\`; what it
   needs goes out through `to-gemini\`.
-- **Hermes** is off. Whether it comes back, running Argon through Jc's API key, waits on the Argon
-  trials (C10's Hikari and the B6 code trial): it comes back only if Argon is clearly better than Flash.
 
 ## How to decide
 
@@ -53,11 +63,14 @@ open, decide by these, in order:
    within budget; through `tools/import-glb.mjs`; looked at by night and by day beside what it would
    replace; one trial before a batch. Jc judges the look.
 
-## How to review a worker's commit
+## How to review a worker's branch
 
-Before the next prompt goes out:
-- Read the diff, not only the report. Own files only (`tasks/README.md`); nothing of another agent's
-  staged; version, changelog and the guide's lines in the same commit.
+Before the next prompt goes out, in a scratch tree at the reported hash (next section), so the worker's
+own folder is left alone:
+- Read the diff (`git diff main..<hash>`), not only the report. Own files only (`tasks/README.md`); no
+  `package.json`, `package-lock.json` or count in the guide (those are the overseer's); the changelog
+  entry and the guide's lines in the same commit; the branch is `main` plus the worker's commits
+  (`git merge-base --is-ancestor main <hash>`), else it goes back to `git rebase main`.
 - Every claim has its evidence: a test that can fail, a bench number, a screenshot. A number changed
   without a measurement behind it goes back (a radius doubled, a threshold moved).
 - Test it yourself, never on the worker's word: run the test files the change touches and the gate or
@@ -65,13 +78,36 @@ Before the next prompt goes out:
   the report. For a new test, break the code it guards and see it fail. The full suite and the type
   check once per accepted commit, not while a worker is running its own (the suite pegs the CPU).
 - The test count went up with the change, and the worker ran `npm test` and `npm run check`.
-- An agy ticket touched only the files the ticket named.
+- An agy, OpenCode or Hermes ticket touched only the files it named (Hermes: B5's, `tasks/README.md`).
 - Visible changes are looked at in the browser pane at 1280 by 720.
 - Say what is accepted, what goes back to which worker, and why, in the reply to Jc.
+- A trial (a new seat or model) gets one bounded commit first, graded by a test the worker did not
+  see (a holdout), before it gets a batch. Keep the holdout out of the repository until it is graded.
+
+## How to merge a branch
+
+Only the overseer merges, and only what passed the review above.
+1. A scratch tree at the reported hash, in the session's scratchpad: `git worktree add --detach
+   <dir> <hash>`, then link `node_modules` to `main`'s (PowerShell: `New-Item -ItemType Junction
+   -Path <dir>\node_modules -Target C:\GitHub\Lowbeam\node_modules`). Run the touched tests, the gate
+   or bench the report claims to move, then the full suite and `npm run check` once.
+2. In `C:\GitHub\Lowbeam` (clean, on `main`): `git merge --ff-only <branch>`. It fails if `main` moved
+   since the worker rebased: send the worker back to `git rebase main` and report the new hash.
+3. Set `package.json` and `package-lock.json` to the highest version now in the changelog, and the
+   version and the test count in the guide's `## Current state`, in one commit: `<version>: Bump
+   after merging <branch>`. Move the lines of `BUGS.md` and `tasks/README.md` the branch cleared.
+4. The `post-merge` and `post-commit` hooks in `.git/hooks` move Jc's play tree (8041) to the new
+   `main`. Remove the scratch tree (`git worktree remove <dir>`); leave the worker's folder and branch
+   alone, it rebases onto `main` before its next report.
+5. Write the worker's next prompt.
+
+Two branches that touch the same file go one after the other, never at once; the prompts name the
+files so that does not happen, and the overseer orders the merges.
 
 ## Prompts for Jc to paste
 
-Jc relays everything; no worker sees another's chat. Each prompt is one self-contained paste block:
-who the agent is, what to read first, where things stand, the tasks in order (one commit each), the
-rules (shared tree, own files, version range, port 8040, no em dashes), and what to report. A worker's
-report comes back to the overseer before its next prompt.
+Jc relays everything; no worker sees another's chat. Each prompt is one self-contained paste block, kept
+in `docs/agents/prompts/` (the latest for each agent, named for the agent): who the agent is, what to
+read first, where things stand, the tasks in order (one commit each), the rules (its worktree, branch and
+port, own files, version range, no em dashes), and what to report. A worker's report comes back to the
+overseer before its next prompt. A model on a new platform gets exact commands and one bounded task.

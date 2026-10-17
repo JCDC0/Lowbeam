@@ -19,17 +19,20 @@ they differ. `ARCHITECTURE.md` says what is true now, `BUGS.md` is the live bug 
 - The Gemini app (Gemini 4 Argon, Task mode) works through Jc, a new Task for each job; what it makes
   comes into `G:\My Drive\Lowbeam\from-gemini\` (its model sourcing sheet, a 止まれ texture). Its first
   3D job is C10's Hikari (the first came back on 2026-10-14, a clear step up; a revision round is out).
-  Its code trial is B6's pure module, the same brief given to agy, graded by the overseer against a
-  holdout test neither saw: Hermes comes back on Argon only if Argon is clearly the better coder.
+  Its code trial, B6's pure module, went to agy once agy began running Argon 4 (2026-10-17), graded by
+  the overseer against a holdout test agy has not seen.
 - Since 2026-10-14 the work is split into Jc's seats (`OVERSEER.md`, `README.md`): Claude in the desktop
   app orchestrates and is the first tester (Jc's design partner, briefs, prompts, tests every commit);
   CCC (Claude Code CLI) is the main developer on the whole repo and the second tester; agy does
   small bug fixes and patches by ticket; the Gemini app takes the outsourced work. Where an older line
   says "Backend", the work is CCC's unless the overseer cuts a ticket for agy.
-- Hermes is off. His B5 work and his C8 code sit on branch `hermes/b5` in `C:\GitHub\Lowbeam-hermes`
-  (shelved after a broken merge, 0.10.32); B5 restarts from `main`, reading that branch for ideas.
-- Port 8040 is the agents' shared tree, 8041 Jc's (only on Jc's word). Nothing is pushed: `origin/main`
-  is at 0.4.4.
+- Since 2026-10-17 (CCC's Opus ran out of usage mid-task, and Jc moved to more platforms): Hermes is
+  back, running DeepSeek V4.1 Flash, on B5 in `C:\GitHub\Lowbeam-hermes` (`hermes/b5`: part 1 committed,
+  part 2 written and not committed; 33 commits behind `main`); agy runs Argon 4 with Flash subagents;
+  OpenCode joins on its Go plan with bounded tickets. Everyone works in a worktree and a branch of their
+  own and only the overseer merges to `main` (`README.md`, "Working in your worktree").
+- Port 8040 is `main`, 8041 Jc's (only on Jc's word), 8042 to 8045 the agents' worktrees. Nothing is
+  pushed: `origin/main` is at 0.4.4.
 
 ## 1. The bug-bash (now; `BUGS.md`)
 
@@ -162,6 +165,8 @@ rate on a mid-range machine (X-02). Nobody starts it before Jc says the game is 
   agy (code and tests) and Claude (plan, review, integration), and how work passes between them without
   copy and paste. The Drive mailbox is in use; an `.agents/` mailbox for agy and a Lowbeam skill in the
   Gemini app wait on Jc's yes; once Jc decides, it goes into `README.md`'s team table.
+- Which model OpenCode runs (its Go plan bills in dollars, so a cheap model gets more requests than a
+  strong one), and whether agy's scope widens after the B6 trial.
 - C10: whether Argon's Hikari replaces the lofted one, and then which of Cosmo's cars for the Hayate,
   the Rampart and the Vespera.
 - The main objectives' design pass (section 3): when it starts, and the answers to its questions.

@@ -1,4 +1,9 @@
-# B5: Police dispatch, stakeouts and racer chases (CCC; Backend in the old seats)
+# B5: Police dispatch, stakeouts and racer chases (Hermes, DeepSeek V4.1 Flash, from 2026-10-17)
+
+Part 1 is committed on `hermes/b5` (0.10.70) and part 2's director logic and tests are written,
+uncommitted, in `C:\GitHub\Lowbeam-hermes`; the branch is 33 commits behind `main` and must be
+rebased first (`tasks/README.md`, "Working in your worktree"). Part 2 is the trial: one commit, the
+overseer's review, then part 3. The HUD and the minimap stay CCC's.
 
 Jc's list (2026-10-09): the police stations dispatch the police; when the pursuit runs low there is a
 minute's wait, with one car still on the player, before the nearest station sends more; undercover cars
